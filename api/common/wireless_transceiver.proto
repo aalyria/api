@@ -1,0 +1,62 @@
+// Protobuf messages used to model wireless transceivers.
+//
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
+// Confidential and Proprietary. All rights reserved.
+
+syntax = "proto2";
+
+package minkowski.proto;
+
+import "api/common/platform_antenna.proto";
+import "api/common/wireless_receiver.proto";
+import "api/common/wireless_transmitter.proto";
+
+option java_package = "com.aalyria.minkowski.proto";
+option go_package = "aalyria.com/minkowski/api/common";
+
+message TransceiverModel {
+  // A platform-unique identifier for the transceiver model.
+  optional string id = 1;
+
+  // Models the transmitter.
+  optional TransmitterDefinition transmitter = 2;
+
+  // Models the receiver.
+  optional ReceiverDefinition receiver = 3;
+
+  // Configures the required spacing between the SDN's transmitter channel
+  // assignment and its receiver channel assignment. This field is optional.
+  optional CenterFrequencySpacing tx_rx_channel_spacing = 4;
+
+  // Models the antenna used by the transmitter and receiver.
+  optional AntennaDefinition antenna = 5;
+}
+
+// Uniquely identifies a temporospatial transceiver model.
+message TransceiverModelId {
+  // The globally unique platform ID with which this model is associated.
+  //
+  // Examples include:
+  //   - UUIDs (e.g. "9a03fbb6-d2da-4d8c-b743-25d09ec85709")
+  //   - other free-form strings whose global uniqueness is ensured by some
+  //     external mechanism or by convention (e.g. "gs/681154")
+  //
+  // NOTE: a platform_id need not be mappable to a network node_id.
+  //
+  // For example, it might be desirable to model geostationary satellites and
+  // their antennae for the purpose of asserting non-interference (i.e. in
+  // accordance with ITU Radio Regulations Article 22). In this example, each
+  // geostationary satellite might have its own platform_id (and one or more
+  // antennae) but would not need any corresponding network node_id as it
+  // would not need to be represented in a network graph.
+  optional string platform_id = 1;
+
+  // The locally scoped transceiver model ID, e.g. "wifi", "mmWave1", "lte".
+  optional string transceiver_model_id = 2;
+}
+
+// Models the required spacing between center frequencies.
+message CenterFrequencySpacing {
+  optional uint64 min_center_frequency_spacing_hz = 1;
+  optional uint64 max_center_frequency_spacing_hz = 2;
+}

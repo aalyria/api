@@ -1,0 +1,38 @@
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
+// Confidential and Proprietary. All rights reserved.
+
+syntax = "proto2";
+
+package minkowski.proto;
+
+option java_package = "com.aalyria.minkowski.proto";
+option go_package = "aalyria.com/minkowski/api/common";
+
+message AmplifierDefinition {
+  message ConstantGainAmplifierDefinition {
+    optional double gain_db = 1;
+    optional double noise_factor = 2;
+    optional double reference_temperature_k = 3;
+  }
+
+  message LowNoiseAmplifierDefinition {
+    optional double pre_lna_gain_db = 1;
+    optional double lna_gain_db = 2;
+    optional double post_lna_gain_db = 3;
+    optional double noise_factor = 4;
+    optional double reference_temperature_k = 5;
+  }
+
+  oneof amplifier_type {
+    ConstantGainAmplifierDefinition constant_gain = 1;
+    LowNoiseAmplifierDefinition low_noise = 2;
+  }
+}
+
+message MiscGainOrLoss {
+  // A name that describes the gain or loss.
+  optional string name = 1;
+
+  // The gain (positive values) or loss (negative values), in dB.
+  optional double gain_or_loss_db = 2;
+}

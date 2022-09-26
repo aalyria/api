@@ -1,0 +1,89 @@
+// Protobuf messages used to model antenna radiation patterns.
+//
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
+// Confidential and Proprietary. All rights reserved.
+
+syntax = "proto2";
+
+package minkowski.proto;
+
+option java_package = "com.aalyria.minkowski.proto";
+option go_package = "aalyria.com/minkowski/api/nbi";
+
+// Models an antenna radiation pattern. Multiple platform definitions can
+// reference the same antenna pattern.
+message AntennaPattern {
+  reserved 8, 10 to max;
+
+  // A custom / user-defined antenna radiation pattern.
+  message CustomAntennaPattern {
+    message SphericalGainValue {
+      // A gain value (in decibels) must be provided for each phi and each
+      // theta value such that the values in aggregate can be transformed into
+      // a table (two dimensional array) with no missing cells (gain values).
+      optional double gain_db = 1;
+
+      // Phi is defined as the azimuth angle from the positive x-axis to the
+      // orthogonal projection of the point in the x-y plane.
+      optional double phi_rad = 2;
+
+      // Theta is the zenith angle from the positive z-axis to the point.
+      optional double theta_rad = 3;
+    }
+    repeated SphericalGainValue gain_value = 1;
+  }
+
+  message GaussianAntennaPattern {
+    optional double diameter_m = 1;
+    optional double efficiency_percent = 2;
+    optional double backlobe_gain_db = 3;
+  }
+
+  message HelicalAntennaPattern {
+    optional double diameter_m = 1;
+    optional double efficiency_percent = 2;
+    optional double backlobe_gain_db = 3;
+    optional double number_of_turns = 4;
+    optional double turn_spacing_m = 5;
+  }
+
+  message IsotropicAntennaPattern {}
+
+  message ParabolicAntennaPattern {
+    optional double diameter_m = 1;
+    optional double efficiency_percent = 2;
+    optional double backlobe_gain_db = 3;
+  }
+
+  message SquareHornAntennaPattern {
+    optional double diameter_m = 1;
+    optional double efficiency_percent = 2;
+    optional double backlobe_gain_db = 3;
+  }
+
+  message GaussianOpticalAntennaPattern {
+    optional double diameter_m = 1;
+    optional double efficiency_percent = 2;
+    optional double divergence_angle_rad = 3;
+    optional double pointing_error_rad = 4;
+  }
+
+  // Applies a separate near-field antenna radiation pattern when the other
+  // link end is within the near field range (in meters).
+  message NearAndFarFieldAntennaPattern {
+    optional AntennaPattern near_field_pattern = 1;
+    optional AntennaPattern far_field_pattern = 2;
+    optional double near_field_range_m = 3;
+  }
+
+  oneof pattern_type {
+    CustomAntennaPattern custom_pattern = 1;
+    GaussianAntennaPattern gaussian_pattern = 2;
+    HelicalAntennaPattern helical_pattern = 3;
+    IsotropicAntennaPattern isotropic_pattern = 4;
+    ParabolicAntennaPattern parabolic_pattern = 5;
+    SquareHornAntennaPattern square_horn_pattern = 6;
+    GaussianOpticalAntennaPattern gaussian_optical_pattern = 7;
+    NearAndFarFieldAntennaPattern near_and_far_field_pattern = 9;
+  }
+}

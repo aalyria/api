@@ -1,0 +1,39 @@
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
+// Confidential and Proprietary. All rights reserved.
+
+syntax = "proto2";
+
+package minkowski.proto;
+
+option java_package = "com.aalyria.minkowski.proto";
+option go_package = "aalyria.com/minkowski/api/common";
+
+// TODO: Migrate to Timestamp.
+message DateTime {
+  // 'Smeared' microseconds since the Unix epoch. See
+  // https://developers.google.com/time/smear.
+  optional int64 unix_time_usec = 1;
+
+  optional GpsTime gps_time = 2;
+}
+
+// Follows access_minkowski_portable/units/physical/gps_time.h
+// TODO: Migrate to Timestamp.
+message GpsTime {
+  optional int32 week_number = 1;
+  optional int32 second_of_week = 2;
+  optional int32 usec = 3;
+}
+
+// TODO: Migrate to Duration.
+message Duration {
+  required int64 microseconds = 1;
+}
+
+// Time intervals are half-closed, [start_time, end_time)
+// If the start and/or end time are not included, the time interval should
+// be interpreted as extending to infinity in that timeline direction.
+message TimeInterval {
+  optional DateTime start_time = 1;  // closed
+  optional DateTime end_time = 2;    // open
+}

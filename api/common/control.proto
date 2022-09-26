@@ -1,0 +1,124 @@
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
+// Confidential and Proprietary. All rights reserved.
+
+syntax = "proto2";
+
+package minkowski.proto;
+
+import "google/protobuf/empty.proto";
+import "google/rpc/status.proto";
+import "api/common/control_beam.proto";
+import "api/common/control_flow.proto";
+import "api/common/control_radio.proto";
+import "api/common/control_tunnel.proto";
+import "api/common/time.proto";
+
+option java_package = "com.aalyria.minkowski.proto";
+option go_package = "aalyria.com/minkowski/api/common";
+
+// Defines sequential changes to the network control plane of an element.
+message ScheduledControlUpdate {
+  // Uniquely identifies the network node/element.
+  optional string node_id = 1;
+
+  // A unique value which identifies this update.
+  optional string update_id = 2;
+
+  // Optional time at which to begin enacting the first step in the sequence.
+  // If this field is empty, the sequence should be enacted immediately.
+  // If the agent observes that this time is in the past, it should reject the
+  // update by setting the done status notification to DEADLINE_EXCEEDED.
+  optional DateTime time_to_enact = 3;
+
+  // A new control configuration to enact.
+  optional ControlPlaneUpdate change = 4;
+}
+
+// The status of enacting one or more scheduled network control updates.
+// This field is omitted if the notification is for an unscheduled change.
+message ScheduledControlUpdateStatus {
+  // ID of the update whose enactment status is being reported.
+  optional string update_id = 1;
+
+  // The timestamp of when the state was determined.
+  optional DateTime timestamp = 7;
+
+  oneof state {
+    // Indicates that the agent has successfully scheduled the update for later
+    // enactment, according to the time_to_enact.
+    google.protobuf.Empty scheduled = 4;
+
+    // The agent attempted to enact the update.
+    // The status contains the outcome of the attempt.
+    google.rpc.Status enactment_attempted = 6;
+  }
+
+  reserved 2, 3, 5;
+}
+
+message ControlPlaneUpdate {
+  oneof update_type {
+    // WIRELESS TOPOLOGY
+    // Determines antenna or optical laser tasking for link establishment.
+    // Example: set antenna target, no target, etc.
+    BeamUpdate beam_update = 1;
+
+    // COGNITIVE RADIO
+    // Cognitive engine interface for configuring radio-system parameters.
+    // Examples set transmit power, set channel, tune ARQ, etc.
+    RadioUpdate radio_update = 2;
+
+    // FORWARDING
+    // Configures a router or switch.
+    // Example: update routing table.
+    FlowUpdate flow_update = 3;
+
+    // TUNNELING
+    // Provides policies and aids in key distribution for tunnel establishment.
+    // Example: encap/decap, encrypt/decrypt packets based on classifier rules.
+    TunnelUpdate tunnel_update = 4;
+  }
+}
+
+// Next ID : 7
+message ControlPlaneState {
+  optional BeamStates beam_states = 2;
+  optional RadioStates radio_states = 3;
+  optional FlowState forwarding_state = 5;
+  optional TunnelStates tunnel_states = 6;
+
+  reserved 1, 4;
+}
+
+// A ScheduledControlUpdate and a corresponding ScheduledControlUpdateStatus.
+message ScheduledControlUpdateReq {
+  optional ScheduledControlUpdate compiled_update = 1;
+
+  // Indicates that the destination agent has reported completion of an
+  // attempt to apply the update.
+  optional google.rpc.Status completed = 8;
+
+  reserved 2 to 7, 9, 10;
+}
+
+// Holds count of a CDPI stream's priority.
+message TaskCdpiStreamCount {
+  map<uint32, int32> stream_count_per_priority = 1;
+}
+
+// Stores info regarding the CDPI streams attached to a CDPI Frontend task.
+// If the task is down, the info may be out of date.
+message CdpiFrontendInfo {
+  // Holds a count of active CDPI streams for a CDPI Frontend task, broken down
+  // by stream priority and node ID.
+  map<string, TaskCdpiStreamCount> stream_count_per_node = 1;
+}
+
+// Stores info regarding the CDPI streams available for a network node.
+message CdpiStreamInfo {
+  reserved 1, 4 to max;  // NEXT ID
+  // Holds a count of active CDPI streams for a CDPI Frontend task, broken down
+  // by stream priority.
+  map<string, TaskCdpiStreamCount> stream_count_per_task = 2;
+  map<uint32, int32> stream_count_per_priority = 3;
+}

@@ -1,0 +1,206 @@
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
+// Confidential and Proprietary. All rights reserved.
+
+syntax = "proto2";
+
+package minkowski.proto;
+
+import "google/protobuf/duration.proto";
+import "api/common/time.proto";
+
+option java_package = "com.aalyria.minkowski.proto";
+option go_package = "aalyria.com/minkowski/api/common";
+
+// Weather parameters affecting wireless signal propagation.
+message PropagationWeather {
+  // The interval for which the weather parameters are applicable.
+  optional TimeInterval interval = 1;
+
+  // {@link S2CellId} for which the weather parameters are applicable.
+  optional uint64 s2_cell_id = 2;
+
+  // PropagationWeather holds time-dynamic forecast data from multiple sources.
+  // Pruning of older data is handled by the writer (LAMBDA).
+  repeated WeatherDataForecast forecasts = 6;
+
+  // Each table contains a multi-dimensional array of values for one or more
+  // weather parameters at specific times and optionally specific heights.
+  repeated WeatherTable tables = 7;
+
+  // Sparse data samples. For example, data sourced from a weather station in
+  // the region.
+  repeated SparseWeatherSamples samples = 8;
+
+  reserved 3 to 5, 9 to max;
+}
+
+enum Parameter {
+  UNSPECIFIED_PARAMETER = 0;
+
+  // Parameters pertinent to atmospheric attenuation modeling.
+  // https://www.itu.int/rec/R-REC-P.676/en
+  ATMOSPHERIC_PRESSURE_PA = 1;  // Layered.
+  TEMPERATURE_K = 2;            // Layered.
+  WATER_VAPOR_PRESSURE_PA = 3;  // Layered.
+
+  // Parameters pertinent to rain attenuation modeling.
+  // https://www.itu.int/rec/R-REC-P.838/en
+  RAIN_HEIGHT_WGS84_M = 4;     // Flat.
+  RAIN_RATE_M_PER_SECOND = 5;  // Flat.
+
+  // Parameters pertinent to cloud and fog attenuation modeling.
+  // https://www.itu.int/rec/R-REC-P.840/en
+  CLOUD_CEILING_WGS84_M = 6;                // Flat.
+  CLOUD_LAYER_THICKNESS_M = 7;              // Flat.
+  CLOUD_LIQUID_WATER_DENSITY_G_PER_M3 = 8;  // Layered in principle; flat.
+  CLOUD_TEMPERATURE_K = 9;                  // Layered.
+}
+
+// The source of these data iff there was a single source (i.e. these data
+// are not the result of merging data from multiple sources).
+enum Provenance {
+  UNSPECIFIED = 0;                // Unknown or multiple sources
+  ADMINISTRATIVE = 1;             // manually specified parameters
+                                  // (e.g. overrides)
+  SENSOR = 2;                     // data from a sensor in the field
+  ECMWF = 3;                      // European Center for Medium-range Weather
+                                  // Forecasts (https://ecmwf.int)
+  NOAA_GFS = 4;                   // National Oceanic and Atmospheric
+                                  // Administration, Global Forecast System
+                                  // (go/noaa-gfs)
+  LOON_WIND = 5;                  // data from the go/loon-wind pipeline
+  SEASONAL_REGIONAL_AVERAGE = 7;  // data from a seasonal-regional average.
+  DEFAULT_FALLBACK = 8;           // Default/Fallback value when no other data
+                                  // available
+
+  reserved 6;
+}
+
+message WeatherTable {
+  optional Provenance provenance = 1 [default = UNSPECIFIED];
+
+  // Weather parameters that the table values describe.
+  //
+  // Each table must include at least one parameter. Layered and flat parameters
+  // should never be mixed.
+  repeated Parameter params = 2;
+
+  // Times in seconds since the Unix epoch that the table values apply to.
+  //
+  // Must contain a sorted list of two or more times. Queries for values after
+  // the latest time or before the earliest time should not return a value.
+  // Queries for values between two times should return a value calculated from
+  // the value(s) before and after the desired time.
+  repeated int64 times_s = 3;
+
+  // WGS84 geometric heights that the table values apply to, if any.
+  //
+  // If any layered parameters are specified, this must contain a sorted list of
+  // two or more heights. Queries for heights above the max height or below the
+  // minimum height in the list should not return a value. Queries for values
+  // between two heights should return a value calculated from the values above
+  // and below the desired height.
+  //
+  // If all parameters are flat, then this list should be empty.
+  repeated int32 heights_wgs84_m = 4;
+
+  // Three-dimensional array of layered weather values when heights_wgs84_m is
+  // non-empty or a two-dimensional array of flat weather values when
+  // heights_wgs84_m is empty.
+  //
+  // For each combination of params, times_s, and heights_wgs84_m, the value can
+  // be found with:
+  //
+  // double value(parameter, time, height) {
+  //   Find P where params[P] == parameter.
+  //   Find T where times_s[T] == time.
+  //   Let Tlen = length of the times_s list.
+  //   If heights_wgs84_m is empty:
+  //     Return values[P * Tlen + T].
+  //   Find H where heights_wgs84_m[H] == height.
+  //   Let Hlen = length of the heights_wgs84_m list.
+  //   Return values[P * Tlen * Hlen + T * Hlen + H].
+  // }
+  repeated double values = 5;
+}
+
+// A collection of sparsely sampled weather parameters.
+message SparseWeatherSamples {
+  // The provenance of the sampled data.
+  optional Provenance provenance = 1;
+
+  // The sampled weather parameter.
+  optional Parameter param = 2;
+
+  // Specifies the altitude and time windows over which each sample should be
+  // considered valid.
+  optional google.protobuf.Duration time_domain_radius = 3;
+  optional int32 altitude_domain_radius_m = 4;
+
+  // To determine the parameter value at a particular height and time, find the
+  // nearest neighbor sample (per a relative weighting of height and time
+  // distance) within a maximum distance..
+  message Sample {
+    // Seconds of UTC time since Unix epoch.
+    optional int64 timestamp_s = 4;
+    optional int32 height_wgs84_m = 2;
+    optional double value = 3;
+
+    reserved 1;
+  }
+  repeated Sample samples = 5;
+}
+
+message WeatherDataForecast {
+  // The source of these data iff there was a single source (i.e. these data
+  // are not the result of merging data from multiple sources).
+  enum Provenance {
+    UNSPECIFIED = 0;     // Unknown or multiple sources
+    ADMINISTRATIVE = 1;  // manually specified parameters (e.g. overrides)
+    SENSOR = 2;          // data from a sensor in the field
+    ECMWF = 3;           // European Center for Medium-range Weather Forecasts
+                         // (https://ecmwf.int)
+    NOAA_GFS = 4;        // National Oceanic and Atmospheric Administration,
+                         // Global Forecast System (go/noaa-gfs)
+    LOON_WIND = 5;       // data from the go/loon-wind pipeline
+    SEASONAL_REGIONAL_AVERAGE = 7;  // data from a seasonal-regional average.
+
+    reserved 6;
+  }
+  optional Provenance provenance = 10 [default = UNSPECIFIED];
+
+  // The interval of time for which these forecast data are applicable.
+  optional TimeInterval interval = 11;
+
+  // Parameters pertinent to atmospheric attenuation modeling.
+  // https://www.itu.int/rec/R-REC-P.676/en
+  optional double atmospheric_pressure_pa = 1;
+  optional double temperature_k = 2;
+  optional double water_vapor_pressure_pa = 3;
+
+  // Parameters pertinent to rain attenuation modeling.
+  // https://www.itu.int/rec/R-REC-P.838/en
+  optional double rain_height_wgs84_m = 4;
+  optional double rain_rate_m_per_second = 5;
+
+  // Parameters pertinent to cloud and fog attenuation modeling.
+  // https://www.itu.int/rec/R-REC-P.840/en
+  optional double cloud_ceiling_wgs84_m = 6;
+  optional double cloud_layer_thickness_m = 7;
+  optional double cloud_liquid_water_density_g_per_m3 = 8;
+  optional double cloud_temperature_k = 9;
+
+  reserved 12 to max;
+}
+
+// Represents the predictive mean and variance from a Gaussian Process for a
+// one-dimensional input. If multidimensional inputs are to be used in the
+// future, the mean and variance need to be represented by a vector and matrix
+// respectively.
+message GaussianProcessPrediction {
+  optional double mean = 1;      // mm/hr for rain rate. Units for mean should
+                                 // match input units.
+  optional double variance = 2;  // mm^2/hr^2 for rain rate. Units for
+                                 // covariance of X and Y are those of X times
+                                 // those of Y.
+}

@@ -1,0 +1,33 @@
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
+// Confidential and Proprietary. All rights reserved.
+
+syntax = "proto2";
+
+package minkowski.proto;
+
+import "api/common/wireless_modcod.proto";
+
+option java_package = "com.aalyria.minkowski.proto";
+option go_package = "aalyria.com/minkowski/api/common";
+
+enum ChannelSelectionMethod {
+  CHANNEL_SELECTION_METHOD_UNKNOWN = 0;
+  AUTONOMOUS_CHANNEL_SELECTION = 1;
+  CHANNEL_SELECTION_BY_CONTROLLER = 2;
+}
+
+// Models a band whose channels all share the same channel width
+// and propagation loss characteristics.
+message BandProfile {
+  reserved 1, 4 to max;
+
+  // Specifies the channel bandwidth or spacing configuration, in Hz.
+  // This is required for RF transmitters but is optional for FSOC.
+  optional uint64 channel_width_hz = 2;
+
+  // This field is used to relate the intended receiver's received signal
+  // level (RSL) with the data rate used by this transmitter. This can be used
+  // to model fixed or adaptive coding & modulation schemes. The minimum RSL
+  // specified in this table will be used to constrain link accessibility.
+  optional AdaptiveDataRateTable rate_table = 3;
+}

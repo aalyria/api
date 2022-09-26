@@ -1,0 +1,76 @@
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
+// Confidential and Proprietary. All rights reserved.
+
+syntax = "proto2";
+
+package minkowski.proto;
+
+import "api/common/network.proto";
+import "api/common/time.proto";
+import "api/common/tunnel.proto";
+
+option java_package = "com.aalyria.minkowski.proto";
+option go_package = "aalyria.com/minkowski/api/common";
+
+// Specifies a packet tunnelling policy.
+message TunnelUpdate {
+  // A globally unique identifier for this rule.
+  optional string tunnel_rule_id = 1;
+
+  // Specifies add or remove.
+  enum Operation {
+    UNKNOWN = 0;
+    ADD = 1;
+    DELETE = 2;
+  }
+  optional Operation operation = 2;
+
+  // The rule and associated parameters.
+  optional TunnelRule rule = 3;
+
+  // Optional monotonically increasing sequence number, which may jump by more
+  // than 1.
+  optional int64 sequence_number = 4;
+}
+
+message TunnelRule {
+  message EncapRule {
+    // Describes which packets will be encapsulated and transmitted through the
+    // tunnel. It describes the inner packet header.
+    optional PacketClassifier classifier = 1;
+
+    // These fields describe the tunnel (outer) header.
+    optional string encapsulated_src_ip = 2;
+    optional string encapsulated_dst_ip = 3;
+    optional int32 encapsulated_src_port = 4;
+    optional int32 encapsulated_dst_port = 5;
+
+    oneof parameters {
+      EspParameters esp = 6;
+    }
+  }
+
+  message DecapRule {
+    // Describes which packets will be decapsulated and received through the
+    // tunnel. It describes the outer packet header.
+    optional PacketClassifier classifier = 1;
+
+    oneof parameters {
+      EspParameters esp = 2;
+    }
+  }
+
+  optional EncapRule encap_rule = 10;
+  optional DecapRule decap_rule = 11;
+
+  reserved 1 to 9;
+}
+
+message TunnelStates {
+  reserved 1, 4 to max;
+  // Time at which the state was captured by the network element.
+  optional minkowski.proto.DateTime timestamp = 2;
+
+  // A list of all active tunnel rule ids.
+  repeated string tunnel_rule_ids = 3;
+}

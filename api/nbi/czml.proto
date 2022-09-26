@@ -1,0 +1,17 @@
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
+// Confidential and Proprietary. All rights reserved.
+
+syntax = "proto2";
+
+package minkowski.proto;
+
+option java_package = "com.aalyria.minkowski.proto";
+option go_package = "aalyria.com/minkowski/api/nbi";
+
+message CzmlDocument {
+  repeated CzmlPacket packets = 1;
+}
+
+message CzmlPacket {
+  required string json_packet = 1;
+}

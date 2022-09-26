@@ -1,0 +1,73 @@
+// Protobuf messages to model platforms (physical things with geospatial
+// coordinates and properties, such as aircraft, satellites, surface vehicles,
+// ground stations) and their associated physical-layer communications assets
+// (antennas, transmitters, receivers).
+//
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
+// Confidential and Proprietary. All rights reserved.
+
+syntax = "proto2";
+
+package minkowski.proto;
+
+import "api/common/coordinates.proto";
+import "api/common/wireless_transceiver.proto";
+
+option java_package = "com.aalyria.minkowski.proto";
+option go_package = "aalyria.com/minkowski/api/common";
+
+// Models a physical platform with optional communications assets.
+message PlatformDefinition {
+  reserved 4 to 7, 8, 9, 11, 18 to max;
+
+  // A globally unique identifier for the network platform.
+  optional string platform_id = 1;
+
+  // Optional friendly, human-readable strings for UI purposes.
+  optional string name = 2;
+  optional string type = 12;
+
+  // Root platforms have location translations relative to the center of the
+  // Earth and orientation rotations relative to the Earth-Centered-Earth-Fixed
+  // (ECEF) reference axes.
+  optional Motion coordinates = 14;
+
+  // The coordinates above can be updated through different means, including
+  // from sources that the SDN controller can automatically fetch from.  The
+  // motion_source signals how updates are nominally to be obtained.
+  enum MotionSource {
+    UNKNOWN_SOURCE = 0;  // Used for manual updates or other means.
+    SPACETRACK_ORG = 1;  // Indicates NORAD TLE updates are to be used.
+    FLIGHTRADAR_24 = 2;  // FlightRadar 24 trajectory updates are used.
+  }
+  optional MotionSource motion_source = 16;
+
+  // Transceiver models associated with this platform.
+  // Multiple physical devices on the platform may share the same model.
+  repeated TransceiverModel transceiver_model = 15;
+
+  // Automatic dependent surveillance—broadcast (ADS-B) information.
+  // This field is optional and is only relevant to aircraft platforms.
+  optional AdsbTransponder adsb_transponder = 13;
+
+  // If the motion_source inticates that updated TLEs will comefrom a 3rd-party,
+  // then the norad_id indicates the NORAD satellite catalog number that will be
+  // used for reference.
+  // If the platform owner provides their own higher-precision updates instead,
+  // then this field does not need to be set, and will have no effect if it is
+  // present.
+  optional uint32 norad_id = 17;
+
+  // The ID of the model to be used by the visualization service to render this
+  // platform in a visualization of the physical network topology. This field is
+  // optional; a default icon is used if the visualization model is unspecified.
+  optional string visualization_model_id = 10;
+}
+
+// Models information from an ADS-B transponder.
+message AdsbTransponder {
+  reserved 3 to max;
+
+  optional uint32 icao_aircraft_address = 1;
+  optional string aircraft_identification = 2;
+}

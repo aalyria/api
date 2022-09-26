@@ -1,0 +1,81 @@
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
+// Confidential and Proprietary. All rights reserved.
+
+syntax = "proto2";
+
+package minkowski.proto;
+
+import "api/common/network.proto";
+import "api/common/time.proto";
+
+option java_package = "com.aalyria.minkowski.proto";
+option go_package = "aalyria.com/minkowski/api/common";
+
+// Specifies an update to the state of an AirFlow compatible switch or router.
+// This is similar to the 'FlowMod' message in the OpenFlow CDPI protocol.
+message FlowUpdate {
+  // A globally unique identifier for this rule.
+  optional string flow_rule_id = 1;
+
+  // Specifies add or remove.
+  enum Operation {
+    UNKNOWN = 0;
+    ADD = 1;
+    DELETE = 2;
+  }
+  optional Operation operation = 2;
+
+  // The rule and associated actions to which the operation is applied.
+  optional FlowRule rule = 3;
+
+  // Optional monotonically increasing sequence number, which may jump by more
+  // than 1.
+  optional int64 sequence_number = 4;
+}
+
+// Next ID: 8
+message FlowRule {
+  reserved 1 to 3, 8 to max;
+  // Classifies packets that match this rule.
+  optional PacketClassifier classifier = 5;
+
+  // Specifies one or more groups of actions to take on matched packets.
+  // Actions are enacted sequentially within an action bucket.  For example,
+  // if a packet needs to be copied and forwarded out multiple interfaces on
+  // the same network node, action buckets may be defined where each bucket
+  // consists of two sequential actions: (1) setting the destination MAC
+  // address, and (2) forwarding the packet out of a specified port.
+  message ActionBucket {
+    message Action {
+      message SetField {
+        enum Field {
+          UNKNOWN = 0;
+          ETH_DST = 2;
+        }
+        optional Field field = 1;
+        optional string value_ascii = 3;
+        reserved 2, 4 to max;
+      }
+      message Forward {
+        optional string out_interface_id = 1;
+      }
+      oneof action_type {
+        SetField set_field = 1;
+        Forward forward = 2;
+      }
+      reserved 3, 4, 5;
+      reserved 6 to max;
+    }
+    repeated Action action = 1;
+  }
+  repeated ActionBucket action_bucket = 4;
+}
+
+message FlowState {
+  reserved 1, 4 to max;
+  // Time at which the state was captured by the network element.
+  optional minkowski.proto.DateTime timestamp = 2;
+
+  // A list of all active flow rule ids.
+  repeated string flow_rule_ids = 3;
+}

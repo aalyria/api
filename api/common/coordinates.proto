@@ -1,0 +1,200 @@
+// These messages provide common n-tuple representations for expressing
+// locations of points and orientations of axes as well as their derivatives.
+//
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
+// Confidential and Proprietary. All rights reserved.
+
+syntax = "proto2";
+
+package minkowski.proto;
+
+import "google/protobuf/timestamp.proto";
+import "api/common/time.proto";
+
+option go_package = "aalyria.com/minkowski/api/common";
+option java_package = "com.aalyria.minkowski.proto";
+
+// A set of curvilinear 3 dimensional coordinates relative to the WGS84
+// ellipsoid.
+message GeodeticWgs84 {
+  optional double longitude_deg = 1;
+  optional double latitude_deg = 2;
+  optional double height_wgs84_m = 3;
+}
+
+// A set of curvilinear 3 dimensional coordinates relative to the WGS84
+// ellipsoid, but with height specified relative to mean sea level.
+message GeodeticMsl {
+  optional double longitude_deg = 1;
+  optional double latitude_deg = 2;
+  optional double height_msl_m = 3;
+}
+
+// A collection of S2 cells (see http://s2geometry.io).
+message S2Cells {
+  repeated uint64 ids = 1;
+}
+
+// Translational coordinate.
+message Cartesian {
+  required double x_m = 1;
+  required double y_m = 2;
+  required double z_m = 3;
+}
+
+// Rotational coordinate.
+// Interpreted as the identity if none of the fields are set.
+message Quaternion {
+  required double w = 1;
+  required double x = 2;
+  required double y = 3;
+  required double z = 4;
+}
+
+// Rotational coordinate.
+message YawPitchRoll {
+  required double yaw_deg = 1;
+  required double pitch_deg = 2;
+  required double roll_deg = 3;
+}
+
+message PointingVector {
+  optional double azimuth_deg = 1;
+  optional double elevation_deg = 2;
+}
+
+// A note about axes defined in terms of quaternion transformations from parent
+// reference frames: Let A be a fixed point in space. Let v be A's cartesian
+// coordinates in the axes reference frame and w A's cartesian coordinates in
+// the parent reference frame. You can use the unit quaternion q below to
+// compute
+//
+//    w = q*v*q'    or    v = q'*w*q
+//
+// where q' is the conjugate of q and * denotes quaternion multiplication. Note
+// that in the formulas above the 3-vectors v and w are treated as quaternions
+// whose real part is zero and whose imaginary components correspond to the
+// respective components of the 3-vectors. Note also that since q is a unit
+// quaternion, q' can be computed simply by negating the three imaginary
+// components of q.
+
+message PointAxes {
+  optional Cartesian point = 1;
+
+  // The quaternion q satisfies w = q*v*q' where v is a point in the axes'
+  // coordinate frame, and w is that same point in the parent reference frame
+  // (i.e. the same frame in which the "point" is specified).
+  optional Quaternion axes = 2;
+}
+
+// A timestamped position and orientation.
+message PointAxesTemporal {
+  optional Cartesian point = 1;
+
+  // The quaternion q satisfies w = q*v*q' where v is a point in the axes'
+  // coordinate frame, and w is that same point in the parent reference frame
+  // (i.e. the same frame in which the "point" is specified).
+  optional Quaternion axes = 2;
+
+  // TODO: Migrate to Timestamp.
+  optional GpsTime gps_time = 4;
+}
+
+// A timestamped geodetic coordinate relative to the WGS84 ellipsoid.
+message GeodeticWgs84Temporal {
+  optional GeodeticWgs84 point = 1;
+  optional google.protobuf.Timestamp time = 2;
+}
+
+enum InterpolationMethod {
+  UNKNOWN_METHOD = 0;
+  LINEAR = 1;
+  LAGRANGE = 2;
+  HERMITIAN = 3;
+}
+
+message PointAxesTemporalInterpolation {
+  repeated PointAxesTemporal locations_orientations_over_time = 1;
+  optional InterpolationMethod interpolation_method = 2 [default = LINEAR];
+  optional int32 interpolation_degree = 3 [default = 1];
+}
+
+message GeodeticWgs84TemporalInterpolation {
+  repeated GeodeticWgs84Temporal locations_over_time = 1;
+  optional InterpolationMethod interpolation_method = 2 [default = LINEAR];
+  optional int32 interpolation_degree = 3 [default = 1];
+}
+
+// https://en.wikipedia.org/wiki/Two-line_element_set
+message TwoLineElementSet {
+  optional string line1 = 1;
+  optional string line2 = 2;
+}
+
+// https://en.wikipedia.org/wiki/Orbital_elements#Keplerian_elements
+message KeplerianElements {
+  // Semimajor axis (distance), in meters.
+  optional double semimajor_axis_m = 1;
+
+  // Eccentricity (the shape of the orbital ellipse).
+  // This value must be between 0.0 (a circular orbit) and 1.0.
+  optional double eccentricity = 2;
+
+  // Inclination, in degrees.
+  optional double inclination_deg = 3;
+
+  // Argument of periapsis, in degrees.
+  optional double argument_of_periapsis_deg = 4;
+
+  // Right ascention of ascending node, in degrees.
+  optional double raan_deg = 5;
+
+  // True anomaly, in degrees.
+  optional double true_anomaly_deg = 6;
+
+  // A set of orbital elements is a snapshot, at a particular time, of the orbit
+  // of a satellite. This specifies the time at which the snapshot was taken.
+  optional DateTime epoch = 7;
+}
+
+message Motion {
+  enum Type {
+    UNKNOWN_MOTION = 0;
+    GEODETIC_MSL = 7;
+    GEODETIC_WGS84 = 1;
+    ECEF_FIXED = 2;
+    ECEF_INTERPOLATION = 3;
+    CARTOGRAPHIC_WAYPOINTS = 4;
+    TLE = 5;
+    KEPLERIAN_ELEMENTS = 6;
+  }
+
+  oneof type {
+    // The implied orientation is EastNorthUp.
+    GeodeticMsl geodetic_msl = 7;
+
+    // The implied orientation is EastNorthUp.
+    GeodeticWgs84 geodetic_wgs84 = 1;
+
+    // Coordinates are fixed relative to the reference frame.
+    PointAxes ecef_fixed = 2;
+
+    // Interpolated time-dynamic coordinates relative to the reference frame.
+    PointAxesTemporalInterpolation ecef_interpolation = 3;
+
+    // Interpolated cartographic positions on Earth.
+    // The implied orientation of each position is EastNorthUp.
+    GeodeticWgs84TemporalInterpolation cartographic_waypoints = 4;
+
+    // Satellite orbital information, expressed as a TLE.
+    // See https://en.wikipedia.org/wiki/Two-line_element_set for details.
+    // The implied orientation is VVLH as defined here:
+    // http://help.agi.com/stk/Content/gator/eq-coordsys.htm
+    TwoLineElementSet tle = 5;
+
+    // Satellite orbital information, expressed as Keplerian elements.
+    // This coordinate type is only valid for a root platform.
+    // http://help.agi.com/stk/Content/gator/eq-coordsys.htm
+    KeplerianElements keplerian_elements = 6;
+  }
+}

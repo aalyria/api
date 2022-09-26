@@ -1,0 +1,85 @@
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
+// Confidential and Proprietary. All rights reserved.
+
+syntax = "proto2";
+
+package minkowski.proto;
+
+import "google/protobuf/empty.proto";
+
+option java_package = "com.aalyria.minkowski.proto";
+option go_package = "aalyria.com/minkowski/api/common";
+
+enum AuthenticationAlgorithm {
+  AUTH_ALGO_UNSPECIFIED = 0;
+  HMAC_SHA1_96 = 1;
+}
+
+enum EncryptionAlgorithm {
+  ENCRYPTION_ALGO_UNSPECIFIED = 0;
+  AES_CBC_128 = 1;
+}
+
+// Defines the use of an Encapsulating Security Payload (ESP).
+message EspProtocol {
+  // Algorithm employed to ensure packet integrity.
+  // May be omitted to disable integrity protection.
+  message EspIntegrity {
+    optional AuthenticationAlgorithm algorithm = 1;
+    reserved 2;
+  }
+  optional EspIntegrity authentication = 1;
+
+  // Encryption algorithm and its mode of operation for ensuring privacy.
+  // May be omitted to disable privacy protection.
+  message EspPrivacy {
+    optional EncryptionAlgorithm algorithm = 1;
+    reserved 2;
+  }
+  optional EspPrivacy encryption = 2;
+}
+
+// Defines the parameters necessary to perform ESP encap/decap.
+message EspParameters {
+  // Index uniquely identifying the parameters from all other decap parameters
+  // on the decap node.
+  optional int32 security_parameters_index = 3;
+
+  // Authentication algorithm and key.
+  // May be omitted to disable integrity protection.
+  message EspAuth {
+    optional AuthenticationAlgorithm algorithm = 1;
+    optional WrappedKey key = 2;  // Unwrap to get the key as a binary blob
+  }
+  optional EspAuth authentication = 1;
+
+  // Encryption algorithm and key.
+  // May be omitted to disable privacy protection.
+  message EspEncrypt {
+    optional EncryptionAlgorithm algorithm = 1;
+    optional WrappedKey key = 2;  // Unwrap to get the key as a binary blob
+  }
+  optional EspEncrypt encryption = 2;
+}
+
+// A wrapped (encrypted) key.
+// The agent should use the Google Cloud Key Management Service (KMS) to
+// unwrap (decrypt) the wrapped key material.
+// See the Google Cloud KMS API for 'cloudkms.cryptoKeys.decrypt'.
+message WrappedKey {
+  // The resource name of the cryptographic key used for unwrapping.
+  optional string unwrapper_key_name = 1;
+
+  // Wrapped (encrypted) key ciphertext.
+  // Unwrap (decrypt) using Google Cloud KMS before use in packet processing.
+  optional bytes wrapped_key = 2;
+}
+
+message TunnelMethod {
+  oneof protocol {
+    EspProtocol esp = 1;
+    // Explicit request to disable security properties on this tunnel.
+    google.protobuf.Empty none = 2;
+  }
+  reserved 3 to max;  // Next IDs.
+}
