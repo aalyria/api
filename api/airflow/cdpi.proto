@@ -38,8 +38,13 @@ message ControlPlanePingResponse {
 }
 
 message ControlStateChangeRequest {
-  optional minkowski.proto.ScheduledControlUpdate update = 1;
-  optional ControlPlanePingRequest control_plane_ping_request = 2;
+  oneof type {
+    minkowski.proto.ScheduledControlUpdate scheduled_update = 1;
+
+    minkowski.proto.ScheduledControlDeletion scheduled_deletion = 2;
+
+    ControlPlanePingRequest control_plane_ping_request = 3;
+  }
 }
 
 message ControlStateNotification {
@@ -49,6 +54,8 @@ message ControlStateNotification {
   // sent on the stream.
   optional string node_id = 1;
 
+  // A list of statuses for updates that have been requested to be scheduled,
+  // unscheduled, or enacted.
   repeated minkowski.proto.ScheduledControlUpdateStatus statuses = 2;
 
   // This field may be omitted if control update statuses exist and are all

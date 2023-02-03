@@ -18,7 +18,7 @@ option go_package = "aalyria.com/minkowski/api/common";
 
 // Models a physical platform with optional communications assets.
 message PlatformDefinition {
-  reserved 4 to 7, 8, 9, 11, 18 to max;
+  reserved 5 to 7, 8, 9, 11, 18 to max;
 
   // A globally unique identifier for the network platform.
   optional string platform_id = 1;
@@ -36,14 +36,30 @@ message PlatformDefinition {
   // from sources that the SDN controller can automatically fetch from.  The
   // motion_source signals how updates are nominally to be obtained.
   enum MotionSource {
+    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
+    // protolint:disable:next ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH
     UNKNOWN_SOURCE = 0;  // Used for manual updates or other means.
+    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
     SPACETRACK_ORG = 1;  // Indicates NORAD TLE updates are to be used.
+    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
     FLIGHTRADAR_24 = 2;  // FlightRadar 24 trajectory updates are used.
   }
   optional MotionSource motion_source = 16;
 
+  // A string identifier indicating the `MotionDefinition` ID to be used for
+  // the description of this platform's motion.
+  //
+  // If present, this supersedes any supplied `coordinates` message.
+  //
+  // Using a separate `MotionDefinition` is recommended whenever the motion
+  // is likely to be updated over time and/or have multiple different types
+  // of pre-planned motion (e.g. a fixed position on a launch pad, followed by
+  // a launch maneuver, followed by a TLE, etc).
+  optional string motion_ref_id = 4;
+
   // Transceiver models associated with this platform.
   // Multiple physical devices on the platform may share the same model.
+  // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
   repeated TransceiverModel transceiver_model = 15;
 
   // Automatic dependent surveillance—broadcast (ADS-B) information.

@@ -18,6 +18,7 @@ message RxChannels {
   // The set of supported channel frequencies, in Hz, for this channel set.
   // For RF transceivers, this is the carrier frequency.
   // For optical transceivers, this may be converted to wavelength.
+  // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
   repeated int64 center_frequency_hz = 1;
 }
 
@@ -37,6 +38,7 @@ message ReceiverDefinition {
   // Allows the user to configure an ordered sequence that describes how the
   // wireless transmission is modified or reconfigured starting from the output
   // of the platform antenna that receives the signal.
+  // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
   repeated ReceiveSignalProcessor signal_processing_step = 11;
 }
 
@@ -66,7 +68,8 @@ message Filter {
   // The thermal noise temperature of the filter, in Kelvin.
   optional double noise_temperature_k = 4;
 
-  message RectangularFilterDefinition {}
+  message RectangularFilterDefinition {
+  }
 
   message LinearFilterDefinition {
     // The amount of attentunation (rejection) of the output signal, in
@@ -99,9 +102,31 @@ message PhotodetectorDefinition {
 
     // Units for emittance: W * m^-2 * Hz^-1
     optional double sun_spectral_radiant_emittance = 11;
+
+    // Must be greater than or equal to 2.99792458E-9 meters and less than
+    // or equal to 9.993081933333333E-5 meters to model an optical wavelength.
+    optional double wavelength_m = 12;
   }
 
-  message PinPhotodiodeDefinition {}
+  message PinPhotodiodeDefinition {
+    optional double field_of_view_rad = 1;
+    optional double bandwidth_hz = 2;
+    optional double noise_temperature_k = 3;
+    optional double efficiency_percent = 4;
+    optional double dark_current_amp = 5;
+    optional double load_impedance_ohm = 6;
+    optional double optical_bandpass_filter_bandwidth_hz = 7;
+
+    // Units for radiance: W * m^-2 * sr^-1 * Hz^-1
+    optional double sky_spectral_radiance = 8;
+
+    // Units for emittance: W * m^-2 * Hz^-1
+    optional double sun_spectral_radiant_emittance = 9;
+    
+    // Must be greater than or equal to 2.99792458E-9 meters and less than
+    // or equal to 9.993081933333333E-5 meters to model an optical wavelength.
+    optional double wavelength_m = 10;
+  }
 
   oneof photodetector_type {
     AvalanchePhotodiodeDefinition avalanche_photodiode = 1;

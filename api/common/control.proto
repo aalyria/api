@@ -5,13 +5,14 @@ syntax = "proto2";
 
 package minkowski.proto;
 
-import "google/protobuf/empty.proto";
-import "google/rpc/status.proto";
 import "api/common/control_beam.proto";
 import "api/common/control_flow.proto";
 import "api/common/control_radio.proto";
 import "api/common/control_tunnel.proto";
 import "api/common/time.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "google/rpc/status.proto";
 
 option java_package = "com.aalyria.minkowski.proto";
 option go_package = "aalyria.com/minkowski/api/common";
@@ -28,10 +29,24 @@ message ScheduledControlUpdate {
   // If this field is empty, the sequence should be enacted immediately.
   // If the agent observes that this time is in the past, it should reject the
   // update by setting the done status notification to DEADLINE_EXCEEDED.
-  optional DateTime time_to_enact = 3;
+  optional google.protobuf.Timestamp time_to_enact = 3;
 
   // A new control configuration to enact.
   optional ControlPlaneUpdate change = 4;
+}
+
+// Defines deletions to the control plane schedule of an element.
+message ScheduledControlDeletion {
+  // Uniquely identifies the network node/element.
+  optional string node_id = 1;
+
+  // List of pending update IDs to be removed from the agent’s
+  // enactment queue.
+  //
+  // If this field contains an update ID that has already been
+  // enacted, the deletion request will have no effect for that
+  // update.
+  repeated string update_ids = 2;
 }
 
 // The status of enacting one or more scheduled network control updates.
@@ -51,6 +66,10 @@ message ScheduledControlUpdateStatus {
     // The agent attempted to enact the update.
     // The status contains the outcome of the attempt.
     google.rpc.Status enactment_attempted = 6;
+
+    // The agent attempted to unschedule the update.
+    // The status contains the outcome of the attempt.
+    google.rpc.Status unscheduled = 8;
   }
 
   reserved 2, 3, 5;
@@ -97,6 +116,14 @@ message ScheduledControlUpdateReq {
   // Indicates that the destination agent has reported completion of an
   // attempt to apply the update.
   optional google.rpc.Status completed = 8;
+
+  // Indicates that the destination agent has reported completion of
+  // scheduling the update to be applied at the update's time to enact.
+  optional bool scheduled = 11;
+
+  // Indicates that the destination agent has reported completion of an
+  // attempt to unschedule the update.
+  optional google.rpc.Status unscheduled = 12;
 
   reserved 2 to 7, 9, 10;
 }

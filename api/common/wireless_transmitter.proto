@@ -42,6 +42,7 @@ message TransmitterDefinition {
   // Allows the user to configure an ordered sequence that describes how the
   // wireless transmission is created or modified prior to the input of
   // the platform antenna that propagates the signal.
+  // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
   repeated TransmitSignalProcessor signal_processing_step = 15;
 }
 

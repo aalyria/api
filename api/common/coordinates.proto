@@ -8,8 +8,9 @@ syntax = "proto2";
 
 package minkowski.proto;
 
-import "google/protobuf/timestamp.proto";
 import "api/common/time.proto";
+import "google/protobuf/timestamp.proto";
+import "google/type/interval.proto";
 
 option go_package = "aalyria.com/minkowski/api/common";
 option java_package = "com.aalyria.minkowski.proto";
@@ -40,6 +41,14 @@ message Cartesian {
   required double x_m = 1;
   required double y_m = 2;
   required double z_m = 3;
+}
+
+// Cartesian is a 3D position vector, and CartesianDot is similarly a set
+// of 3D velocity components.
+message CartesianDot {
+  required double x_mps = 1; // Velocity along x-axis in meters per second.
+  required double y_mps = 2; // Velocity along y-axis in meters per second.
+  required double z_mps = 3; // Velocity along z-axis in meters per second.
 }
 
 // Rotational coordinate.
@@ -98,6 +107,7 @@ message PointAxesTemporal {
 
   // TODO: Migrate to Timestamp.
   optional GpsTime gps_time = 4;
+  optional google.protobuf.Timestamp time = 5;
 }
 
 // A timestamped geodetic coordinate relative to the WGS84 ellipsoid.
@@ -106,20 +116,33 @@ message GeodeticWgs84Temporal {
   optional google.protobuf.Timestamp time = 2;
 }
 
+// Enumerates celestial bodies.
+enum CentralBody {
+  // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
+  // protolint:disable:next ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH
+  UNKNOWN_CENTRAL_BODY = 0;
+  EARTH = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  MOON = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+}
+
 enum InterpolationMethod {
+  // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
+  // protolint:disable:next ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH
   UNKNOWN_METHOD = 0;
-  LINEAR = 1;
-  LAGRANGE = 2;
-  HERMITIAN = 3;
+  LINEAR = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  LAGRANGE = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  HERMITIAN = 3; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
 }
 
 message PointAxesTemporalInterpolation {
+  // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
   repeated PointAxesTemporal locations_orientations_over_time = 1;
   optional InterpolationMethod interpolation_method = 2 [default = LINEAR];
   optional int32 interpolation_degree = 3 [default = 1];
 }
 
 message GeodeticWgs84TemporalInterpolation {
+  // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
   repeated GeodeticWgs84Temporal locations_over_time = 1;
   optional InterpolationMethod interpolation_method = 2 [default = LINEAR];
   optional int32 interpolation_degree = 3 [default = 1];
@@ -146,7 +169,7 @@ message KeplerianElements {
   // Argument of periapsis, in degrees.
   optional double argument_of_periapsis_deg = 4;
 
-  // Right ascention of ascending node, in degrees.
+  // Right ascension of ascending node, in degrees.
   optional double raan_deg = 5;
 
   // True anomaly, in degrees.
@@ -155,18 +178,106 @@ message KeplerianElements {
   // A set of orbital elements is a snapshot, at a particular time, of the orbit
   // of a satellite. This specifies the time at which the snapshot was taken.
   optional DateTime epoch = 7;
+
+  // The celestial body used to fetch gravitational parameters.
+  optional CentralBody central_body = 8 [default = EARTH];
+
+  reserved 9 to max;  // next field number
+}
+
+// Generic state vector for any satellite positions.  State vectors are used in
+// the CCSDS Orbit Parameter Message standard (502.0-B-2), and are typical for
+// lunar and other interplanetary mission data, as well as any other generic
+// trajectories where TLEs or Keplerian elements are not well suited, e.g.  for
+// powered flight, maneuvers, etc.
+message StateVector {
+  // Time that the state vector was measured.
+  required google.protobuf.Timestamp epoch = 1;
+
+  enum CoordinateFrame {
+    // The frame should always be known; using this must indicate some error.
+    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
+    // protolint:disable:next ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH
+    UNKNOWN_FRAME = 0;
+    // This indicates the frame used for most E-M Lagrange point orbit studies.
+    // It is a natural and convenient way to input L1/L2 orbits.
+    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
+    EARTH_MOON_BARYCENTER_SYNODIC_FRAME = 1;
+    // Internally, ECEF is used most everywhere else in our software.
+    ECEF_FRAME = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  }
+  // Indication of the reference frame for the state vector.
+  optional CoordinateFrame coordinate_frame = 2;
+
+  // Three dimensional position and velocity relative to the reference frame.
+  required Cartesian position = 3;
+  required CartesianDot velocity = 4;
+
+  enum PropagationAlgorithm {
+    // Generally, a particular class of algorithm should be specified instead.
+    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
+    // protolint:disable:next ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH
+    UNSPECIFIED_ALGORITHM = 0;
+    // State vector for a vehicle in cislunar space, that should be
+    // propagated using a three-body algorithm considering the Earth and
+    // Moon's gravity contributions.
+    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
+    EARTH_MOON_THREE_BODY_NUMERICAL_ALGORITHM = 1;
+  }
+  // Indicate the type of propagation algorithm to be used.
+  optional PropagationAlgorithm propagation_algorithm = 5;
+
+  // TODO: In the future, if we progress to more complex use cases for deep
+  // space, interplanetary, and other types of trajectories, we may want to
+  // develop a PropagationParameters message with more details about the
+  // relevant force models, constants, and other attributes to be used for
+  // accurate propagation, rather than implying the total set simply from the
+  // PropagationAlgorithm enum.
+}
+
+// A set of curvilinear 3 dimensional coordinates relative to the Mean Lunar
+// Radius according to the Report of the IAU/IAG Working Group on Cartographic
+// Coordinates and Rotational Elements of the Planets and satellites: 2000.
+message SelenographicMlr {
+  optional double longitude_deg = 1;
+  optional double latitude_deg = 2;
+  optional double height_mlr_m = 3;
 }
 
 message Motion {
+  // The time interval for which this motion specification is applicable.
+  //
+  // This may be left- or right-unbounded, or unspecified altogether. When
+  // the start or end times (or both) are unspecified, and the motion
+  // specification does not contain a clear indication of valid timestamps,
+  // it is an error if an applicable boundary is required but cannot be
+  // inferred from context (e.g., if there is more than one Motion message
+  // in a sequence but the start/end time of one cannot be inferred from the
+  // end/start time of another).
+  optional google.type.Interval interval = 10;
+
+  // This enum is used in various other messages, e.g. Targeting, to reference
+  // supported or required motion description formats.
+  //
+  // The enum values are kept deliberately in sync with the field values in the
+  // oneof below, but this is not stricly required in order to read the
+  // contents of the oneof.  In this case it suffices to use the
+  // protobuf-constructed language-specific support for switch statements
+  // (which, for C++ and Java for example, generates a language-appropriate
+  // enum to use).
   enum Type {
-    UNKNOWN_MOTION = 0;
-    GEODETIC_MSL = 7;
-    GEODETIC_WGS84 = 1;
-    ECEF_FIXED = 2;
-    ECEF_INTERPOLATION = 3;
+    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
+    MOTION_UNSPECIFIED = 0;
+    GEODETIC_MSL = 7; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+    GEODETIC_WGS84 = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+    ECEF_FIXED = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+    ECEF_INTERPOLATION = 3; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
     CARTOGRAPHIC_WAYPOINTS = 4;
-    TLE = 5;
-    KEPLERIAN_ELEMENTS = 6;
+    TLE = 5; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+    KEPLERIAN_ELEMENTS = 6; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+    STATE_VECTOR = 9; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+    SELENOGRAPHIC_MLR = 8; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
   }
 
   oneof type {
@@ -196,5 +307,20 @@ message Motion {
     // This coordinate type is only valid for a root platform.
     // http://help.agi.com/stk/Content/gator/eq-coordsys.htm
     KeplerianElements keplerian_elements = 6;
+
+    // Satellite motion as a generic state-vector for deep-space, maneuvers,
+    // and other uses outside of traditional 2-body based propagation.
+    StateVector state_vector = 9;
+
+    // Coordinates on the surface of the moon.
+    SelenographicMlr selenographic_mlr = 8;
   }
+
+  reserved 11 to max;  // next field number
+}
+
+message MotionDefinition {
+  // A list of `Motion` descriptions over time, sorted by the `interval` of
+  // applicability defined within each message.
+  repeated Motion motions = 1;
 }
