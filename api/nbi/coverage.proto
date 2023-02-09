@@ -115,7 +115,7 @@ message PfdOverS2Region {
 
 // The power flux density over one or more regions.
 message SurfacePfdRegions {
-  // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
+  
   repeated PfdOverS2Region pfd_region = 1;
 }
 
@@ -146,7 +146,7 @@ message PfdOverGeoArcCell {
 
 // The power flux density over a set of cells in the geostationary arc.
 message GeostationaryArcPfd {
-  // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
+  
   repeated PfdOverGeoArcCell cell = 1;
 }
 
@@ -162,6 +162,6 @@ message PfdAtAntenna {
 
 // The power flux density observed by a constellation of antennas.
 message PfdOverConstellation {
-  // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
+  
   repeated PfdAtAntenna victim = 1;
 }

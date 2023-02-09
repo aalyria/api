@@ -18,7 +18,7 @@ message RxChannels {
   // The set of supported channel frequencies, in Hz, for this channel set.
   // For RF transceivers, this is the carrier frequency.
   // For optical transceivers, this may be converted to wavelength.
-  // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
+  
   repeated int64 center_frequency_hz = 1;
 }
 
@@ -38,7 +38,7 @@ message ReceiverDefinition {
   // Allows the user to configure an ordered sequence that describes how the
   // wireless transmission is modified or reconfigured starting from the output
   // of the platform antenna that receives the signal.
-  // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
+  
   repeated ReceiveSignalProcessor signal_processing_step = 11;
 }
 

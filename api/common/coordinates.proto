@@ -118,31 +118,31 @@ message GeodeticWgs84Temporal {
 
 // Enumerates celestial bodies.
 enum CentralBody {
-  // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
-  // protolint:disable:next ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH
+  
+  
   UNKNOWN_CENTRAL_BODY = 0;
-  EARTH = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-  MOON = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  EARTH = 1; 
+  MOON = 2; 
 }
 
 enum InterpolationMethod {
-  // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
-  // protolint:disable:next ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH
+  
+  
   UNKNOWN_METHOD = 0;
-  LINEAR = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-  LAGRANGE = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-  HERMITIAN = 3; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  LINEAR = 1; 
+  LAGRANGE = 2; 
+  HERMITIAN = 3; 
 }
 
 message PointAxesTemporalInterpolation {
-  // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
+  
   repeated PointAxesTemporal locations_orientations_over_time = 1;
   optional InterpolationMethod interpolation_method = 2 [default = LINEAR];
   optional int32 interpolation_degree = 3 [default = 1];
 }
 
 message GeodeticWgs84TemporalInterpolation {
-  // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
+  
   repeated GeodeticWgs84Temporal locations_over_time = 1;
   optional InterpolationMethod interpolation_method = 2 [default = LINEAR];
   optional int32 interpolation_degree = 3 [default = 1];
@@ -196,15 +196,15 @@ message StateVector {
 
   enum CoordinateFrame {
     // The frame should always be known; using this must indicate some error.
-    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
-    // protolint:disable:next ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH
+    
+    
     UNKNOWN_FRAME = 0;
     // This indicates the frame used for most E-M Lagrange point orbit studies.
     // It is a natural and convenient way to input L1/L2 orbits.
-    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
+    
     EARTH_MOON_BARYCENTER_SYNODIC_FRAME = 1;
     // Internally, ECEF is used most everywhere else in our software.
-    ECEF_FRAME = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+    ECEF_FRAME = 2; 
   }
   // Indication of the reference frame for the state vector.
   optional CoordinateFrame coordinate_frame = 2;
@@ -215,13 +215,13 @@ message StateVector {
 
   enum PropagationAlgorithm {
     // Generally, a particular class of algorithm should be specified instead.
-    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
-    // protolint:disable:next ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH
+    
+    
     UNSPECIFIED_ALGORITHM = 0;
     // State vector for a vehicle in cislunar space, that should be
     // propagated using a three-body algorithm considering the Earth and
     // Moon's gravity contributions.
-    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
+    
     EARTH_MOON_THREE_BODY_NUMERICAL_ALGORITHM = 1;
   }
   // Indicate the type of propagation algorithm to be used.
@@ -266,18 +266,18 @@ message Motion {
   // (which, for C++ and Java for example, generates a language-appropriate
   // enum to use).
   enum Type {
-    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
+    
     MOTION_UNSPECIFIED = 0;
-    GEODETIC_MSL = 7; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-    GEODETIC_WGS84 = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-    ECEF_FIXED = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-    ECEF_INTERPOLATION = 3; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
+    GEODETIC_MSL = 7; 
+    GEODETIC_WGS84 = 1; 
+    ECEF_FIXED = 2; 
+    ECEF_INTERPOLATION = 3; 
+    
     CARTOGRAPHIC_WAYPOINTS = 4;
-    TLE = 5; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-    KEPLERIAN_ELEMENTS = 6; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-    STATE_VECTOR = 9; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-    SELENOGRAPHIC_MLR = 8; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+    TLE = 5; 
+    KEPLERIAN_ELEMENTS = 6; 
+    STATE_VECTOR = 9; 
+    SELENOGRAPHIC_MLR = 8; 
   }
 
   oneof type {

@@ -30,7 +30,7 @@ message AntennaPattern {
       // Theta is the zenith angle from the positive z-axis to the point.
       optional double theta_rad = 3;
     }
-    // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
+    
     repeated SphericalGainValue gain_value = 1;
   }
 

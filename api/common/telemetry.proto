@@ -42,11 +42,11 @@ message BeamStats {
     optional minkowski.proto.GeodeticWgs84 target_location = 1;
 
     enum ConnectionStatus {
-      // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
-      // protolint:disable:next ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH
+      
+      
       UNKNOWN = 0;
-      SEEKING = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-      LOCKED = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+      SEEKING = 1; 
+      LOCKED = 2; 
     }
 
     // The progress of establishing a connection with the target specified in
@@ -129,7 +129,7 @@ message ReceiverStats {
   // Similar to power_at_receiver_output_dbw, but broken down by chain.
   // The order of elements in this field should be consistent with the
   // canonical ordering of the chains.
-  // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
+  
   repeated double power_at_receiver_output_by_chain_dbw = 5;
 
   // The mean squared error, in dB, of the signal processed by the receiver.
@@ -202,11 +202,11 @@ message RadioEvent {
     string receiver_id = 2;
   }
   enum LinkStatus {
-    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
-    // protolint:disable:next ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH
+    
+    
     UNKNOWN = 0;
-    DOWN = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-    UP = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+    DOWN = 1; 
+    UP = 2; 
   }
   oneof event {
     LinkStatus link_status = 3;
@@ -217,11 +217,11 @@ message RadioEvent {
 message PortEvent {
   optional string port_id = 1;
   enum PortStatus {
-    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
-    // protolint:disable:next ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH
+    
+    
     UNKNOWN = 0;
-    DOWN = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-    UP = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+    DOWN = 1; 
+    UP = 2; 
   }
   oneof event {
     PortStatus port_status = 2;
@@ -232,11 +232,11 @@ message PortEvent {
 message InterfaceEvent {
   optional string interface_id = 1;
   enum InterfaceStatus {
-    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
-    // protolint:disable:next ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH
+    
+    
     UNKNOWN = 0;
-    DISABLED = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-    ENABLED = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+    DISABLED = 1; 
+    ENABLED = 2; 
   }
   oneof event {
     InterfaceStatus interface_status = 2;

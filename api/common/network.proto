@@ -51,9 +51,9 @@ message PacketClassifier {
 
   // Used to match ports for protocols TCP, UDP, SCTP, etc.
   message GenericLayer4Header {
-    // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
+    
     repeated ValueRange source_port = 1;
-    // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
+    
     repeated ValueRange destination_port = 2;
     reserved 3 to max;  // Next IDs.
   }
