@@ -5,11 +5,11 @@ syntax = "proto2";
 
 package minkowski.proto;
 
-import "google/protobuf/duration.proto";
 import "api/common/coordinates.proto";
 import "api/common/network.proto";
 import "api/common/platform.proto";
 import "api/common/time.proto";
+import "google/protobuf/duration.proto";
 
 option java_package = "com.aalyria.minkowski.proto";
 option go_package = "aalyria.com/minkowski/api/common";
@@ -26,8 +26,12 @@ message BeamUpdate {
   optional string beam_task_id = 3;
 
   enum Operation {
+    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
+    // protolint:disable:next ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH
     UNKNOWN = 0;
+    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
     ADD = 1;     // Adds the specified target for this antenna.
+    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
     DELETE = 2;  // Deletes a previously added beam task by beam_task_id
   }
   optional Operation operation = 4;

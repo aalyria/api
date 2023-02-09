@@ -11,53 +11,57 @@ syntax = "proto2";
 
 package minkowski.nbi.proto;
 
+import "api/common/channel.proto";
+import "api/common/control.proto";
+import "api/common/coordinates.proto";
+import "api/common/platform.proto";
+import "api/common/telemetry.proto";
+import "api/common/time.proto";
+import "api/common/wireless_propagation.proto";
+import "api/nbi/antenna_pattern.proto";
+import "api/nbi/app_routing.proto";
+import "api/nbi/coverage.proto";
+import "api/nbi/intent.proto";
+import "api/nbi/motion_evaluation.proto";
+import "api/nbi/network_element.proto";
+import "api/nbi/network_link.proto";
+import "api/nbi/scenario_settings.proto";
+import "api/nbi/visualization.proto";
+import "api/nbi/wireless_interference.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 import "google/type/interval.proto";
-import "api/nbi/antenna_pattern.proto";
-import "api/nbi/app_routing.proto";
-import "api/common/channel.proto";
-import "api/common/control.proto";
-import "api/common/coordinates.proto";
-import "api/nbi/coverage.proto";
-import "api/nbi/intent.proto";
-import "api/nbi/network_element.proto";
-import "api/nbi/network_link.proto";
-import "api/common/platform.proto";
-import "api/common/telemetry.proto";
-import "api/common/time.proto";
-import "api/nbi/visualization.proto";
-import "api/nbi/wireless_interference.proto";
-import "api/common/wireless_propagation.proto";
 
 option java_package = "com.aalyria.minkowski.nbi.proto";
 option go_package = "aalyria.com/minkowski/api/nbi";
 
 // TODO: can reset field numbers once we move off the Golang server.
-// LINT.IfChange
 enum EntityType {
   ENTITY_TYPE_UNSPECIFIED = 0;
-  ANTENNA_PATTERN = 12;
-  BAND_PROFILE = 16;
-  CDPI_STREAM_INFO = 17;
-  STATION_SET = 21;
-  SURFACE_REGION = 22;
-  DRAIN_PROVISION = 20;
-  INTENT = 6;
-  INTERFACE_LINK_REPORT = 5;
+  ANTENNA_PATTERN = 12; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  BAND_PROFILE = 16; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  CDPI_STREAM_INFO = 17; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  STATION_SET = 21; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  SURFACE_REGION = 22; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  DRAIN_PROVISION = 20; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  INTENT = 6; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  INTERFACE_LINK_REPORT = 5; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
   INTERFERENCE_CONSTRAINT = 23;
-  NETWORK_NODE = 3;
-  NETWORK_STATS_REPORT = 8;
-  PLATFORM_DEFINITION = 1;
-  PROPAGATION_WEATHER = 15;
-  ROUTE_PROVISION = 2;
+  MOTION_DEFINITION = 4; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  NETWORK_NODE = 3; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  NETWORK_STATS_REPORT = 8; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  PLATFORM_DEFINITION = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  PROPAGATION_WEATHER = 15; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  ROUTE_PROVISION = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
   TRANSCEIVER_LINK_REPORT = 19;
-  VISUALIZATION_MODEL = 14;
+  VISUALIZATION_MODEL = 14; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  COMPUTED_MOTION = 7; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
 
   reserved 24 to max;  // (-- Next ID --)
 }
-// LINT.ThenChange(//depot/google3/googlex/minkowski/apps/frontend/web/services/entity_storage/interfaces.ts)
 
 message EntityGroup {
   // Type of the Entity, part of the Entity key.
@@ -88,12 +92,14 @@ message Entity {
     minkowski.proto.AntennaPattern antenna_pattern = 15;
     minkowski.proto.BandProfile band_profile = 20;
     minkowski.proto.CdpiStreamInfo cdpi_stream_info = 23;
+    minkowski.proto.ComputedMotion computed_motion = 10;
     minkowski.proto.StationSet station_set = 27;
     minkowski.proto.SurfaceRegion surface_region = 28;
     minkowski.proto.DrainProvision drain_provision = 26;
     minkowski.proto.Intent intent = 9;
     minkowski.proto.InterfaceLinkReport interface_link_report = 8;
     minkowski.proto.InterferenceConstraint interference_constraint = 29;
+    minkowski.proto.MotionDefinition motion_definition = 7;
     minkowski.proto.NetworkNode network_node = 6;
     minkowski.proto.NetworkStatsReport network_stats_report = 11;
     minkowski.proto.PlatformDefinition platform = 4;
@@ -107,7 +113,7 @@ message Entity {
 
 service NetOps {
   // Creates a Minkowski Entity using the app: 'Minkowski Netops'.
-  rpc CreateEntity(CreateEntityRequest) returns (CreateEntityResponse) {
+  rpc CreateEntity(CreateEntityRequest) returns (minkowski.nbi.proto.Entity) {
     option (google.api.http) = {
       post: "/v1/entities/type/{type=*}"
       body: "entity"
@@ -115,7 +121,7 @@ service NetOps {
   }
 
   // Updates a Minkowski Entity using the app: 'Minkowski Netops'.
-  rpc UpdateEntity(UpdateEntityRequest) returns (UpdateEntityResponse) {
+  rpc UpdateEntity(UpdateEntityRequest) returns (minkowski.nbi.proto.Entity) {
     option (google.api.http) = {
       put: "/v1/entities/type/{type=*}/id/{id=*}"
       body: "entity"
@@ -143,7 +149,7 @@ service NetOps {
   // Deletes an Entity.
   rpc DeleteEntity(DeleteEntityRequest) returns (DeleteEntityResponse) {
     option (google.api.http) = {
-      delete: "/v1/entities/type/{type=*}/id/{id=*}/commit_timestamp/{commit_timestamp=*}"
+      delete: "/v1/entities/type/{type=*}/id/{id=*}/commit_timestamp/{commit_timestamp=*}" // protolint:disable:this MAX_LINE_LENGTH
     };
   }
 
@@ -171,6 +177,15 @@ service NetOps {
       get: "/v1/weather"
     };
   }
+
+  // Loads a scenario specified as a
+  // com.aalyria.minkowski.proto.ScenarioSettings proto.
+  rpc LoadScenario(LoadScenarioRequest) returns (LoadScenarioResponse) {
+    option (google.api.http) = {
+      post: "/v1/load_scenario"
+      body: "scenario_settings"
+    };
+  }
 }
 
 // The supplied Entity does not need to have the EntityType set, it will be
@@ -181,10 +196,6 @@ message CreateEntityRequest {
   optional minkowski.nbi.proto.Entity entity = 2;
 }
 
-message CreateEntityResponse {
-  optional string id = 1;
-}
-
 // The posted Entity is merged with the existing one. The provided entity should
 // only specify the fields to be update, ID and Type should be omited.
 message UpdateEntityRequest {
@@ -193,16 +204,17 @@ message UpdateEntityRequest {
   optional minkowski.nbi.proto.Entity entity = 3;
 }
 
-message UpdateEntityResponse {}
-
 message ListEntitiesRequest {
-  reserved 2, 5 to max;      // NEXT_ID: 5
+  reserved 2, 6 to max;      // NEXT_ID: 6
   optional string type = 1;  // required.
   // The time interval of the history being requested. If both start and end
   // time are empty, return only the latest entities of the above type.
   // Do not use yet; results may be incomplete.
   // TODO: decide what to do with type.Interval types.
   optional google.type.Interval interval = 3;
+
+  // If set, only return entities that match the filter.
+  optional EntityFilter filter = 5;
 }
 
 message ListEntitiesResponse {
@@ -216,10 +228,29 @@ message ListEntitiesOverTimeRequest {
   optional minkowski.proto.TimeInterval interval = 2;  // required.
 
   optional bool compute_cartesian_coordinates = 3;
+
+  // If set, only return entities that match the filter. Empty entities that
+  // represent deletes never match filters and will not be returned.
+  optional EntityFilter filter = 4;
+
+  // If set, only return entities with an ID in the list.
+  repeated string ids = 5;
 }
 
 message ListEntitiesOverTimeResponse {
   repeated minkowski.nbi.proto.Entity entities = 1;
+}
+
+message EntityFilter {
+  // If one or more node IDs are given, only return entities that reference one
+  // or more of the node IDs.
+  // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
+  repeated string references_node = 1;
+
+  // If one or more route provision IDs are given, only return entities that
+  // reference one or more of the route provision IDs.
+  // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
+  repeated string references_route_provision = 2;
 }
 
 message DeleteEntityRequest {
@@ -232,7 +263,8 @@ message DeleteEntityRequest {
   optional int64 commit_timestamp = 3;  // required. Units are microseconds.
 }
 
-message DeleteEntityResponse {}
+message DeleteEntityResponse {
+}
 
 message ListWeatherRequest {
   // A region on Earth's surface. Defined by an outer covering of S2 cells at
@@ -267,4 +299,12 @@ message ListWeatherResponse {
   // A token, which can be sent as `page_token` to retrieve the next page.
   // If this field is omitted, there are no subsequent pages.
   optional string next_page_token = 2;
+}
+
+message LoadScenarioRequest {
+  // Specifies the entities within the scenario that will be loaded.
+  optional minkowski.proto.ScenarioSettings scenario_settings = 1;
+}
+
+message LoadScenarioResponse {
 }

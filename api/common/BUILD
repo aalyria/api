@@ -32,6 +32,7 @@ proto_library(
     ],
     deps = [
         "@com_google_googleapis//google/rpc:status_proto",
+        "@com_google_googleapis//google/type:interval_proto",
         "@com_google_protobuf//:duration_proto",
         "@com_google_protobuf//:empty_proto",
         "@com_google_protobuf//:timestamp_proto",
@@ -43,6 +44,7 @@ cpp_proto_library(
     protos = [":common_proto"],
     deps = [
         "@com_google_googleapis//google/rpc:status_cc_proto",
+        "@com_google_googleapis//google/type:interval_cc_proto",
     ],
 )
 
@@ -52,6 +54,7 @@ go_proto_library(
     protos = [":common_proto"],
     deps = [
         "@go_googleapis//google/rpc:status_go_proto",
+        "@go_googleapis//google/type:interval_go_proto",
     ],
 )
 
@@ -60,5 +63,6 @@ java_proto_library(
     protos = [":common_proto"],
     deps = [
         "@com_google_googleapis//google/rpc:rpc_java_proto",
+        "@com_google_googleapis//google/type:type_java_proto",
     ],
 )

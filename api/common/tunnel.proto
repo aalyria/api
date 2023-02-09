@@ -11,13 +11,14 @@ option java_package = "com.aalyria.minkowski.proto";
 option go_package = "aalyria.com/minkowski/api/common";
 
 enum AuthenticationAlgorithm {
-  AUTH_ALGO_UNSPECIFIED = 0;
-  HMAC_SHA1_96 = 1;
+  AUTH_ALGO_UNSPECIFIED = 0; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  HMAC_SHA1_96 = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
 }
 
 enum EncryptionAlgorithm {
+  // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
   ENCRYPTION_ALGO_UNSPECIFIED = 0;
-  AES_CBC_128 = 1;
+  AES_CBC_128 = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
 }
 
 // Defines the use of an Encapsulating Security Payload (ESP).

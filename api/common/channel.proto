@@ -11,8 +11,11 @@ option java_package = "com.aalyria.minkowski.proto";
 option go_package = "aalyria.com/minkowski/api/common";
 
 enum ChannelSelectionMethod {
+  // protolint:disable:next ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH
   CHANNEL_SELECTION_METHOD_UNKNOWN = 0;
+  // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
   AUTONOMOUS_CHANNEL_SELECTION = 1;
+  // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
   CHANNEL_SELECTION_BY_CONTROLLER = 2;
 }
 

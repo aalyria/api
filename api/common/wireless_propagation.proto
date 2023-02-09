@@ -5,8 +5,8 @@ syntax = "proto2";
 
 package minkowski.proto;
 
-import "google/protobuf/duration.proto";
 import "api/common/time.proto";
+import "google/protobuf/duration.proto";
 
 option java_package = "com.aalyria.minkowski.proto";
 option go_package = "aalyria.com/minkowski/api/common";
@@ -35,43 +35,64 @@ message PropagationWeather {
 }
 
 enum Parameter {
+  // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
+  // protolint:disable:next ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH
   UNSPECIFIED_PARAMETER = 0;
 
   // Parameters pertinent to atmospheric attenuation modeling.
   // https://www.itu.int/rec/R-REC-P.676/en
+  // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
   ATMOSPHERIC_PRESSURE_PA = 1;  // Layered.
+  // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
   TEMPERATURE_K = 2;            // Layered.
+  // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
   WATER_VAPOR_PRESSURE_PA = 3;  // Layered.
 
   // Parameters pertinent to rain attenuation modeling.
   // https://www.itu.int/rec/R-REC-P.838/en
+  // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
   RAIN_HEIGHT_WGS84_M = 4;     // Flat.
+  // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
   RAIN_RATE_M_PER_SECOND = 5;  // Flat.
 
   // Parameters pertinent to cloud and fog attenuation modeling.
   // https://www.itu.int/rec/R-REC-P.840/en
+  // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
   CLOUD_CEILING_WGS84_M = 6;                // Flat.
+  // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
   CLOUD_LAYER_THICKNESS_M = 7;              // Flat.
+  // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
   CLOUD_LIQUID_WATER_DENSITY_G_PER_M3 = 8;  // Layered in principle; flat.
+  // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
   CLOUD_TEMPERATURE_K = 9;                  // Layered.
 }
 
 // The source of these data iff there was a single source (i.e. these data
 // are not the result of merging data from multiple sources).
 enum Provenance {
+  // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
   UNSPECIFIED = 0;                // Unknown or multiple sources
-  ADMINISTRATIVE = 1;             // manually specified parameters
-                                  // (e.g. overrides)
+
+  // manually specified parameters (e.g. overrides)
+  ADMINISTRATIVE = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+
+  // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
   SENSOR = 2;                     // data from a sensor in the field
-  ECMWF = 3;                      // European Center for Medium-range Weather
-                                  // Forecasts (https://ecmwf.int)
-  NOAA_GFS = 4;                   // National Oceanic and Atmospheric
-                                  // Administration, Global Forecast System
-                                  // (go/noaa-gfs)
+
+  // European Center for Medium-range Weather Forecasts (https://ecmwf.int)
+  ECMWF = 3; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+
+  // National Oceanic and Atmospheric  Administration, Global Forecast System
+  // (go/noaa-gfs)
+  NOAA_GFS = 4; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX            
+
+  // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
   LOON_WIND = 5;                  // data from the go/loon-wind pipeline
+  // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
   SEASONAL_REGIONAL_AVERAGE = 7;  // data from a seasonal-regional average.
-  DEFAULT_FALLBACK = 8;           // Default/Fallback value when no other data
-                                  // available
+
+  // Default/Fallback value when no other data available
+  DEFAULT_FALLBACK = 8; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
 
   reserved 6;
 }
@@ -102,8 +123,8 @@ message WeatherTable {
   // and below the desired height.
   //
   // If all parameters are flat, then this list should be empty.
+  // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
   repeated int32 heights_wgs84_m = 4;
-
   // Three-dimensional array of layered weather values when heights_wgs84_m is
   // non-empty or a two-dimensional array of flat weather values when
   // heights_wgs84_m is empty.
@@ -155,14 +176,23 @@ message WeatherDataForecast {
   // The source of these data iff there was a single source (i.e. these data
   // are not the result of merging data from multiple sources).
   enum Provenance {
+    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
     UNSPECIFIED = 0;     // Unknown or multiple sources
+    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
     ADMINISTRATIVE = 1;  // manually specified parameters (e.g. overrides)
+    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
     SENSOR = 2;          // data from a sensor in the field
-    ECMWF = 3;           // European Center for Medium-range Weather Forecasts
-                         // (https://ecmwf.int)
-    NOAA_GFS = 4;        // National Oceanic and Atmospheric Administration,
-                         // Global Forecast System (go/noaa-gfs)
+
+    // European Center for Medium-range Weather Forecasts (https://ecmwf.int)
+    ECMWF = 3;  // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+    
+    // National Oceanic and Atmospheric Administration, Global Forecast System
+    // (go/noaa-gfs)
+    NOAA_GFS = 4; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+
+    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
     LOON_WIND = 5;       // data from the go/loon-wind pipeline
+    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
     SEASONAL_REGIONAL_AVERAGE = 7;  // data from a seasonal-regional average.
 
     reserved 6;
@@ -198,8 +228,8 @@ message WeatherDataForecast {
 // future, the mean and variance need to be represented by a vector and matrix
 // respectively.
 message GaussianProcessPrediction {
-  optional double mean = 1;      // mm/hr for rain rate. Units for mean should
-                                 // match input units.
+  // mm/hr for rain rate. Units for mean should match input units.
+  optional double mean = 1;      
   optional double variance = 2;  // mm^2/hr^2 for rain rate. Units for
                                  // covariance of X and Y are those of X times
                                  // those of Y.
