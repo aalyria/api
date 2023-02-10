@@ -24,21 +24,24 @@ option go_package = "aalyria.com/minkowski/api/nbi";
 // see https://goo.gl/aO4ivn, but with more granularity.
 // State machine defined: http://go/minkowski/intents.md#intent-installer
 enum IntentState {
+  // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
+  // protolint:disable:next ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH
   UNKNOWN = 0;
-  INSTALL_REQ = 1;
-  PUSHING = 9;
-  SCHEDULED = 10;
-  SCHEDULING = 12;
-  MAYBE_INSTALLED = 11;
+  INSTALL_REQ = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  PUSHING = 9; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  SCHEDULED = 10; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  SCHEDULING = 12; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  MAYBE_INSTALLED = 11; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
   INSTALLING = 3;  // In process of being deprecated. See b/119564009.
-  INSTALLED = 4;
-  WITHDRAW_REQ = 5;
+  INSTALLED = 4; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  WITHDRAW_REQ = 5; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
 
   // TODO: Subdivide WITHDRAWING state as was done for the
   // INSTALLING state.
-  WITHDRAWING = 6;
-  WITHDRAWN = 7;
-  FAILED = 8;
+  WITHDRAWING = 6; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  WITHDRAWN = 7; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  FAILED = 8; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
 
   reserved 2;
 }
@@ -92,6 +95,7 @@ message Intent {
 
   message RouteProvisionAndIntervals {
     optional string route_provision_id = 1;
+    // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
     repeated google.type.Interval interval = 2;
   }
 
@@ -187,23 +191,27 @@ message TunnelIntent {
 // to allow apps to make better decision when faced with failures.
 message IntentFailure {
   enum IntentFailureType {
+    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
+    // protolint:disable:next ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH
     UNKNOWN = 0;
-    COMPILATION_FAILURE = 1;
+    COMPILATION_FAILURE = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
     AGENT_INSTALLATION_FAILURE = 2;
-    UNREACHABLE_AGENT = 3;
+    UNREACHABLE_AGENT = 3; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
     // An intent in the INSTALLING or INSTALLED state failed because of a CDPI
     // report with unexpected state (e.g. due to loss of antenna tracking, bug
     // in the agent, etc). An intent in the INSTALLING state can also report
     // this failure if another intent concurrently modified control plane state
     // after compiled updates have been acked by agents, but before the compiler
     // had a chance to observe the desired control plane state.
+    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
     UNEXPECTED_CDPI_STATE_CHANGE = 4;
-    PRECONDITION_FAILED = 5;
-    DEADLINE_EXCEEDED = 6;
+    PRECONDITION_FAILED = 5; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+    DEADLINE_EXCEEDED = 6; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
     // The precondition is in WITHDRAW_REQ, WITHDRAWING or WITHDRAWN state.
-    PRECONDITION_EXPIRED = 7;
+    PRECONDITION_EXPIRED = 7; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
 
-    SDN_INTERNAL_ERROR = 9;
+    SDN_INTERNAL_ERROR = 9; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
 
     reserved 8, 10 to max;  // Next IDs.
   }
@@ -228,9 +236,11 @@ message IntentFailure {
 // administrators to explain the SDN behavior.
 message IntentWithdrawal {
   enum WithdrawType {
+    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
+    // protolint:disable:next ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH
     UNKNOWN = 0;
-    INACCESSIBLE = 1;
-    NOT_REQUIRED = 2;
+    INACCESSIBLE = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+    NOT_REQUIRED = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
     reserved 3 to max;  // Next IDs.
   }
 

@@ -25,9 +25,11 @@ message NetworkNode {
   optional string type = 7;
 
   // A node may optionally act a gateway for a set of specified IP subnets.
+  // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
   repeated string subnet = 8;
 
   // A network node may have one or more network interfaces/adapters.
+  // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
   repeated NetworkInterface node_interface = 4;
 
   // Included if the network node is an SDN-enabled network element (optional).
@@ -42,6 +44,7 @@ message NetworkNode {
     // The total amount of available power, in Watts.
     optional double available_signal_power_watts = 2;
   }
+  // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
   repeated SignalPowerBudget power_budget = 9;
 
   // Model a node’s ability to store data in order to tolerate disruption to
@@ -89,8 +92,10 @@ message NetworkNode {
 // control-to-data-plane interface (CDPI).
 message SdnAgent {
   enum CdpiProtocol {
+    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
+    // protolint:disable:next ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH
     UNKNOWN = 0;
-    AIRFLOW = 1;
+    AIRFLOW = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
   }
   optional CdpiProtocol type = 1;
 
@@ -124,8 +129,10 @@ message NetworkInterface {
   // promiscuous mode, or if it can receive L2 packets only if the L2
   // destination address matches it's own physical address.
   enum Mode {
+    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
+    // protolint:disable:next ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH
     PROMISCUOUS = 0;
-    NON_PROMISCUOUS = 1;
+    NON_PROMISCUOUS = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
   }
   optional Mode rx_mode = 8;
 
@@ -136,6 +143,7 @@ message NetworkInterface {
     optional string type = 1;
     optional int32 index = 2;
   }
+  // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
   repeated LocalId local_id = 3;
 
   // Provides additional attributes based on the adapter/port it traverses.
@@ -147,12 +155,14 @@ message NetworkInterface {
   message Impairment {
     enum Type {
       // The interface is known to be unusable.
+      // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
+      // protolint:disable:next ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH
       DEFAULT_UNUSABLE = 0;
 
       // The reliability or performance of the interface is impaired in a
       // non-deterministic manner or in a manner that is not otherwise modeled.
       // The network should avoid using the interface; but, it might work.
-      UNRELIABLE = 1;
+      UNRELIABLE = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
     }
     optional Type type = 1;
     // AppId adding this impairment.
@@ -169,6 +179,7 @@ message NetworkInterface {
 
   // TODO: Add ability to submit drain intents.
   // Reason (some internal transient state (power, etc.)) that affects its use.
+  // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
   repeated Impairment operational_impairment = 16;
 }
 

@@ -26,8 +26,12 @@ message BeamUpdate {
   optional string beam_task_id = 3;
 
   enum Operation {
+    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
+    // protolint:disable:next ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH
     UNKNOWN = 0;
+    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
     ADD = 1;     // Adds the specified target for this antenna.
+    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
     DELETE = 2;  // Deletes a previously added beam task by beam_task_id
   }
   optional Operation operation = 4;

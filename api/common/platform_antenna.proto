@@ -83,8 +83,10 @@ message AntennaDefinition {
       // Negative values are also allowed (for antennas above terrain).
       optional double obscured_elevation_deg = 2;
     }
+    // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
     repeated ElevationRise elevation_rise = 3;
   }
+  // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
   repeated ElevationMask azimuth_elevation_mask = 9;
 
   // Factors that constrain the accessibility of links that use the antenna.

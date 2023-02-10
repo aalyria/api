@@ -132,16 +132,18 @@ message HistoricalCzmlResponse {
 }
 
 enum HistoryMethod {
+  // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
+  // protolint:disable:next ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH
   UNKNOWN_HISTORY_METHOD = 0;
 
   // Creates visualization using the latest entity snapshots available at time
   // interval start and propagates forward in time until time interval end.
-  INSTANT_FORWARD = 1;
+  INSTANT_FORWARD = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
 
   // Creates visualization using all historical snapshots available between time
   // interval start and time interval end.  This is essentially a replay of what
   // happened during the time interval.
-  REPLAY_OVER_TIME = 2;
+  REPLAY_OVER_TIME = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
 }
 
 message HistoricalCzmlRequest {
