@@ -28,7 +28,6 @@ message AdaptiveDataRateTable {
     optional double tx_data_rate_bps = 2;
   }
   // Steps should be sorted by C/(N+I) in ascending order.
-  // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
   repeated ChannelStateDataRateMapping step = 2;
 
   // Deprecated (use step).

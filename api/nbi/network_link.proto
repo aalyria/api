@@ -89,12 +89,10 @@ message DirectionalLink {
 
 // Defines whether or not a link is usable or possible.
 enum Accessibility {
-  // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
-  // protolint:disable:next ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH
   ACCESS_UNKNOWN = 0;
-  ACCESS_EXISTS = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-  ACCESS_MARGINAL = 3; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-  NO_ACCESS = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  ACCESS_EXISTS = 1;
+  ACCESS_MARGINAL = 3;
+  NO_ACCESS = 2;
 }
 
 // A modeled, physical-layer wireless link budget.
@@ -154,7 +152,6 @@ message LinkReport {
 
     // Whether or not the link is predicted/known to be accessible (usable).
     optional Accessibility accessibility = 2;
-    // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
     repeated string no_access_reason = 4;
 
     // Modeled link metric predictions.
@@ -195,7 +192,6 @@ message LinkReport {
           // negative if the link is inaccessible.
           optional double link_margin_db = 4;
         }
-        // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
         repeated PowerLevel level = 1;
 
         reserved 2;
@@ -230,7 +226,6 @@ message WirelessLinkReport {
 
     // Whether or not the link is predicted/known to be accessible (usable).
     optional Accessibility accessibility = 2;
-    // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
     repeated string no_access_reason = 3;
 
     // Modeled link metric predictions.
@@ -269,7 +264,6 @@ message WirelessLinkReport {
           // negative if the link is inaccessible.
           optional double link_margin_db = 4;
         }
-        // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
         repeated PowerLevel level = 1;
 
         reserved 2;

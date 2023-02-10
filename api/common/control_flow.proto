@@ -19,11 +19,9 @@ message FlowUpdate {
 
   // Specifies add or remove.
   enum Operation {
-    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
-    // protolint:disable:next ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH
     UNKNOWN = 0;
-    ADD = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-    DELETE = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+    ADD = 1;
+    DELETE = 2;
   }
   optional Operation operation = 2;
 
@@ -51,10 +49,8 @@ message FlowRule {
     message Action {
       message SetField {
         enum Field {
-          // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
-          // protolint:disable:next ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH
           UNKNOWN = 0;
-          ETH_DST = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+          ETH_DST = 2;
         }
         optional Field field = 1;
         optional string value_ascii = 3;
@@ -70,10 +66,8 @@ message FlowRule {
       reserved 3, 4, 5;
       reserved 6 to max;
     }
-    // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
     repeated Action action = 1;
   }
-  // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
   repeated ActionBucket action_bucket = 4;
 }
 
