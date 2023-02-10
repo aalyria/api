@@ -73,7 +73,7 @@ message RouteProvision {
     // monitoring, SSH, configs, updates).
     SDN_CONTROL_MANAGEMENT = 1;
     // Customer-generated traffic transiting network devices.
-    SDN_FORWARDING = 2;
+    SDN_FORWARDING = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
   }
   optional FlowType flow_type = 11;
 
@@ -169,19 +169,19 @@ message DrainProvision {
     STATE_UNSPECIFIED = 0;
     // Still waiting for drain start time (e.g., now time is before start_time
     // in an opportunistic drain).
-    PENDING = 1;
+    PENDING = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
     // There are possible in-scope route provisions still using the drain
     // target (e.g., solver still waiting opportunistically before force_time).
-    UNSATISFIED = 2;
+    UNSATISFIED = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
     // Drain is already satisfied by Solver (e.g., opportuniscally or past
     // force_time), yet waiting for CDPI enactment.
-    ENACTING = 3;
+    ENACTING = 3; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
     // Drain is active and in full effect.
-    ENACTED = 4;
+    ENACTED = 4; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
     // Drain deletion (i.e., undrain operation) is in-progress.
-    DELETING = 5;
+    DELETING = 5; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
     // Drain deletion is done.
-    DELETED = 6;
+    DELETED = 6; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
   }
   optional State state = 3;
 
@@ -213,8 +213,8 @@ message DrainProvision {
   // Drain satisfaction method by solver.
   enum Method {
     METHOD_UNSPECIFIED = 0;
-    WAIT = 1;
-    FORCE = 2;
+    WAIT = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+    FORCE = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
   }
   // Only set if drain reaches the ENACTED state.
   optional Method method = 7;

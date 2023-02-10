@@ -62,20 +62,20 @@ enum Provenance {
   UNSPECIFIED = 0;                // Unknown or multiple sources
 
   // manually specified parameters (e.g. overrides)
-  ADMINISTRATIVE = 1;
+  ADMINISTRATIVE = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
   SENSOR = 2;                     // data from a sensor in the field
 
   // European Center for Medium-range Weather Forecasts (https://ecmwf.int)
-  ECMWF = 3;
+  ECMWF = 3; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
 
   // National Oceanic and Atmospheric  Administration, Global Forecast System
   // (go/noaa-gfs)
-  NOAA_GFS = 4;
+  NOAA_GFS = 4; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX            
   LOON_WIND = 5;                  // data from the go/loon-wind pipeline
   SEASONAL_REGIONAL_AVERAGE = 7;  // data from a seasonal-regional average.
 
   // Default/Fallback value when no other data available
-  DEFAULT_FALLBACK = 8;
+  DEFAULT_FALLBACK = 8; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
 
   reserved 6;
 }
@@ -163,11 +163,11 @@ message WeatherDataForecast {
     SENSOR = 2;          // data from a sensor in the field
 
     // European Center for Medium-range Weather Forecasts (https://ecmwf.int)
-    ECMWF = 3; 
+    ECMWF = 3;  // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
     
     // National Oceanic and Atmospheric Administration, Global Forecast System
     // (go/noaa-gfs)
-    NOAA_GFS = 4;
+    NOAA_GFS = 4; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
     LOON_WIND = 5;       // data from the go/loon-wind pipeline
     SEASONAL_REGIONAL_AVERAGE = 7;  // data from a seasonal-regional average.
 

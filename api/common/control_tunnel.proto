@@ -20,8 +20,8 @@ message TunnelUpdate {
   // Specifies add or remove.
   enum Operation {
     UNKNOWN = 0;
-    ADD = 1;
-    DELETE = 2;
+    ADD = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+    DELETE = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
   }
   optional Operation operation = 2;
 

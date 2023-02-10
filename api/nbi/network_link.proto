@@ -90,9 +90,9 @@ message DirectionalLink {
 // Defines whether or not a link is usable or possible.
 enum Accessibility {
   ACCESS_UNKNOWN = 0;
-  ACCESS_EXISTS = 1;
-  ACCESS_MARGINAL = 3;
-  NO_ACCESS = 2;
+  ACCESS_EXISTS = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  ACCESS_MARGINAL = 3; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  NO_ACCESS = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
 }
 
 // A modeled, physical-layer wireless link budget.

@@ -90,7 +90,7 @@ message NetworkNode {
 message SdnAgent {
   enum CdpiProtocol {
     UNKNOWN = 0;
-    AIRFLOW = 1;
+    AIRFLOW = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
   }
   optional CdpiProtocol type = 1;
 
@@ -125,7 +125,7 @@ message NetworkInterface {
   // destination address matches it's own physical address.
   enum Mode {
     PROMISCUOUS = 0;
-    NON_PROMISCUOUS = 1;
+    NON_PROMISCUOUS = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
   }
   optional Mode rx_mode = 8;
 
@@ -152,7 +152,7 @@ message NetworkInterface {
       // The reliability or performance of the interface is impaired in a
       // non-deterministic manner or in a manner that is not otherwise modeled.
       // The network should avoid using the interface; but, it might work.
-      UNRELIABLE = 1;
+      UNRELIABLE = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
     }
     optional Type type = 1;
     // AppId adding this impairment.

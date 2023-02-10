@@ -20,8 +20,8 @@ message FlowUpdate {
   // Specifies add or remove.
   enum Operation {
     UNKNOWN = 0;
-    ADD = 1;
-    DELETE = 2;
+    ADD = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+    DELETE = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
   }
   optional Operation operation = 2;
 
@@ -50,7 +50,7 @@ message FlowRule {
       message SetField {
         enum Field {
           UNKNOWN = 0;
-          ETH_DST = 2;
+          ETH_DST = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
         }
         optional Field field = 1;
         optional string value_ascii = 3;

@@ -45,9 +45,9 @@ message ReceiverState {
 message TdmaSchedule {
   enum ScheduleType {
     UNKNOWN = 0;
-    TX_ONLY = 1;
-    RX_ONLY = 2;
-    TX_RX = 3;
+    TX_ONLY = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+    RX_ONLY = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+    TX_RX = 3; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
   }
   optional ScheduleType type = 1;
 
@@ -59,10 +59,10 @@ message TdmaSchedule {
     message TxSlot {
       enum TxSlotType {
         UNKNOWN = 0;
-        UNICAST = 1;
-        BEACON = 2;
-        POLLED = 3;
-        CONTENTION = 4;
+        UNICAST = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+        BEACON = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+        POLLED = 3; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+        CONTENTION = 4; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
       }
       optional TxSlotType type = 1;
       optional string remote_receiver_id = 2;
@@ -72,8 +72,8 @@ message TdmaSchedule {
     message RxSlot {
       enum RxSlotType {
         UNKNOWN = 0;
-        UNICAST = 1;
-        BROADCAST = 2;
+        UNICAST = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+        BROADCAST = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
       }
 
       optional RxSlotType type = 1;

@@ -119,15 +119,15 @@ message GeodeticWgs84Temporal {
 // Enumerates celestial bodies.
 enum CentralBody {
   UNKNOWN_CENTRAL_BODY = 0;
-  EARTH = 1;
-  MOON = 2;
+  EARTH = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  MOON = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
 }
 
 enum InterpolationMethod {
   UNKNOWN_METHOD = 0;
-  LINEAR = 1;
-  LAGRANGE = 2;
-  HERMITIAN = 3;
+  LINEAR = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  LAGRANGE = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  HERMITIAN = 3; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
 }
 
 message PointAxesTemporalInterpolation {
@@ -195,7 +195,7 @@ message StateVector {
     // It is a natural and convenient way to input L1/L2 orbits.
     EARTH_MOON_BARYCENTER_SYNODIC_FRAME = 1;
     // Internally, ECEF is used most everywhere else in our software.
-    ECEF_FRAME = 2;
+    ECEF_FRAME = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
   }
   // Indication of the reference frame for the state vector.
   optional CoordinateFrame coordinate_frame = 2;
@@ -255,15 +255,15 @@ message Motion {
   // enum to use).
   enum Type {
     MOTION_UNSPECIFIED = 0;
-    GEODETIC_MSL = 7;
-    GEODETIC_WGS84 = 1;
-    ECEF_FIXED = 2;
-    ECEF_INTERPOLATION = 3;
+    GEODETIC_MSL = 7; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+    GEODETIC_WGS84 = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+    ECEF_FIXED = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+    ECEF_INTERPOLATION = 3; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
     CARTOGRAPHIC_WAYPOINTS = 4;
-    TLE = 5;
-    KEPLERIAN_ELEMENTS = 6;
-    STATE_VECTOR = 9;
-    SELENOGRAPHIC_MLR = 8;
+    TLE = 5; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+    KEPLERIAN_ELEMENTS = 6; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+    STATE_VECTOR = 9; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+    SELENOGRAPHIC_MLR = 8; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
   }
 
   oneof type {
