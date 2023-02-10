@@ -44,12 +44,10 @@ message ReceiverState {
 // client radios.
 message TdmaSchedule {
   enum ScheduleType {
-    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
-    // protolint:disable:next ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH
     UNKNOWN = 0;
-    TX_ONLY = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-    RX_ONLY = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-    TX_RX = 3; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+    TX_ONLY = 1;
+    RX_ONLY = 2;
+    TX_RX = 3;
   }
   optional ScheduleType type = 1;
 
@@ -60,13 +58,11 @@ message TdmaSchedule {
     // Transmits to a remote receiver.
     message TxSlot {
       enum TxSlotType {
-        // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
-        // protolint:disable:next ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH
         UNKNOWN = 0;
-        UNICAST = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-        BEACON = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-        POLLED = 3; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-        CONTENTION = 4; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+        UNICAST = 1;
+        BEACON = 2;
+        POLLED = 3;
+        CONTENTION = 4;
       }
       optional TxSlotType type = 1;
       optional string remote_receiver_id = 2;
@@ -75,11 +71,9 @@ message TdmaSchedule {
     // Receives from a remote transmitter.
     message RxSlot {
       enum RxSlotType {
-        // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
-        // protolint:disable:next ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH
         UNKNOWN = 0;
-        UNICAST = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-        BROADCAST = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+        UNICAST = 1;
+        BROADCAST = 2;
       }
 
       optional RxSlotType type = 1;
@@ -94,7 +88,6 @@ message TdmaSchedule {
 
   // The sum of the individual TdmaSlot.duration fields.
   optional Duration schedule_duration = 2;
-  // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
   repeated TdmaSlot schedule = 3;
 }
 

@@ -19,11 +19,9 @@ message TunnelUpdate {
 
   // Specifies add or remove.
   enum Operation {
-    // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
-    // protolint:disable:next ENUM_FIELD_NAMES_ZERO_VALUE_END_WITH
     UNKNOWN = 0;
-    ADD = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-    DELETE = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+    ADD = 1;
+    DELETE = 2;
   }
   optional Operation operation = 2;
 

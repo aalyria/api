@@ -39,26 +39,24 @@ option go_package = "aalyria.com/minkowski/api/nbi";
 // TODO: can reset field numbers once we move off the Golang server.
 enum EntityType {
   ENTITY_TYPE_UNSPECIFIED = 0;
-  ANTENNA_PATTERN = 12; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-  BAND_PROFILE = 16; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-  CDPI_STREAM_INFO = 17; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-  STATION_SET = 21; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-  SURFACE_REGION = 22; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-  DRAIN_PROVISION = 20; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-  INTENT = 6; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-  INTERFACE_LINK_REPORT = 5; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-  // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
+  ANTENNA_PATTERN = 12;
+  BAND_PROFILE = 16;
+  CDPI_STREAM_INFO = 17;
+  STATION_SET = 21;
+  SURFACE_REGION = 22;
+  DRAIN_PROVISION = 20;
+  INTENT = 6;
+  INTERFACE_LINK_REPORT = 5;
   INTERFERENCE_CONSTRAINT = 23;
-  MOTION_DEFINITION = 4; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-  NETWORK_NODE = 3; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-  NETWORK_STATS_REPORT = 8; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-  PLATFORM_DEFINITION = 1; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-  PROPAGATION_WEATHER = 15; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-  ROUTE_PROVISION = 2; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-  // protolint:disable:next ENUM_FIELD_NAMES_PREFIX
+  MOTION_DEFINITION = 4;
+  NETWORK_NODE = 3;
+  NETWORK_STATS_REPORT = 8;
+  PLATFORM_DEFINITION = 1;
+  PROPAGATION_WEATHER = 15;
+  ROUTE_PROVISION = 2;
   TRANSCEIVER_LINK_REPORT = 19;
-  VISUALIZATION_MODEL = 14; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
-  COMPUTED_MOTION = 7; // protolint:disable:this ENUM_FIELD_NAMES_PREFIX
+  VISUALIZATION_MODEL = 14;
+  COMPUTED_MOTION = 7;
 
   reserved 24 to max;  // (-- Next ID --)
 }
@@ -149,7 +147,7 @@ service NetOps {
   // Deletes an Entity.
   rpc DeleteEntity(DeleteEntityRequest) returns (DeleteEntityResponse) {
     option (google.api.http) = {
-      delete: "/v1/entities/type/{type=*}/id/{id=*}/commit_timestamp/{commit_timestamp=*}" // protolint:disable:this MAX_LINE_LENGTH
+      delete: "/v1/entities/type/{type=*}/id/{id=*}/commit_timestamp/{commit_timestamp=*}"
     };
   }
 
@@ -244,12 +242,10 @@ message ListEntitiesOverTimeResponse {
 message EntityFilter {
   // If one or more node IDs are given, only return entities that reference one
   // or more of the node IDs.
-  // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
   repeated string references_node = 1;
 
   // If one or more route provision IDs are given, only return entities that
   // reference one or more of the route provision IDs.
-  // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
   repeated string references_route_provision = 2;
 }
 
