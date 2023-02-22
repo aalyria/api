@@ -179,6 +179,9 @@ message ScenarioSettings {
 
     // Defines the maximum data rate for the wired interface to a pop
     optional double max_wired_data_rate_bps = 6;
+
+    // Included if the gateway is an SDN-enabled network element.
+    optional SdnAgent agent = 3;
   }
 
   // Stores as many Gateways as the user wants to define in the protobuf

@@ -21,6 +21,7 @@ message PlatformDefinition {
   reserved 5 to 7, 8, 9, 11, 18 to max;
 
   // A globally unique identifier for the network platform.
+  // TODO: deprecate in favor of entity ID.
   optional string platform_id = 1;
 
   // Optional friendly, human-readable strings for UI purposes.
