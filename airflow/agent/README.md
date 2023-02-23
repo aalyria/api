@@ -54,8 +54,9 @@ For testing purposes, you can generate a valid key using the `openssl` tool:
 ```bash
 # generate a private key of size 4096 and save it to agent_priv_key.pem
 openssl genrsa -out agent_priv_key.pem 4096
-# extract the public key and save it to an x509 certificate named agent_pub_key.cer
-openssl req -new -x509 -key agent_priv_key.pem -out agent_pub_key.cer -days 365
+# extract the public key and save it to an x509 certificate named
+# agent_pub_key.cer (with an expiration far into the future)
+openssl req -new -x509 -key agent_priv_key.pem -out agent_pub_key.cer -days 36500
 ```
 
 #### Creating test JWTs
@@ -121,7 +122,7 @@ variables to hold our configuration values:
 
 ```bash
 CDPI_ENDPOINT="dns:///$CDPI_DOMAIN"
-NODE_ID=Atlantis-groundstation
+NODE_ID="${NODE_ID:?should be provided by your Aalyria contact}"
 ENACTMENT_BACKEND=(true)
 # could also be "trace" for more details or "info" for fewer:
 LOG_LEVEL=debug
