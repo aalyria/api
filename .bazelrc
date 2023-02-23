@@ -1,0 +1,4 @@
+# Copyright (c) Aalyria Technologies, Inc., and its affiliates.
+# Confidential and Proprietary. All rights reserved.
+build --action_env=BAZEL_CXXOPTS='-std=c++20:-Wall:-Werror'
+build --features=external_include_paths
