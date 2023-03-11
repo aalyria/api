@@ -1,0 +1,263 @@
+// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Spacetime Control-to-Data-Plane (CDPI) Interface
+
+syntax = "proto2";
+
+package aalyria.spacetime.api.cdpi.v1alpha;
+
+import "api/common/control.proto";
+import "api/common/coordinates.proto";
+import "api/common/telemetry.proto";
+import "api/common/wireless_propagation.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "google/rpc/status.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CdpiProto";
+option java_package = "com.aalyria.spacetime.api.cdpi.v1alpha";
+option go_package = "aalyria.com/spacetime/api/cdpi/v1alpha";
+
+message ControlPlanePingRequest {
+  // Uniquely identifies the request within the scope of the CDPI stream. Used
+  // by the SDN controller to match a response with its request.
+  optional int64 id = 1;
+}
+
+message ControlPlanePingResponse {
+  // Identifies the ping request with which the response is associated.
+  optional int64 id = 1;
+
+  // The response status.
+  optional google.rpc.Status status = 3;
+
+  // When the ping target received the request.
+  optional google.protobuf.Timestamp time_of_receipt = 2;
+}
+
+message ControlStateChangeRequest {
+  oneof type {
+    aalyria.spacetime.api.common.ScheduledControlUpdate scheduled_update = 1;
+
+    aalyria.spacetime.api.common.ScheduledControlDeletion 
+        scheduled_deletion = 2;
+
+    ControlPlanePingRequest control_plane_ping_request = 3;
+  }
+}
+
+message ControlStateNotification {
+  // Uniquely identifies the network node/element interfacing with Spacetime.
+  // Must be populated in the initial notification sent to Spacetime on a
+  // CDPI stream, and will be ignored by Spacetime in any further notifications
+  // sent on the stream.
+  optional string node_id = 1;
+
+  // A list of statuses for updates that have been requested to be scheduled,
+  // unscheduled, or enacted.
+  repeated aalyria.spacetime.api.common.ScheduledControlUpdateStatus 
+    statuses = 2;
+
+  // This field may be omitted if control update statuses exist and are all
+  // 'OK' or 'UNAVAILABLE'.
+  //
+  // Partial ControlPlaneState updates are supported, where any combination of
+  // {beam_states, radio_states, forwarding_state, tunnel_states} subfields on
+  // the ControlPlaneState message can be set.  If a subfield is unset, then
+  // the corresponding substate is not updated.  Otherwise, the corresponding
+  // substate will update the SDN Controller's view of the ControlPlaneState if
+  // the timestamp on the substate is greater than that of the SDN Controller's
+  // view.
+  optional aalyria.spacetime.api.common.ControlPlaneState state = 3;
+
+  // If multiple streams register the same network node by using the same
+  // node_id in a ControlStateNotification all registered streams may receive
+  // the ControlStateChangeRequest messages.
+  // The priority fields allows to specify the order in which streams are tried.
+  // Streams with the lowest priority are tried first; it is recommended to use:
+  //   - priority = 0 for the default control-plane network
+  //   - priority = 1 backup/secondary control paths
+  optional uint32 priority = 4 [default = 0];
+
+  // The agent's response to a control-plane ping request.
+  optional ControlPlanePingResponse control_plane_ping_response = 5;
+}
+
+message TelemetryRequest {
+  // Uniquely identifies the network node/element.
+  optional string node_id = 1;
+
+  oneof type {
+    // Requests a one-time network statistics report.
+    google.protobuf.Empty query_statistics = 2;
+
+    // Specifies the rate at which network statistics should be streamed.
+    // Set statistics_publish_rate_hz = 0 to disable periodic publication.
+    double statistics_publish_rate_hz = 3;  // in Hz
+  }
+}
+
+message TelemetryUpdate {
+  // Deprecated; set in NetworkStatsReport or NetworkEventReport.
+  optional string node_id = 1 [deprecated = true];
+
+  oneof type {
+    aalyria.spacetime.api.common.NetworkStatsReport statistics = 2;
+    aalyria.spacetime.api.common.NetworkEventReport event = 3;
+  }
+}
+
+message SensorWeatherData {
+  // Where these data were observed.
+  optional aalyria.spacetime.api.common.GeodeticWgs84 location = 4;
+
+  // Measurement data.
+  //
+  // The provenance and interval fields will be overwritten by the weather
+  // server and so may be safely left unspecified.
+  optional aalyria.spacetime.api.common.WeatherDataForecast weather_data = 3;
+
+  reserved 1, 2, 5 to max;
+}
+
+// This service defines the Spacetime control plane interface for Software 
+// Defined Wireless Networks (SDWN). It is implemented by controllers and 
+// CDPI agents.
+service NetworkControllerStreaming {
+  // Network elements initiate this bidirectional streaming interface by sending
+  // a ControlStateNotification that contains their current ControlPlaneState.
+  // The server will then begin streaming scheduled updates to the control-plane
+  // state of the network element.
+  //
+  // After enacting each ScheduledControlUpdate (whether enacted immediately, or
+  // at a specified time to enact), network elements should respond with a
+  // status update in a ControlStateNotification. For updates which take some
+  // time to execute, this response will not be immediate. For instance, upon
+  // executing a BeamUpdate which tasks a mechanically steered antenna to change
+  // its targeting task, the network element should not respond until after the
+  // beam has slewed and established a PHY-layer link with its target.
+  //
+  // Elements should also send a status update to notify the network controller
+  // of any unscheduled control-plane state changes or unexpected link failures.
+  //
+  // Only one network element may interface with Spacetime on a stream.
+  rpc ControlPlaneInterface(stream ControlStateNotification)
+      returns (stream ControlStateChangeRequest) {}
+}
+
+// This service defines the Spacetime network telemetry interface for Software
+// Defined Wireless Networks (SDWN). It is implemented by controllers and CDPI
+// agents.
+service NetworkTelemetryStreaming {
+  // This Network Telemetry interface follows the OpenConfig concept of having a
+  // "monitoring configuration" that is sent to the device, which configures
+  // streaming and the rate. And, like OpenConfig, it also supports 3 types of
+  // telemetry: bulk time series data (sent every N seconds), event/edge events,
+  // and operator request/response.
+  //
+  // Network elements initiate this bidirectional streaming interface by sending
+  // a TelemetryUpdate with their latest statistics. Telemetry events should be
+  // published using this interface whenever they are generated -- even if
+  // periodic statistics reporting is not enabled. However, further publication
+  // of network statistics is not required unless a TelemetryRequest is
+  // received, which may optionally specify a requested rate for updates.
+  rpc TelemetryInterface(stream TelemetryUpdate)
+      returns (stream TelemetryRequest) {}
+}
+
+service AttenuationEnvironment {
+  // Receives data from sensors in the field and adds them to the model.
+  // Evaluation and merging of these data happens asynchronously.
+  //
+  // An example consumer of this API is weather data observed by Vaisala
+  // instruments and uploaded from ground stations, which are part of the
+  // Just-in-time Observations of Strategic High-fidelity Uniform Atmosphere
+  // (JOSHUA) sensor array network.
+  rpc UploadSensorData(SensorWeatherData) returns (google.protobuf.Empty) {}
+}
+
+// Spacetime Control to Data-Plane Interface (CDPI)
+//
+// The Spacetime CDPI can be used by an SDN agent to receive dataplane schedule
+// changes and to notify the SDN controller of state changes.
+//
+// Note: This service is still under development.
+service Cdpi {
+  // Opens a stream with the SDN controller through which the controller may
+  // issue requests of the SDN agent, and the agent may respond.
+  rpc Cdpi(stream CdpiRequest) returns (stream CdpiResponse) {}
+
+  // TODO: Add unary RPCs for submitting ScheduledControlUpdateStatus
+  // messages and ControlPlaneState messages.
+}
+
+// The request for aalyria.spacetime.api.cdpi.v1alpha.Cdpi.Cdpi.
+message CdpiRequest {
+  message Hello {
+    // Required. Identifies the network node on behalf of which the SDN agent
+    // is calling. This must be the ID of an existing
+    // aalyria.spacetime.api.common.NetworkNode entity.
+    optional string node_id = 1;
+
+    // Required. When multiple sessions identify themselves as the same network
+    // node, the channel priority determines the order in which the SDN
+    // controller attempts to send a message over those sessions. Sessions with
+    // the lowest priority are tried first; it is recommended to use:
+    // * priority = 0 for the default control-plane network
+    // * priority = 1 for backup/secondary control paths
+    optional uint32 channel_priority = 2;
+  }
+
+  message Response {
+    // Required. The ID of the request to which this response corresponds. See
+    // aalyria.spacetime.api.cdpi.v1alpha.CdpiResponse.request_id.
+    optional int64 request_id = 1;
+
+    // The response status.
+    optional google.rpc.Status status = 2;
+
+    // The response payload.
+    optional bytes payload = 3;
+  }
+
+  // Required in the initial request of the session. Identifies the SDN agent
+  // and the properties of the underlying channel.
+  optional Hello hello = 1;
+
+  // A response to a request received from the SDN controller.
+  //
+  // The response may originate from a proxy rather than the SDN agent itself.
+  // For example, if the proxy is unable to deliver the request to the SDN
+  // agent, the proxy may populate the response with an appropriate error.
+  optional Response response = 2;
+}
+
+// The response for aalyria.spacetime.api.cdpi.v1alpha.Cdpi.Cdpi.
+//
+// This is a response message in that it flows from server to client, however
+// it holds requests being sent to the SDN agent (the client) by the SDN
+// controller (the server).
+message CdpiResponse {
+  // An SDN-controller-generated value uniquely identifying the request within
+  // the scope of the CDPI session. That is, two requests received from the
+  // same session will always have different request IDs. The SDN agent must
+  // provide the ID in the response to this request (see
+  // aalyria.spacetime.api.cdpi.v1alpha.CdpiRequest.Response.request_id).
+  optional int64 request_id = 1;
+
+  // The contents of the request.
+  optional bytes request_payload = 2;
+}

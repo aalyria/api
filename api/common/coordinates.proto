@@ -1,19 +1,30 @@
+// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 // These messages provide common n-tuple representations for expressing
 // locations of points and orientations of axes as well as their derivatives.
-//
-// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
-// Confidential and Proprietary. All rights reserved.
 
 syntax = "proto2";
 
-package minkowski.proto;
+package aalyria.spacetime.api.common;
 
 import "api/common/time.proto";
 import "google/protobuf/timestamp.proto";
 import "google/type/interval.proto";
 
-option go_package = "aalyria.com/minkowski/api/common";
-option java_package = "com.aalyria.minkowski.proto";
+option go_package = "aalyria.com/spacetime/api/common";
+option java_package = "com.aalyria.spacetime.api.common";
 
 // A set of curvilinear 3 dimensional coordinates relative to the WGS84
 // ellipsoid.
@@ -285,13 +296,18 @@ message Motion {
 
     // Satellite orbital information, expressed as a TLE.
     // See https://en.wikipedia.org/wiki/Two-line_element_set for details.
-    // The implied orientation is VVLH as defined here:
-    // http://help.agi.com/stk/Content/gator/eq-coordsys.htm
+    //
+    // The implied orientation is "Vehicle Velocity, Local Horizontal" (VVLH)
+    // (x axis along the instantaneous velocity vector, z axis toward the nadir,
+    //  y axis along the negative angular momentum vector); alternatively:
+    // "Local Vertical Local Horizontal" (LVLH) as per CCSDS 500.0-G-4
+    // section 4.3.7.2
     TwoLineElementSet tle = 5;
 
-    // Satellite orbital information, expressed as Keplerian elements.
+    // Satellite orbital information, expressed as Keplerian elements (see
+    // also CCSDS 500.0-G-4 section 5.2.2.4).
+    //
     // This coordinate type is only valid for a root platform.
-    // http://help.agi.com/stk/Content/gator/eq-coordsys.htm
     KeplerianElements keplerian_elements = 6;
 
     // Satellite motion as a generic state-vector for deep-space, maneuvers,

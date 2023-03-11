@@ -1,0 +1,252 @@
+// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto2";
+
+package aalyria.spacetime.api.nbi.v1alpha;
+
+import "api/common/channel.proto";
+import "api/common/control.proto";
+import "api/common/coordinates.proto";
+import "api/common/platform.proto";
+import "api/common/telemetry.proto";
+import "api/common/time.proto";
+import "api/nbi/v1alpha/resources/antenna_pattern.proto";
+import "api/nbi/v1alpha/resources/coverage.proto";
+import "api/nbi/v1alpha/resources/intent.proto";
+import "api/nbi/v1alpha/resources/motion_evaluation.proto";
+import "api/nbi/v1alpha/resources/network_element.proto";
+import "api/nbi/v1alpha/resources/network_link.proto";
+import "api/nbi/v1alpha/resources/scenario_settings.proto";
+import "api/nbi/v1alpha/resources/service_request.proto";
+import "api/nbi/v1alpha/resources/wireless_interference.proto";
+import "google/api/annotations.proto";
+import "google/type/interval.proto";
+
+option java_package = "com.aalyria.spacetime.api.nbi.v1alpha";
+option go_package = "aalyria.com/spacetime/api/nbi/v1alpha";
+
+enum EntityType {
+  ENTITY_TYPE_UNSPECIFIED = 0;
+  ANTENNA_PATTERN = 12;      
+  BAND_PROFILE = 16;         
+  CDPI_STREAM_INFO = 17;     
+  STATION_SET = 21;          
+  SURFACE_REGION = 22;       
+  DRAIN_PROVISION = 20;      
+  INTENT = 6;                
+  INTERFACE_LINK_REPORT = 5; 
+  INTERFERENCE_CONSTRAINT = 23;
+  MOTION_DEFINITION = 4;    
+  NETWORK_NODE = 3;         
+  NETWORK_STATS_REPORT = 8; 
+  PLATFORM_DEFINITION = 1;  
+  PROPAGATION_WEATHER = 15; 
+  SERVICE_REQUEST = 2;      
+  TRANSCEIVER_LINK_REPORT = 19;
+  COMPUTED_MOTION = 7;
+
+  reserved 14, 24 to max;  // (-- Next ID --)
+}
+
+message EntityGroup {
+  // Type of the Entity, part of the Entity key.
+  optional EntityType type = 1;
+  // Name of the SDN component that created and manages this entity.
+  // Not part of Entity key.
+  optional string app_id = 3;
+}
+
+message Entity {
+  // The {group.EntityType, id} pair is globally unique.
+  optional EntityGroup group = 1;
+
+  // The {EntityType, id} pair is globally unique.
+  optional string id = 2;
+
+  // Microseconds since epoch. Updated by the data layer.
+  optional int64 commit_timestamp = 3;
+
+  // The user who last modified the entity. Used for debugging only. Control
+  // systems should not rely on this field.
+  optional string last_modified_by = 22;
+
+  oneof value {
+    aalyria.spacetime.api.nbi.v1alpha.resources.AntennaPattern
+        antenna_pattern = 15;
+    aalyria.spacetime.api.common.BandProfile band_profile = 20;
+    aalyria.spacetime.api.common.CdpiStreamInfo cdpi_stream_info = 23;
+    aalyria.spacetime.api.nbi.v1alpha.resources.ComputedMotion
+        computed_motion = 10;
+    aalyria.spacetime.api.nbi.v1alpha.resources.StationSet station_set = 27;
+    aalyria.spacetime.api.nbi.v1alpha.resources.SurfaceRegion
+        surface_region = 28;
+    aalyria.spacetime.api.nbi.v1alpha.resources.DrainProvision
+        drain_provision = 26;
+    aalyria.spacetime.api.nbi.v1alpha.resources.Intent intent = 9;
+    aalyria.spacetime.api.nbi.v1alpha.resources.InterfaceLinkReport
+        interface_link_report = 8;
+    aalyria.spacetime.api.nbi.v1alpha.resources.InterferenceConstraint
+        interference_constraint = 29;
+    aalyria.spacetime.api.common.MotionDefinition motion_definition = 7;
+    aalyria.spacetime.api.nbi.v1alpha.resources.NetworkNode network_node = 6;
+    aalyria.spacetime.api.common.NetworkStatsReport network_stats_report = 11;
+    aalyria.spacetime.api.common.PlatformDefinition platform = 4;
+    aalyria.spacetime.api.nbi.v1alpha.resources.ServiceRequest
+        service_request = 5;
+    aalyria.spacetime.api.nbi.v1alpha.resources.TransceiverLinkReport
+        transceiver_link_report = 25;
+  }
+
+  reserved 18;
+}
+
+service NetOps {
+  // Creates a Spacetime Entity using the app: 'Spacetime Netops'.
+  rpc CreateEntity(CreateEntityRequest) returns (Entity) {
+    option (google.api.http) = {
+      post: "/v1/entities/type/{type=*}"
+      body: "entity"
+    };
+  }
+
+  // Updates a Spacetime Entity using the app: 'Spacetime Netops'.
+  rpc UpdateEntity(UpdateEntityRequest) returns (Entity) {
+    option (google.api.http) = {
+      put: "/v1/entities/type/{type=*}/id/{id=*}"
+      body: "entity"
+    };
+  }
+
+  // Lists all specified entities of the selected type.
+  // TODO: implement pagination
+  rpc ListEntities(ListEntitiesRequest) returns (ListEntitiesResponse) {
+    option (google.api.http) = {
+      get: "/v1/entities"
+    };
+  }
+
+  // Lists all specified entities of the selected type over the provided time
+  // interval.
+  // TODO: implement pagination
+  rpc ListEntitiesOverTime(ListEntitiesOverTimeRequest)
+      returns (ListEntitiesOverTimeResponse) {
+    option (google.api.http) = {
+      get: "/v1/entities/over_time"
+    };
+  }
+
+  // Deletes an Entity.
+  rpc DeleteEntity(DeleteEntityRequest) returns (DeleteEntityResponse) {
+    option (google.api.http) = {
+      delete: "/v1/entities/type/{type=*}/id/{id=*}/commit_timestamp/{commit_timestamp=*}" 
+    };
+  }
+
+  // Loads a scenario specified as a
+  // com.aalyria.resources.ScenarioSettings proto.
+  // Deprecated. This endpoint is in the process of being replaced by a 
+  // more general purpose interface.
+  rpc LoadScenario(LoadScenarioRequest) returns (LoadScenarioResponse) {
+    option deprecated = true;
+    option (google.api.http) = {
+      post: "/v1/load_scenario"
+      body: "scenario_settings"
+    };
+  }
+}
+
+// The supplied Entity does not need to have the EntityType set, it will be
+// inferred from the URL.
+// The id should be omitted, a unique ID will be generated by the backend.
+message CreateEntityRequest {
+  optional string type = 1;
+  optional Entity entity = 2;
+}
+
+// The posted Entity is merged with the existing one. The provided entity should
+// only specify the fields to be update, ID and Type should be omited.
+message UpdateEntityRequest {
+  optional string type = 1;
+  optional string id = 2;
+  optional Entity entity = 3;
+}
+
+message ListEntitiesRequest {
+  reserved 2, 6 to max;      // NEXT_ID: 6
+  optional string type = 1;  // required.
+  // The time interval of the history being requested. If both start and end
+  // time are empty, return only the latest entities of the above type.
+  // Do not use yet; results may be incomplete.
+  optional google.type.Interval interval = 3;
+
+  // If set, only return entities that match the filter.
+  optional EntityFilter filter = 5;
+}
+
+message ListEntitiesResponse {
+  repeated Entity entities = 1;
+}
+
+message ListEntitiesOverTimeRequest {
+  optional string type = 1;  // required.
+
+  // The time range of the history being requested.
+  optional aalyria.spacetime.api.common.TimeInterval interval = 2;  // required.
+
+  optional bool compute_cartesian_coordinates = 3;
+
+  // If set, only return entities that match the filter. Empty entities that
+  // represent deletes never match filters and will not be returned.
+  optional EntityFilter filter = 4;
+
+  // If set, only return entities with an ID in the list.
+  repeated string ids = 5;
+}
+
+message ListEntitiesOverTimeResponse {
+  repeated Entity entities = 1;
+}
+
+message EntityFilter {
+  // If one or more node IDs are given, only return entities that reference one
+  // or more of the node IDs.
+  repeated string references_node = 1;
+
+  // If one or more service request IDs are given, only return entities that
+  // reference one or more of the service request IDs.
+  repeated string references_service_request = 2;
+}
+
+message DeleteEntityRequest {
+  optional string type = 1;
+  optional string id = 2;
+
+  // This is a required field. The client must provide the latest known
+  // commit_timestamp for the Entity which will be checked against the stored
+  // version. If it is out of sync the rpc will fail.
+  optional int64 commit_timestamp = 3;  // required. Units are microseconds.
+}
+
+message DeleteEntityResponse {
+}
+
+message LoadScenarioRequest {
+  // Specifies the entities within the scenario that will be loaded.
+  optional aalyria.spacetime.api.nbi.v1alpha.resources.ScenarioSettings
+    scenario_settings = 1;
+}
+
+message LoadScenarioResponse {
+}

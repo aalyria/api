@@ -1,18 +1,29 @@
-// Protobuf messages used to model wireless transceivers.
+// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
 //
-// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
-// Confidential and Proprietary. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Protobuf messages used to model wireless transceivers.
 
 syntax = "proto2";
 
-package minkowski.proto;
+package aalyria.spacetime.api.common;
 
 import "api/common/platform_antenna.proto";
 import "api/common/wireless_receiver.proto";
 import "api/common/wireless_transmitter.proto";
 
-option java_package = "com.aalyria.minkowski.proto";
-option go_package = "aalyria.com/minkowski/api/common";
+option java_package = "com.aalyria.spacetime.api.common";
+option go_package = "aalyria.com/spacetime/api/common";
 
 message TransceiverModel {
   // A platform-unique identifier for the transceiver model.
@@ -30,6 +41,9 @@ message TransceiverModel {
 
   // Models the antenna used by the transmitter and receiver.
   optional AntennaDefinition antenna = 5;
+
+  // Supported MAC-layer parameters.
+  repeated WirelessMac macs = 6;
 }
 
 // Uniquely identifies a temporospatial transceiver model.
@@ -59,4 +73,25 @@ message TransceiverModelId {
 message CenterFrequencySpacing {
   optional uint64 min_center_frequency_spacing_hz = 1;
   optional uint64 max_center_frequency_spacing_hz = 2;
+}
+
+// An extensible model for MAC specifications.
+message WirelessMac {
+  // Required. The MAC type in your network, ie: “DVB-S2”, 
+  // “DVB-S2X”, "802.11", "5G-NR", "Link-16", "CCSDS-AOS", etc.
+  optional string type = 1;    
+  // The role in the MAC layer, ie: "HUB", “REMOTE”, “AP”,
+  // “CLIENT”, etc.       
+  // If this field is omitted, the role is treated as being 
+  // compatible with all other roles.   
+  optional string role = 2;
+  // The maximum number of concurrent connections this device can 
+  // participate in.
+  // If this field is <= 0, this MAC is disabled for this transceiver.
+  // If this field is omitted, the number is unbounded.          
+  optional int32 max_connections = 3;
+  
+  // Allows for arbitrary Protobuf extensions to be defined on this
+  // message in order to model more parameters of a MAC.
+  extensions 100 to max;
 }

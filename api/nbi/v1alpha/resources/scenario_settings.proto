@@ -1,0 +1,321 @@
+// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto2";
+
+package aalyria.spacetime.api.nbi.v1alpha.resources;
+
+import "api/common/channel.proto";
+import "api/common/coordinates.proto";
+import "api/common/platform_antenna.proto";
+import "api/common/wireless_receiver.proto";
+import "api/common/wireless_transceiver.proto";
+import "api/common/wireless_transmitter.proto";
+import "api/nbi/v1alpha/resources/antenna_pattern.proto";
+import "api/nbi/v1alpha/resources/network_element.proto";
+
+option java_package = "com.aalyria.spacetime.api.nbi.v1alpha.resources";
+option go_package = "aalyria.com/spacetime/api/nbi/v1alpha/resources";
+
+// Specifies input parameters that define the custom generic scenario.
+message ScenarioSettings {
+  // Defines parameters for the LEO Constellation.
+  message Constellation {
+    optional string name = 1;
+
+    optional string type = 5;
+
+    message OrbitalParameters {
+      message WalkerDeltaParameters {
+        optional double semimajor_axis_km = 1;
+        optional double eccentricity = 7 [default = 0.0];
+
+        // Specifies the inclination of all satellites in the LEO consetllation.
+        optional double inclination_deg = 2;
+
+        // Specifies the number of planes in the general LEO satellite
+        // constellation.
+        optional uint32 number_of_planes = 3;
+
+        // Specifies the number of LEO satellites per constellation plane.
+        optional uint32 satellites_per_plane = 4;
+
+        // Specifies the inter-plane spacing for the Walker-Delta constellation.
+        // This is a unitless integer that defines the spacing between
+        // satellites in adjacent constellation planes, it must be in the range
+        // [0 p] where p is the total number of planes.  The interplane spacing
+        // is then calculated as:  spacing_deg = inter_plane_spacing * 360 / t,
+        // where t is the total number of satellites.
+        optional uint32 inter_plane_spacing = 5;
+
+        // Specifies the right ascension of the ascending node, in degrees, to
+        // be applied as an offset to each plane in the constellation.
+        optional double raan_offset_deg = 8;
+
+        enum IslPattern {
+          ISL_PATTERN_NONE = 0;  // no ISLs
+          ISL_PATTERN_NSEW =
+              1;  // one ISL in each of North, South, East, West directions
+          ISL_PATTERN_NS = 2; // Forward and backward in-plane ISLs only.
+        }
+        optional IslPattern isl_pattern = 6 [default = ISL_PATTERN_NONE];
+      }
+
+      message ArbitraryMotionParameters {
+        // Platform name.
+        required string name = 1;
+
+        required aalyria.spacetime.api.common.Motion motion = 2;
+      }
+
+      optional WalkerDeltaParameters walker_delta_parameters = 2;
+
+      repeated ArbitraryMotionParameters arbitrary_motion_parameters = 3;
+    }
+
+    optional OrbitalParameters orbital_parameters = 2;
+
+    repeated TransceiverModel transceiver_models = 3;
+
+    repeated WirelessInterface wireless_interfaces = 4;
+
+    optional NetworkNode.Storage storage = 6;
+
+    message ServiceRequest {
+      // The ID of the PoP to which the constellation's nodes are to be
+      // connected.
+      optional string pop_id = 1;
+
+      // The requested capacity from the PoP to the satellite.
+      optional double uplink_capacity_bps = 2;
+
+      // The requested capacity from the satellite to the PoP.
+      optional double downlink_capacity_bps = 3;
+
+      optional double priority = 4;
+    }
+    repeated ServiceRequest service_request = 7;
+  }
+  repeated Constellation constellation = 1;
+
+  message WirelessInterface {
+    optional string id = 1;
+    optional string transceiver_model_id = 3;
+  }
+
+  message TransmitterDefinition {
+    // An optional friendly, human-readable string.
+    optional string name = 1;
+
+    // Defines the channels for this receiver
+    repeated SequentialChannelDefinition sequential_channel_definition = 2;
+
+    // Determines whether or not the SDN performs channel assignment.
+    optional .aalyria.spacetime.api.common.ChannelSelectionMethod 
+        channel_selection_method = 3;
+
+    // Allows the user to configure an ordered sequence that describes how the
+    // wireless transmission is created or modified prior to the input of
+    // the platform antenna that propagates the signal.
+    repeated .aalyria.spacetime.api.common.TransmitSignalProcessor 
+        signal_processing_step = 4;
+  }
+
+  message ReceiverDefinition {
+    // An optional friendly, human-readable string.
+    optional string name = 1;
+
+    // Defines the channels for this receiver.
+    repeated SequentialChannelDefinition sequential_channel_definition = 2;
+
+    // Determines whether or not the SDN performs channel assignment.
+    optional .aalyria.spacetime.api.common.ChannelSelectionMethod 
+        channel_selection_method = 3;
+
+    // Allows the user to configure an ordered sequence that describes how the
+    // wireless transmission is modified or reconfigured starting from the
+    // output of the platform antenna that receives the signal.
+    repeated .aalyria.spacetime.api.common.ReceiveSignalProcessor 
+        signal_processing_step = 4;
+  }
+
+  message TransceiverModel {
+    optional string id = 1;
+    optional TransmitterDefinition transmitter = 2;
+    optional ReceiverDefinition receiver = 3;
+    optional .aalyria.spacetime.api.common.AntennaDefinition 
+        antenna_definition = 4;
+    repeated .aalyria.spacetime.api.common.WirelessMac 
+        macs = 5;
+  }
+
+  // Defines a set of sequential channel definitions, that is, a set of
+  // n channels that are separated by the bandwidth of the channel, starting
+  // at a given frequency location.
+  message SequentialChannelDefinition {
+    // Defines the channel ID, this must also have a separate channel
+    // definition (specified in this file) that has the same ID.
+    optional string channel_id = 1;
+
+    // Defines the number of channels in this sequential channel list.
+    optional uint32 channel_count = 2;
+
+    // Starting freqeuncy in Hertz.
+    optional uint64 starting_frequency_hz = 3;
+
+    // Bandwidth of each channel in Hertz.
+    optional uint64 bandwidth_hz = 4;
+
+    // For transmitters, define the transmit power for this channel in watts.
+    optional double tx_power_w = 5;
+  }
+
+  // Defines Gateway nodes, these are the ground stations for the
+  // satellite communications links.
+  message Gateway {
+    // Gateway name, whatever string the user wants.
+    optional string name = 1;
+
+    // Saved location for this Ground Station.
+    optional .aalyria.spacetime.api.common.GeodeticWgs84 location = 2;
+
+    repeated TransceiverModel transceiver_models = 8;
+    repeated WirelessInterface wireless_interfaces = 9;
+
+    // Defines the maximum data rate for the wired interface to a pop.
+    optional double max_wired_data_rate_bps = 6;
+
+    // Included if the gateway is an SDN-enabled network element.
+    optional SdnAgent agent = 3;
+  }
+
+  // Stores as many Gateways as the user wants to define in the protobuf.
+  repeated Gateway gateways = 2;
+
+  message ScenarioChannelDefinition {
+    optional string channel_id = 1;
+
+    optional .aalyria.spacetime.api.common.BandProfile channel = 2;
+  }
+  repeated ScenarioChannelDefinition scenario_channel_definition = 3;
+
+  message AntennaPatternSettings {
+    optional string antenna_pattern_id = 1;
+
+    optional AntennaPattern antenna_pattern = 2;
+  }
+
+  repeated AntennaPatternSettings antenna_pattern_settings = 4;
+
+  message UserTerminal {
+    optional string name = 1;
+
+    // Defines a grid of user terminals starting at the southwest corner
+    // (defined in lat/lon) and spanning a defined number of colummns and
+    // rows, with a defined spacing in degrees latitude or degrees longitude.
+    message UserTerminalGridDefinition {
+      optional string name = 6;
+
+      optional .aalyria.spacetime.api.common.GeodeticWgs84 
+        south_west_corner = 1;
+
+      optional uint32 row_count = 2;
+
+      optional uint32 column_count = 3;
+
+      optional double grid_latitude_spacing_deg = 4;
+
+      optional double grid_longitude_spacing_deg = 5;
+
+      reserved 7 to max;
+    }
+    repeated UserTerminalGridDefinition user_terminal_grid_definition = 2;
+
+    repeated TransceiverModel transceiver_models = 8;
+    repeated WirelessInterface wireless_interfaces = 9;
+  }
+  repeated UserTerminal user_terminal = 5;
+
+  message UserTerminalCommonSettings {
+    optional double user_terminal_forward_data_rate_bps = 1;
+
+    optional double user_terminal_return_data_rate_bps = 2;
+  }
+
+  optional UserTerminalCommonSettings user_terminal_common_settings = 6;
+
+  // Defines PoPs.
+  message Pop {
+    // PoP name, whatever string the user wants.
+    optional string name = 1;
+
+    // Saved location for this Pop.
+    optional .aalyria.spacetime.api.common.GeodeticWgs84 location = 2;
+
+    // Sets the maximum data rate for this pop in bps.
+    optional double max_data_rate_bps = 3;
+  }
+  repeated Pop pop = 7;
+
+  message AirFleet {
+    message Aircraft {
+      // Flight ICAO.
+      optional string id = 1;
+
+      repeated TransceiverModel additional_transceiver_models = 2;
+
+      repeated WirelessInterface additional_wireless_interfaces = 3;
+    }
+
+    repeated Aircraft aircraft = 1;
+
+    repeated TransceiverModel transceiver_models = 2;
+
+    repeated WirelessInterface wireless_interfaces = 3;
+
+    // The POP name that the fleet should be connected to.
+    optional string pop_id = 4;
+  }
+
+  repeated AirFleet airfleets = 8;
+
+  message ShipFleet {
+    message Ship {
+      // Ship MMSI.
+      optional string id = 1;
+
+      // Human readable name.
+      optional string name = 2;
+
+      // Transceivers to be applied in addition to the fleet's transceivers.
+      repeated TransceiverModel additional_transceiver_models = 4;
+
+      // Wireless interfaces to be applied in addition to the fleet's wireless
+      // interfaces.
+      repeated WirelessInterface additional_wireless_interfaces = 5;
+    }
+    repeated Ship ship = 1;
+
+    // Transceivers that will be applied to all ships in the fleet.
+    repeated TransceiverModel transceiver_models = 2;
+
+    // Wireless interfaces that will be applied to all ships in the fleet.
+    repeated WirelessInterface wireless_interfaces = 3;
+
+    // The POP name that the fleet should be connected to.
+    optional string pop_id = 4;
+  }
+
+  repeated ShipFleet shipfleets = 9;
+}
