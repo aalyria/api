@@ -1,15 +1,26 @@
-// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
-// Confidential and Proprietary. All rights reserved.
+// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 syntax = "proto2";
 
-package minkowski.proto;
+package aalyria.spacetime.api.common;
 
 import "api/common/time.proto";
 import "google/protobuf/duration.proto";
 
-option java_package = "com.aalyria.minkowski.proto";
-option go_package = "aalyria.com/minkowski/api/common";
+option java_package = "com.aalyria.spacetime.api.common";
+option go_package = "aalyria.com/spacetime/api/common";
 
 // Weather parameters affecting wireless signal propagation.
 message PropagationWeather {
@@ -20,7 +31,7 @@ message PropagationWeather {
   optional uint64 s2_cell_id = 2;
 
   // PropagationWeather holds time-dynamic forecast data from multiple sources.
-  // Pruning of older data is handled by the writer (LAMBDA).
+  // Pruning of older data is handled by the weather server.
   repeated WeatherDataForecast forecasts = 6;
 
   // Each table contains a multi-dimensional array of values for one or more
@@ -59,23 +70,21 @@ enum Parameter {
 // The source of these data iff there was a single source (i.e. these data
 // are not the result of merging data from multiple sources).
 enum Provenance {
-  UNSPECIFIED = 0;                // Unknown or multiple sources
-
-  // manually specified parameters (e.g. overrides)
+  // Unknown or multiple sources.
+  UNSPECIFIED = 0;
+  // Manually specified parameters (e.g. overrides).
   ADMINISTRATIVE = 1;
-  SENSOR = 2;                     // data from a sensor in the field
-
-  // European Center for Medium-range Weather Forecasts (https://ecmwf.int)
-  ECMWF = 3;
-
-  // National Oceanic and Atmospheric  Administration, Global Forecast System
-  // (go/noaa-gfs)
-  NOAA_GFS = 4;
-  LOON_WIND = 5;                  // data from the go/loon-wind pipeline
-  SEASONAL_REGIONAL_AVERAGE = 7;  // data from a seasonal-regional average.
-
-  // Default/Fallback value when no other data available
-  DEFAULT_FALLBACK = 8;
+  // Data from a sensor in the field.
+  SENSOR = 2;                      
+  // European Center for Medium-range Weather Forecasts (https://ecmwf.int).
+  ECMWF = 3; 
+  // National Oceanic and Atmospheric  Administration, Global Forecast System.
+  NOAA_GFS = 4;          
+  LOON_WIND = 5;
+  // Data from a seasonal-regional average.
+  SEASONAL_REGIONAL_AVERAGE = 7;  
+  // Default/Fallback value when no other data available.
+  DEFAULT_FALLBACK = 8; 
 
   reserved 6;
 }
@@ -158,18 +167,19 @@ message WeatherDataForecast {
   // The source of these data iff there was a single source (i.e. these data
   // are not the result of merging data from multiple sources).
   enum Provenance {
-    UNSPECIFIED = 0;     // Unknown or multiple sources
-    ADMINISTRATIVE = 1;  // manually specified parameters (e.g. overrides)
-    SENSOR = 2;          // data from a sensor in the field
-
-    // European Center for Medium-range Weather Forecasts (https://ecmwf.int)
-    ECMWF = 3; 
-    
-    // National Oceanic and Atmospheric Administration, Global Forecast System
-    // (go/noaa-gfs)
-    NOAA_GFS = 4;
-    LOON_WIND = 5;       // data from the go/loon-wind pipeline
-    SEASONAL_REGIONAL_AVERAGE = 7;  // data from a seasonal-regional average.
+    // Unknown or multiple sources.
+    UNSPECIFIED = 0;     
+    // Manually specified parameters (e.g. overrides).
+    ADMINISTRATIVE = 1;  
+    // Data from a sensor in the field.
+    SENSOR = 2;          
+    // European Center for Medium-range Weather Forecasts (https://ecmwf.int).
+    ECMWF = 3;  
+    // National Oceanic and Atmospheric Administration, Global Forecast System.
+    NOAA_GFS = 4; 
+    LOON_WIND = 5;
+    // Data from a seasonal-regional average.
+    SEASONAL_REGIONAL_AVERAGE = 7;  
 
     reserved 6;
   }
@@ -205,8 +215,8 @@ message WeatherDataForecast {
 // respectively.
 message GaussianProcessPrediction {
   // mm/hr for rain rate. Units for mean should match input units.
-  optional double mean = 1;      
-  optional double variance = 2;  // mm^2/hr^2 for rain rate. Units for
-                                 // covariance of X and Y are those of X times
-                                 // those of Y.
+  optional double mean = 1;   
+  // mm^2/hr^2 for rain rate. Units for covariance of X and Y are
+  // those of X times those of Y.
+  optional double variance = 2;  
 }

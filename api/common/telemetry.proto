@@ -1,15 +1,26 @@
-// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
-// Confidential and Proprietary. All rights reserved.
+// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 syntax = "proto2";
 
-package minkowski.proto;
+package aalyria.spacetime.api.common;
 
 import "api/common/coordinates.proto";
 import "api/common/time.proto";
 
-option java_package = "com.aalyria.minkowski.proto";
-option go_package = "aalyria.com/minkowski/api/common";
+option java_package = "com.aalyria.spacetime.api.common";
+option go_package = "aalyria.com/spacetime/api/common";
 
 message NetworkStatsReport {
   // Uniquely identifies the network node/element.
@@ -39,7 +50,7 @@ message BeamStats {
 
   message TargetingStats {
     // The latest location that the beam is trying to target.
-    optional minkowski.proto.GeodeticWgs84 target_location = 1;
+    optional aalyria.spacetime.api.common.GeodeticWgs84 target_location = 1;
 
     enum ConnectionStatus {
       UNKNOWN = 0;
@@ -64,20 +75,20 @@ message BeamStats {
 
   message GimbalStats {
     // The current location of the gimbal.
-    optional minkowski.proto.GeodeticWgs84 location = 1;
+    optional aalyria.spacetime.api.common.GeodeticWgs84 location = 1;
 
     oneof site_orientation {
       // The rotational offset relative to the ECEF frame.
-      minkowski.proto.Quaternion orientation_quaternion = 2;
+      aalyria.spacetime.api.common.Quaternion orientation_quaternion = 2;
 
       // The rotational offset from the North-East-Down (NED) frame to the
       // gimbal's local reference frame.
-      minkowski.proto.YawPitchRoll orientation_ypr = 3;
+      aalyria.spacetime.api.common.YawPitchRoll orientation_ypr = 3;
     }
 
     // The direction at which the gimbal is pointing the center of its beam.
     // These coordinates are relative to the site_orientation.
-    optional minkowski.proto.PointingVector pointing_vector = 4;
+    optional aalyria.spacetime.api.common.PointingVector pointing_vector = 4;
     // Whether this gimbal is fully initialized and should be able to perform
     // tasks.
     optional bool initialized = 5;

@@ -1,5 +1,16 @@
-# Copyright (c) Aalyria Technologies, Inc., and its affiliates.
-# Confidential and Proprietary. All rights reserved.
+# Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 load("@rules_proto_grpc//cpp:defs.bzl", "cpp_proto_library")
 load("@rules_proto_grpc//go:defs.bzl", "go_proto_library")
@@ -31,6 +42,7 @@ proto_library(
         "wireless_transmitter.proto",
     ],
     deps = [
+        "//api/types:types_proto",
         "@com_google_googleapis//google/rpc:status_proto",
         "@com_google_googleapis//google/type:interval_proto",
         "@com_google_protobuf//:duration_proto",
@@ -43,6 +55,7 @@ cpp_proto_library(
     name = "common_cpp_proto",
     protos = [":common_proto"],
     deps = [
+        "//api/types:types_cpp_proto",
         "@com_google_googleapis//google/rpc:status_cc_proto",
         "@com_google_googleapis//google/type:interval_cc_proto",
     ],
@@ -50,9 +63,10 @@ cpp_proto_library(
 
 go_proto_library(
     name = "common_go_proto",
-    importpath = "aalyria.com/minkowski/api/common",
+    importpath = "aalyria.com/spacetime/api/common",
     protos = [":common_proto"],
     deps = [
+        "//api/types:types_go_proto",
         "@go_googleapis//google/rpc:status_go_proto",
         "@go_googleapis//google/type:interval_go_proto",
     ],
@@ -62,6 +76,7 @@ java_proto_library(
     name = "common_java_proto",
     protos = [":common_proto"],
     deps = [
+        "//api/types:types_java_proto",
         "@com_google_googleapis//google/rpc:rpc_java_proto",
         "@com_google_googleapis//google/type:type_java_proto",
     ],
