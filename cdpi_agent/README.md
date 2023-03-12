@@ -42,7 +42,7 @@ bazel query //cdpi_agent/...:all
 
 ### Authentication
 
-The extproc agent uses signed [JSON Web Tokens (JWTs)](https://jwt.io) to
+The extproc agent uses signed [JSON Web Tokens (JWTs)](https://www.rfc-editor.org/rfc/rfc7519) to
 authenticate with the CDPI service. The JWT needs to be signed using an RSA
 private key with a corresponding public key that's been shared - inside of a
 self-signed x509 certificate - with the Aalyria team.
@@ -64,7 +64,7 @@ openssl req -new -x509 -key agent_priv_key.pem -out agent_pub_key.cer -days 3650
 Once you have your private key and you've shared the public key with Aalyria,
 you can create a signed JWT to authorize the agent. To facilitate testing agent
 authorization, this repo includes a small Go program
-(`cmd/generate_jwt/generate_jwt.go`) that can be used to generate signed
+(`tools/generate_jwt/generate_jwt.go`) that can be used to generate signed
 JWTs.
 
 While the CDPI APIs are in alpha, authorization requires two *different* JWTs:
@@ -94,7 +94,7 @@ AGENT_PRIV_KEY_FILE="/path/to/your/private/key/in/PKSC8/format.pem"
 PROXY_AUDIENCE="https://www.googleapis.com/oauth2/v4/token"
 PROXY_TARGET_AUDIENCE="60292403139-me68tjgajl5dcdbpnlm2ek830lvsnslq.apps.googleusercontent.com"
 
-SPACETIME_AUTH_JWT=$(bazel run //cdpi_agent/cmd/generate_jwt \
+SPACETIME_AUTH_JWT=$(bazel run //tools/generate_jwt \
   -- \
   --issuer "$AGENT_EMAIL" \
   --subject "$AGENT_EMAIL" \
@@ -102,7 +102,7 @@ SPACETIME_AUTH_JWT=$(bazel run //cdpi_agent/cmd/generate_jwt \
   --key-id "$AGENT_PRIV_KEY_ID" \
   --private-key "$AGENT_PRIV_KEY_FILE")
 
-PROXY_AUTH_JWT=$(bazel run //cdpi_agent/cmd/generate_jwt \
+PROXY_AUTH_JWT=$(bazel run //tools/generate_jwt \
   -- \
   --issuer "$AGENT_EMAIL" \
   --subject "$AGENT_EMAIL" \

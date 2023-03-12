@@ -50,10 +50,7 @@ message TransceiverModel {
 message TransceiverModelId {
   // The globally unique platform ID with which this model is associated.
   //
-  // Examples include:
-  //   - UUIDs (e.g. "9a03fbb6-d2da-4d8c-b743-25d09ec85709")
-  //   - other free-form strings whose global uniqueness is ensured by some
-  //     external mechanism or by convention (e.g. "gs/681154")
+  // This should be the Entity ID of the PlatformDefinition it references.
   //
   // NOTE: a platform_id need not be mappable to a network node_id.
   //
