@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Spacetime Control-to-Data-Plane (CDPI) Interface
+// Spacetime Control-to-Data-Plane Interface (CDPI)
 
 syntax = "proto2";
 
