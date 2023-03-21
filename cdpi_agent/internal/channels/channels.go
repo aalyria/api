@@ -38,68 +38,70 @@ func NewSource[T any](c <-chan T) Source[T] { return Source[T](c) }
 func NewSink[T any](c chan<- T) Sink[T] { return Sink[T](c) }
 
 func (s Sink[T]) FillFrom(recv Receiver[T]) task.Task {
-	return func(ctx context.Context) error {
+	return task.Task(func(ctx context.Context) error {
 		log := zerolog.Ctx(ctx)
-
-		for {
-			log.Trace().Msg("waiting for message")
-			msg, err := recv()
-			if err != nil {
-				return err
-			}
-			log.Trace().Msg("got msg")
-
-			select {
-			case <-ctx.Done():
-				log.Warn().Msg("discarding received msg because context was cancelled")
-				return context.Cause(ctx)
-			case s <- msg:
-			}
+		log.Trace().Msg("waiting for message")
+		msg, err := recv()
+		if err != nil {
+			return err
 		}
-	}
+		log.Trace().Msg("got msg")
+
+		select {
+		case <-ctx.Done():
+			log.Warn().Msg("discarding received msg because context was cancelled")
+			return context.Cause(ctx)
+		case s <- msg:
+		}
+
+		return nil
+	}).
+		WithNewSpan("channels.Sink.FillFrom").
+		LoopUntilError()
 }
 
 func (s Source[T]) ForwardTo(send Sender[T]) task.Task {
-	return func(ctx context.Context) error {
+	return task.Task(func(ctx context.Context) error {
 		log := zerolog.Ctx(ctx)
+		select {
+		case <-ctx.Done():
+			return context.Cause(ctx)
 
-		for {
-			select {
-			case <-ctx.Done():
-				return context.Cause(ctx)
-
-			case msg := <-s:
-				log.Trace().Msg("sending message")
-				if err := send(msg); err != nil {
-					return err
-				}
+		case msg := <-s:
+			log.Trace().Msg("sending message")
+			if err := send(msg); err != nil {
+				return err
 			}
 		}
-	}
+		return nil
+	}).
+		WithNewSpan("channels.Source.ForwardTo").
+		LoopUntilError()
 }
 
 type MapFn[A, B any] func(context.Context, A) (B, error)
 
 func MapBetween[A, B any](src Source[A], dst Sink[B], fn MapFn[A, B]) task.Task {
-	return func(ctx context.Context) error {
-		for {
-			var before A
-			select {
-			case <-ctx.Done():
-				return context.Cause(ctx)
-			case before = <-src:
-			}
-
-			after, err := fn(ctx, before)
-			if err != nil {
-				return err
-			}
-
-			select {
-			case <-ctx.Done():
-				return context.Cause(ctx)
-			case dst <- after:
-			}
+	return task.Task(func(ctx context.Context) error {
+		var before A
+		select {
+		case <-ctx.Done():
+			return context.Cause(ctx)
+		case before = <-src:
 		}
-	}
+
+		after, err := fn(ctx, before)
+		if err != nil {
+			return err
+		}
+
+		select {
+		case <-ctx.Done():
+			return context.Cause(ctx)
+		case dst <- after:
+		}
+		return nil
+	}).
+		WithNewSpan("channels.MapBetween").
+		LoopUntilError()
 }

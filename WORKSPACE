@@ -122,8 +122,8 @@ go_repository(
 go_repository(
     name = "com_github_rs_zerolog",
     importpath = "github.com/rs/zerolog",
-    sum = "h1:38k9hgtUBdxFwE34yS8rTHmHBa4eN16E4DJlv177LNs=",
-    version = "v1.20.0",
+    sum = "h1:Zes4hju04hjbvkVkOhdl2HpZa+0PmVwigmo8XoORE5w=",
+    version = "v1.29.0",
 )
 
 go_repository(
@@ -159,6 +159,139 @@ go_repository(
     importpath = "go.opencensus.io",
     sum = "h1:gqCw0LfLxScz8irSi8exQc7fyQ0fKQU/qnC/X8+V/1M=",
     version = "v0.23.0",
+)
+
+go_repository(
+    name = "io_opentelemetry_go_otel",
+    importpath = "go.opentelemetry.io/otel",
+    sum = "h1:/79Huy8wbf5DnIPhemGB+zEPVwnN6fuQybr/SRXa6hM=",
+    version = "v1.14.0",
+)
+
+go_repository(
+    name = "io_opentelemetry_go_otel_trace",
+    importpath = "go.opentelemetry.io/otel/trace",
+    sum = "h1:ofxdnzsNrGBYXbP7t7zpUK281+go5rF7dvdIZXF8gdQ=",
+    version = "v1.11.1",
+)
+
+go_repository(
+    name = "io_opentelemetry_go_otel_sdk",
+    importpath = "go.opentelemetry.io/otel/sdk",
+    sum = "h1:PDCppFRDq8A1jL9v6KMI6dYesaq+DFcDZvjsoGvxGzY=",
+    version = "v1.14.0",
+)
+
+go_repository(
+    name = "io_opentelemetry_go_otel_sdk_metric",
+    importpath = "go.opentelemetry.io/otel/sdk/metric",
+    sum = "h1:haYBBtZZxiI3ROwSmkZnI+d0+AVzBWeviuYQDeBWosU=",
+    version = "v0.37.0",
+)
+
+go_repository(
+    name = "io_opentelemetry_go_otel_metric",
+    importpath = "go.opentelemetry.io/otel/metric",
+    sum = "h1:pHDQuLQOZwYD+Km0eb657A25NaRzy0a+eLyKfDXedEs=",
+    version = "v0.37.0",
+)
+
+go_repository(
+    name = "com_github_prometheus_client_model",
+    importpath = "github.com/prometheus/client_model",
+    sum = "h1:UBgGFHqYdG/TPFD1B1ogZywDqEkwp3fBMvqdiQ7Xew4=",
+    version = "v0.3.0",
+)
+
+go_repository(
+    name = "com_github_prometheus_prom2json",
+    importpath = "github.com/prometheus/prom2json",
+    sum = "h1:heRKAGHWqm8N3IaRDDNBBJNVS6a9mLdsTlFhvOaNGb0=",
+    version = "v1.3.2",
+)
+
+go_repository(
+    name = "com_github_prometheus_common",
+    importpath = "github.com/prometheus/common",
+    sum = "h1:Afz7EVRqGg2Mqqf4JuF9vdvp1pi220m55Pi9T2JnO4Q=",
+    version = "v0.40.0",
+)
+
+go_repository(
+    name = "com_github_matttproud_golang_protobuf_extensions",
+    importpath = "github.com/matttproud/golang_protobuf_extensions",
+    sum = "h1:mmDVorXM7PCGKw94cs5zkfA9PSy5pEvNWRP0ET0TIVo=",
+    version = "v1.0.4",
+)
+
+go_repository(
+    name = "com_github_json_iterator_go",
+    importpath = "github.com/json-iterator/go",
+    sum = "h1:PV8peI4a0ysnczrg+LtxykD8LfKY9ML6u2jnxaEnrnM=",
+    version = "v1.1.12",
+)
+
+go_repository(
+    name = "com_github_modern_go_reflect2",
+    importpath = "github.com/modern-go/reflect2",
+    sum = "h1:xBagoLtFs94CBntxluKeaWgTMpvLxC4ur3nMaC9Gz0M=",
+    version = "v1.0.2",
+)
+
+go_repository(
+    name = "com_github_modern_go_concurrent",
+    importpath = "github.com/modern-go/concurrent",
+    sum = "h1:TRLaZ9cD/w8PVh93nsPXa1VrQ6jlwL5oN8l14QlcNfg=",
+    version = "v0.0.0-20180306012644-bacd9c7ef1dd",
+)
+
+go_repository(
+    name = "io_opentelemetry_go_otel_exporters_zipkin",
+    importpath = "go.opentelemetry.io/otel/exporters/zipkin",
+    sum = "h1:reEVE1upBF9tcujgvSqLJS0SrI7JQPaTKP4s4rymnSs=",
+    version = "v1.14.0",
+)
+
+go_repository(
+    name = "com_github_openzipkin_zipkin_go",
+    importpath = "github.com/openzipkin/zipkin-go",
+    sum = "h1:kNd/ST2yLLWhaWrkgchya40TJabe8Hioj9udfPcEO5A=",
+    version = "v0.4.1",
+)
+
+go_repository(
+    name = "io_opentelemetry_go_contrib_instrumentation_google_golang_org_grpc_otelgrpc",
+    importpath = "go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc",
+    sum = "h1:5jD3teb4Qh7mx/nfzq4jO2WFFpvXD0vYWFDrdvNWmXk=",
+    version = "v0.40.0",
+)
+
+go_repository(
+    name = "io_opentelemetry_go_contrib_instrumentation_net_http_otelhttp",
+    importpath = "go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp",
+    sum = "h1:lE9EJyw3/JhrjWH/hEy9FptnalDQgj7vpbgC2KCCCxE=",
+    version = "v0.40.0",
+)
+
+go_repository(
+    name = "com_github_felixge_httpsnoop",
+    importpath = "github.com/felixge/httpsnoop",
+    sum = "h1:s/nj+GCswXYzN5v2DpNMuMQYe+0DDwt5WVCU6CWBdXk=",
+    version = "v1.0.3",
+)
+
+go_repository(
+    name = "com_github_go_logr_logr",
+    importpath = "github.com/go-logr/logr",
+    sum = "h1:2DntVwHkVopvECVRSlL5PSo9eG+cAkDCuckLubN+rq0=",
+    version = "v1.2.3",
+)
+
+go_repository(
+    name = "com_github_go_logr_stdr",
+    importpath = "github.com/go-logr/stdr",
+    sum = "h1:hSWxHoqTgW2S2qGc0LTAI563KZ5YKYRhT3MFKZMbjag=",
+    version = "v1.2.2",
 )
 
 go_repository(

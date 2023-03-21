@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 package(default_visibility = ["//cdpi_agent:__subpackages__"])
 
@@ -23,5 +23,20 @@ go_library(
     deps = [
         "@com_github_jonboulle_clockwork//:clockwork",
         "@com_github_rs_zerolog//:zerolog",
+        "@io_opentelemetry_go_otel//attribute",
+        "@io_opentelemetry_go_otel//codes",
+        "@io_opentelemetry_go_otel_sdk//trace",
+        "@io_opentelemetry_go_otel_trace//:trace",
+        "@org_golang_x_sync//errgroup",
+    ],
+)
+
+go_test(
+    name = "task_test",
+    srcs = ["task_test.go"],
+    embed = [":task"],
+    deps = [
+        "@io_opentelemetry_go_otel_sdk//trace",
+        "@io_opentelemetry_go_otel_trace//:trace",
     ],
 )

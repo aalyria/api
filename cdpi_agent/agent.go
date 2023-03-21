@@ -27,6 +27,7 @@ import (
 
 	"github.com/jonboulle/clockwork"
 	"github.com/rs/zerolog"
+	"go.opentelemetry.io/otel/attribute"
 	"google.golang.org/grpc"
 )
 
@@ -66,6 +67,7 @@ func NewAgent(opts ...AgentOption) (*Agent, error) {
 	a := &Agent{
 		nodes:       map[string]*node{},
 		controllers: map[string]*nodeController{},
+		dialOpts:    []grpc.DialOption{grpc.WithBlock()},
 	}
 
 	for _, opt := range opts {
@@ -107,6 +109,10 @@ func WithServerEndpoint(endpoint string) AgentOption {
 
 // WithDialOpts configures the Agent to use the provided DialOptions when
 // connecting to the CDPI endpoint.
+//
+// NOTE: The CDPI agent always uses the `grpc.WithBlock` option to ensure
+// initial connection errors are caught immediately, whereas logical errors are
+// often more tightly scoped to individual RPCs.
 func WithDialOpts(dialOpts ...grpc.DialOption) AgentOption {
 	return agentOptFunc(func(a *Agent) {
 		a.dialOpts = append(a.dialOpts, dialOpts...)
@@ -162,6 +168,10 @@ func WithInitialState(initState *afpb.ControlStateNotification) NodeOption {
 // Run starts the Agent and blocks until a fatal error is encountered or all
 // node controllers terminate.
 func (a *Agent) Run(ctx context.Context) error {
+	// We can't use an errgroup here because we explicitly want all the errors,
+	// not just the first one.
+	//
+	// TODO: switch this to sourcegraph's conc library
 	errCh := make(chan error)
 	if err := a.start(ctx, errCh); err != nil {
 		return err
@@ -200,7 +210,9 @@ func (a *Agent) start(ctx context.Context, errCh chan error) error {
 
 		srv := task.Task(nc.run).
 			WithStartingStoppingLogs("node controller", zerolog.DebugLevel).
-			WithLogField("nodeID", n.id)
+			WithLogField("nodeID", n.id).
+			WithSpanAttributes(attribute.String("aalyria.nodeID", n.id)).
+			WithNewSpan("node_controller")
 
 		go func() { errCh <- srv(ctx) }()
 	}

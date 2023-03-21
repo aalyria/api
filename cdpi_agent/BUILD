@@ -39,6 +39,8 @@ go_library(
         "//cdpi_agent/telemetry",
         "@com_github_jonboulle_clockwork//:clockwork",
         "@com_github_rs_zerolog//:zerolog",
+        "@io_opentelemetry_go_otel//attribute",
+        "@io_opentelemetry_go_otel_trace//:trace",
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",

@@ -61,3 +61,27 @@ func TestReusableTicker(t *testing.T) {
 		// yay
 	}
 }
+
+func TestReusableTicker_CallingStartMultipleTimes(t *testing.T) {
+	fc := clockwork.NewFakeClock()
+	rt := newReusableTicker(fc)
+
+	rt.Start(30 * time.Second)
+	rt.Start(30 * time.Second)
+	rt.Start(30 * time.Second)
+
+	fc.Advance(30 * time.Second)
+	tickedAt := <-rt.Chan()
+	if tickedAt != fc.Now() {
+		t.Errorf("ticker sent wrong time on channel, got %s, want %s", tickedAt, fc.Now())
+	}
+
+	rt.Stop()
+	fc.Advance(3 * time.Hour)
+	select {
+	case tickedAt = <-rt.Chan():
+		t.Errorf("ticker incorrectly ticked with value %s after being stopped", tickedAt)
+	default:
+		// yay
+	}
+}

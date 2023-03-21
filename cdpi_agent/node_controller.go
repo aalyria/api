@@ -23,7 +23,6 @@ import (
 	"aalyria.com/spacetime/cdpi_agent/internal/task"
 
 	"github.com/jonboulle/clockwork"
-	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -68,13 +67,13 @@ func (a *Agent) newNodeController(node *node, done func()) *nodeController {
 	nc.services = []task.Task{}
 	if node.telemetryEnabled {
 		nc.services = append(nc.services, nc.newTelemetryService(a.telemetryClient, node.tb).
-			WithRetries(rc).
-			WithLogField("service", "telemetry"))
+			WithLogField("service", "telemetry").
+			WithRetries(rc))
 	}
 	if node.enactmentsEnabled {
 		nc.services = append(nc.services, nc.newEnactmentService(a.ctrlClient, node.eb).
-			WithRetries(rc).
-			WithLogField("service", "enactment"))
+			WithLogField("service", "enactment").
+			WithRetries(rc))
 	}
 
 	return nc
@@ -85,11 +84,5 @@ func (nc *nodeController) run(ctx context.Context) error {
 	if len(nc.services) == 0 {
 		return ErrNoActiveServices
 	}
-
-	g, ctx := errgroup.WithContext(ctx)
-	for _, srv := range nc.services {
-		srv := srv
-		g.Go(func() error { return srv(ctx) })
-	}
-	return g.Wait()
+	return task.Group(nc.services...)(ctx)
 }
