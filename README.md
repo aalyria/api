@@ -5,7 +5,7 @@ Spacetime has 2 APIs:
 - The **Control to Data-plane Interface (CDPI)**, or Southbound Interface, allows Spacetime to control network devices and receive updates in return. This includes functions such as steering antenna beams to establish new links and configuring RF parameters like the transmit power and channel. 
 
 ## Developer Guides
-You can find developer guides and tutorials on [this website](docs.spacetime.aalyria.com).
+You can find developer guides and tutorials on [this website](https://docs.spacetime.aalyria.com).
 
 This site contains:
 - [NBI Developer Guide](https://docs.spacetime.aalyria.com/nbi-developer-guide) 
