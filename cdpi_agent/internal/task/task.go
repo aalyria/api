@@ -18,12 +18,23 @@ package task
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"math"
 	"math/rand"
 	"time"
 
 	"github.com/jonboulle/clockwork"
 	"github.com/rs/zerolog"
+	"go.opentelemetry.io/otel/attribute"
+	otelcodes "go.opentelemetry.io/otel/codes"
+	otelsdktrace "go.opentelemetry.io/otel/sdk/trace"
+	oteltrace "go.opentelemetry.io/otel/trace"
+	"golang.org/x/sync/errgroup"
+)
+
+var (
+	errNoTasks = errors.New("no tasks provided")
 )
 
 // Task is an abstraction over any context-bound, fallible activity.
@@ -113,8 +124,139 @@ func (t Task) WithStartingStoppingLogs(name string, lvl zerolog.Level) Task {
 	}
 }
 
-func (t Task) With(fn func(Task) Task) Task { return fn(t) }
-
+// WithCtx converts the inner task into a `func() error` that uses the provided
+// context.
 func (t Task) WithCtx(ctx context.Context) func() error {
 	return func() error { return t(ctx) }
+}
+
+// AsThunk returns a no-argument, no-result function that calls the inner task
+// and sets the provided `err` pointer to the returned error. Note that `err`
+// will be overwritten regardless of the inner function result.
+func (t Task) AsThunk(ctx context.Context, err *error) func() {
+	return func() { *err = t(ctx) }
+}
+
+func Noop() Task { return func(_ context.Context) error { return nil } }
+
+// Wrap takes a function that returns a value of type T and converts it into a
+// Task that assigns the result to the provided `out` pointer.
+func Wrap[T any](fn func(context.Context) (T, error), out *T) Task {
+	return func(ctx context.Context) (err error) {
+		*out, err = fn(ctx)
+		return err
+	}
+}
+
+// WithOtelTracerProvider returns a task that injects the provided
+// TracerProvider into the context before invoking the inner task.
+func (t Task) WithOtelTracerProvider(tp *otelsdktrace.TracerProvider) Task {
+	return func(ctx context.Context) error {
+		return t(InjectTracerProvider(ctx, tp))
+	}
+}
+
+// WithOtelTracer returns a task that injects a tracer, created using the `pkg`
+// argument, into the context before invoking the inner task.
+func (t Task) WithOtelTracer(pkg string) Task {
+	return func(ctx context.Context) error {
+		log := zerolog.Ctx(ctx)
+		log.Trace().Msg("adding otel tracer to context")
+
+		tp, ok := ExtractTracerProvider(ctx)
+		if !ok {
+			return fmt.Errorf("tracing requested, but no tracer provider present in context")
+		}
+		return t(InjectTracer(ctx, tp.Tracer(pkg)))
+	}
+}
+
+// WithNewSpan starts a new trace span named `name`.
+func (t Task) WithNewSpan(name string, opts ...oteltrace.SpanStartOption) Task {
+	return func(ctx context.Context) (err error) {
+		if tracer, ok := ExtractTracer(ctx); ok {
+			var span oteltrace.Span
+			ctx, span = tracer.Start(ctx, name, opts...)
+			defer func() {
+				if err != nil {
+					span.SetStatus(otelcodes.Error, err.Error())
+					span.RecordError(err)
+				}
+				span.End()
+			}()
+		}
+
+		return t(ctx)
+	}
+}
+
+// WithSpanAttributes returns a task that sets the trace span attributes to
+// `attrs` before invoking the inner task.
+func (t Task) WithSpanAttributes(attrs ...attribute.KeyValue) Task {
+	return func(ctx context.Context) error {
+		span := oteltrace.SpanFromContext(ctx)
+		span.SetAttributes(attrs...)
+
+		return t(ctx)
+	}
+}
+
+// Group takes a sequence of Tasks and returns a task that starts them all in
+// separate goroutines and waits for them all to finish. The semantics mirror
+// those of the errgroup package, so only the first non-nil error will be
+// returned.
+func Group(fns ...Task) Task {
+	if len(fns) == 0 {
+		return func(ctx context.Context) error { return errNoTasks }
+	}
+
+	return func(ctx context.Context) error {
+		g, ctx := errgroup.WithContext(ctx)
+		for _, f := range fns {
+			g.Go(f.WithCtx(ctx))
+		}
+		return g.Wait()
+	}
+}
+
+// LoopUntilError returns a Task that runs the inner task in a loop until it
+// returns a non-nil error.
+func (t Task) LoopUntilError() Task {
+	return func(ctx context.Context) error {
+		for {
+			if err := t(ctx); err != nil {
+				return err
+			}
+		}
+	}
+}
+
+type tracerKey struct{}
+type tracerProviderKey struct{}
+
+// ExtractTracer extracts the otel tracer from the provided context. Use
+// `InjectTracer` to prepare a context for use with this function.
+func ExtractTracer(ctx context.Context) (oteltrace.Tracer, bool) {
+	t, ok := ctx.Value(tracerKey{}).(oteltrace.Tracer)
+	return t, ok
+}
+
+// InjectTracer returns a new context with the provided Tracer injected. Use
+// `ExtractTracer` to retrieve it.
+func InjectTracer(ctx context.Context, t oteltrace.Tracer) context.Context {
+	return context.WithValue(ctx, tracerKey{}, t)
+}
+
+// ExtractTracerProvider extracts the otel tracer provider from the provided
+// context. Use `InjectTracerProvider` to prepare a context for use with this
+// function.
+func ExtractTracerProvider(ctx context.Context) (*otelsdktrace.TracerProvider, bool) {
+	tp, ok := ctx.Value(tracerProviderKey{}).(*otelsdktrace.TracerProvider)
+	return tp, ok
+}
+
+// InjectTracerProvider returns a new context with the provided TracerProvider
+// injected. Use `ExtractTracerProvider` to retrieve it.
+func InjectTracerProvider(ctx context.Context, tp *otelsdktrace.TracerProvider) context.Context {
+	return context.WithValue(ctx, tracerProviderKey{}, tp)
 }

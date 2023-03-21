@@ -56,14 +56,14 @@ type scheduledUpdate struct {
 }
 
 func (nc *nodeController) newEnactmentService(cc afpb.NetworkControllerStreamingClient, eb enactment.Backend) task.Task {
-	return (&enactmentService{
+	return task.Task((&enactmentService{
 		nc:               nc,
 		mu:               sync.Mutex{},
 		scheduledUpdates: map[string]scheduledUpdate{},
 		ctrlClient:       cc,
 		initState:        nc.initState,
 		eb:               eb,
-	}).run
+	}).run).WithNewSpan("enactment_service")
 }
 
 func (es *enactmentService) run(ctx context.Context) error {
@@ -84,21 +84,25 @@ func (es *enactmentService) run(ctx context.Context) error {
 	g.Go(channels.NewSource(sendCh).ForwardTo(cpi.Send).
 		WithStartingStoppingLogs("sendLoop", zerolog.TraceLevel).
 		WithLogField("task", "send").
+		WithNewSpan("sendLoop").
 		WithCtx(ctx))
 
 	g.Go(channels.NewSink(recvCh).FillFrom(cpi.Recv).
 		WithStartingStoppingLogs("recvLoop", zerolog.TraceLevel).
 		WithLogField("task", "recv").
+		WithNewSpan("recvLoop").
 		WithCtx(ctx))
 
 	g.Go(es.enactmentLoop(sendCh, updateCh).
 		WithStartingStoppingLogs("enactmentLoop", zerolog.TraceLevel).
 		WithLogField("task", "enactment").
+		WithNewSpan("enactmentLoop").
 		WithCtx(ctx))
 
 	g.Go(es.mainLoop(recvCh, sendCh, updateCh).
 		WithStartingStoppingLogs("mainLoop", zerolog.TraceLevel).
 		WithLogField("task", "main").
+		WithNewSpan("mainLoop").
 		WithCtx(ctx))
 
 	sendCh <- es.initState
@@ -170,9 +174,10 @@ func (es *enactmentService) applyUpdate(ctx context.Context, upd *apipb.Schedule
 	}
 	es.mu.Unlock()
 
-	// handle update
-	newState, err := es.eb(ctx, upd)
-	if err != nil {
+	var newState *apipb.ControlPlaneState
+	if err := task.Wrap(func(ctx context.Context) (*apipb.ControlPlaneState, error) {
+		return es.eb(ctx, upd)
+	}, &newState).WithNewSpan("enactment.Backend")(ctx); err != nil {
 		log.Error().Err(err).Msg("error handling update")
 
 		return &afpb.ControlStateNotification{

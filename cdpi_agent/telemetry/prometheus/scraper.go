@@ -21,8 +21,7 @@ import (
 	"net/http"
 	"time"
 
-	cpb "aalyria.com/spacetime/api/common"
-	mktime "aalyria.com/spacetime/common/time"
+	apipb "aalyria.com/spacetime/api/common"
 
 	"github.com/jonboulle/clockwork"
 	promcli "github.com/prometheus/client_model/go"
@@ -44,7 +43,7 @@ type ScraperConfig struct {
 	ScrapeInterval time.Duration
 	// Callback gets called once a NetworkStatsReport is generated. A non-nil
 	// error will stop the scraper.
-	Callback func(*cpb.NetworkStatsReport) error
+	Callback func(*apipb.NetworkStatsReport) error
 }
 
 // Scraper is a
@@ -89,9 +88,11 @@ func (s *Scraper) scrape(ctx context.Context) error {
 		return err
 	}
 
-	return s.conf.Callback(&cpb.NetworkStatsReport{
-		NodeId:             &s.conf.NodeID,
-		Timestamp:          mktime.ToProto(s.conf.Clock.Now()),
+	return s.conf.Callback(&apipb.NetworkStatsReport{
+		NodeId: &s.conf.NodeID,
+		Timestamp: &apipb.DateTime{
+			UnixTimeUsec: proto.Int64(s.conf.Clock.Now().UnixMicro()),
+		},
 		InterfaceStatsById: ifaceStats,
 	})
 }
@@ -129,30 +130,30 @@ func parseReader(r io.Reader) ([]*prom2json.Family, error) {
 	return stats, err
 }
 
-func (s *Scraper) extractInterfaceStats(stats []*prom2json.Family) (map[string]*cpb.InterfaceStats, error) {
-	result := map[string]*cpb.InterfaceStats{}
+func (s *Scraper) extractInterfaceStats(stats []*prom2json.Family) (map[string]*apipb.InterfaceStats, error) {
+	result := map[string]*apipb.InterfaceStats{}
 
 	for _, mf := range stats {
-		addMetricToReport := func(is *cpb.InterfaceStats, value *int64) {}
+		addMetricToReport := func(is *apipb.InterfaceStats, value *int64) {}
 
 		// TODO: parameterize these key/values via the ScraperConfig
 		switch mf.Name {
 		case "node_network_transmit_bytes_total":
-			addMetricToReport = func(is *cpb.InterfaceStats, value *int64) { is.TxBytes = value }
+			addMetricToReport = func(is *apipb.InterfaceStats, value *int64) { is.TxBytes = value }
 		case "node_network_receive_bytes_total":
-			addMetricToReport = func(is *cpb.InterfaceStats, value *int64) { is.RxBytes = value }
+			addMetricToReport = func(is *apipb.InterfaceStats, value *int64) { is.RxBytes = value }
 		case "node_network_transmit_packets_total":
-			addMetricToReport = func(is *cpb.InterfaceStats, value *int64) { is.TxPackets = value }
+			addMetricToReport = func(is *apipb.InterfaceStats, value *int64) { is.TxPackets = value }
 		case "node_network_receive_packets_total":
-			addMetricToReport = func(is *cpb.InterfaceStats, value *int64) { is.RxPackets = value }
+			addMetricToReport = func(is *apipb.InterfaceStats, value *int64) { is.RxPackets = value }
 		case "node_network_transmit_drop_total":
-			addMetricToReport = func(is *cpb.InterfaceStats, value *int64) { is.TxDropped = value }
+			addMetricToReport = func(is *apipb.InterfaceStats, value *int64) { is.TxDropped = value }
 		case "node_network_receive_drop_total":
-			addMetricToReport = func(is *cpb.InterfaceStats, value *int64) { is.RxDropped = value }
+			addMetricToReport = func(is *apipb.InterfaceStats, value *int64) { is.RxDropped = value }
 		case "node_network_transmit_errs_total":
-			addMetricToReport = func(is *cpb.InterfaceStats, value *int64) { is.TxErrors = value }
+			addMetricToReport = func(is *apipb.InterfaceStats, value *int64) { is.TxErrors = value }
 		case "node_network_receive_errs_total":
-			addMetricToReport = func(is *cpb.InterfaceStats, value *int64) { is.RxErrors = value }
+			addMetricToReport = func(is *apipb.InterfaceStats, value *int64) { is.RxErrors = value }
 		default:
 			continue
 		}
@@ -168,7 +169,7 @@ func (s *Scraper) extractInterfaceStats(stats []*prom2json.Family) (map[string]*
 			}
 			rep, ok := result[dev]
 			if !ok {
-				rep = &cpb.InterfaceStats{}
+				rep = &apipb.InterfaceStats{}
 				result[dev] = rep
 			}
 

@@ -22,8 +22,7 @@ import (
 	"testing"
 	"time"
 
-	cpb "aalyria.com/spacetime/api/common"
-	mktime "aalyria.com/spacetime/common/time"
+	apipb "aalyria.com/spacetime/api/common"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/jonboulle/clockwork"
@@ -35,7 +34,7 @@ type testCase struct {
 	description string
 
 	metrics  []byte
-	expected func(clockwork.Clock) *cpb.NetworkStatsReport
+	expected func(clockwork.Clock) *apipb.NetworkStatsReport
 }
 
 var (
@@ -46,11 +45,13 @@ var (
 		{
 			description: "sample node_exporter output",
 			metrics:     nodeExporterMetrics,
-			expected: func(clock clockwork.Clock) *cpb.NetworkStatsReport {
-				return &cpb.NetworkStatsReport{
-					NodeId:    proto.String("it's me, a cool node"),
-					Timestamp: mktime.ToProto(clock.Now()),
-					InterfaceStatsById: map[string]*cpb.InterfaceStats{
+			expected: func(clock clockwork.Clock) *apipb.NetworkStatsReport {
+				return &apipb.NetworkStatsReport{
+					NodeId: proto.String("it's me, a cool node"),
+					Timestamp: &apipb.DateTime{
+						UnixTimeUsec: proto.Int64(clock.Now().UnixMicro()),
+					},
+					InterfaceStatsById: map[string]*apipb.InterfaceStats{
 						"docker0": {
 							TxPackets: proto.Int64(181958),
 							RxPackets: proto.Int64(70236),
@@ -148,13 +149,13 @@ func runTest(t *testing.T, tc testCase) {
 	srvErrCh := make(chan error)
 	go func() { srvErrCh <- srv.Serve(nl) }()
 
-	reportCh := make(chan *cpb.NetworkStatsReport)
+	reportCh := make(chan *apipb.NetworkStatsReport)
 	conf := ScraperConfig{
 		Clock:          clock,
 		ExporterURL:    "http://" + nl.Addr().String(),
 		NodeID:         *expected.NodeId,
 		ScrapeInterval: 30 * time.Second,
-		Callback: func(report *cpb.NetworkStatsReport) error {
+		Callback: func(report *apipb.NetworkStatsReport) error {
 			reportCh <- report
 			return nil
 		},

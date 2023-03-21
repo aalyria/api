@@ -21,7 +21,6 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//api/common:common_go_proto",
-        "//common:time",
         "@com_github_jonboulle_clockwork//:clockwork",
         "@com_github_prometheus_client_model//go",
         "@com_github_prometheus_prom2json//:prom2json",

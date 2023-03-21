@@ -23,7 +23,7 @@ import (
 	"os"
 	"time"
 
-	cpb "aalyria.com/spacetime/api/common"
+	apipb "aalyria.com/spacetime/api/common"
 	"aalyria.com/spacetime/cdpi_agent/telemetry/prometheus"
 
 	"google.golang.org/protobuf/encoding/protojson"
@@ -95,7 +95,7 @@ func run(ctx context.Context) error {
 		ExporterURL:    *exporterURL,
 		NodeID:         *nodeID,
 		ScrapeInterval: *scrapeInterval,
-		Callback: func(r *cpb.NetworkStatsReport) error {
+		Callback: func(r *apipb.NetworkStatsReport) error {
 			return writeTo(os.Stdout, r)
 		},
 	}).Start(ctx)

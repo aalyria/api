@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"os"
 	"testing"
 	"time"
 
@@ -38,8 +37,8 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 )
 
-func TestSimpleOneOffBackend(t *testing.T) {
-	ctx, cancel := context.WithTimeout(baseContext(), time.Second)
+func TestStreamStartsWithInitialReport(t *testing.T) {
+	ctx, cancel := context.WithTimeout(baseContext(t), time.Second)
 	defer cancel()
 
 	ts := NewTelemetryServer()
@@ -75,8 +74,113 @@ func TestSimpleOneOffBackend(t *testing.T) {
 	checkErrIsDueToCanceledContext(t, <-errCh)
 }
 
+func TestCanRequestOneOffReport(t *testing.T) {
+	ctx, cancel := context.WithTimeout(baseContext(t), time.Second)
+	defer cancel()
+
+	ts := NewTelemetryServer()
+	servedReport := &apipb.NetworkStatsReport{
+		NodeId: proto.String("foobar"),
+		InterfaceStatsById: map[string]*apipb.InterfaceStats{
+			"lo0": {
+				TxBytes: proto.Int64(1),
+				RxBytes: proto.Int64(12),
+			},
+		},
+	}
+	tb := func(ctx context.Context) (*apipb.NetworkStatsReport, error) {
+		return servedReport, nil
+	}
+
+	a := newAgent(t,
+		WithClock(clockwork.NewFakeClock()),
+		WithServerEndpoint(ts.Start(ctx, t)),
+		WithDialOpts(grpc.WithTransportCredentials(insecure.NewCredentials())),
+		WithNode("mynode", WithTelemetryBackend(tb)))
+	errCh := make(chan error)
+	go func() { errCh <- a.Run(ctx) }()
+
+	select {
+	case <-ts.inChan:
+	case <-ctx.Done():
+		t.Errorf("timed out waiting for initial report")
+	}
+
+	ts.outChan <- &afpb.TelemetryRequest{
+		NodeId: proto.String("mynode"),
+		Type:   &afpb.TelemetryRequest_QueryStatistics{},
+	}
+	var second *afpb.TelemetryUpdate
+	select {
+	case second = <-ts.inChan:
+	case <-ctx.Done():
+		t.Errorf("timed out waiting for second report")
+	}
+
+	assertProtosEqual(t, &afpb.TelemetryUpdate{
+		Type: &afpb.TelemetryUpdate_Statistics{
+			Statistics: servedReport,
+		},
+	}, second)
+
+	cancel()
+	checkErrIsDueToCanceledContext(t, <-errCh)
+}
+
+func TestIgnoresUnknownRequestType(t *testing.T) {
+	ctx, cancel := context.WithTimeout(baseContext(t), time.Second)
+	defer cancel()
+
+	ts := NewTelemetryServer()
+	servedReport := &apipb.NetworkStatsReport{
+		NodeId: proto.String("foobar"),
+		InterfaceStatsById: map[string]*apipb.InterfaceStats{
+			"lo0": {
+				TxBytes: proto.Int64(1),
+				RxBytes: proto.Int64(12),
+			},
+		},
+	}
+	tb := func(ctx context.Context) (*apipb.NetworkStatsReport, error) {
+		return servedReport, nil
+	}
+
+	a := newAgent(t,
+		WithClock(clockwork.NewFakeClock()),
+		WithServerEndpoint(ts.Start(ctx, t)),
+		WithDialOpts(grpc.WithTransportCredentials(insecure.NewCredentials())),
+		WithNode("mynode", WithTelemetryBackend(tb)))
+	errCh := make(chan error)
+	go func() { errCh <- a.Run(ctx) }()
+
+	select {
+	case <-ts.inChan:
+	case <-ctx.Done():
+		t.Errorf("timed out waiting for initial report")
+	}
+
+	ts.outChan <- &afpb.TelemetryRequest{
+		NodeId: proto.String("mynode"),
+		// unknown type
+		Type: nil,
+	}
+
+	timer := time.NewTimer(100 * time.Millisecond)
+	select {
+	case <-ts.inChan:
+		t.Errorf("got unexpected second report")
+		if !timer.Stop() {
+			<-timer.C
+		}
+	case <-timer.C:
+	}
+
+	cancel()
+	checkErrIsDueToCanceledContext(t, <-errCh)
+}
+
 func TestPeriodicUpdates(t *testing.T) {
-	ctx, cancel := context.WithTimeout(baseContext(), time.Second)
+	ctx, cancel := context.WithTimeout(baseContext(t), time.Second)
 	defer cancel()
 
 	ts := NewTelemetryServer()
@@ -167,7 +271,7 @@ func TestPeriodicUpdates(t *testing.T) {
 }
 
 func TestInitialReportFailsToGenerate(t *testing.T) {
-	ctx, cancel := context.WithTimeout(baseContext(), time.Second)
+	ctx, cancel := context.WithTimeout(baseContext(t), time.Second)
 	defer cancel()
 
 	ts := NewTelemetryServer()
@@ -193,6 +297,195 @@ func TestInitialReportFailsToGenerate(t *testing.T) {
 	case <-ctx.Done():
 		t.Errorf("timed out waiting for error")
 	}
+}
+
+func TestPeriodicUpdatesAreStoppedWhenHzIsZero(t *testing.T) {
+	ctx, cancel := context.WithTimeout(baseContext(t), time.Second)
+	defer cancel()
+
+	ts := NewTelemetryServer()
+	initialReport := &apipb.NetworkStatsReport{
+		NodeId: proto.String("mynode"),
+		InterfaceStatsById: map[string]*apipb.InterfaceStats{
+			"lo0": {
+				TxBytes: proto.Int64(1),
+				RxBytes: proto.Int64(12),
+			},
+		},
+	}
+	periodicReport := &apipb.NetworkStatsReport{
+		NodeId: proto.String("mynode"),
+		InterfaceStatsById: map[string]*apipb.InterfaceStats{
+			"lo0": {
+				TxBytes: proto.Int64(3),
+				RxBytes: proto.Int64(15),
+			},
+		},
+	}
+
+	reportCh := make(chan *apipb.NetworkStatsReport, 3)
+	reportCh <- initialReport
+	reportCh <- periodicReport
+	reportCh <- periodicReport
+
+	tb := func(ctx context.Context) (*apipb.NetworkStatsReport, error) { return <-reportCh, nil }
+
+	clock := clockwork.NewFakeClock()
+	a := newAgent(t,
+		WithClock(clock),
+		WithServerEndpoint(ts.Start(ctx, t)),
+		WithDialOpts(grpc.WithTransportCredentials(insecure.NewCredentials())),
+		WithNode("mynode", WithTelemetryBackend(tb)))
+
+	errCh := make(chan error)
+	go func() { errCh <- a.Run(ctx) }()
+
+	gotFirst := <-ts.inChan
+
+	// request one update per second
+	ts.outChan <- &afpb.TelemetryRequest{
+		NodeId: proto.String("mynode"),
+		Type: &afpb.TelemetryRequest_StatisticsPublishRateHz{
+			StatisticsPublishRateHz: *proto.Float64(1),
+		},
+	}
+
+	clock.BlockUntil(1)
+
+	// check there's no second update yet (clock hasn't advanced)
+	select {
+	case r := <-ts.inChan:
+		t.Errorf("got unexpected report even though clock is frozen: %#v", r)
+		return
+	default:
+	}
+
+	clock.Advance(1 * time.Second)
+
+	var gotSecond *afpb.TelemetryUpdate
+	select {
+	case gotSecond = <-ts.inChan:
+	case <-ctx.Done():
+		t.Errorf("timed out waiting for second periodic report")
+	}
+
+	// disable periodic uploads
+	ts.outChan <- &afpb.TelemetryRequest{
+		NodeId: proto.String("mynode"),
+		Type: &afpb.TelemetryRequest_StatisticsPublishRateHz{
+			StatisticsPublishRateHz: *proto.Float64(0),
+		},
+	}
+
+	clock.Advance(5 * time.Second)
+
+	select {
+	case <-ts.inChan:
+		t.Errorf("got unexpected third periodic report")
+	default:
+	}
+
+	assertProtosEqual(t, &afpb.TelemetryUpdate{
+		Type: &afpb.TelemetryUpdate_Statistics{Statistics: initialReport},
+	}, gotFirst)
+	assertProtosEqual(t, &afpb.TelemetryUpdate{
+		Type: &afpb.TelemetryUpdate_Statistics{Statistics: periodicReport},
+	}, gotSecond)
+
+	cancel()
+	checkErrIsDueToCanceledContext(t, <-errCh)
+}
+
+func TestRequestsForWrongNodeIDAreIgnored(t *testing.T) {
+	ctx, cancel := context.WithTimeout(baseContext(t), time.Second)
+	defer cancel()
+
+	ts := NewTelemetryServer()
+	initialReport := &apipb.NetworkStatsReport{
+		NodeId: proto.String("mynode"),
+		InterfaceStatsById: map[string]*apipb.InterfaceStats{
+			"lo0": {
+				TxBytes: proto.Int64(1),
+				RxBytes: proto.Int64(12),
+			},
+		},
+	}
+	periodicReport := &apipb.NetworkStatsReport{
+		NodeId: proto.String("mynode"),
+		InterfaceStatsById: map[string]*apipb.InterfaceStats{
+			"lo0": {
+				TxBytes: proto.Int64(3),
+				RxBytes: proto.Int64(15),
+			},
+		},
+	}
+
+	reportCh := make(chan *apipb.NetworkStatsReport, 2)
+	reportCh <- initialReport
+	reportCh <- periodicReport
+
+	tb := func(ctx context.Context) (*apipb.NetworkStatsReport, error) { return <-reportCh, nil }
+
+	clock := clockwork.NewFakeClock()
+	a := newAgent(t,
+		WithClock(clock),
+		WithServerEndpoint(ts.Start(ctx, t)),
+		WithDialOpts(grpc.WithTransportCredentials(insecure.NewCredentials())),
+		WithNode("mynode", WithTelemetryBackend(tb)))
+
+	errCh := make(chan error)
+	go func() { errCh <- a.Run(ctx) }()
+
+	select {
+	case <-ts.inChan:
+	case <-ctx.Done():
+	}
+
+	// request one update per second for the wrong node
+	ts.outChan <- &afpb.TelemetryRequest{
+		NodeId: proto.String("some-other-node"),
+		Type: &afpb.TelemetryRequest_StatisticsPublishRateHz{
+			StatisticsPublishRateHz: *proto.Float64(1),
+		},
+	}
+	// request one update per 5s for the right node
+	ts.outChan <- &afpb.TelemetryRequest{
+		NodeId: proto.String("mynode"),
+		Type: &afpb.TelemetryRequest_StatisticsPublishRateHz{
+			StatisticsPublishRateHz: *proto.Float64(0.2),
+		},
+	}
+
+	clock.BlockUntil(1)
+	clock.Advance(1 * time.Second)
+
+	// check there's no periodic update yet (1hz)
+	select {
+	case r := <-ts.inChan:
+		t.Errorf("got unexpected report %#v even though request used incorrect node ID", r)
+		return
+	default:
+	}
+
+	clock.Advance(5 * time.Second)
+	// check there's a periodic update for the right node (5hz)
+	select {
+	case <-ctx.Done():
+		t.Errorf("timed out waiting for periodic report")
+		return
+	case <-ts.inChan:
+	}
+
+	// check there's no more periodic updates (wrong node ID)
+	select {
+	case r := <-ts.inChan:
+		t.Errorf("got unexpected report %#v even though request used incorrect node ID", r)
+		return
+	default:
+	}
+
+	cancel()
+	checkErrIsDueToCanceledContext(t, <-errCh)
 }
 
 type telemetryServer struct {
@@ -247,10 +540,8 @@ func (ts *telemetryServer) TelemetryInterface(stream afpb.NetworkTelemetryStream
 	return g.Wait()
 }
 
-func baseContext() context.Context {
-	log := zerolog.New(zerolog.ConsoleWriter{
-		Out: os.Stdout,
-	}).With().Timestamp().Logger()
+func baseContext(t *testing.T) context.Context {
+	log := zerolog.New(zerolog.NewTestWriter(t)).With().Timestamp().Stack().Caller().Logger()
 	return log.WithContext(context.Background())
 }
 

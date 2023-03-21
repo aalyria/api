@@ -67,13 +67,15 @@ func newReusableTicker(clock clockwork.Clock) *reusableTicker {
 
 func (r *reusableTicker) Stop() {
 	wasActive := false
+	var oldTicker clockwork.Ticker
 
 	r.mu.Lock()
 	wasActive, r.isActive = r.isActive, false
+	oldTicker, r.activeTicker = r.activeTicker, nil
 	r.mu.Unlock()
 
 	if wasActive {
-		r.activeTicker.Stop()
+		oldTicker.Stop()
 	}
 }
 
