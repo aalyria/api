@@ -24,6 +24,26 @@ http_archive(
     ],
 )
 
+http_archive(
+    name = "rules_pkg",
+    sha256 = "eea0f59c28a9241156a47d7a8e32db9122f3d50b505fae0f33de6ce4d9b61834",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_pkg/releases/download/0.8.0/rules_pkg-0.8.0.tar.gz",
+        "https://github.com/bazelbuild/rules_pkg/releases/download/0.8.0/rules_pkg-0.8.0.tar.gz",
+    ],
+)
+
+load("@rules_pkg//:deps.bzl", "rules_pkg_dependencies")
+
+rules_pkg_dependencies()
+
+http_archive(
+    name = "com_google_protobuf",
+    sha256 = "930c2c3b5ecc6c9c12615cf5ad93f1cd6e12d0aba862b572e076259970ac3a53",
+    strip_prefix = "protobuf-3.21.12",
+    urls = ["https://github.com/protocolbuffers/protobuf/archive/v3.21.12.tar.gz"],
+)
+
 # Download rules_proto_grpc respository.
 http_archive(
     name = "rules_proto_grpc",
@@ -34,8 +54,6 @@ http_archive(
 
 load("@rules_proto_grpc//:repositories.bzl", "rules_proto_grpc_toolchains")
 
-
-# Download the bazelbuild rules_go repository.
 http_archive(
     name = "io_bazel_rules_go",
     sha256 = "dd926a88a564a9246713a9c00b35315f54cbd46b31a26d5d8fb264c07045f05d",
@@ -162,17 +180,38 @@ go_repository(
 )
 
 go_repository(
-    name = "io_opentelemetry_go_otel",
-    importpath = "go.opentelemetry.io/otel",
-    sum = "h1:/79Huy8wbf5DnIPhemGB+zEPVwnN6fuQybr/SRXa6hM=",
+    name = "com_github_peterbourgon_ff",
+    importpath = "github.com/peterbourgon/ff/v3",
+    sum = "h1:0GNhbRhO9yHA4CC27ymskOsuRpmX0YQxwxM9UPiP6JM=",
+    version = "v3.1.2",
+)
+
+go_repository(
+    name = "com_github_mattn_go_colorable",
+    importpath = "github.com/mattn/go-colorable",
+    sum = "h1:jF+Du6AlPIjs2BiUiQlKOX0rt3SujHxPnksPKZbaA40=",
+    version = "v0.1.12",
+)
+
+go_repository(
+    name = "com_github_mattn_go_isatty",
+    importpath = "github.com/mattn/go-isatty",
+    sum = "h1:yVuAays6BHfxijgZPzw+3Zlu5yQgKGP2/hcQbHb7S9Y=",
+    version = "v0.0.14",
+)
+
+go_repository(
+    name = "io_opentelemetry_go_otel_exporters_zipkin",
+    importpath = "go.opentelemetry.io/otel/exporters/zipkin",
+    sum = "h1:reEVE1upBF9tcujgvSqLJS0SrI7JQPaTKP4s4rymnSs=",
     version = "v1.14.0",
 )
 
 go_repository(
-    name = "io_opentelemetry_go_otel_trace",
-    importpath = "go.opentelemetry.io/otel/trace",
-    sum = "h1:ofxdnzsNrGBYXbP7t7zpUK281+go5rF7dvdIZXF8gdQ=",
-    version = "v1.11.1",
+    name = "io_opentelemetry_go_otel",
+    importpath = "go.opentelemetry.io/otel",
+    sum = "h1:/79Huy8wbf5DnIPhemGB+zEPVwnN6fuQybr/SRXa6hM=",
+    version = "v1.14.0",
 )
 
 go_repository(
@@ -195,6 +234,28 @@ go_repository(
     sum = "h1:pHDQuLQOZwYD+Km0eb657A25NaRzy0a+eLyKfDXedEs=",
     version = "v0.37.0",
 )
+
+go_repository(
+    name = "io_opentelemetry_go_otel_trace",
+    importpath = "go.opentelemetry.io/otel/trace",
+    sum = "h1:ofxdnzsNrGBYXbP7t7zpUK281+go5rF7dvdIZXF8gdQ=",
+    version = "v1.11.1",
+)
+
+go_repository(
+    name = "com_github_go_logr_logr",
+    importpath = "github.com/go-logr/logr",
+    sum = "h1:2DntVwHkVopvECVRSlL5PSo9eG+cAkDCuckLubN+rq0=",
+    version = "v1.2.3",
+)
+
+go_repository(
+    name = "com_github_go_logr_stdr",
+    importpath = "github.com/go-logr/stdr",
+    sum = "h1:hSWxHoqTgW2S2qGc0LTAI563KZ5YKYRhT3MFKZMbjag=",
+    version = "v1.2.2",
+)
+
 
 go_repository(
     name = "com_github_prometheus_client_model",
@@ -246,13 +307,6 @@ go_repository(
 )
 
 go_repository(
-    name = "io_opentelemetry_go_otel_exporters_zipkin",
-    importpath = "go.opentelemetry.io/otel/exporters/zipkin",
-    sum = "h1:reEVE1upBF9tcujgvSqLJS0SrI7JQPaTKP4s4rymnSs=",
-    version = "v1.14.0",
-)
-
-go_repository(
     name = "com_github_openzipkin_zipkin_go",
     importpath = "github.com/openzipkin/zipkin-go",
     sum = "h1:kNd/ST2yLLWhaWrkgchya40TJabe8Hioj9udfPcEO5A=",
@@ -280,41 +334,6 @@ go_repository(
     version = "v1.0.3",
 )
 
-go_repository(
-    name = "com_github_go_logr_logr",
-    importpath = "github.com/go-logr/logr",
-    sum = "h1:2DntVwHkVopvECVRSlL5PSo9eG+cAkDCuckLubN+rq0=",
-    version = "v1.2.3",
-)
-
-go_repository(
-    name = "com_github_go_logr_stdr",
-    importpath = "github.com/go-logr/stdr",
-    sum = "h1:hSWxHoqTgW2S2qGc0LTAI563KZ5YKYRhT3MFKZMbjag=",
-    version = "v1.2.2",
-)
-
-go_repository(
-    name = "com_github_peterbourgon_ff",
-    importpath = "github.com/peterbourgon/ff/v3",
-    sum = "h1:0GNhbRhO9yHA4CC27ymskOsuRpmX0YQxwxM9UPiP6JM=",
-    version = "v3.1.2",
-)
-
-go_repository(
-    name = "com_github_mattn_go_colorable",
-    importpath = "github.com/mattn/go-colorable",
-    sum = "h1:jF+Du6AlPIjs2BiUiQlKOX0rt3SujHxPnksPKZbaA40=",
-    version = "v0.1.12",
-)
-
-go_repository(
-    name = "com_github_mattn_go_isatty",
-    importpath = "github.com/mattn/go-isatty",
-    sum = "h1:yVuAays6BHfxijgZPzw+3Zlu5yQgKGP2/hcQbHb7S9Y=",
-    version = "v0.0.14",
-)
-
 # Register external dependencies needed by the Go rules.
 go_rules_dependencies()
 
@@ -327,6 +346,18 @@ gazelle_dependencies()
 
 # Register the rules_proto_grpc toolchains
 rules_proto_grpc_toolchains()
+
+# need to pull in a newer version of the envoy srcs to match the newer versions
+# of grpc we pull in below
+http_archive(
+    name = "envoy_api",
+    sha256 = "0fe4c68dea4423f5880c068abbcbc90ac4b98496cf2af15a1fe3fbc0fdb050fd",
+    strip_prefix = "data-plane-api-bf6154e482bbd5e6f64032993206e66b6116f2bd",
+    urls = [
+        "https://storage.googleapis.com/grpc-bazel-mirror/github.com/envoyproxy/data-plane-api/archive/bf6154e482bbd5e6f64032993206e66b6116f2bd.tar.gz",
+        "https://github.com/envoyproxy/data-plane-api/archive/bf6154e482bbd5e6f64032993206e66b6116f2bd.tar.gz",
+    ],
+)
 
 ##
 # Specify a newer gRPC version that what @rules_proto_grpc pulls in.
@@ -347,6 +378,20 @@ http_archive(
     sha256 = "cdeb805385fba23242bf87073e68d590c446751e09089f26e5e0b3f655b0f089",
     strip_prefix = "grpc-1.49.2",
     urls = ["https://github.com/grpc/grpc/archive/refs/tags/v1.49.2.tar.gz"],
+)
+
+http_archive(
+    name = "io_grpc_grpc_java",
+    sha256 = "52265f645422837174feed4d8f8e9e29ec5631f7f2f9aa053652584e462c78c9",
+    strip_prefix = "grpc-java-f0614e5a76538607436d600a77f79d15da75d3fe",
+    urls = ["https://github.com/grpc/grpc-java/archive/f0614e5a76538607436d600a77f79d15da75d3fe.tar.gz"],
+)
+
+http_archive(
+    name = "rules_jvm_external",
+    sha256 = "b17d7388feb9bfa7f2fa09031b32707df529f26c91ab9e5d909eb1676badd9a6",
+    strip_prefix = "rules_jvm_external-4.5",
+    url = "https://github.com/bazelbuild/rules_jvm_external/archive/refs/tags/4.5.zip",
 )
 
 load("@rules_proto_grpc//go:repositories.bzl", rules_proto_grpc_go_repos = "go_repos")
