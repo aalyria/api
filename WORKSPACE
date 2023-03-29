@@ -414,7 +414,9 @@ load("@io_grpc_grpc_java//:repositories.bzl", "IO_GRPC_GRPC_JAVA_ARTIFACTS", "IO
 
 # Resolve and fetch grpc-java dependencies from a Maven respository.
 maven_install(
-    artifacts = IO_GRPC_GRPC_JAVA_ARTIFACTS,
+    artifacts = 
+        IO_GRPC_GRPC_JAVA_ARTIFACTS + 
+        ["com.google.code.gson:gson:2.10.1"],
     generate_compat_repositories = True,
     override_targets = IO_GRPC_GRPC_JAVA_OVERRIDE_TARGETS,
     repositories = [

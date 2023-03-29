@@ -175,38 +175,9 @@ message LinkReport {
       // The electromagnetic propagation delay.
       optional aalyria.spacetime.api.common.Duration propagation_delay = 3;
 
-      // The link direction from transmitter towards the receiver.
-      // This field is only applicable to wireless links.
-      optional aalyria.spacetime.api.common.PointingVector pointing_vector = 5;
-
       // The link distance, in meters.
       // This field is only applicable to wireless links.
       optional double range_m = 6;
-
-      // Maps the channel's center frequency, in Hz, to link metrics.
-      // This map is only applicable to wireless links.
-      map<uint64, ChannelReport> channel_to_metrics = 7;
-      message ChannelReport {
-        message PowerLevel {
-          // A transmit power level, in watts.
-          optional double transmit_power_watts = 1;
-
-          // The modeled wireless link budget at this power level.
-          // This field is only populated if requested by an SDN app.
-          optional WirelessLinkBudget link_budget = 2;
-
-          // The predicted data rate capacity, in layer 2 bits per second.
-          optional double data_rate_bps = 3;
-
-          // The link margin in dB. This is a comparison of received signal
-          // level with the minimum usable received signal level. This may be
-          // negative if the link is inaccessible.
-          optional double link_margin_db = 4;
-        }
-        repeated PowerLevel level = 1;
-
-        reserved 2;
-      }
 
       // The modeled data rate capacity, in layer 2 bits per second.
       // This field is only applicable to wired links.
