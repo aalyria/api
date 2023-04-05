@@ -31,7 +31,7 @@ import (
 	"time"
 
 	afpb "aalyria.com/spacetime/api/cdpi/v1alpha"
-	"aalyria.com/spacetime/cdpi_agent/agent"
+	"aalyria.com/spacetime/cdpi_agent"
 	enact_extproc "aalyria.com/spacetime/cdpi_agent/enactment/extproc"
 	"aalyria.com/spacetime/cdpi_agent/internal/task"
 	telem_extproc "aalyria.com/spacetime/cdpi_agent/telemetry/extproc"
@@ -271,10 +271,10 @@ func (opts *cliOpts) dialOpts(ctx context.Context) ([]grpc.DialOption, error) {
 }
 
 func (opts *cliOpts) newAgent(ctx context.Context) (a *agent.Agent, err error) {
-	task.Wrap(func(ctx context.Context) (*agent.Agent, error) {
+	err = task.Task(func(ctx context.Context) error {
 		grpcOpts, err := opts.dialOpts(ctx)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		enactmentImpl := enact_extproc.New(func(ctx context.Context) *exec.Cmd {
@@ -305,8 +305,9 @@ func (opts *cliOpts) newAgent(ctx context.Context) (a *agent.Agent, err error) {
 			agentOpts = append(agentOpts, agent.WithNode(n, nodeOpts...))
 		}
 
-		return agent.NewAgent(agentOpts...)
-	}, &a).WithNewSpan("opts.newAgent")(ctx)
+		a, err = agent.NewAgent(agentOpts...)
+		return err
+	}).WithNewSpan("opts.newAgent")(ctx)
 
 	return a, err
 }

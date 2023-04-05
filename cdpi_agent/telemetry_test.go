@@ -26,15 +26,11 @@ import (
 	apipb "aalyria.com/spacetime/api/common"
 	"aalyria.com/spacetime/cdpi_agent/internal/channels"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/jonboulle/clockwork"
-	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func TestStreamStartsWithInitialReport(t *testing.T) {
@@ -538,44 +534,4 @@ func (ts *telemetryServer) TelemetryInterface(stream afpb.NetworkTelemetryStream
 	g.Go(channels.NewSource(ts.outChan).ForwardTo(stream.Send).WithCtx(ctx))
 
 	return g.Wait()
-}
-
-func baseContext(t *testing.T) context.Context {
-	log := zerolog.New(zerolog.NewTestWriter(t)).With().Timestamp().Stack().Caller().Logger()
-	return log.WithContext(context.Background())
-}
-
-func newAgent(t *testing.T, opts ...AgentOption) *Agent {
-	t.Helper()
-
-	a, err := NewAgent(opts...)
-	if err != nil {
-		t.Fatalf("error creating agent: %s", err)
-	}
-	return a
-}
-
-func check(t *testing.T, err error) {
-	t.Helper()
-
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func assertProtosEqual(t *testing.T, want, got interface{}) {
-	t.Helper()
-
-	if diff := cmp.Diff(want, got, protocmp.Transform()); diff != "" {
-		t.Errorf("proto mismatch: (-want +got):\n%s", diff)
-		t.FailNow()
-	}
-}
-
-var rpcCanceledError = status.FromContextError(context.Canceled).Err()
-
-func checkErrIsDueToCanceledContext(t *testing.T, err error) {
-	if !errors.Is(err, context.Canceled) && !errors.Is(err, rpcCanceledError) {
-		t.Error("unexpected error:", err)
-	}
 }

@@ -139,15 +139,6 @@ func (t Task) AsThunk(ctx context.Context, err *error) func() {
 
 func Noop() Task { return func(_ context.Context) error { return nil } }
 
-// Wrap takes a function that returns a value of type T and converts it into a
-// Task that assigns the result to the provided `out` pointer.
-func Wrap[T any](fn func(context.Context) (T, error), out *T) Task {
-	return func(ctx context.Context) (err error) {
-		*out, err = fn(ctx)
-		return err
-	}
-}
-
 // WithOtelTracerProvider returns a task that injects the provided
 // TracerProvider into the context before invoking the inner task.
 func (t Task) WithOtelTracerProvider(tp *otelsdktrace.TracerProvider) Task {

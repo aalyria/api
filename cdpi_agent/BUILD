@@ -20,7 +20,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 package(default_visibility = ["//cdpi_agent:__subpackages__"])
 
 go_library(
-    name = "agent",
+    name = "cdpi_agent",
     srcs = [
         "agent.go",
         "enactment_service.go",
@@ -28,7 +28,7 @@ go_library(
         "telemetry_service.go",
         "timing.go",
     ],
-    importpath = "aalyria.com/spacetime/cdpi_agent/agent",
+    importpath = "aalyria.com/spacetime/cdpi_agent",
     deps = [
         "//api/cdpi/v1alpha:cdpi_go_grpc",
         "//api/common:common_go_proto",
@@ -44,7 +44,6 @@ go_library(
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
-        "@org_golang_google_protobuf//encoding/protojson",
         "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//types/known/timestamppb",
         "@org_golang_x_sync//errgroup",
@@ -52,13 +51,19 @@ go_library(
 )
 
 go_test(
-    name = "agent_enactment_test",
-    size = "small",
-    srcs = ["agent_enactment_test.go"],
-    embed = [":agent"],
+    name = "cdpi_agent_test",
+    srcs = [
+        "common_test.go",
+        "enactment_test.go",
+        "telemetry_test.go",
+        "timing_test.go",
+    ],
+    embed = [":cdpi_agent"],
     deps = [
         "//api/cdpi/v1alpha:cdpi_go_grpc",
         "//api/common:common_go_proto",
+        "//cdpi_agent/enactment",
+        "//cdpi_agent/internal/channels",
         "@com_github_google_go_cmp//cmp",
         "@com_github_jonboulle_clockwork//:clockwork",
         "@com_github_rs_zerolog//:zerolog",
@@ -70,37 +75,5 @@ go_test(
         "@org_golang_google_protobuf//testing/protocmp",
         "@org_golang_google_protobuf//types/known/timestamppb",
         "@org_golang_x_sync//errgroup",
-    ],
-)
-
-go_test(
-    name = "agent_telemetry_test",
-    size = "small",
-    srcs = ["agent_telemetry_test.go"],
-    embed = [":agent"],
-    deps = [
-        "//api/cdpi/v1alpha:cdpi_go_grpc",
-        "//api/common:common_go_proto",
-        "@com_github_google_go_cmp//cmp",
-        "@com_github_jonboulle_clockwork//:clockwork",
-        "@com_github_rs_zerolog//:zerolog",
-        "@org_golang_google_grpc//:go_default_library",
-        "@org_golang_google_grpc//codes",
-        "@org_golang_google_grpc//credentials/insecure",
-        "@org_golang_google_grpc//status",
-        "@org_golang_google_protobuf//proto",
-        "@org_golang_google_protobuf//testing/protocmp",
-        "@org_golang_google_protobuf//types/known/timestamppb",
-        "@org_golang_x_sync//errgroup",
-    ],
-)
-
-go_test(
-    name = "timing_test",
-    size = "small",
-    srcs = ["timing_test.go"],
-    embed = [":agent"],
-    deps = [
-        "@com_github_jonboulle_clockwork//:clockwork",
     ],
 )

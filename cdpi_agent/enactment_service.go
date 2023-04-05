@@ -175,9 +175,10 @@ func (es *enactmentService) applyUpdate(ctx context.Context, upd *apipb.Schedule
 	es.mu.Unlock()
 
 	var newState *apipb.ControlPlaneState
-	if err := task.Wrap(func(ctx context.Context) (*apipb.ControlPlaneState, error) {
-		return es.eb(ctx, upd)
-	}, &newState).WithNewSpan("enactment.Backend")(ctx); err != nil {
+	if err := task.Task(func(ctx context.Context) (err error) {
+		newState, err = es.eb(ctx, upd)
+		return err
+	}).WithNewSpan("enactment.Backend")(ctx); err != nil {
 		log.Error().Err(err).Msg("error handling update")
 
 		return &afpb.ControlStateNotification{

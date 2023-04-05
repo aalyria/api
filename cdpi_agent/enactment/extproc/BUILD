@@ -21,9 +21,7 @@ go_library(
     srcs = ["extproc.go"],
     importpath = "aalyria.com/spacetime/cdpi_agent/enactment/extproc",
     deps = [
-        "//api/cdpi/v1alpha:cdpi_go_grpc",
         "//api/common:common_go_proto",
-        "//cdpi_agent:agent",
         "//cdpi_agent/enactment",
         "@com_github_rs_zerolog//:zerolog",
         "@org_golang_google_grpc//codes",

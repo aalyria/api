@@ -38,7 +38,7 @@ type testCase struct {
 }
 
 var (
-	//go:embed testdata/node_exporter_metrics.txt
+	//go:embed node_exporter_metrics_testdata.txt
 	nodeExporterMetrics []byte
 
 	testCases = []testCase{

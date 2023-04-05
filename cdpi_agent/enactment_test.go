@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"os"
 	"sort"
 	"sync"
 	"testing"
@@ -30,16 +29,13 @@ import (
 	"aalyria.com/spacetime/cdpi_agent/enactment"
 	"aalyria.com/spacetime/cdpi_agent/internal/channels"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/jonboulle/clockwork"
-	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -190,7 +186,7 @@ func TestAgent(t *testing.T) {
 }
 
 func runTest(t *testing.T, tc testCase, clock clockwork.Clock) {
-	ctx, cancel := context.WithTimeout(baseContext(), time.Second)
+	ctx, cancel := context.WithTimeout(baseContext(t), time.Second)
 	defer cancel()
 
 	s := startSingleChannelServer(ctx)
@@ -227,7 +223,7 @@ func runTest(t *testing.T, tc testCase, clock clockwork.Clock) {
 }
 
 func TestFutureEnactment(t *testing.T) {
-	ctx, cancel := context.WithTimeout(baseContext(), time.Second)
+	ctx, cancel := context.WithTimeout(baseContext(t), time.Second)
 	defer cancel()
 
 	s := startSingleChannelServer(ctx)
@@ -305,7 +301,7 @@ func TestFutureEnactment(t *testing.T) {
 }
 
 func TestDeletedUpdateDoesntGetInvoked(t *testing.T) {
-	ctx, cancel := context.WithTimeout(baseContext(), time.Second)
+	ctx, cancel := context.WithTimeout(baseContext(t), time.Second)
 	defer cancel()
 
 	s := startSingleChannelServer(ctx)
@@ -388,7 +384,7 @@ func TestDeletedUpdateDoesntGetInvoked(t *testing.T) {
 }
 
 func TestCanRegisterMultipleNodes(t *testing.T) {
-	ctx, cancel := context.WithTimeout(baseContext(), time.Second)
+	ctx, cancel := context.WithTimeout(baseContext(t), time.Second)
 	defer cancel()
 
 	s := startSingleChannelServer(ctx)
@@ -491,7 +487,7 @@ func TestRejectsStaleChanges(t *testing.T) {
 }
 
 func checkStaleChangeIsRejected(t *testing.T, clock clockwork.Clock, change *afpb.ControlStateChangeRequest) {
-	ctx, cancel := context.WithTimeout(baseContext(), time.Second)
+	ctx, cancel := context.WithTimeout(baseContext(t), time.Second)
 	defer cancel()
 
 	s := startSingleChannelServer(ctx)
@@ -612,46 +608,4 @@ func channelingBackend() (enactment.Backend, chan *apipb.ControlPlaneState) {
 	}
 
 	return eb, ch
-}
-
-func baseContext() context.Context {
-	log := zerolog.New(zerolog.ConsoleWriter{
-		Out: os.Stdout,
-	}).With().Timestamp().Logger()
-	return log.WithContext(context.Background())
-}
-
-func newAgent(t *testing.T, opts ...AgentOption) *Agent {
-	t.Helper()
-
-	a, err := NewAgent(opts...)
-	if err != nil {
-		t.Fatalf("error creating agent: %s", err)
-	}
-	return a
-}
-
-func check(t *testing.T, err error) {
-	t.Helper()
-
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func assertProtosEqual(t *testing.T, want, got interface{}) {
-	t.Helper()
-
-	if diff := cmp.Diff(want, got, protocmp.Transform()); diff != "" {
-		t.Errorf("proto mismatch: (-want +got):\n%s", diff)
-		t.FailNow()
-	}
-}
-
-var rpcCanceledError = status.FromContextError(context.Canceled).Err()
-
-func checkErrIsDueToCanceledContext(t *testing.T, err error) {
-	if !errors.Is(err, context.Canceled) && !errors.Is(err, rpcCanceledError) {
-		t.Error("unexpected error:", err)
-	}
 }

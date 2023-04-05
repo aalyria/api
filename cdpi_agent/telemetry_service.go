@@ -113,7 +113,10 @@ func (ts *telemetryService) statLoop(triggerCh <-chan struct{}, sendCh chan<- *a
 	mapFn := func(ctx context.Context, _ struct{}) (*afpb.TelemetryUpdate, error) {
 		zerolog.Ctx(ctx).Trace().Msg("got trigger")
 		var report *apipb.NetworkStatsReport
-		if err := task.Wrap(ts.tb, &report).WithNewSpan("telemetry.Backend")(ctx); err != nil {
+		if err := task.Task(func(ctx context.Context) (err error) {
+			report, err = ts.tb(ctx)
+			return err
+		}).WithNewSpan("telemetry.Backend")(ctx); err != nil {
 			return nil, err
 		}
 		zerolog.Ctx(ctx).Trace().

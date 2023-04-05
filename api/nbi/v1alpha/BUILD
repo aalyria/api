@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 load("@rules_proto_grpc//cpp:defs.bzl", "cpp_grpc_library")
-load("@rules_proto_grpc//go:defs.bzl", "go_grpc_library")
 load("@rules_proto_grpc//java:defs.bzl", "java_grpc_library")
 
 package(default_visibility = ["//visibility:public"])
@@ -26,12 +27,8 @@ proto_library(
     deps = [
         "//api/common:common_proto",
         "//api/nbi/v1alpha/resources:nbi_resources_proto",
-        "@com_google_googleapis//google/api:annotations_proto",
-        "@com_google_googleapis//google/rpc:code_proto",
-        "@com_google_googleapis//google/type:interval_proto",
-        "@com_google_protobuf//:any_proto",
-        "@com_google_protobuf//:duration_proto",
-        "@com_google_protobuf//:timestamp_proto",
+        "@go_googleapis//google/api:annotations_proto",
+        "@go_googleapis//google/type:interval_proto",
     ],
 )
 
@@ -48,8 +45,9 @@ cpp_grpc_library(
     ],
 )
 
-go_grpc_library(
+go_proto_library(
     name = "nbi_go_grpc",
+    compilers = ["@io_bazel_rules_go//proto:go_grpc"],
     importpath = "aalyria.com/spacetime/api/nbi/v1alpha",
     protos = [":nbi_proto"],
     deps = [

@@ -22,5 +22,6 @@ go_binary(
 go_library(
     name = "generate_jwt_lib",
     srcs = ["generate_jwt.go"],
-    importpath = "aalyria.com/spacetime/tools/generate_jwt",
+    importpath = "aalyria.com/spacetime/github/tools/generate_jwt",
+    visibility = ["//visibility:private"],
 )

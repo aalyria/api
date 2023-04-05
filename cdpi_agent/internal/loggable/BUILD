@@ -32,7 +32,9 @@ go_test(
     embed = [":loggable"],
     deps = [
         "@com_github_google_go_cmp//cmp",
-        "@org_golang_google_protobuf//types/known/durationpb:go_default_library",
-        "@org_golang_google_protobuf//types/known/structpb:go_default_library",
+        "@com_github_rs_zerolog//:zerolog",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//types/known/durationpb",
+        "@org_golang_google_protobuf//types/known/structpb",
     ],
 )
