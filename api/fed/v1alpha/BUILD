@@ -12,15 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_proto//proto:defs.bzl", "proto_library")
+
 proto_library(
     name = "fed_proto",
     srcs = [
         "fed.proto",
     ],
+    visibility = ["//visibility:public"],
     deps = [
         "//api/common:common_proto",
-        "@com_google_googleapis//google/type:interval_proto",
-        "@com_google_googleapis//google/type:money_proto",
         "@com_google_protobuf//:empty_proto",
+        "@go_googleapis//google/type:interval_proto",
+        "@go_googleapis//google/type:money_proto",
     ],
 )

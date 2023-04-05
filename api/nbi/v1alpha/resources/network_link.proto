@@ -107,7 +107,6 @@ enum Accessibility {
 }
 
 // A modeled, physical-layer wireless link budget.
-// Note that this budget does not include
 message WirelessLinkBudget {
   reserved 10 to 14, 16 to max;
 
@@ -145,55 +144,34 @@ message WirelessLinkBudget {
 }
 
 // Describes expected changes to the accessibility of a link to a destination
-// on a particular channel. Includes link metrics when it's accessible.
+// on a particular channel.
 message LinkReport {
-  reserved 1, 3, 4, 6, 8 to max;
+  reserved 1, 3, 4, 5, 6, 8 to max;
   // The ID of the destination interface described by this report.
   optional aalyria.spacetime.api.common.NetworkInterfaceId dst = 7;  // required
-
-  // The band profile ID for the link being modeled.
-  // This field is only applicable to wireless links.
-  optional string band_profile_id = 5;
 
   // A series of non-overlapping time intervals that describe the predicted
   // accessibility of the link -- and link metrics within accessible intervals.
   message AccessInterval {
+    reserved 3;
+
     // The applicable time interval (may be open ended).
     optional aalyria.spacetime.api.common.TimeInterval interval = 1;
 
     // Whether or not the link is predicted/known to be accessible (usable).
     optional Accessibility accessibility = 2;
-    repeated string no_access_reason = 4;
 
-    // Modeled link metric predictions.
-    message LinkMetrics {
-      reserved 4, 8 to max;
+    // Delay incurred by a data-frame when communicated over this link.
+    optional aalyria.spacetime.api.common.Duration frame_delay = 4;
 
-      // A timestamp.
-      optional aalyria.spacetime.api.common.DateTime timestamp = 1;
-
-      // The electromagnetic propagation delay.
-      optional aalyria.spacetime.api.common.Duration propagation_delay = 3;
-
-      // The link distance, in meters.
-      // This field is only applicable to wireless links.
-      optional double range_m = 6;
-
-      // The modeled data rate capacity, in layer 2 bits per second.
-      // This field is only applicable to wired links.
-      optional double data_rate_bps = 2;
-    }
-    repeated LinkMetrics sampled_metrics = 3;
+    // The modeled data rate capacity, in layer 2 bits per second.
+    optional double data_rate_bps = 5;
   }
   repeated AccessInterval access_intervals = 2;
 }
 
 // Describes expected changes to the accessibility of a link to a destination
-// on a particular channel. Includes link metrics when it's accessible.
-// TODO: some messages, such as WirelessLinkMetrics, are left
-// intentionally incomplete due to partial migration. They exist here because
-// this limits extensive throw-away work, but will be filled in along with
-// changes to Link Evaluator writing to TransceiverLinkReports.
+// on a particular channel.
 message WirelessLinkReport {
   // The ID of the destination transceiver model described by this report.
   optional aalyria.spacetime.api.common.TransceiverModelId dst = 1;  // required
@@ -226,34 +204,7 @@ message WirelessLinkReport {
       // This field is only applicable to wireless links.
       optional double range_m = 4;
 
-      // Maps the channel's center frequency, in Hz, to link metrics.
-      // This map is only applicable to wireless links.
-      map<uint64, ChannelReport> channel_to_metrics = 5;
-      message ChannelReport {
-        message PowerLevel {
-          // A transmit power level, in watts.
-          optional double transmit_power_watts = 1;
-
-          // The modeled wireless link budget at this power level.
-          // This field is only populated if requested by an SDN app.
-          optional WirelessLinkBudget link_budget = 2;
-
-          // The predicted data rate capacity, in layer 2 bits per second.
-          optional double data_rate_bps = 3;
-
-          // The link margin in dB. This is a comparison of received signal
-          // level with the minimum usable received signal level. This may be
-          // negative if the link is inaccessible.
-          optional double link_margin_db = 4;
-        }
-        repeated PowerLevel level = 1;
-
-        reserved 2;
-      }
-
       // The modeled data rate capacity, in layer 2 bits per second.
-      // This field should only applicable to wired links; however, it is still
-      // currently in widespread use for wireless links.
       optional double data_rate_bps = 6;
     }
     repeated WirelessLinkMetrics sampled_metrics = 4;

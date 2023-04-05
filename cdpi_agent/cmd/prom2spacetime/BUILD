@@ -22,8 +22,6 @@ go_library(
     deps = [
         "//api/common:common_go_proto",
         "//cdpi_agent/telemetry/prometheus",
-        "@com_github_prometheus_client_model//go",
-        "@com_github_prometheus_prom2json//:prom2json",
         "@org_golang_google_protobuf//encoding/protojson",
         "@org_golang_google_protobuf//encoding/prototext",
         "@org_golang_google_protobuf//encoding/protowire",

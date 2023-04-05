@@ -33,11 +33,12 @@ go_test(
     size = "small",
     srcs = ["scraper_test.go"],
     embed = [":prometheus"],
-    embedsrcs = glob(["testdata/**"]),
+    embedsrcs = ["node_exporter_metrics_testdata.txt"],
     deps = [
         "//api/common:common_go_proto",
         "@com_github_google_go_cmp//cmp",
         "@com_github_jonboulle_clockwork//:clockwork",
+        "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//testing/protocmp",
     ],
 )

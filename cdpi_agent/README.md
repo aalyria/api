@@ -20,10 +20,10 @@ Spacetime CDPI:
   abstraction that insulates platform integrators from the majority of those
   changes.
 
-- The `agent` library, a Go package that provides a growing set of abstractions
-  for writing a new CDPI agent. This library is subject to change alongside the
-  CDPI protocol, so platform integrators are encouraged to use the
-  `extproc_agent` until the underlying APIs reach a stable milestone.
+- The `cdpi_agent` library, a Go package that provides a growing set of
+  abstractions for writing a new CDPI agent. This library is subject to change
+  alongside the CDPI protocol, so platform integrators are encouraged to use
+  the `extproc_agent` until the underlying APIs reach a stable milestone.
 
 ## Building
 

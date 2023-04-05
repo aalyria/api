@@ -17,8 +17,9 @@
 # contemporary SDN protocols, such as OpenFlow and OF-CONFIG, AirFlow supports
 # L1-L3 control of networks with wireless and mobile network platforms.
 
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 load("@rules_proto_grpc//cpp:defs.bzl", "cpp_grpc_library")
-load("@rules_proto_grpc//go:defs.bzl", "go_grpc_library")
 load("@rules_proto_grpc//java:defs.bzl", "java_grpc_library")
 
 package(default_visibility = ["//visibility:public"])
@@ -30,9 +31,9 @@ proto_library(
     ],
     deps = [
         "//api/common:common_proto",
-        "@com_google_googleapis//google/rpc:status_proto",
         "@com_google_protobuf//:empty_proto",
         "@com_google_protobuf//:timestamp_proto",
+        "@go_googleapis//google/rpc:status_proto",
     ],
 )
 
@@ -45,8 +46,9 @@ cpp_grpc_library(
     ],
 )
 
-go_grpc_library(
+go_proto_library(
     name = "cdpi_go_grpc",
+    compilers = ["@io_bazel_rules_go//proto:go_grpc"],
     importpath = "aalyria.com/spacetime/api/cdpi/v1alpha",
     protos = [":cdpi_proto"],
     deps = [

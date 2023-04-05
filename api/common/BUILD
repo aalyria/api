@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@rules_proto_grpc//cpp:defs.bzl", "cpp_proto_library")
 load("@rules_proto_grpc//go:defs.bzl", "go_proto_library")
 load("@rules_proto_grpc//java:defs.bzl", "java_proto_library")
@@ -43,11 +44,11 @@ proto_library(
     ],
     deps = [
         "//api/types:types_proto",
-        "@com_google_googleapis//google/rpc:status_proto",
-        "@com_google_googleapis//google/type:interval_proto",
         "@com_google_protobuf//:duration_proto",
         "@com_google_protobuf//:empty_proto",
         "@com_google_protobuf//:timestamp_proto",
+        "@go_googleapis//google/rpc:status_proto",
+        "@go_googleapis//google/type:interval_proto",
     ],
 )
 
