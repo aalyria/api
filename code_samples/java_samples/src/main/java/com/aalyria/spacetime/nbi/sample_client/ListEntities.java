@@ -16,10 +16,15 @@ package com.aalyria.spacetime.nbi.sample_client;
 
 import static io.grpc.Grpc.newChannelBuilderForAddress;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+
 import com.aalyria.spacetime.api.nbi.v1alpha.Nbi.EntityType;
 import com.aalyria.spacetime.api.nbi.v1alpha.Nbi.ListEntitiesRequest;
 import com.aalyria.spacetime.api.nbi.v1alpha.Nbi.ListEntitiesResponse;
 import com.aalyria.spacetime.api.nbi.v1alpha.NetOpsGrpc;
+import com.aalyria.spacetime.authentication.SpacetimeCallCredentials;
 
 import io.grpc.CompositeChannelCredentials;
 import io.grpc.ManagedChannel;
@@ -33,14 +38,25 @@ public class ListEntities {
   private static final int PORT = 443;
 
   public static void main(String[] args) {
-    if (args.length < 3) {
-        System.err.println("Error parsing arguments. Provide a value for HOST, SPACETIME_AUTH_JWT, PROXY_AUTH_JWT.");
+    if (args.length < 4) {
+        System.err.println("Error parsing arguments. Provide a value for host, " + 
+                "agent email, agent private key ID, and agent private key file.");
         System.exit(-1);
     }
     final String HOST = args[0];
-    // The two JWTs required to authenticate across the NBI.
-    final String SPACETIME_AUTH_JWT = args[1];
-    final String PROXY_AUTH_JWT = args[2];
+    final String AGENT_EMAIL = args[1];
+    final String AGENT_PRIV_KEY_ID = args[2];
+    final String AGENT_PRIV_KEY_FILE = args[3];
+
+    // The private key should start with "-----BEGIN RSA PRIVATE KEY-----" and 
+    // end with "-----END RSA PRIVATE KEY-----". In between, there should be newline-delimtted
+    // strings of characters.
+    String privateKey;
+    try {
+        privateKey = new String(Files.readAllBytes(Paths.get(AGENT_PRIV_KEY_FILE)));
+    } catch (IOException e) {
+        throw new RuntimeException("Private key could not be read.", e);
+    }
 
     // Sets up the channel using the two signed JWTs for RPCs to the NBI.
     ManagedChannel channel = newChannelBuilderForAddress(
@@ -48,7 +64,8 @@ public class ListEntities {
         PORT,
         CompositeChannelCredentials.create(
             TlsChannelCredentials.create(),
-            SpacetimeCallCredentials.createFromJwt(SPACETIME_AUTH_JWT, PROXY_AUTH_JWT)))
+            SpacetimeCallCredentials.createFromPrivateKey(HOST, AGENT_EMAIL,
+                AGENT_PRIV_KEY_ID, privateKey)))
         .enableRetry()
         .build();
 

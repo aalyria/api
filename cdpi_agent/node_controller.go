@@ -68,12 +68,14 @@ func (a *Agent) newNodeController(node *node, done func()) *nodeController {
 	if node.telemetryEnabled {
 		nc.services = append(nc.services, nc.newTelemetryService(a.telemetryClient, node.tb).
 			WithLogField("service", "telemetry").
-			WithRetries(rc))
+			WithRetries(rc).
+			WithPanicCatcher())
 	}
 	if node.enactmentsEnabled {
 		nc.services = append(nc.services, nc.newEnactmentService(a.ctrlClient, node.eb).
 			WithLogField("service", "enactment").
-			WithRetries(rc))
+			WithRetries(rc).
+			WithPanicCatcher())
 	}
 
 	return nc
@@ -84,5 +86,5 @@ func (nc *nodeController) run(ctx context.Context) error {
 	if len(nc.services) == 0 {
 		return ErrNoActiveServices
 	}
-	return task.Group(nc.services...)(ctx)
+	return task.Group(nc.services...).WithPanicCatcher()(ctx)
 }

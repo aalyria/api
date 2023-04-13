@@ -200,8 +200,39 @@ service Cdpi {
   // issue requests of the SDN agent, and the agent may respond.
   rpc Cdpi(stream CdpiRequest) returns (stream CdpiResponse) {}
 
-  // TODO: Add unary RPCs for submitting ScheduledControlUpdateStatus
-  // messages and ControlPlaneState messages.
+  rpc UpdateNodeState(CdpiNodeStateRequest) returns (google.protobuf.Empty) {}
+  rpc UpdateRequestStatus(CdpiRequestStatusRequest)
+      returns (google.protobuf.Empty) {}
+}
+
+// An out-of-band, one-way update of an individual node's state that an SDN
+// agent emits to the SDN controller.
+message CdpiNodeStateRequest {
+  // Uniquely identifies the network node/element interfacing with Spacetime.
+  optional string node_id = 1;
+
+  // The node's current state.
+  //
+  // Partial ControlPlaneState updates are supported, where any combination of
+  // {beam_states, radio_states, forwarding_state, tunnel_states} subfields on
+  // the ControlPlaneState message can be set.  If a subfield is unset, then
+  // the corresponding substate is not updated.  Otherwise, the corresponding
+  // substate will update the SDN Controller's view of the ControlPlaneState if
+  // the timestamp on the substate is greater than that of the SDN Controller's
+  // view.
+  optional aalyria.spacetime.api.common.ControlPlaneState state = 3;
+}
+
+// An out-of-band, one-way update containing the results of scheduled
+// enactments for an individual node that an SDN agent emits to the SDN
+// controller.
+message CdpiRequestStatusRequest {
+  // Uniquely identifies the network node/element interfacing with Spacetime.
+  optional string node_id = 1;
+
+  // An update for a status that has been previously scheduled.
+  optional aalyria.spacetime.api.common.ScheduledControlUpdateStatus
+      status = 2;
 }
 
 // The request for aalyria.spacetime.api.cdpi.v1alpha.Cdpi.Cdpi.

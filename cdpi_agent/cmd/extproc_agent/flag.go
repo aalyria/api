@@ -41,7 +41,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/zipkin"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	otelsdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -161,7 +161,7 @@ type cliOpts struct {
 	logLevel          logLevelFlag
 	nodeIDs           multiStringFlag
 	channelzAddr      string
-	zipkinAddr        string
+	otelExporterAddr  string
 
 	telemetryCmd multiStringFlag
 	enactmentCmd []string
@@ -191,7 +191,7 @@ func parseOpts(app_name string, args ...string) (*cliOpts, error) {
 	fs.Var(&opts.nodeIDs, "node", "Node IDs to register for (can be provided multiple times).")
 	fs.Var(&opts.logLevel, "log-level", "Sets the log level (one of trace, debug, info, warn, error, fatal, or panic).")
 	fs.StringVar(&opts.channelzAddr, "channelz-addr", "", "Local address to start the channelz server on. Leave blank to keep the server disabled.")
-	fs.StringVar(&opts.zipkinAddr, "zipkin-addr", "", "Address of zipkin OTEL exporter (typically ends in /api/v2/spans). Leave blank to keep tracing disabled.")
+	fs.StringVar(&opts.otelExporterAddr, "otel-exporter-addr", "", "Address of OTEL exporter. Leave blank to keep tracing disabled.")
 
 	// TODO: switch to a textproto config and update the README usage doc
 	fs.Var(&opts.telemetryCmd, "telemetry-cmd", "The optional command to run that will generate a NetworkStatsReport message in JSON format.")
@@ -200,19 +200,19 @@ func parseOpts(app_name string, args ...string) (*cliOpts, error) {
 		return nil, err
 	}
 	if opts.serverAddr == "" {
-		return nil, errors.New("No CDPI endpoint (--cdpi-endpoint) provided")
+		return nil, errors.New("no CDPI endpoint (--cdpi-endpoint) provided")
 	}
 	if !opts.insecure && opts.authJWT == "" {
-		return nil, errors.New("No authorization JWT (--authorization-jwt) provided")
+		return nil, errors.New("no authorization JWT (--authorization-jwt) provided")
 	}
 	if !opts.insecure && opts.proxyAuthJWT == "" {
-		return nil, errors.New("No proxy authorization JWT (--proxy-authorization-jwt) provided")
+		return nil, errors.New("no proxy authorization JWT (--proxy-authorization-jwt) provided")
 	}
 	if len(opts.nodeIDs) == 0 {
-		return nil, errors.New("No nodes provided (--node)")
+		return nil, errors.New("no nodes provided (--node)")
 	}
 	if fs.NArg() == 0 {
-		return nil, errors.New("No enactment command provided")
+		return nil, errors.New("no enactment command provided")
 	}
 
 	opts.enactmentCmd = fs.Args()
@@ -346,7 +346,7 @@ func (opts *cliOpts) channelzServer() task.Task {
 	}
 }
 
-func (o *cliOpts) newTracerProvider() (*otelsdktrace.TracerProvider, error) {
+func (o *cliOpts) newTracerProvider(ctx context.Context) (*otelsdktrace.TracerProvider, error) {
 	traceOpts := []otelsdktrace.TracerProviderOption{}
 
 	res, err := resource.Merge(
@@ -363,12 +363,15 @@ func (o *cliOpts) newTracerProvider() (*otelsdktrace.TracerProvider, error) {
 	}
 	traceOpts = append(traceOpts, otelsdktrace.WithResource(res))
 
-	if o.zipkinAddr != "" {
-		zexp, err := zipkin.New(o.zipkinAddr)
+	// Only add an exporter to the options if requested. This way we can still
+	// include the tracing infra without actually exporting anything if it's
+	// not requested.
+	if o.otelExporterAddr != "" {
+		exporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithEndpoint(o.otelExporterAddr))
 		if err != nil {
 			return nil, err
 		}
-		traceOpts = append(traceOpts, otelsdktrace.WithBatcher(zexp))
+		traceOpts = append(traceOpts, otelsdktrace.WithBatcher(exporter))
 	}
 
 	return otelsdktrace.NewTracerProvider(traceOpts...), nil
@@ -377,7 +380,7 @@ func (o *cliOpts) newTracerProvider() (*otelsdktrace.TracerProvider, error) {
 func (o *cliOpts) WithTeardown(ctx context.Context) (context.Context, func(), error) {
 	log := (*zerolog.Ctx(ctx)).Level(zerolog.Level(o.logLevel))
 
-	tp, err := o.newTracerProvider()
+	tp, err := o.newTracerProvider(ctx)
 	if err != nil {
 		return nil, nil, err
 	}

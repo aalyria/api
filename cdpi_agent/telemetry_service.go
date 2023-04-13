@@ -82,24 +82,28 @@ func (ts *telemetryService) run(ctx context.Context) error {
 		WithStartingStoppingLogs("sendLoop", zerolog.TraceLevel).
 		WithLogField("task", "send").
 		WithNewSpan("sendLoop").
+		WithPanicCatcher().
 		WithCtx(ctx))
 
 	g.Go(channels.NewSink(recvCh).FillFrom(ti.Recv).
 		WithStartingStoppingLogs("recvLoop", zerolog.TraceLevel).
 		WithLogField("task", "recv").
 		WithNewSpan("recvLoop").
+		WithPanicCatcher().
 		WithCtx(ctx))
 
 	g.Go(ts.statLoop(triggerCh, sendCh).
 		WithStartingStoppingLogs("statLoop", zerolog.TraceLevel).
 		WithLogField("task", "stat").
 		WithNewSpan("statLoop").
+		WithPanicCatcher().
 		WithCtx(ctx))
 
 	g.Go(ts.mainLoop(triggerCh, recvCh).
 		WithStartingStoppingLogs("mainLoop", zerolog.TraceLevel).
 		WithLogField("task", "main").
 		WithNewSpan("mainLoop").
+		WithPanicCatcher().
 		WithCtx(ctx))
 
 	triggerCh <- struct{}{}
