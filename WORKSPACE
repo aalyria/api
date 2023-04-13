@@ -201,13 +201,6 @@ go_repository(
 )
 
 go_repository(
-    name = "io_opentelemetry_go_otel_exporters_zipkin",
-    importpath = "go.opentelemetry.io/otel/exporters/zipkin",
-    sum = "h1:reEVE1upBF9tcujgvSqLJS0SrI7JQPaTKP4s4rymnSs=",
-    version = "v1.14.0",
-)
-
-go_repository(
     name = "io_opentelemetry_go_otel",
     importpath = "go.opentelemetry.io/otel",
     sum = "h1:/79Huy8wbf5DnIPhemGB+zEPVwnN6fuQybr/SRXa6hM=",
@@ -255,7 +248,6 @@ go_repository(
     sum = "h1:hSWxHoqTgW2S2qGc0LTAI563KZ5YKYRhT3MFKZMbjag=",
     version = "v1.2.2",
 )
-
 
 go_repository(
     name = "com_github_prometheus_client_model",
@@ -307,10 +299,31 @@ go_repository(
 )
 
 go_repository(
-    name = "com_github_openzipkin_zipkin_go",
-    importpath = "github.com/openzipkin/zipkin-go",
-    sum = "h1:kNd/ST2yLLWhaWrkgchya40TJabe8Hioj9udfPcEO5A=",
-    version = "v0.4.1",
+    name = "io_opentelemetry_go_otel_exporters_otlp_otlptrace",
+    importpath = "go.opentelemetry.io/otel/exporters/otlp/otlptrace",
+    sum = "h1:TKf2uAs2ueguzLaxOCBXNpHxfO/aC7PAdDsSH0IbeRQ=",
+    version = "v1.14.0",
+)
+
+go_repository(
+    name = "io_opentelemetry_go_otel_exporters_otlp_otlptrace_otlptracegrpc",
+    importpath = "go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc",
+    sum = "h1:ap+y8RXX3Mu9apKVtOkM6WSFESLM8K3wNQyOU8sWHcc=",
+    version = "v1.14.0",
+)
+
+go_repository(
+    name = "io_opentelemetry_go_otel_exporters_otlp_internal_retry",
+    importpath = "go.opentelemetry.io/otel/exporters/otlp/internal/retry",
+    sum = "h1:/fXHZHGvro6MVqV34fJzDhi7sHGpX3Ej/Qjmfn003ho=",
+    version = "v1.14.0",
+)
+
+go_repository(
+    name = "io_opentelemetry_go_proto_otlp",
+    importpath = "go.opentelemetry.io/proto/otlp",
+    sum = "h1:IVN6GR+mhC4s5yfcTbmzHYODqvWAp3ZedA2SJPI1Nnw=",
+    version = "v0.19.0",
 )
 
 go_repository(
@@ -332,6 +345,20 @@ go_repository(
     importpath = "github.com/felixge/httpsnoop",
     sum = "h1:s/nj+GCswXYzN5v2DpNMuMQYe+0DDwt5WVCU6CWBdXk=",
     version = "v1.0.3",
+)
+
+go_repository(
+    name = "com_github_cenkalti_backoff_v4",
+    importpath = "github.com/cenkalti/backoff/v4",
+    sum = "h1:HN5dHm3WBOgndBH6E8V0q2jIYIR3s9yglV8k/+MN3u4=",
+    version = "v4.2.0",
+)
+
+go_repository(
+    name = "com_github_grpc_ecosystem_grpc_gateway_v2",
+    importpath = "github.com/grpc-ecosystem/grpc-gateway/v2",
+    sum = "h1:gDLXvp5S9izjldquuoAhDzccbskOL6tDC5jMSyx3zxE=",
+    version = "v2.15.2",
 )
 
 # Register external dependencies needed by the Go rules.
@@ -416,7 +443,8 @@ load("@io_grpc_grpc_java//:repositories.bzl", "IO_GRPC_GRPC_JAVA_ARTIFACTS", "IO
 maven_install(
     artifacts = 
         IO_GRPC_GRPC_JAVA_ARTIFACTS + 
-        ["com.google.code.gson:gson:2.10.1"],
+        ["com.google.code.gson:gson:2.10.1",
+        "org.bouncycastle:bcprov-jdk15on:1.70"],
     generate_compat_repositories = True,
     override_targets = IO_GRPC_GRPC_JAVA_OVERRIDE_TARGETS,
     repositories = [

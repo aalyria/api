@@ -16,6 +16,7 @@ package task
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"testing"
 
@@ -81,5 +82,15 @@ func TestGroup_emptyGroup(t *testing.T) {
 	err := Group()(context.Background())
 	if err != errNoTasks {
 		t.Errorf("unexpected result from empty group, got %v but wanted %v", err, errNoTasks)
+	}
+}
+
+func TestWithPanicCatcher(t *testing.T) {
+	badTask := func(_ context.Context) error { panic("bad") }
+
+	got := Task(badTask).WithPanicCatcher()(context.Background())
+	want := errors.New("panic: bad")
+	if got.Error() != want.Error() {
+		t.Errorf("expected result from WithPanicCatcher to be %v, but got %v", want, got)
 	}
 }

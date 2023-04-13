@@ -318,4 +318,12 @@ message ScenarioSettings {
   }
 
   repeated ShipFleet shipfleets = 9;
+
+  // A mapping of Gateways to the PoPs that each is allowed to connect to. 
+  // The key and value are treated as keyword matchers: if a Gateway's name
+  // contains one of the keys in this map, this Gateway will only be connected
+  // to PoPs whose name contains the corresponding value.
+  // Gateways whose names do not correspond to any keys will be
+  // connected to the closest PoP. 
+  map<string, string> gateway_to_permitted_pops = 10;
 }

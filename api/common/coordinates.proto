@@ -232,6 +232,21 @@ message StateVector {
   // relevant force models, constants, and other attributes to be used for
   // accurate propagation, rather than implying the total set simply from the
   // PropagationAlgorithm enum.
+
+  ///
+  // Parameters relevant to modeling forces on the body in motion.
+  ///
+
+  // The approximate mass of the body, in kilograms.
+  optional double mass_kg = 6 [default = 2000.0];
+
+  // The approximate coefficient of reflectivity and applicable area in
+  // square meters as pertains to solar radiation pressure.
+  //
+  // For the coefficient of reflectivity, only values from 0.0 (perfect
+  // absorption) to 1.0 (perfect reflectivity) are meaningful.
+  optional double reflectivity = 7 [default = 1.0];
+  optional double reflective_area_sqm = 8 [default = 20.0];
 }
 
 // A set of curvilinear 3 dimensional coordinates relative to the Mean Lunar

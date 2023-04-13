@@ -192,6 +192,18 @@ func (t Task) WithSpanAttributes(attrs ...attribute.KeyValue) Task {
 	}
 }
 
+func (t Task) WithPanicCatcher() Task {
+	return func(ctx context.Context) (err error) {
+		defer func() {
+			if val := recover(); val != nil {
+				err = fmt.Errorf("panic: %v", val)
+			}
+		}()
+
+		return t(ctx)
+	}
+}
+
 // Group takes a sequence of Tasks and returns a task that starts them all in
 // separate goroutines and waits for them all to finish. The semantics mirror
 // those of the errgroup package, so only the first non-nil error will be

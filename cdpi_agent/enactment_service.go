@@ -85,24 +85,28 @@ func (es *enactmentService) run(ctx context.Context) error {
 		WithStartingStoppingLogs("sendLoop", zerolog.TraceLevel).
 		WithLogField("task", "send").
 		WithNewSpan("sendLoop").
+		WithPanicCatcher().
 		WithCtx(ctx))
 
 	g.Go(channels.NewSink(recvCh).FillFrom(cpi.Recv).
 		WithStartingStoppingLogs("recvLoop", zerolog.TraceLevel).
 		WithLogField("task", "recv").
 		WithNewSpan("recvLoop").
+		WithPanicCatcher().
 		WithCtx(ctx))
 
 	g.Go(es.enactmentLoop(sendCh, updateCh).
 		WithStartingStoppingLogs("enactmentLoop", zerolog.TraceLevel).
 		WithLogField("task", "enactment").
 		WithNewSpan("enactmentLoop").
+		WithPanicCatcher().
 		WithCtx(ctx))
 
 	g.Go(es.mainLoop(recvCh, sendCh, updateCh).
 		WithStartingStoppingLogs("mainLoop", zerolog.TraceLevel).
 		WithLogField("task", "main").
 		WithNewSpan("mainLoop").
+		WithPanicCatcher().
 		WithCtx(ctx))
 
 	sendCh <- es.initState
