@@ -14,28 +14,23 @@
 
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
-package(default_visibility = ["//cdpi_agent:__subpackages__"])
-
 go_library(
-    name = "extproc",
-    srcs = ["extproc.go"],
-    importpath = "aalyria.com/spacetime/cdpi_agent/enactment/extproc",
+    name = "extprocs",
+    srcs = ["extprocs.go"],
+    importpath = "aalyria.com/spacetime/cdpi_agent/internal/extprocs",
+    visibility = ["//cdpi_agent:__subpackages__"],
     deps = [
-        "//api/common:common_go_proto",
-        "//cdpi_agent/enactment",
-        "//cdpi_agent/internal/extprocs",
-        "//cdpi_agent/internal/loggable",
-        "//cdpi_agent/internal/protofmt",
-        "@com_github_rs_zerolog//:zerolog",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
     ],
 )
 
 go_test(
-    name = "extproc_test",
-    srcs = ["extproc_test.go"],
-    embed = [":extproc"],
+    name = "extprocs_test",
+    srcs = ["extprocs_test.go"],
+    embed = [":extprocs"],
     deps = [
-        "//api/common:common_go_proto",
-        "//cdpi_agent/internal/protofmt",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
     ],
 )

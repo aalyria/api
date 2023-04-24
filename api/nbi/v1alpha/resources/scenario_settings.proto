@@ -192,6 +192,9 @@ message ScenarioSettings {
 
     repeated TransceiverModel transceiver_models = 8;
     repeated WirelessInterface wireless_interfaces = 9;
+    
+    // Each Gateway has exactly one wired interface.
+    optional string wired_interface_id = 10 [default = "WAN"];
 
     // Defines the maximum data rate for the wired interface to a pop.
     optional double max_wired_data_rate_bps = 6;

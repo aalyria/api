@@ -33,6 +33,7 @@ import (
 	afpb "aalyria.com/spacetime/api/cdpi/v1alpha"
 	"aalyria.com/spacetime/cdpi_agent"
 	enact_extproc "aalyria.com/spacetime/cdpi_agent/enactment/extproc"
+	"aalyria.com/spacetime/cdpi_agent/internal/protofmt"
 	"aalyria.com/spacetime/cdpi_agent/internal/task"
 	telem_extproc "aalyria.com/spacetime/cdpi_agent/telemetry/extproc"
 
@@ -279,7 +280,7 @@ func (opts *cliOpts) newAgent(ctx context.Context) (a *agent.Agent, err error) {
 
 		enactmentImpl := enact_extproc.New(func(ctx context.Context) *exec.Cmd {
 			return exec.CommandContext(ctx, opts.enactmentCmd[0], opts.enactmentCmd[1:]...)
-		})
+		}, protofmt.JSON)
 
 		clock := clockwork.NewRealClock()
 		agentOpts := []agent.AgentOption{
@@ -294,12 +295,13 @@ func (opts *cliOpts) newAgent(ctx context.Context) (a *agent.Agent, err error) {
 		if cmd := opts.telemetryCmd; len(cmd) != 0 {
 			commonNodeOpts = append(commonNodeOpts, agent.WithTelemetryBackend(telem_extproc.New(func(ctx context.Context) *exec.Cmd {
 				return exec.CommandContext(ctx, opts.telemetryCmd[0], opts.telemetryCmd[1:]...)
-			})))
+			}, protofmt.JSON)))
 		}
 
 		for _, n := range opts.nodeIDs {
 			nodeOpts := append([]agent.NodeOption{
-				agent.WithInitialState(&afpb.ControlStateNotification{NodeId: proto.String(n)})},
+				agent.WithInitialState(&afpb.ControlStateNotification{NodeId: proto.String(n)}),
+			},
 				commonNodeOpts...)
 
 			agentOpts = append(agentOpts, agent.WithNode(n, nodeOpts...))

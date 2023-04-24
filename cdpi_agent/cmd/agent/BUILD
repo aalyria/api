@@ -12,33 +12,53 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 
+proto_library(
+    name = "configpb_proto",
+    srcs = ["config.proto"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//api/common:common_proto",
+        "@com_google_protobuf//:duration_proto",
+        "@com_google_protobuf//:empty_proto",
+    ],
+)
+
+go_proto_library(
+    name = "configpb_go_proto",
+    importpath = "aalyria.com/spacetime/cdpi_agent/cmd/agent/configpb",
+    protos = [":configpb_proto"],
+    deps = [
+        "//api/common:common_go_proto",
+    ],
+)
+
 go_binary(
-    name = "extproc_agent",
-    embed = [":extproc_agent_lib"],
+    name = "agent",
+    embed = [":agent_lib"],
     visibility = ["//visibility:public"],
 )
 
 go_library(
-    name = "extproc_agent_lib",
-    srcs = [
-        "extproc_agent.go",
-        "flag.go",
-    ],
-    importpath = "aalyria.com/spacetime/cdpi_agent/cmd/extproc_agent",
+    name = "agent_lib",
+    srcs = ["agent.go"],
+    importpath = "aalyria.com/spacetime/cdpi_agent/cmd/agent",
     visibility = ["//visibility:private"],
     deps = [
+        ":configpb_go_proto",
         "//api/cdpi/v1alpha:cdpi_go_grpc",
         "//cdpi_agent",
         "//cdpi_agent/enactment/extproc",
+        "//cdpi_agent/internal/auth",
         "//cdpi_agent/internal/protofmt",
         "//cdpi_agent/internal/task",
         "//cdpi_agent/telemetry/extproc",
         "@com_github_jonboulle_clockwork//:clockwork",
         "@com_github_rs_zerolog//:zerolog",
         "@io_opentelemetry_go_contrib_instrumentation_google_golang_org_grpc_otelgrpc//:otelgrpc",
-        "@io_opentelemetry_go_contrib_instrumentation_net_http_otelhttp//:otelhttp",
         "@io_opentelemetry_go_otel//attribute",
         "@io_opentelemetry_go_otel//propagation",
         "@io_opentelemetry_go_otel//semconv/v1.17.0:v1_17_0",
@@ -48,10 +68,8 @@ go_library(
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_google_grpc//backoff",
         "@org_golang_google_grpc//channelz/service",
-        "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//credentials",
         "@org_golang_google_grpc//credentials/insecure",
-        "@org_golang_google_grpc//status",
-        "@org_golang_google_protobuf//proto",
+        "@org_golang_x_sync//errgroup",
     ],
 )

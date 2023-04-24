@@ -14,28 +14,24 @@
 
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
-package(default_visibility = ["//cdpi_agent:__subpackages__"])
-
 go_library(
-    name = "extproc",
-    srcs = ["extproc.go"],
-    importpath = "aalyria.com/spacetime/cdpi_agent/enactment/extproc",
+    name = "auth",
+    srcs = ["auth.go"],
+    importpath = "aalyria.com/spacetime/cdpi_agent/internal/auth",
+    visibility = ["//visibility:public"],
     deps = [
-        "//api/common:common_go_proto",
-        "//cdpi_agent/enactment",
-        "//cdpi_agent/internal/extprocs",
-        "//cdpi_agent/internal/loggable",
-        "//cdpi_agent/internal/protofmt",
-        "@com_github_rs_zerolog//:zerolog",
+        "@com_github_golang_jwt_jwt_v5//:jwt",
+        "@com_github_jonboulle_clockwork//:clockwork",
+        "@org_golang_google_grpc//credentials",
+        "@org_golang_x_oauth2//:oauth2",
+        "@org_golang_x_oauth2//jwt",
     ],
 )
 
 go_test(
-    name = "extproc_test",
-    srcs = ["extproc_test.go"],
-    embed = [":extproc"],
-    deps = [
-        "//api/common:common_go_proto",
-        "//cdpi_agent/internal/protofmt",
-    ],
+    name = "auth_test",
+    srcs = ["auth_test.go"],
+    embed = [":auth"],
+    tags = ["block-network"],
+    deps = ["@com_github_jonboulle_clockwork//:clockwork"],
 )
