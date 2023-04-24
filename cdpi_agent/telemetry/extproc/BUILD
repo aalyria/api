@@ -22,8 +22,10 @@ go_library(
     importpath = "aalyria.com/spacetime/cdpi_agent/telemetry/extproc",
     deps = [
         "//api/common:common_go_proto",
+        "//cdpi_agent/internal/extprocs",
+        "//cdpi_agent/internal/loggable",
+        "//cdpi_agent/internal/protofmt",
         "//cdpi_agent/telemetry",
         "@com_github_rs_zerolog//:zerolog",
-        "@org_golang_google_protobuf//encoding/protojson",
     ],
 )

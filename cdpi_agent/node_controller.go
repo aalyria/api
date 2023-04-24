@@ -17,6 +17,7 @@ package agent
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	afpb "aalyria.com/spacetime/api/cdpi/v1alpha"
@@ -84,7 +85,11 @@ func (a *Agent) newNodeController(node *node, done func()) *nodeController {
 func (nc *nodeController) run(ctx context.Context) error {
 	defer nc.done()
 	if len(nc.services) == 0 {
-		return ErrNoActiveServices
+		return fmt.Errorf("%s: %w", nc.id, ErrNoActiveServices)
 	}
-	return task.Group(nc.services...).WithPanicCatcher()(ctx)
+
+	if err := task.Group(nc.services...).WithPanicCatcher()(ctx); err != nil {
+		return fmt.Errorf("%s: %w", nc.id, err)
+	}
+	return nil
 }

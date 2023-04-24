@@ -227,6 +227,11 @@ message EntityFilter {
   // If one or more service request IDs are given, only return entities that
   // reference one or more of the service request IDs.
   repeated string references_service_request = 2;
+
+  // If one or more intent states are given, only return intent entities whose
+  // states are included in the given list.
+  repeated aalyria.spacetime.api.nbi.v1alpha.resources.IntentState
+    include_intent_states = 3;
 }
 
 message DeleteEntityRequest {

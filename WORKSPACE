@@ -361,6 +361,13 @@ go_repository(
     version = "v2.15.2",
 )
 
+go_repository(
+    name = "com_github_golang_jwt_jwt_v5",
+    importpath = "github.com/golang-jwt/jwt/v5",
+    sum = "h1:hXPcSazn8wKOfSb9y2m1bdgUMlDxVDarxh3lJVbC6JE=",
+    version = "v5.0.0-rc.2",
+)
+
 # Register external dependencies needed by the Go rules.
 go_rules_dependencies()
 

@@ -13,43 +13,52 @@
 // limitations under the License.
 
 // Package extproc provides a telemetry.Backend implementation that relies on
-// an external process to generate telemetry reports in JSON form (protojson
-// encoding).
+// an external process to generate telemetry reports in the specified form.
 package extproc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os/exec"
 
 	apipb "aalyria.com/spacetime/api/common"
+	"aalyria.com/spacetime/cdpi_agent/internal/extprocs"
+	"aalyria.com/spacetime/cdpi_agent/internal/loggable"
+	"aalyria.com/spacetime/cdpi_agent/internal/protofmt"
 	"aalyria.com/spacetime/cdpi_agent/telemetry"
 
 	"github.com/rs/zerolog"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
+var errEmptyReport = errors.New("command generated an empty response")
+
 type backend struct {
-	cmdFn func(context.Context) *exec.Cmd
+	cmdFn    func(context.Context) *exec.Cmd
+	protoFmt protofmt.Format
 }
 
-func New(cmdFn func(context.Context) *exec.Cmd) telemetry.Backend {
-	return (&backend{cmdFn: cmdFn}).generateReport
+func New(cmdFn func(context.Context) *exec.Cmd, format protofmt.Format) telemetry.Backend {
+	return (&backend{cmdFn: cmdFn, protoFmt: format}).generateReport
 }
 
 func (tb *backend) generateReport(ctx context.Context) (*apipb.NetworkStatsReport, error) {
-	log := zerolog.Ctx(ctx)
+	log := zerolog.Ctx(ctx).With().Str("backend", "extproc").Logger()
 
 	log.Trace().Msg("running command")
-	reportJS, err := tb.cmdFn(ctx).Output()
+	reportData, err := tb.cmdFn(ctx).Output()
 	if err != nil {
-		return nil, fmt.Errorf("error running command: %w", err)
+		return nil, extprocs.CommandError(err)
 	}
 
-	log.Trace().Msg("unmarshalling network stats report")
-	report := apipb.NetworkStatsReport{}
-	if err = protojson.Unmarshal(reportJS, &report); err != nil {
-		return nil, fmt.Errorf("error unmarshalling command output into report proto: %w", err)
+	if len(reportData) == 0 {
+		return nil, errEmptyReport
 	}
-	return &report, nil
+
+	report := &apipb.NetworkStatsReport{}
+	if err = tb.protoFmt.Unmarshal(reportData, report); err != nil {
+		return nil, fmt.Errorf("unmarshalling command output into report proto: %w", err)
+	}
+	log.Trace().Interface("state", loggable.Proto(report)).Msg("command generated report")
+	return report, nil
 }

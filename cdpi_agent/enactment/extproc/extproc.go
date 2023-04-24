@@ -26,95 +26,64 @@
 package extproc
 
 import (
+	"bytes"
 	"context"
-	"errors"
 	"fmt"
-	"io"
 	"os/exec"
 
 	apipb "aalyria.com/spacetime/api/common"
 	"aalyria.com/spacetime/cdpi_agent/enactment"
+	"aalyria.com/spacetime/cdpi_agent/internal/extprocs"
+	"aalyria.com/spacetime/cdpi_agent/internal/loggable"
+	"aalyria.com/spacetime/cdpi_agent/internal/protofmt"
 
 	"github.com/rs/zerolog"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
-// The first invalid codes.Code value. Used to coerce exit codes into
-// reasonable gRPC codes. This should match the constants in the gRPC codes
-// package:
-// https://github.com/grpc/grpc-go/blob/fe39661ffe8a83227c5c40591f335176aa7e5153/codes/codes.go#L195
-const maxCode = 17
-
 type backend struct {
-	cmdFn func(context.Context) *exec.Cmd
+	cmdFn    func(context.Context) *exec.Cmd
+	protoFmt protofmt.Format
 }
 
-func New(cmdFn func(context.Context) *exec.Cmd) enactment.Backend {
-	return (&backend{cmdFn: cmdFn}).handleRequest
+func New(cmdFn func(context.Context) *exec.Cmd, format protofmt.Format) enactment.Backend {
+	return (&backend{cmdFn: cmdFn, protoFmt: format}).handleRequest
 }
 
 func (eb *backend) handleRequest(ctx context.Context, req *apipb.ScheduledControlUpdate) (*apipb.ControlPlaneState, error) {
-	log := zerolog.Ctx(ctx)
+	log := zerolog.Ctx(ctx).With().Str("backend", "extproc").Logger()
 
-	log.Trace().Msg("extproc: HandleRequest called")
-	defer func() { log.Trace().Msg("extproc: HandleRequest finished") }()
+	js, err := eb.protoFmt.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("marshalling proto as %s: %w", eb.protoFmt, err)
+	}
+
+	stdinBuf := bytes.NewBuffer(js)
+	stdoutBuf := bytes.NewBuffer(nil)
 
 	cmd := eb.cmdFn(ctx)
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		return nil, fmt.Errorf("error connecting to command's stdin: %w", err)
-	}
+	cmd.Stdin = stdinBuf
 
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return nil, fmt.Errorf("error connecting to command's stdout: %w", err)
-	}
-
-	log.Trace().Msg("extproc: marshalling json")
-	js, err := protojson.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("error marshalling proto as JSON: %w", err)
-	}
-
-	log.Trace().Msg("extproc: starting command")
+	log.Trace().Msg("starting command")
 	if err = cmd.Start(); err != nil {
-		return nil, fmt.Errorf("error starting command: %w", err)
+		return nil, fmt.Errorf("starting command: %w", err)
 	}
 
-	log.Trace().Msg("extproc: writing to stdin")
-	if _, err = stdin.Write(js); err != nil {
-		return nil, fmt.Errorf("error writing JSON to stdin: %w", err)
-	}
-	if err = stdin.Close(); err != nil {
-		log.Error().Err(err).Msg("extproc: error closing stdin")
-		// not a fatal error, so we can continue
-	}
-
-	log.Trace().Msg("extproc: reading stdout")
-	stateJS, err := io.ReadAll(stdout)
-	if err != nil {
-		return nil, fmt.Errorf("error reading command output: %w", err)
-	}
-
-	log.Trace().Msg("extproc: waiting for command")
+	log.Trace().Msg("waiting for command")
 	if err = cmd.Wait(); err != nil {
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
-			c := codes.Code(exitErr.ExitCode())
-			if c >= maxCode {
-				c = codes.Unknown
-			}
-			return nil, status.Error(c, string(exitErr.Stderr))
-		}
-		return nil, fmt.Errorf("unknown error running command: %w", err)
+		return nil, extprocs.CommandError(err)
 	}
 
-	log.Trace().Msg("extproc: unmarshalling control plane state")
-	stateMsg := apipb.ControlPlaneState{}
-	if err = protojson.Unmarshal(stateJS, &stateMsg); err != nil {
-		return nil, fmt.Errorf("error marshalling command output into state proto: %w", err)
+	reportData := stdoutBuf.Bytes()
+	if len(reportData) == 0 {
+		log.Trace().Msg("command exited with no new status")
+		return nil, nil
 	}
-	return &stateMsg, nil
+
+	log.Trace().Int("bytes", len(reportData)).Msg("unmarshalling control plane state")
+	stateMsg := &apipb.ControlPlaneState{}
+	if err = eb.protoFmt.Unmarshal(reportData, stateMsg); err != nil {
+		return nil, fmt.Errorf("marshalling command output into state proto: %w", err)
+	}
+	log.Trace().Interface("state", loggable.Proto(stateMsg)).Msg("command returned new state")
+	return stateMsg, nil
 }
