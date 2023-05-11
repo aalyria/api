@@ -24,7 +24,7 @@ option go_package = "aalyria.com/spacetime/api/nbi/v1alpha/resources";
 // Models an antenna radiation pattern. Multiple platform definitions can
 // reference the same antenna pattern.
 message AntennaPattern {
-  reserved 8, 10 to max;
+  reserved 8, 11 to max;
 
   // A custom / user-defined antenna radiation pattern.
   message CustomAntennaPattern {
@@ -80,6 +80,35 @@ message AntennaPattern {
     optional double pointing_error_rad = 4;
   }
 
+  message PhasedArrayAntennaPattern {
+    optional double design_frequency_hz = 1;
+    optional double backlobe_suppression_db = 2;
+
+    message Element {
+      // These fields determine the position of each element in the phased
+      // array. The center of the array is considered to be at (0, 0). Since
+      // this models a planar array, the z-coordinate is 0.0.
+      optional double x = 1;
+      optional double y = 2;
+    }
+    repeated Element elements = 3;
+
+    message MinimumVarianceDistortionlessResponseBeamformer {
+      optional double beam_variance = 1;
+    }
+    oneof beamformer {
+      MinimumVarianceDistortionlessResponseBeamformer
+          minimum_variance_distortionless_response_beamformer = 4;
+    }
+
+    message CosineExponentElementFactor {
+      optional double cosine_exponent = 1;
+      // The element area in meters squared.
+      optional double element_area_m2 = 2;
+    }
+    optional CosineExponentElementFactor cosine_exponent_element_factor = 5;
+  }
+
   // Applies a separate near-field antenna radiation pattern when the other
   // link end is within the near field range (in meters).
   message NearAndFarFieldAntennaPattern {
@@ -96,6 +125,7 @@ message AntennaPattern {
     ParabolicAntennaPattern parabolic_pattern = 5;
     SquareHornAntennaPattern square_horn_pattern = 6;
     GaussianOpticalAntennaPattern gaussian_optical_pattern = 7;
+    PhasedArrayAntennaPattern phased_array_pattern = 10;
     NearAndFarFieldAntennaPattern near_and_far_field_pattern = 9;
   }
 }
