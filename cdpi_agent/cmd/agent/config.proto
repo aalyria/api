@@ -50,6 +50,10 @@ message AuthStrategy {
     // The specifications for a JWT that should be generated and signed by the
     // agent.
     Jwt jwt = 1;
+
+    // No authentication options should be used. This is unlikely to work for
+    // you.
+    google.protobuf.Empty none = 2;
   }
 }
 

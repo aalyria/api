@@ -177,6 +177,7 @@ message WirelessLinkReport {
   optional aalyria.spacetime.api.common.TransceiverModelId dst = 1;  // required
 
   optional string band_profile_id = 2;  // required
+  repeated uint64 center_frequencies_hz = 3;
 
   // A series of non-overlapping time intervals that describe the predicted
   // accessibility of the link -- and link metrics within accessible intervals.

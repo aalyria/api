@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -319,12 +320,13 @@ func TestPeriodicUpdatesAreStoppedWhenHzIsZero(t *testing.T) {
 		},
 	}
 
-	reportCh := make(chan *apipb.NetworkStatsReport, 3)
-	reportCh <- initialReport
-	reportCh <- periodicReport
-	reportCh <- periodicReport
-
-	tb := func(ctx context.Context) (*apipb.NetworkStatsReport, error) { return <-reportCh, nil }
+	times := &atomic.Int64{}
+	tb := func(ctx context.Context) (*apipb.NetworkStatsReport, error) {
+		if times.Add(1) == 1 {
+			return initialReport, nil
+		}
+		return periodicReport, nil
+	}
 
 	clock := clockwork.NewFakeClock()
 	a := newAgent(t,

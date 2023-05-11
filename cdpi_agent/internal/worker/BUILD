@@ -12,16 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-on: [pull_request]
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
-jobs:
-  bazel-build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Mount bazel cache 
-        uses: actions/cache@v3
-        with:
-          path: "~/.cache/bazel"
-          key: bazel
-      - run: bazelisk build //...
+go_library(
+    name = "worker",
+    srcs = ["worker.go"],
+    importpath = "aalyria.com/spacetime/cdpi_agent/internal/worker",
+    visibility = ["//cdpi_agent:__subpackages__"],
+)
+
+go_test(
+    name = "worker_test",
+    srcs = ["worker_test.go"],
+    embed = [":worker"],
+    deps = [
+        "@com_github_google_go_cmp//cmp",
+        "@com_github_google_go_cmp//cmp/cmpopts",
+        "@com_github_jonboulle_clockwork//:clockwork",
+        "@org_golang_x_sync//errgroup",
+    ],
+)

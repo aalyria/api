@@ -44,12 +44,18 @@ message ServiceRequest {
   // Labels the network flow type in the NetOps UI.
   optional string type = 13;  // [(google.api.field_behavior) = OPTIONAL];
 
-  // The network node/elements that may act as the source of the network flow.
-  repeated string src_element_ids = 2;
+  oneof src_type {
+    string src_node_id = 2;
+    aalyria.spacetime.api.common.NetworkInterfaceId src_interface_id = 3;
+    string src_devices_in_region_id = 8;
+  }
 
-  // The network node/elements that may act as the destination of the network
-  // flow.
-  repeated string dst_element_ids = 3;
+  oneof dst_type {
+    string dst_node_id = 16;
+    aalyria.spacetime.api.common.NetworkInterfaceId dst_interface_id = 17;
+    string dst_devices_in_region_id = 18;
+  }
+
 
   // By default, packets are classified as belonging to this provisioned flow if
   // their IP source & destination address fields are within the subnet address
@@ -148,7 +154,7 @@ message ServiceRequest {
   repeated IntentAndIntervals intent_dependencies = 14;
 
   reserved 1, 7;
-  reserved 16 to max;  // Next IDs.
+  reserved 19 to max;  // Next IDs.
 }
 
 // An external request to avoid using an otherwise available node to

@@ -48,7 +48,6 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
-	afpb "aalyria.com/spacetime/api/cdpi/v1alpha"
 	agent "aalyria.com/spacetime/cdpi_agent"
 	"aalyria.com/spacetime/cdpi_agent/cmd/agent/configpb"
 	enact_extproc "aalyria.com/spacetime/cdpi_agent/enactment/extproc"
@@ -227,6 +226,9 @@ func getDialOpts(ctx context.Context, params *configpb.AgentParams, clock clockw
 	dialOpts = append(dialOpts, grpc.WithConnectParams(grpcConnParams))
 
 	switch authStrat := connParams.GetAuthStrategy(); authStrat.Type.(type) {
+	case *configpb.AuthStrategy_None:
+		// ¯\_(ツ)_/¯
+
 	case *configpb.AuthStrategy_Jwt_:
 		jwtSpec := authStrat.GetJwt()
 		pkeySrc, err := getPrivateKey(jwtSpec.GetSigningStrategy())
@@ -260,10 +262,7 @@ func getNodeOpts(node *configpb.NetworkNode) (nodeOpts []agent.NodeOption, err e
 			return nil, errors.New("missing required initial state")
 		}
 
-		nodeOpts = append(nodeOpts, agent.WithInitialState(&afpb.ControlStateNotification{
-			NodeId: &node.Id,
-			State:  initState,
-		}))
+		nodeOpts = append(nodeOpts, agent.WithInitialState(initState))
 	default:
 		return nil, errors.New("missing required state backend")
 	}
