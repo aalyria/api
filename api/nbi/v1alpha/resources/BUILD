@@ -24,6 +24,7 @@ proto_library(
     srcs = [
         "antenna_pattern.proto",
         "coverage.proto",
+        "devices_in_region.proto",
         "intent.proto",
         "motion_evaluation.proto",
         "network_element.proto",
