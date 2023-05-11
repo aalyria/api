@@ -17,10 +17,10 @@ package agent
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	afpb "aalyria.com/spacetime/api/cdpi/v1alpha"
+	apipb "aalyria.com/spacetime/api/common"
 	"aalyria.com/spacetime/cdpi_agent/internal/task"
 
 	"github.com/jonboulle/clockwork"
@@ -28,25 +28,24 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-var ErrNoActiveServices = errors.New("no services configured for node")
-
 // nodeController is the logical owner of a node and its various services
 // (telemetry, enactments, etc.).
 type nodeController struct {
 	// The node ID this controller is responsible for.
 	id string
-
 	// done is called when the controller should stop.
-	done func()
-
-	initState *afpb.ControlStateNotification
+	done      func()
 	clock     clockwork.Clock
+	initState *apipb.ControlPlaneState
 	services  []task.Task
+	// The channel priority of this controller's stream.
+	priority uint32
 }
 
-func (a *Agent) newNodeController(node *node, done func()) *nodeController {
+func (a *Agent) newNodeController(node *node, done func(), cdpiClient afpb.CdpiClient, telemetryClient afpb.NetworkTelemetryStreamingClient) *nodeController {
 	nc := &nodeController{
 		id:        node.id,
+		priority:  node.priority,
 		done:      done,
 		clock:     a.clock,
 		initState: node.initState,
@@ -56,7 +55,7 @@ func (a *Agent) newNodeController(node *node, done func()) *nodeController {
 		BackoffDuration: 5 * time.Second,
 		ErrIsFatal: func(err error) bool {
 			switch c := status.Code(err); {
-			case c == codes.Unauthenticated, c == codes.Canceled, errors.Is(err, context.Canceled):
+			case c == codes.Unauthenticated, c == codes.Canceled, c == codes.Unimplemented, errors.Is(err, context.Canceled):
 				return true
 			default:
 				return false
@@ -67,13 +66,13 @@ func (a *Agent) newNodeController(node *node, done func()) *nodeController {
 
 	nc.services = []task.Task{}
 	if node.telemetryEnabled {
-		nc.services = append(nc.services, nc.newTelemetryService(a.telemetryClient, node.tb).
+		nc.services = append(nc.services, nc.newTelemetryService(telemetryClient, node.tb).
 			WithLogField("service", "telemetry").
 			WithRetries(rc).
 			WithPanicCatcher())
 	}
 	if node.enactmentsEnabled {
-		nc.services = append(nc.services, nc.newEnactmentService(a.ctrlClient, node.eb).
+		nc.services = append(nc.services, nc.newEnactmentService(cdpiClient, node.eb).
 			WithLogField("service", "enactment").
 			WithRetries(rc).
 			WithPanicCatcher())
@@ -84,12 +83,5 @@ func (a *Agent) newNodeController(node *node, done func()) *nodeController {
 
 func (nc *nodeController) run(ctx context.Context) error {
 	defer nc.done()
-	if len(nc.services) == 0 {
-		return fmt.Errorf("%s: %w", nc.id, ErrNoActiveServices)
-	}
-
-	if err := task.Group(nc.services...).WithPanicCatcher()(ctx); err != nil {
-		return fmt.Errorf("%s: %w", nc.id, err)
-	}
-	return nil
+	return task.Group(nc.services...).WithPanicCatcher()(ctx)
 }

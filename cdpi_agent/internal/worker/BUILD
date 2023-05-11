@@ -14,30 +14,21 @@
 
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
-package(default_visibility = ["//cdpi_agent:__subpackages__"])
-
 go_library(
-    name = "task",
-    srcs = ["task.go"],
-    importpath = "aalyria.com/spacetime/cdpi_agent/internal/task",
-    deps = [
-        "@com_github_jonboulle_clockwork//:clockwork",
-        "@com_github_rs_zerolog//:zerolog",
-        "@io_opentelemetry_go_otel//attribute",
-        "@io_opentelemetry_go_otel//codes",
-        "@io_opentelemetry_go_otel_sdk//trace",
-        "@io_opentelemetry_go_otel_trace//:trace",
-        "@org_golang_x_sync//errgroup",
-    ],
+    name = "worker",
+    srcs = ["worker.go"],
+    importpath = "aalyria.com/spacetime/cdpi_agent/internal/worker",
+    visibility = ["//cdpi_agent:__subpackages__"],
 )
 
 go_test(
-    name = "task_test",
-    size = "small",
-    srcs = ["task_test.go"],
-    embed = [":task"],
+    name = "worker_test",
+    srcs = ["worker_test.go"],
+    embed = [":worker"],
     deps = [
-        "@io_opentelemetry_go_otel_sdk//trace",
-        "@io_opentelemetry_go_otel_trace//:trace",
+        "@com_github_google_go_cmp//cmp",
+        "@com_github_google_go_cmp//cmp/cmpopts",
+        "@com_github_jonboulle_clockwork//:clockwork",
+        "@org_golang_x_sync//errgroup",
     ],
 )

@@ -106,7 +106,10 @@ func (ts *telemetryService) run(ctx context.Context) error {
 		WithPanicCatcher().
 		WithCtx(ctx))
 
-	triggerCh <- struct{}{}
+	select {
+	case triggerCh <- struct{}{}:
+	case <-ctx.Done():
+	}
 
 	return g.Wait()
 }

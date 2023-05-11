@@ -49,7 +49,6 @@ go_library(
     visibility = ["//visibility:private"],
     deps = [
         ":configpb_go_proto",
-        "//api/cdpi/v1alpha:cdpi_go_grpc",
         "//cdpi_agent",
         "//cdpi_agent/enactment/extproc",
         "//cdpi_agent/internal/auth",

@@ -28,6 +28,7 @@ go_library(
 
 go_test(
     name = "loggable_test",
+    size = "small",
     srcs = ["loggable_test.go"],
     embed = [":loggable"],
     deps = [

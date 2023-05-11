@@ -25,7 +25,8 @@ import (
 	"aalyria.com/spacetime/cdpi_agent/internal/channels"
 	"aalyria.com/spacetime/cdpi_agent/internal/loggable"
 	"aalyria.com/spacetime/cdpi_agent/internal/task"
-
+	"aalyria.com/spacetime/cdpi_agent/internal/worker"
+	"github.com/jonboulle/clockwork"
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
@@ -36,66 +37,114 @@ import (
 
 func OK() *status.Status { return status.New(codes.OK, "") }
 
-// enactmentService represents the control aspect of a node's stream.
 type enactmentService struct {
-	nc *nodeController
-
 	// protects access to the scheduledUpdates map.
 	mu sync.Mutex
-	// Maps update IDs => scheduledUpdates.
-	scheduledUpdates map[string]scheduledUpdate
-	ctrlClient       afpb.NetworkControllerStreamingClient
-	// TODO: does init state need to change between invocations?
-	initState *afpb.ControlStateNotification
-	eb        enactment.Backend
+	// maps updateIDs => scheduledUpdates
+	scheduledUpdates map[string]*scheduledUpdate
+	cc               afpb.CdpiClient
+	eb               enactment.Backend
+	clock            clockwork.Clock
+	initState        *apipb.ControlPlaneState
+	nodeID           string
+	priority         uint32
 }
 
 type scheduledUpdate struct {
-	update *afpb.ControlStateChangeRequest
-	timer  safeTimer
+	timer  clockwork.Timer
+	update *apipb.ScheduledControlUpdate
 }
 
-func (nc *nodeController) newEnactmentService(cc afpb.NetworkControllerStreamingClient, eb enactment.Backend) task.Task {
+func (nc *nodeController) newEnactmentService(cc afpb.CdpiClient, eb enactment.Backend) task.Task {
 	return task.Task((&enactmentService{
-		nc:               nc,
-		mu:               sync.Mutex{},
-		scheduledUpdates: map[string]scheduledUpdate{},
-		ctrlClient:       cc,
-		initState:        nc.initState,
 		eb:               eb,
+		cc:               cc,
+		mu:               sync.Mutex{},
+		scheduledUpdates: map[string]*scheduledUpdate{},
+		clock:            nc.clock,
+		nodeID:           nc.id,
+		initState:        nc.initState,
+		priority:         nc.priority,
 	}).run).WithNewSpan("enactment_service")
 }
 
 func (es *enactmentService) run(ctx context.Context) error {
 	g, ctx := errgroup.WithContext(ctx)
 
-	cpi, err := es.ctrlClient.ControlPlaneInterface(ctx)
+	stream, err := es.cc.Cdpi(ctx)
 	if err != nil {
-		return fmt.Errorf("error invoking the ControlPlaneInterface: %w", err)
+		return fmt.Errorf("error invoking the Cdpi interface: %w", err)
 	}
 
-	// sendCh contains the messages queued to send over the gRPC stream
-	sendCh := make(chan *afpb.ControlStateNotification)
+	// sendCh contains the messages queued to send over the long-lived gRPC
+	// stream.
+	sendCh := make(chan *afpb.CdpiRequest)
 	// recvCh contains the messages received over the gRPC stream
-	recvCh := make(chan *afpb.ControlStateChangeRequest)
+	recvCh := make(chan *afpb.CdpiResponse)
 	// updateCh contains the updates that need to be applied immediately
 	updateCh := make(chan *apipb.ScheduledControlUpdate)
 
-	g.Go(channels.NewSource(sendCh).ForwardTo(cpi.Send).
+	scheduler := &enactmentScheduler{
+		mu: sync.Mutex{},
+		beamQ: worker.NewMapQueue(ctx, g, func(u *apipb.ScheduledControlUpdate) string {
+			return u.GetChange().GetBeamUpdate().GetInterfaceId().GetInterfaceId()
+		}, es.applyUpdate),
+		radioQ: worker.NewMapQueue(ctx, g, func(u *apipb.ScheduledControlUpdate) string {
+			return u.GetChange().GetRadioUpdate().GetInterfaceId()
+		}, es.applyUpdate),
+		flowQ: worker.NewMapQueue(ctx, g, func(u *apipb.ScheduledControlUpdate) string {
+			// TODO: this is inelegant to say the least, but there's
+			// *always one forward rule present here.
+			for _, b := range u.GetChange().GetFlowUpdate().GetRule().GetActionBucket() {
+				for _, a := range b.GetAction() {
+					switch a.ActionType.(type) {
+					case *apipb.FlowRule_ActionBucket_Action_Forward_:
+						return a.GetForward().GetOutInterfaceId()
+					}
+				}
+			}
+			return ""
+		}, es.applyUpdate),
+		tunnelQ: worker.NewSerialQueue(ctx, g, es.applyUpdate),
+	}
+
+	// Something like this (remember that a CdpiResponse is what the server
+	// sends this service and a CdpiRequest is what this service responds
+	// with):
+	//
+	// ┌──────┐    ┌────────┐   ┌──────┐    ┌────────┐     ┌─────────┐
+	// │recvCh│    │mainLoop│   │sendCh│    │updateCh│     │EmitEvent│
+	// └──┬───┘    └───┬────┘   └──┬───┘    └───┬────┘     └────┬────┘
+	//    │            │           │            │               │
+	//    │CdpiResponse│           │            │               │
+	//    │───────────>│           │            │               │
+	//    │            │           │            │               │
+	//    │            │CdpiRequest│            │               │
+	//    │            │──────────>│            │               │
+	//    │            │           │            │               │
+	//    │            │ ScheduledControlUpdate │               │
+	//    │            │───────────────────────>│               │
+	//    │            │           │            │               │
+	//    │            │           │            │CdpiClientEvent│
+	//    │            │           │            │──────────────>│
+	// ┌──┴───┐    ┌───┴────┐   ┌──┴───┐    ┌───┴────┐     ┌────┴────┐
+	// │recvCh│    │mainLoop│   │sendCh│    │updateCh│     │EmitEvent│
+	// └──────┘    └────────┘   └──────┘    └────────┘     └─────────┘
+
+	g.Go(channels.NewSource(sendCh).ForwardTo(stream.Send).
 		WithStartingStoppingLogs("sendLoop", zerolog.TraceLevel).
 		WithLogField("task", "send").
 		WithNewSpan("sendLoop").
 		WithPanicCatcher().
 		WithCtx(ctx))
 
-	g.Go(channels.NewSink(recvCh).FillFrom(cpi.Recv).
+	g.Go(channels.NewSink(recvCh).FillFrom(stream.Recv).
 		WithStartingStoppingLogs("recvLoop", zerolog.TraceLevel).
 		WithLogField("task", "recv").
-		WithNewSpan("recvLoop").
 		WithPanicCatcher().
 		WithCtx(ctx))
 
-	g.Go(es.enactmentLoop(sendCh, updateCh).
+	g.Go(es.enactmentLoop(updateCh, scheduler).
 		WithStartingStoppingLogs("enactmentLoop", zerolog.TraceLevel).
 		WithLogField("task", "enactment").
 		WithNewSpan("enactmentLoop").
@@ -109,64 +158,80 @@ func (es *enactmentService) run(ctx context.Context) error {
 		WithPanicCatcher().
 		WithCtx(ctx))
 
-	sendCh <- es.initState
+	g.Go(func() error {
+		hello := es.hello()
+		zerolog.Ctx(ctx).Debug().Object("hello", loggable.Proto(hello)).Msg("sending hello")
+		select {
+		case sendCh <- hello:
+			return nil
+		case <-ctx.Done():
+			return context.Cause(ctx)
+		}
+	})
 
-	err = g.Wait()
-	zerolog.Ctx(ctx).Trace().Err(err).Msg("service finished")
-	return err
+	if es.initState != nil {
+		g.Go(func() error {
+			_, err := es.cc.UpdateNodeState(ctx, &afpb.CdpiNodeStateRequest{
+				NodeId: &es.nodeID,
+				State:  es.initState,
+			})
+			return err
+		})
+	}
+
+	return g.Wait()
+}
+
+func (es *enactmentService) hello() *afpb.CdpiRequest {
+	return &afpb.CdpiRequest{
+		Hello: &afpb.CdpiRequest_Hello{
+			NodeId:          &es.nodeID,
+			ChannelPriority: proto.Uint32(es.priority),
+		},
+	}
 }
 
 // enactmentLoop reads change requests from the `updateCh`, applies them, and
-// sends a response via the `sendCh`. All enactments should go through this
-// channel to ensure that they're applied serially.
-func (es *enactmentService) enactmentLoop(sendCh chan<- *afpb.ControlStateNotification, updateCh <-chan *apipb.ScheduledControlUpdate) task.Task {
-	mapFn := func(ctx context.Context, upd *apipb.ScheduledControlUpdate) (*afpb.ControlStateNotification, error) {
-		zerolog.Ctx(ctx).Trace().Object("update", loggable.Proto(upd)).Msg("applying update")
-
-		return es.applyUpdate(ctx, upd), nil
-	}
-
-	return channels.MapBetween(updateCh, sendCh, mapFn)
-}
-
-// mainLoop processes incoming change requests and transforms them into
-// state notifications.
-func (es *enactmentService) mainLoop(recvCh <-chan *afpb.ControlStateChangeRequest, sendCh chan<- *afpb.ControlStateNotification, updateCh chan<- *apipb.ScheduledControlUpdate) task.Task {
+// uses the unary NotifyControlUpdateStatus method to deliver updates to the
+// CDPI server. All enactments should go through this channel to ensure that
+// they're applied serially.
+func (es *enactmentService) enactmentLoop(updateCh <-chan *apipb.ScheduledControlUpdate, scheduler *enactmentScheduler) task.Task {
 	return func(ctx context.Context) error {
 		for {
-			var changeReq *afpb.ControlStateChangeRequest
+			var toEnact *apipb.ScheduledControlUpdate
 			select {
 			case <-ctx.Done():
 				return context.Cause(ctx)
-			case changeReq = <-recvCh:
-			}
-
-			var response *afpb.ControlStateNotification
-			switch changeReq.Type.(type) {
-			case *afpb.ControlStateChangeRequest_ScheduledUpdate:
-				response = es.handleScheduledUpdate(ctx, changeReq, sendCh, updateCh)
-			case *afpb.ControlStateChangeRequest_ScheduledDeletion:
-				response = es.handleScheduledDeletion(ctx, changeReq.GetScheduledDeletion())
-			case *afpb.ControlStateChangeRequest_ControlPlanePingRequest:
-				response = es.handlePingRequest(ctx, changeReq.GetControlPlanePingRequest())
-			default:
-				return fmt.Errorf("unknown request type received: %v", changeReq.Type)
-			}
-
-			if response == nil {
-				continue
-			}
-
-			select {
-			case <-ctx.Done():
-				return context.Cause(ctx)
-			case sendCh <- response:
+			case toEnact = <-updateCh:
+				scheduler.enqueue(ctx, toEnact)
 			}
 		}
 	}
 }
 
-func (es *enactmentService) applyUpdate(ctx context.Context, upd *apipb.ScheduledControlUpdate) *afpb.ControlStateNotification {
+type enactmentScheduler struct {
+	mu sync.Mutex
+
+	beamQ   worker.Queue[*apipb.ScheduledControlUpdate]
+	radioQ  worker.Queue[*apipb.ScheduledControlUpdate]
+	flowQ   worker.Queue[*apipb.ScheduledControlUpdate]
+	tunnelQ worker.Queue[*apipb.ScheduledControlUpdate]
+}
+
+func (s *enactmentScheduler) enqueue(ctx context.Context, update *apipb.ScheduledControlUpdate) {
+	switch update.Change.UpdateType.(type) {
+	case *apipb.ControlPlaneUpdate_BeamUpdate:
+		s.beamQ.Enqueue(update)
+	case *apipb.ControlPlaneUpdate_TunnelUpdate:
+		s.tunnelQ.Enqueue(update)
+	case *apipb.ControlPlaneUpdate_FlowUpdate:
+		s.flowQ.Enqueue(update)
+	case *apipb.ControlPlaneUpdate_RadioUpdate:
+		s.radioQ.Enqueue(update)
+	}
+}
+
+func (es *enactmentService) applyUpdate(ctx context.Context, upd *apipb.ScheduledControlUpdate) error {
 	updateID := *upd.UpdateId
 	log := zerolog.Ctx(ctx).With().Str("updateID", updateID).Logger()
 
@@ -178,70 +243,156 @@ func (es *enactmentService) applyUpdate(ctx context.Context, upd *apipb.Schedule
 	}
 	es.mu.Unlock()
 
+	now := es.clock.Now()
+
 	var newState *apipb.ControlPlaneState
-	if err := task.Task(func(ctx context.Context) (err error) {
+	eb := task.Task(func(ctx context.Context) (err error) {
 		newState, err = es.eb(ctx, upd)
 		return err
-	}).WithNewSpan("enactment.Backend")(ctx); err != nil {
-		log.Error().Err(err).Msg("error handling update")
+	}).WithNewSpan("enactment.Backend")
 
-		return &afpb.ControlStateNotification{
-			NodeId: proto.String(es.nc.id),
-			Statuses: []*apipb.ScheduledControlUpdateStatus{{
-				UpdateId: &updateID,
-				State: &apipb.ScheduledControlUpdateStatus_EnactmentAttempted{
-					EnactmentAttempted: status.Convert(err).Proto(),
-				},
-			}},
+	var enactmentResult *status.Status
+	if err := eb(ctx); err != nil {
+		log.Error().Err(err).Msg("error handling update")
+		enactmentResult = status.Convert(err)
+	} else {
+		enactmentResult = OK()
+	}
+
+	var newStateMsg *afpb.CdpiNodeStateRequest
+	if newState != nil {
+		newStateMsg = &afpb.CdpiNodeStateRequest{
+			NodeId: &es.nodeID,
+			State:  newState,
 		}
 	}
 
-	return &afpb.ControlStateNotification{
-		NodeId: proto.String(es.nc.id),
-		State:  newState,
-		Statuses: []*apipb.ScheduledControlUpdateStatus{{
-			UpdateId: &updateID,
+	requestStatus := &afpb.CdpiRequestStatusRequest{
+		NodeId: &es.nodeID,
+		Status: &apipb.ScheduledControlUpdateStatus{
+			UpdateId:  &updateID,
+			Timestamp: timeToProto(now),
 			State: &apipb.ScheduledControlUpdateStatus_EnactmentAttempted{
-				EnactmentAttempted: OK().Proto(),
+				EnactmentAttempted: enactmentResult.Proto(),
 			},
-		}},
+		},
+	}
+	if newStateMsg != nil {
+		if _, err := es.cc.UpdateNodeState(ctx, newStateMsg); err != nil {
+			return err
+		}
+	}
+
+	if _, err := es.cc.UpdateRequestStatus(ctx, requestStatus); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (es *enactmentService) mainLoop(recvCh <-chan *afpb.CdpiResponse, sendCh chan<- *afpb.CdpiRequest, updateCh chan<- *apipb.ScheduledControlUpdate,
+) task.Task {
+	return func(ctx context.Context) error {
+		for {
+
+			var incomingReq *afpb.CdpiResponse
+			select {
+			case <-ctx.Done():
+				return context.Cause(ctx)
+			case incomingReq = <-recvCh:
+			}
+
+			changeReq := &afpb.ControlStateChangeRequest{}
+			if err := proto.Unmarshal(incomingReq.GetRequestPayload(), changeReq); err != nil {
+				return fmt.Errorf("error unmarshalling request payload: %w", err)
+			}
+
+			var response *afpb.ControlStateNotification
+			switch changeReq.Type.(type) {
+			case *afpb.ControlStateChangeRequest_ScheduledUpdate:
+				response = es.handleScheduledUpdate(ctx, changeReq, updateCh)
+			case *afpb.ControlStateChangeRequest_ScheduledDeletion:
+				response = es.handleScheduledDeletion(ctx, changeReq.GetScheduledDeletion())
+			case *afpb.ControlStateChangeRequest_ControlPlanePingRequest:
+				response = es.handlePingRequest(ctx, changeReq.GetControlPlanePingRequest())
+			default:
+				return fmt.Errorf("unknown request type received: %v", changeReq.Type)
+			}
+
+			payloadBytes, err := proto.Marshal(response)
+			if err != nil {
+				return fmt.Errorf("error marshalling response: %w", err)
+			}
+
+			select {
+			case <-ctx.Done():
+				return context.Cause(ctx)
+			case sendCh <- &afpb.CdpiRequest{
+				Response: &afpb.CdpiRequest_Response{
+					RequestId: incomingReq.RequestId,
+					Status:    OK().Proto(),
+					Payload:   payloadBytes,
+				},
+			}:
+			}
+		}
 	}
 }
 
-func (es *enactmentService) handleScheduledUpdate(ctx context.Context, req *afpb.ControlStateChangeRequest, sendCh chan<- *afpb.ControlStateNotification, updateCh chan<- *apipb.ScheduledControlUpdate) *afpb.ControlStateNotification {
+func (es *enactmentService) handleScheduledUpdate(ctx context.Context, req *afpb.ControlStateChangeRequest, updateCh chan<- *apipb.ScheduledControlUpdate) *afpb.ControlStateNotification {
 	log := zerolog.Ctx(ctx)
 
 	// TODO: check that this field is set
 	upd := req.GetScheduledUpdate()
 	tte := upd.TimeToEnact.AsTime()
+	now := es.clock.Now()
 
 	log.Debug().
-		Time("now", es.nc.clock.Now()).
+		Time("now", now).
 		Time("tte", tte).
 		Msg("handling scheduled update")
 
-	if tte.After(es.nc.clock.Now()) {
-		return es.handleFutureScheduledUpdate(ctx, req, sendCh, updateCh)
-	} else if tte.Before(es.nc.clock.Now()) && shouldRejectStaleRequest(upd) {
+	if tte.After(now) {
+		return es.handleFutureScheduledUpdate(ctx, req, updateCh)
+	} else if tte.Before(now) && shouldRejectStaleRequest(upd) {
 		return es.rejectStaleRequest(ctx, upd)
 	} else {
-		// for enactments that should be applied immediately we just forward
-		// them to the enactmentLoop (to ensure that enactments are always
-		// applied serially per-node) and return nil here (because the
-		// enactmentLoop will handle acking the request)
-		select {
-		case <-ctx.Done():
-		case updateCh <- upd:
-		}
-		return nil
+		return es.handleImmediateScheduledUpdate(ctx, req, updateCh)
 	}
 }
 
-func (es *enactmentService) handleFutureScheduledUpdate(ctx context.Context, req *afpb.ControlStateChangeRequest, sendCh chan<- *afpb.ControlStateNotification, updateCh chan<- *apipb.ScheduledControlUpdate) *afpb.ControlStateNotification {
+func (es *enactmentService) handleImmediateScheduledUpdate(ctx context.Context, req *afpb.ControlStateChangeRequest, updateCh chan<- *apipb.ScheduledControlUpdate) *afpb.ControlStateNotification {
+	// for enactments that should be applied immediately we just forward them
+	// to the enactmentLoop (to ensure that enactments are always applied
+	// serially per-node) .
+	upd := req.GetScheduledUpdate()
+	uid := upd.GetUpdateId()
+
+	updateStatus := &apipb.ScheduledControlUpdateStatus{
+		UpdateId:  &uid,
+		Timestamp: timeToProto(es.clock.Now()),
+	}
+
+	select {
+	case <-ctx.Done():
+		updateStatus.State = &apipb.ScheduledControlUpdateStatus_EnactmentAttempted{
+			EnactmentAttempted: status.FromContextError(context.Cause(ctx)).Proto(),
+		}
+	case updateCh <- upd:
+		updateStatus.State = &apipb.ScheduledControlUpdateStatus_Scheduled{}
+	}
+
+	return &afpb.ControlStateNotification{
+		Statuses: []*apipb.ScheduledControlUpdateStatus{updateStatus},
+	}
+}
+
+func (es *enactmentService) handleFutureScheduledUpdate(
+	ctx context.Context, req *afpb.ControlStateChangeRequest, updateCh chan<- *apipb.ScheduledControlUpdate,
+) *afpb.ControlStateNotification {
 	upd := req.GetScheduledUpdate()
 	updateID := *upd.UpdateId
 	tte := upd.TimeToEnact.AsTime()
-	now := es.nc.clock.Now()
+	now := es.clock.Now()
 	delay := tte.Sub(now)
 
 	log := zerolog.Ctx(ctx).
@@ -251,45 +402,29 @@ func (es *enactmentService) handleFutureScheduledUpdate(ctx context.Context, req
 		Str("updateID", updateID).
 		Logger()
 
+	// TODO: check for dupes and/or higher seq numbers
 	es.mu.Lock()
-	timer := safeTimer{
-		t:        es.nc.clock.NewTimer(delay),
-		done:     make(chan struct{}),
-		stopOnce: &sync.Once{},
-	}
-
-	go func() {
-		select {
-		case <-ctx.Done():
-			log.Warn().Msg("discarding pending request because context was cancelled")
-			timer.Stop()
-			return
-		case <-timer.done:
-			return
-
-		case <-timer.t.Chan():
-		}
-
-		select {
-		case updateCh <- upd:
-		case <-ctx.Done():
-			log.Warn().Msg("discarding pending request because context was cancelled")
-		}
-	}()
-
-	// TODO: check for dupes
-	es.scheduledUpdates[updateID] = scheduledUpdate{
-		update: req,
-		timer:  timer,
+	es.scheduledUpdates[updateID] = &scheduledUpdate{
+		timer: es.clock.AfterFunc(delay, func() {
+			select {
+			case updateCh <- upd:
+			case <-ctx.Done():
+				log.Warn().
+					Object("request", loggable.Proto(upd)).
+					Msg("discarding pending request because context was cancelled")
+			}
+		}),
+		update: upd,
 	}
 	es.mu.Unlock()
 
 	return &afpb.ControlStateNotification{
-		NodeId: proto.String(es.nc.id),
 		Statuses: []*apipb.ScheduledControlUpdateStatus{
 			{
-				UpdateId: &updateID,
-				State:    &apipb.ScheduledControlUpdateStatus_Scheduled{}},
+				UpdateId:  &updateID,
+				Timestamp: timeToProto(now),
+				State:     &apipb.ScheduledControlUpdateStatus_Scheduled{},
+			},
 		},
 	}
 }
@@ -298,7 +433,7 @@ func (es *enactmentService) handleScheduledDeletion(ctx context.Context, r *apip
 	log := zerolog.Ctx(ctx).With().Strs("updateIDs", r.UpdateIds).Logger()
 	log.Debug().Msg("received scheduled deletion")
 
-	notif := &afpb.ControlStateNotification{NodeId: proto.String(es.nc.id)}
+	notif := &afpb.ControlStateNotification{}
 
 	es.mu.Lock()
 	defer es.mu.Unlock()
@@ -307,7 +442,7 @@ func (es *enactmentService) handleScheduledDeletion(ctx context.Context, r *apip
 		updateStatus := &apipb.ScheduledControlUpdateStatus{
 			UpdateId: proto.String(updateID),
 			Timestamp: &apipb.DateTime{
-				UnixTimeUsec: proto.Int64(es.nc.clock.Now().UnixMicro()),
+				UnixTimeUsec: proto.Int64(es.clock.Now().UnixMicro()),
 			},
 		}
 
@@ -334,11 +469,10 @@ func (es *enactmentService) handlePingRequest(ctx context.Context, r *afpb.Contr
 	log.Debug().Msg("handling ping request")
 
 	return &afpb.ControlStateNotification{
-		NodeId: proto.String(es.nc.id),
 		ControlPlanePingResponse: &afpb.ControlPlanePingResponse{
 			Id:            r.Id,
 			Status:        OK().Proto(),
-			TimeOfReceipt: timestamppb.New(es.nc.clock.Now()),
+			TimeOfReceipt: timestamppb.New(es.clock.Now()),
 		},
 	}
 }
@@ -370,9 +504,9 @@ func (es *enactmentService) rejectStaleRequest(ctx context.Context, r *apipb.Sch
 		Msg("Rejecting update because it is too old to enact")
 
 	return &afpb.ControlStateNotification{
-		NodeId: proto.String(es.nc.id),
 		Statuses: []*apipb.ScheduledControlUpdateStatus{{
-			UpdateId: r.UpdateId,
+			UpdateId:  r.UpdateId,
+			Timestamp: timeToProto(es.clock.Now()),
 			State: &apipb.ScheduledControlUpdateStatus_EnactmentAttempted{
 				EnactmentAttempted: status.New(codes.DeadlineExceeded, "Update received by node but is too old to enact").Proto(),
 			},
