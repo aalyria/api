@@ -33,6 +33,7 @@ go_library(
 
 go_test(
     name = "task_test",
+    size = "small",
     srcs = ["task_test.go"],
     embed = [":task"],
     deps = [

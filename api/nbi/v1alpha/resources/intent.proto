@@ -47,10 +47,9 @@ enum IntentState {
   // TODO: Subdivide WITHDRAWING state as was done for the
   // INSTALLING state.
   WITHDRAWING = 6;
-  WITHDRAWN = 7;
   FAILED = 8;
 
-  reserved 2;
+  reserved 2, 7;
 }
 
 // Specifies a policy that reserves the use of a network resource.

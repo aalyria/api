@@ -24,6 +24,7 @@ import "api/common/telemetry.proto";
 import "api/common/time.proto";
 import "api/nbi/v1alpha/resources/antenna_pattern.proto";
 import "api/nbi/v1alpha/resources/coverage.proto";
+import "api/nbi/v1alpha/resources/devices_in_region.proto";
 import "api/nbi/v1alpha/resources/intent.proto";
 import "api/nbi/v1alpha/resources/motion_evaluation.proto";
 import "api/nbi/v1alpha/resources/network_element.proto";
@@ -42,6 +43,7 @@ enum EntityType {
   ANTENNA_PATTERN = 12;      
   BAND_PROFILE = 16;         
   CDPI_STREAM_INFO = 17;     
+  DEVICES_IN_REGION = 24;    
   STATION_SET = 21;          
   SURFACE_REGION = 22;       
   DRAIN_PROVISION = 20;      
@@ -57,7 +59,7 @@ enum EntityType {
   TRANSCEIVER_LINK_REPORT = 19;
   COMPUTED_MOTION = 7;
 
-  reserved 14, 24 to max;  // (-- Next ID --)
+  reserved 14, 25 to max;  // (-- Next ID --)
 }
 
 message EntityGroup {
@@ -89,6 +91,8 @@ message Entity {
     aalyria.spacetime.api.common.CdpiStreamInfo cdpi_stream_info = 23;
     aalyria.spacetime.api.nbi.v1alpha.resources.ComputedMotion
         computed_motion = 10;
+    aalyria.spacetime.api.nbi.v1alpha.resources.DevicesInRegion 
+        devices_in_region = 30;
     aalyria.spacetime.api.nbi.v1alpha.resources.StationSet station_set = 27;
     aalyria.spacetime.api.nbi.v1alpha.resources.SurfaceRegion
         surface_region = 28;

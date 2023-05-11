@@ -30,7 +30,7 @@ import (
 	"strings"
 	"time"
 
-	afpb "aalyria.com/spacetime/api/cdpi/v1alpha"
+	apipb "aalyria.com/spacetime/api/common"
 	"aalyria.com/spacetime/cdpi_agent"
 	enact_extproc "aalyria.com/spacetime/cdpi_agent/enactment/extproc"
 	"aalyria.com/spacetime/cdpi_agent/internal/protofmt"
@@ -52,7 +52,6 @@ import (
 	channelz "google.golang.org/grpc/channelz/service"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/protobuf/proto"
 )
 
 // multiStringFlag is a flag.Value implementation that can be set multiple
@@ -300,7 +299,7 @@ func (opts *cliOpts) newAgent(ctx context.Context) (a *agent.Agent, err error) {
 
 		for _, n := range opts.nodeIDs {
 			nodeOpts := append([]agent.NodeOption{
-				agent.WithInitialState(&afpb.ControlStateNotification{NodeId: proto.String(n)}),
+				agent.WithInitialState(&apipb.ControlPlaneState{}),
 			},
 				commonNodeOpts...)
 

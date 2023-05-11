@@ -77,6 +77,14 @@ message SignalPowerCoverage {
   }
 }
 
+// Defines a GeoJSON formatted geographic region.
+message GeoJsonRegion {
+  // This provides a human-readable name for the region.
+  optional string name = 1;
+  // Geobuf encoded geoJSON region (see https://github.com/mapbox/geobuf).
+  repeated bytes encoded_geo_buffer = 2;
+}
+
 // Defines a set of S2 cells (that can be at different levels) that togeher
 // cover some region.  This can be used to represent the boundaries of a nation,
 // as one example.
