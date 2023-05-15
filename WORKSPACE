@@ -481,9 +481,14 @@ switched_rules_by_language(
     name = "com_google_googleapis_imports",
     cc = True,
     java = True,
+    python = True,
 )
 
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
 
 # Load dependencies needed to compile and test the grpc library.
 grpc_deps()
+
+load("@rules_proto_grpc//python:repositories.bzl", rules_proto_grpc_python_repos = "python_repos")
+
+rules_proto_grpc_python_repos()
