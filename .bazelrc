@@ -24,6 +24,13 @@ build --features=external_include_paths
 build --experimental_output_directory_naming_scheme=diff_against_baseline
 
 ##
+# Disable strict warnings in header files from external repositories.
+#   - feature request: https://github.com/bazelbuild/bazel/issues/12009
+#   - commit: https://github.com/bazelbuild/bazel/commit/08936aecb96f2937c61bdedfebcf1c5a41a0786d
+##
+build --features=external_include_paths
+
+##
 # Don't automatically create __init__.py files in the runfiles of
 # Python targets.
 # See: https://github.com/bazelbuild/bazel/issues/10076
