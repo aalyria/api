@@ -17,8 +17,6 @@ on: [pull_request]
 jobs:
   bazel-build:
     runs-on: ubuntu-latest
-    compiler: gcc
-    gcc: 8
     steps:
       - uses: actions/checkout@v3
       - name: Mount bazel cache 
@@ -26,4 +24,6 @@ jobs:
         with:
           path: "~/.cache/bazel"
           key: bazel
-      - run: bazelisk build //...
+      - run: |
+          echo "CC=gcc-8" >> $GITHUB_ENV
+          bazelisk build //...
