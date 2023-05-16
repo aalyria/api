@@ -17,6 +17,8 @@ on: [pull_request]
 jobs:
   bazel-build:
     runs-on: ubuntu-latest
+    compiler: gcc
+    gcc: 8
     steps:
       - uses: actions/checkout@v3
       - name: Mount bazel cache 
