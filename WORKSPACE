@@ -412,6 +412,7 @@ http_archive(
     sha256 = "cdeb805385fba23242bf87073e68d590c446751e09089f26e5e0b3f655b0f089",
     strip_prefix = "grpc-1.49.2",
     urls = ["https://github.com/grpc/grpc/archive/refs/tags/v1.49.2.tar.gz"],
+    repo_mapping = {"@grpc_python_interpreter": "@python3_9"},
 )
 
 http_archive(
