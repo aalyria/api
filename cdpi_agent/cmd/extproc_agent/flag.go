@@ -31,7 +31,6 @@ import (
 	"time"
 
 	afpb "aalyria.com/spacetime/api/cdpi/v1alpha"
-	"aalyria.com/spacetime/cdpi_agent"
 	enact_extproc "aalyria.com/spacetime/cdpi_agent/enactment/extproc"
 	"aalyria.com/spacetime/cdpi_agent/internal/protofmt"
 	"aalyria.com/spacetime/cdpi_agent/internal/task"
