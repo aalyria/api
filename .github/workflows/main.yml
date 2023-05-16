@@ -24,6 +24,4 @@ jobs:
         with:
           path: "~/.cache/bazel"
           key: bazel
-      - run: |
-          echo "CC=gcc-8" >> $GITHUB_ENV
-          bazelisk build //...
+      - run: bazelisk build //...
