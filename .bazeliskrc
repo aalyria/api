@@ -13,13 +13,3 @@
 # limitations under the License.
 
 USE_BAZEL_VERSION=6.0.0
-
-##
-# Don't automatically create __init__.py files in the runfiles of
-# Python targets.
-# See: https://github.com/bazelbuild/bazel/issues/10076
-#
-# This is motivated by our python proto library targets which produce
-# overlapping import paths.
-##
-build --incompatible_default_to_explicit_init_py
