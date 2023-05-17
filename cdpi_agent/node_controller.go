@@ -91,5 +91,5 @@ func (nc *nodeController) run(ctx context.Context) error {
 	if err := task.Group(nc.services...).WithPanicCatcher()(ctx); err != nil {
 		return fmt.Errorf("%s: %w", nc.id, err)
 	}
-	return task.Group(nc.services...).WithPanicCatcher()(ctx)
+	return nil
 }
