@@ -29,12 +29,7 @@ option go_package = "aalyria.com/spacetime/api/common";
 
 // Models a physical platform with optional communications assets.
 message PlatformDefinition {
-  reserved 5 to 7, 8, 9, 10, 11, 18 to max;
-
-  // A globally unique identifier for the network platform.
-  // This should be equal to the Entity ID of this PlatformDefinition.
-  // TODO: deprecate this field and rely solely on Entity ID.
-  optional string platform_id = 1;
+  reserved 1, 5 to 7, 8, 9, 10, 11, 18 to max;
 
   // Optional friendly, human-readable strings for UI purposes.
   optional string name = 2;

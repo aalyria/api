@@ -16,6 +16,7 @@ load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@rules_proto_grpc//cpp:defs.bzl", "cpp_proto_library")
 load("@rules_proto_grpc//go:defs.bzl", "go_proto_library")
 load("@rules_proto_grpc//java:defs.bzl", "java_proto_library")
+load("@rules_proto_grpc//python:defs.bzl", "python_proto_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -80,5 +81,15 @@ java_proto_library(
         "//api/types:types_java_proto",
         "@com_google_googleapis//google/rpc:rpc_java_proto",
         "@com_google_googleapis//google/type:type_java_proto",
+    ],
+)
+
+python_proto_library(
+    name = "common_python_proto",
+    protos = [":common_proto"],
+    deps = [
+        "//api/types:types_python_proto",
+        "@com_google_googleapis//google/rpc:status_py_proto",
+        "@com_google_googleapis//google/type:interval_py_proto",
     ],
 )
