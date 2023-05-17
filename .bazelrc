@@ -21,7 +21,7 @@ build --features=external_include_paths
 
 # Go 1.20 introduced some changes that can cause unnecessary rebuilds without
 # this flag: See https://github.com/bazelbuild/rules_go/issues/3430.
-# build --experimental_output_directory_naming_scheme=diff_against_baseline
+build --experimental_output_directory_naming_scheme=diff_against_baseline
 
 ##
 # Don't automatically create __init__.py files in the runfiles of
