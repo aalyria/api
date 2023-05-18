@@ -16,6 +16,7 @@ load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@rules_proto_grpc//cpp:defs.bzl", "cpp_proto_library")
 load("@rules_proto_grpc//go:defs.bzl", "go_proto_library")
 load("@rules_proto_grpc//java:defs.bzl", "java_proto_library")
+load("@rules_proto_grpc//python:defs.bzl", "python_proto_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -39,5 +40,10 @@ go_proto_library(
 
 java_proto_library(
     name = "types_java_proto",
+    protos = [":types_proto"],
+)
+
+python_proto_library(
+    name = "types_python_proto",
     protos = [":types_proto"],
 )
