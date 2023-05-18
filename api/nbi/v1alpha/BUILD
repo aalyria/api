@@ -16,6 +16,7 @@ load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 load("@rules_proto_grpc//cpp:defs.bzl", "cpp_grpc_library")
 load("@rules_proto_grpc//java:defs.bzl", "java_grpc_library")
+load("@rules_proto_grpc//python:defs.bzl", "python_grpc_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -68,5 +69,15 @@ java_grpc_library(
         "@com_google_googleapis//google/api:api_java_proto",
         "@com_google_googleapis//google/rpc:rpc_java_proto",
         "@com_google_googleapis//google/type:type_java_proto",
+    ],
+)
+
+python_grpc_library(
+    name = "nbi_python_grpc",
+    protos = [":nbi_proto"],
+    deps = [
+        "//api/common:common_python_proto",
+        "//api/nbi/v1alpha/resources:nbi_resources_python_grpc",
+        "@com_google_googleapis//google/api:annotations_py_proto",
     ],
 )
