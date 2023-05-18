@@ -70,10 +70,9 @@ message ScheduledControlUpdateStatus {
   optional DateTime timestamp = 7;
 
   oneof state {
-    // The agent attempted to schedule the update for later enactment,
-    // according to the time_to_enact. The status contains the outcome of the
-    // attempt.
-    google.rpc.Status scheduled = 4;
+    // Indicates that the agent has successfully scheduled the update for later
+    // enactment, according to the time_to_enact.
+    google.protobuf.Empty scheduled = 4;
 
     // The agent attempted to enact the update.
     // The status contains the outcome of the attempt.
