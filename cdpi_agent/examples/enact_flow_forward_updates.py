@@ -55,26 +55,26 @@ class StatusCodeException(Exception):
 
 
 def check_preconditions(req: dict[str, Any]):
-    requested_node_id = req.get("node_id")
+    requested_node_id = req.get("nodeId")
     if requested_node_id != NODE_ID:
         raise StatusCodeException(
             StatusCode.INVALID_ARGUMENT, f"unknown node {requested_node_id}"
         )
 
-    flow_update = req.get("change", {}).get("flow_update", {})
+    flow_update = req.get("change", {}).get("flowUpdate", {})
     if not flow_update:
         raise StatusCodeException(
             StatusCode.UNIMPLEMENTED,
             "this agent only handles FlowUpdate change requests",
         )
 
-    rule = flow_update.get("rule")
-    op = rule.get("operation", "UNKNOWN")
+    op = flow_update.get("operation", "UNKNOWN")
     if op not in ["ADD", "DELETE"]:
         raise StatusCodeException(
             StatusCode.INVALID_ARGUMENT, f"unknown operation {op}"
         )
 
+    rule = flow_update.get("rule")
     if not rule.get("classifier"):
         raise StatusCodeException(
             StatusCode.INVALID_ARGUMENT, "no packet classifier provided"
@@ -82,7 +82,7 @@ def check_preconditions(req: dict[str, Any]):
 
     if not all(
         [
-            act.get("action_type", {}).get("forward")
+            act.get("actionType", {}).get("forward")
             for bucket in rule["action_bucket"]
             for act in bucket["action"]
         ]
@@ -96,16 +96,16 @@ def check_preconditions(req: dict[str, Any]):
 def process(req: dict[str, Any]):
     check_preconditions(req)
 
-    flow_update = req["change"]["flow_update"]
-    rule_id = flow_update["flow_rule_id"]
+    flow_update = req["change"]["flowUpdate"]
+    rule_id = flow_update["flowRuleId"]
     rule = flow_update["rule"]
     is_add = rule["operation"] == "ADD"
     packet_classifier = rule["classifier"]
     fn = add_forwarding_rule if is_add else delete_forwarding_rule
 
-    for bucket in rule["action_bucket"]:
+    for bucket in rule["actionBucket"]:
         for action in bucket["action"]:
-            out_iface_id = action["action_type"]["forward"]["out_interface_id"]
+            out_iface_id = action["actionType"]["forward"]["outInterfaceId"]
             fn(id=rule_id, classifier=packet_classifier, out_iface=out_iface_id)
 
 

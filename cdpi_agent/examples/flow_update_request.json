@@ -1,30 +1,26 @@
 {
-  "node_id": "esa-5g6g-hub",
+  "nodeId": "my-network-hub",
+  "updateId": "574fc796-128d-490a-b6d3-36be4c20e92c",
+  "timeToEnact": "2023-05-22T18:21:38.922296442Z",
   "change": {
-    "flow_update": {
-      "flow_rule_id": "some rule",
-      "rule": {
-        "operation": "ADD",
-        "classifier": {
-          "ip_header": {
-            "src_ip_range": "2607:8780:1e8:b660::/64",
-            "dst_ip_range": "2604:ca00:f002:12::2/128"
-          }
-        },
-        "action_bucket": [
-          {
-            "action": [
-              {
-                "action_type": {
-                  "forward": {
-                    "out_interface_id": "mmwave0"
-                  }
-                }
-              }
-            ]
-          }
-        ]
-      }
+    "beamUpdate": {
+      "beamTaskId": "45h8k",
+      "operation": "ADD",
+      "sourceInterfaceId": "lo0",
+      "interfaceId": {
+        "nodeId": "my-network-hub",
+        "interfaceId": "lo0"
+      },
+      "targetInterfaceId": "lo1",
+      "targetId": {
+        "nodeId": "my-network-satellite",
+        "interfaceId": "lo1"
+      },
+      "signalInfo": {
+        "modeledPowerAtReceiverOutputDbw": 0
+      },
+      "perInterfaceSequenceNumber": "1684779683553804",
+      "establishmentTimeout": "40s"
     }
   }
 }
