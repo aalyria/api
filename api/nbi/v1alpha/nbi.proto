@@ -187,7 +187,7 @@ message UpdateEntityRequest {
 }
 
 message ListEntitiesRequest {
-  reserved 2, 6 to max;      // NEXT_ID: 6
+  reserved 2, 7 to max;      // NEXT_ID: 6
   optional string type = 1;  // required.
   // The time interval of the history being requested. If both start and end
   // time are empty, return only the latest entities of the above type.
@@ -196,6 +196,8 @@ message ListEntitiesRequest {
 
   // If set, only return entities that match the filter.
   optional EntityFilter filter = 5;
+
+  optional bool compute_cartesian_coordinates = 6;
 }
 
 message ListEntitiesResponse {
