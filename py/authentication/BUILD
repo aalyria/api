@@ -12,4 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-USE_BAZEL_VERSION=6.0.0
+load("@rules_python//python:defs.bzl", "py_library")
+load("@python_deps//:requirements.bzl", "requirement")
+
+package(default_visibility = ["//visibility:public"])
+
+py_library(
+    name = "authentication",
+    srcs = [
+        "jwt_manager.py",
+        "spacetime_call_credentials.py",
+    ],
+    deps = [
+        requirement("cryptography"),
+    ],
+)

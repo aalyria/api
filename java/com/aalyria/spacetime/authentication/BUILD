@@ -12,14 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-java_binary(
-    name = "ListEntities",
+package(default_visibility = ["//visibility:public"])
+
+java_library(
+    name = "Authentication",
     srcs = [
-        "ListEntities.java",
+        "JwtManager.java",
+        "SpacetimeCallCredentials.java",
     ],
     deps = [
-        "//api/nbi/v1alpha:nbi_java_grpc",
-        "//code_samples/java_samples/src/main/java/com/aalyria/spacetime/authentication:Authentication",
+        "@io_grpc_grpc_java//api",
         "@maven//:com_google_code_gson_gson",
+        "@maven//:com_google_guava_guava",
+        "@maven//:org_bouncycastle_bcprov_jdk15on",
     ],
 )
