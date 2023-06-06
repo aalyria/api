@@ -12,17 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-package(default_visibility = ["//visibility:public"])
+load("@rules_python//python:defs.bzl", "py_binary")
 
-java_library(
-    name = "Authentication",
-    srcs = [
-        "JwtManager.java",
-        "SpacetimeCallCredentials.java",
-    ],
+py_binary(
+    name = "list_entities",
+    srcs = ["list_entities.py"],
     deps = [
-        "@io_grpc_grpc_java//api",
-        "@maven//:com_google_code_gson_gson",
-        "@maven//:org_bouncycastle_bcprov_jdk15on",
+        "//api/nbi/v1alpha:nbi_python_grpc",
+        "//py/authentication",
     ],
 )

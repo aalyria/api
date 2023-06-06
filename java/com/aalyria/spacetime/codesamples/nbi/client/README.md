@@ -17,5 +17,5 @@ your application.
 
 To run the `ListEntities` sample, run:
 ```sh
-    bazel run //code_samples/java_samples/src/main/java/com/aalyria/spacetime/nbi/sample_client:ListEntities "$DOMAIN" "$AGENT_EMAIL" "$AGENT_PRIV_KEY_ID" "$AGENT_PRIV_KEY_FILE"
+    bazel run //java/com/aalyria/spacetime/codesamples/nbi/client:ListEntities -- "$DOMAIN" "$AGENT_EMAIL" "$AGENT_PRIV_KEY_ID" "$AGENT_PRIV_KEY_FILE"
 ```
