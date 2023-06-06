@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	afpb "aalyria.com/spacetime/api/cdpi/v1alpha"
+	apipb "aalyria.com/spacetime/api/common"
 	"aalyria.com/spacetime/cdpi_agent/enactment"
 	"aalyria.com/spacetime/cdpi_agent/internal/task"
 	"aalyria.com/spacetime/cdpi_agent/telemetry"
@@ -29,6 +30,13 @@ import (
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel/attribute"
 	"google.golang.org/grpc"
+)
+
+var (
+	errNoClock          = errors.New("no clock provided (see WithClock)")
+	errNoEndpoint       = errors.New("no server endpoint provied (see WithServerEndpoint)")
+	errNoNodes          = errors.New("no nodes configured (see WithNode)")
+	errNoActiveServices = errors.New("no services configured for node (see WithEnactmentBackend and WithTelemetryBackend)")
 )
 
 // AgentOption provides a well-typed and sound mechanism to configure an Agent.
@@ -51,23 +59,17 @@ func (fn nodeOptFunc) apply(n *node) { fn(n) }
 // Agent is a CDPI agent that coordinates change requests across multiple
 // nodes.
 type Agent struct {
-	nodes       map[string]*node
-	controllers map[string]*nodeController
-
-	dialOpts []grpc.DialOption
+	clock    clockwork.Clock
+	nodes    map[string]*node
 	endpoint string
-
-	ctrlClient      afpb.NetworkControllerStreamingClient
-	telemetryClient afpb.NetworkTelemetryStreamingClient
-	clock           clockwork.Clock
+	dialOpts []grpc.DialOption
 }
 
 // NewAgent creates a new Agent configured with the provided options.
 func NewAgent(opts ...AgentOption) (*Agent, error) {
 	a := &Agent{
-		nodes:       map[string]*node{},
-		controllers: map[string]*nodeController{},
-		dialOpts:    []grpc.DialOption{grpc.WithBlock()},
+		nodes:    map[string]*node{},
+		dialOpts: []grpc.DialOption{grpc.WithBlock()},
 	}
 
 	for _, opt := range opts {
@@ -80,10 +82,18 @@ func NewAgent(opts ...AgentOption) (*Agent, error) {
 func (a *Agent) validate() error {
 	errs := []error{}
 	if a.clock == nil {
-		errs = append(errs, errors.New("no clock provided (see WithClock)"))
+		errs = append(errs, errNoClock)
 	}
 	if a.endpoint == "" {
-		errs = append(errs, errors.New("no server endpoint provied (see WithServerEndpoint)"))
+		errs = append(errs, errNoEndpoint)
+	}
+	if len(a.nodes) == 0 {
+		errs = append(errs, errNoNodes)
+	}
+	for _, n := range a.nodes {
+		if !n.enactmentsEnabled && !n.telemetryEnabled {
+			errs = append(errs, fmt.Errorf("node %q has no services enabled: %w", n.id, errNoActiveServices))
+		}
 	}
 	return errors.Join(errs...)
 }
@@ -131,15 +141,17 @@ func WithNode(id string, opts ...NodeOption) AgentOption {
 }
 
 type node struct {
-	id string
-
-	initState *afpb.ControlStateNotification
-
-	enactmentsEnabled bool
+	initState         *apipb.ControlPlaneState
 	eb                enactment.Backend
+	tb                telemetry.Backend
+	id                string
+	priority          uint32
+	enactmentsEnabled bool
+	telemetryEnabled  bool
+}
 
-	telemetryEnabled bool
-	tb               telemetry.Backend
+func WithChannelPriority(priority uint32) NodeOption {
+	return nodeOptFunc(func(n *node) { n.priority = priority })
 }
 
 // WithEnactmentBackend configures the EnactmentBackend for the given Node.
@@ -159,7 +171,7 @@ func WithTelemetryBackend(tb telemetry.Backend) NodeOption {
 }
 
 // WithInitialState configures the initial state of the Node.
-func WithInitialState(initState *afpb.ControlStateNotification) NodeOption {
+func WithInitialState(initState *apipb.ControlPlaneState) NodeOption {
 	return nodeOptFunc(func(n *node) {
 		n.initState = initState
 	})
@@ -189,25 +201,19 @@ func (a *Agent) Run(ctx context.Context) error {
 func (a *Agent) start(ctx context.Context, errCh chan error) error {
 	log := zerolog.Ctx(ctx)
 
-	if a.ctrlClient != nil {
-		return errors.New("agent: already started, can't start again")
-	}
-
 	log.Trace().Str("endpoint", a.endpoint).Msg("contacting the CDPI endpoint")
 	conn, err := grpc.DialContext(ctx, a.endpoint, a.dialOpts...)
 	if err != nil {
 		return fmt.Errorf("agent: failed connecting to CDPI backend: %w", err)
 	}
 
-	a.ctrlClient = afpb.NewNetworkControllerStreamingClient(conn)
-	a.telemetryClient = afpb.NewNetworkTelemetryStreamingClient(conn)
+	cdpiClient := afpb.NewCdpiClient(conn)
+	telemetryClient := afpb.NewNetworkTelemetryStreamingClient(conn)
 
 	for _, n := range a.nodes {
 		ctx, done := context.WithCancel(ctx)
 
-		nc := a.newNodeController(n, done)
-		a.controllers[n.id] = nc
-
+		nc := a.newNodeController(n, done, cdpiClient, telemetryClient)
 		srv := task.Task(nc.run).
 			WithStartingStoppingLogs("node controller", zerolog.DebugLevel).
 			WithLogField("nodeID", n.id).

@@ -12,4 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-USE_BAZEL_VERSION=6.0.0
+load("@rules_python//python:defs.bzl", "py_binary")
+
+py_binary(
+    name = "list_entities",
+    srcs = ["list_entities.py"],
+    deps = [
+        "//api/nbi/v1alpha:nbi_python_grpc",
+        "//py/authentication",
+    ],
+)

@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -34,6 +35,8 @@ import (
 )
 
 func TestStreamStartsWithInitialReport(t *testing.T) {
+	t.Parallel()
+
 	ctx, cancel := context.WithTimeout(baseContext(t), time.Second)
 	defer cancel()
 
@@ -71,6 +74,8 @@ func TestStreamStartsWithInitialReport(t *testing.T) {
 }
 
 func TestCanRequestOneOffReport(t *testing.T) {
+	t.Parallel()
+
 	ctx, cancel := context.WithTimeout(baseContext(t), time.Second)
 	defer cancel()
 
@@ -124,6 +129,8 @@ func TestCanRequestOneOffReport(t *testing.T) {
 }
 
 func TestIgnoresUnknownRequestType(t *testing.T) {
+	t.Parallel()
+
 	ctx, cancel := context.WithTimeout(baseContext(t), time.Second)
 	defer cancel()
 
@@ -176,6 +183,8 @@ func TestIgnoresUnknownRequestType(t *testing.T) {
 }
 
 func TestPeriodicUpdates(t *testing.T) {
+	t.Parallel()
+
 	ctx, cancel := context.WithTimeout(baseContext(t), time.Second)
 	defer cancel()
 
@@ -267,6 +276,8 @@ func TestPeriodicUpdates(t *testing.T) {
 }
 
 func TestInitialReportFailsToGenerate(t *testing.T) {
+	t.Parallel()
+
 	ctx, cancel := context.WithTimeout(baseContext(t), time.Second)
 	defer cancel()
 
@@ -296,6 +307,8 @@ func TestInitialReportFailsToGenerate(t *testing.T) {
 }
 
 func TestPeriodicUpdatesAreStoppedWhenHzIsZero(t *testing.T) {
+	t.Parallel()
+
 	ctx, cancel := context.WithTimeout(baseContext(t), time.Second)
 	defer cancel()
 
@@ -319,12 +332,13 @@ func TestPeriodicUpdatesAreStoppedWhenHzIsZero(t *testing.T) {
 		},
 	}
 
-	reportCh := make(chan *apipb.NetworkStatsReport, 3)
-	reportCh <- initialReport
-	reportCh <- periodicReport
-	reportCh <- periodicReport
-
-	tb := func(ctx context.Context) (*apipb.NetworkStatsReport, error) { return <-reportCh, nil }
+	times := &atomic.Int64{}
+	tb := func(_ context.Context) (*apipb.NetworkStatsReport, error) {
+		if times.Add(1) == 1 {
+			return initialReport, nil
+		}
+		return periodicReport, nil
+	}
 
 	clock := clockwork.NewFakeClock()
 	a := newAgent(t,
@@ -373,12 +387,31 @@ func TestPeriodicUpdatesAreStoppedWhenHzIsZero(t *testing.T) {
 		},
 	}
 
-	clock.Advance(5 * time.Second)
+	// We don't have any way of ensuring the telemetry service has processed
+	// the disabling request yet and because of how the fake clockwork.Clock
+	// works we can't synchronize on the underlying ticker being stopped.
+	// Instead, we'll send a one-off report request here and wait for the
+	// response which will ensure the disabling request has been processed in
+	// time.
+	ts.outChan <- &afpb.TelemetryRequest{
+		NodeId: proto.String("mynode"),
+		Type:   &afpb.TelemetryRequest_QueryStatistics{},
+	}
+	select {
+	case <-ts.inChan:
+	case <-ctx.Done():
+		t.Errorf("timed out waiting for one-off report")
+	}
 
+	// now that we know the disabling request has been processed, we can check
+	// to ensure that there's no more periodic updates
+	clock.Advance(1 * time.Second)
 	select {
 	case <-ts.inChan:
 		t.Errorf("got unexpected third periodic report")
-	default:
+	case <-ctx.Done():
+		t.Errorf("test took too long")
+	case <-time.After(100 * time.Millisecond):
 	}
 
 	assertProtosEqual(t, &afpb.TelemetryUpdate{
@@ -393,6 +426,8 @@ func TestPeriodicUpdatesAreStoppedWhenHzIsZero(t *testing.T) {
 }
 
 func TestRequestsForWrongNodeIDAreIgnored(t *testing.T) {
+	t.Parallel()
+
 	ctx, cancel := context.WithTimeout(baseContext(t), time.Second)
 	defer cancel()
 

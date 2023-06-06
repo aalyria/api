@@ -21,7 +21,6 @@ import "api/common/control_flow.proto";
 import "api/common/control_radio.proto";
 import "api/common/control_tunnel.proto";
 import "api/common/time.proto";
-import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 import "google/rpc/status.proto";
 

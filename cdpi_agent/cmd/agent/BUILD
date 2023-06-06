@@ -49,7 +49,6 @@ go_library(
     visibility = ["//visibility:private"],
     deps = [
         ":configpb_go_proto",
-        "//api/cdpi/v1alpha:cdpi_go_grpc",
         "//cdpi_agent",
         "//cdpi_agent/enactment/extproc",
         "//cdpi_agent/internal/auth",
@@ -65,6 +64,7 @@ go_library(
         "@io_opentelemetry_go_otel_exporters_otlp_otlptrace_otlptracegrpc//:otlptracegrpc",
         "@io_opentelemetry_go_otel_sdk//resource",
         "@io_opentelemetry_go_otel_sdk//trace",
+        "@io_opentelemetry_go_otel_trace//:trace",
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_google_grpc//backoff",
         "@org_golang_google_grpc//channelz/service",

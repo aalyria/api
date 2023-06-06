@@ -80,6 +80,12 @@ message Entity {
   // Microseconds since epoch. Updated by the data layer.
   optional int64 commit_timestamp = 3;
 
+  // Microseconds since epoch. Only set when querying entity history with an
+  // interval set and the entity is updated or deleted again within the
+  // interval. Clients that set an entity filter can use this timestamp to
+  // know when the entity stopped matching a filter or was deleted.
+  optional int64 next_commit_timestamp = 33;
+
   // The user who last modified the entity. Used for debugging only. Control
   // systems should not rely on this field.
   optional string last_modified_by = 22;

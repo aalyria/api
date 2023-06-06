@@ -1,0 +1,23 @@
+--- bazel/cython_library.bzl
++++ bazel/cython_library.bzl
+@@ -74,1 +74,1 @@ def pyx_library(name, deps = [], py_deps = [], srcs = [], **kwargs):
+-            deps = deps + ["@local_config_python//:python_headers"],
++            deps = deps + ["//external:python_headers"],
+
+--- bazel/grpc_deps.bzl
++++ bazel/grpc_deps.bzl
+@@ -19,1 +19,1 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+-def grpc_deps():
++def grpc_deps(python_headers = None):
+@@ -503,1 +503,1 @@ def grpc_deps():
+-    grpc_python_deps()
++    grpc_python_deps(python_headers)
+
+--- bazel/grpc_python_deps.bzl
++++ bazel/grpc_python_deps.bzl
+@@ -20,1 +20,1 @@
+-def grpc_python_deps():
++def grpc_python_deps(python_headers = None):
+@@ -35,1 +35,1 @@
+-        actual = "@local_config_python//:python_headers",
++        actual = python_headers or "@local_config_python//:python_headers",

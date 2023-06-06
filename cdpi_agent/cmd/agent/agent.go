@@ -41,6 +41,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	otelsdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/backoff"
@@ -48,7 +49,6 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
-	afpb "aalyria.com/spacetime/api/cdpi/v1alpha"
 	agent "aalyria.com/spacetime/cdpi_agent"
 	"aalyria.com/spacetime/cdpi_agent/cmd/agent/configpb"
 	enact_extproc "aalyria.com/spacetime/cdpi_agent/enactment/extproc"
@@ -112,6 +112,11 @@ func baseContext(ctx context.Context) context.Context {
 }
 
 func injectTracer(ctx context.Context, params *configpb.AgentParams) (newCtx context.Context, shutdown func(), err error) {
+	endpoint := params.GetObservabilityParams().GetOtelCollectorEndpoint()
+	if endpoint == "" {
+		return task.InjectTracerProvider(ctx, oteltrace.NewNoopTracerProvider()), func() {}, nil
+	}
+
 	res, err := resource.Merge(
 		resource.Default(),
 		resource.NewWithAttributes(
@@ -124,29 +129,22 @@ func injectTracer(ctx context.Context, params *configpb.AgentParams) (newCtx con
 	if err != nil {
 		return nil, nil, fmt.Errorf("creating tracer resources: %w", err)
 	}
-	traceOpts := []otelsdktrace.TracerProviderOption{
+
+	exporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithEndpoint(endpoint))
+	if err != nil {
+		return nil, nil, err
+	}
+	tracerProvider := otelsdktrace.NewTracerProvider(
 		otelsdktrace.WithResource(res),
-	}
+		otelsdktrace.WithBatcher(exporter))
 
-	// Only add an exporter to the options if requested. This way we can still
-	// include the tracing infra without actually exporting anything if it's
-	// not requested.
-	if endpoint := params.GetObservabilityParams().GetOtelCollectorEndpoint(); endpoint != "" {
-		exporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithEndpoint(endpoint))
-		if err != nil {
-			return nil, nil, err
-		}
-		traceOpts = append(traceOpts, otelsdktrace.WithBatcher(exporter))
-	}
-
-	tracerProvider := otelsdktrace.NewTracerProvider(traceOpts...)
+	ctx = task.InjectTracerProvider(ctx, tracerProvider)
 	shutdown = func() {
 		if tpErr := tracerProvider.Shutdown(ctx); tpErr != nil {
 			(*zerolog.Ctx(ctx)).Error().Err(tpErr).Msg("error shutting down trace provider")
 		}
 	}
-	newCtx = task.InjectTracerProvider(ctx, tracerProvider)
-	return newCtx, shutdown, nil
+	return ctx, shutdown, nil
 }
 
 func getPrivateKey(ss *configpb.SigningStrategy) (io.Reader, error) {
@@ -227,6 +225,9 @@ func getDialOpts(ctx context.Context, params *configpb.AgentParams, clock clockw
 	dialOpts = append(dialOpts, grpc.WithConnectParams(grpcConnParams))
 
 	switch authStrat := connParams.GetAuthStrategy(); authStrat.Type.(type) {
+	case *configpb.AuthStrategy_None:
+		// ¯\_(ツ)_/¯
+
 	case *configpb.AuthStrategy_Jwt_:
 		jwtSpec := authStrat.GetJwt()
 		pkeySrc, err := getPrivateKey(jwtSpec.GetSigningStrategy())
@@ -260,10 +261,7 @@ func getNodeOpts(node *configpb.NetworkNode) (nodeOpts []agent.NodeOption, err e
 			return nil, errors.New("missing required initial state")
 		}
 
-		nodeOpts = append(nodeOpts, agent.WithInitialState(&afpb.ControlStateNotification{
-			NodeId: &node.Id,
-			State:  initState,
-		}))
+		nodeOpts = append(nodeOpts, agent.WithInitialState(initState))
 	default:
 		return nil, errors.New("missing required state backend")
 	}

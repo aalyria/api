@@ -23,6 +23,8 @@ import (
 )
 
 func TestHzToDuration(t *testing.T) {
+	t.Parallel()
+
 	for hz, want := range map[float64]time.Duration{
 		0.1:  10 * time.Second,
 		1.0:  1 * time.Second,
@@ -33,6 +35,7 @@ func TestHzToDuration(t *testing.T) {
 		hz, want := hz, want
 
 		t.Run(fmt.Sprintf("%fhz = %s", hz, want), func(t *testing.T) {
+			t.Parallel()
 			got := hzToDuration(hz)
 			if got != want {
 				t.Errorf("converting %fhz to duration, got %s but wanted %s", hz, got, want)
@@ -42,6 +45,7 @@ func TestHzToDuration(t *testing.T) {
 }
 
 func TestReusableTicker(t *testing.T) {
+	t.Parallel()
 	fc := clockwork.NewFakeClock()
 	rt := newReusableTicker(fc)
 
@@ -63,6 +67,7 @@ func TestReusableTicker(t *testing.T) {
 }
 
 func TestReusableTicker_CallingStartMultipleTimes(t *testing.T) {
+	t.Parallel()
 	fc := clockwork.NewFakeClock()
 	rt := newReusableTicker(fc)
 
