@@ -1,0 +1,73 @@
+{
+    "id": "my-globally-unique-platform-id",
+    "platform": {
+      "name": "user-terminal",
+      "coordinates": {
+        "geodeticWgs84": {
+          "longitudeDeg": -121.7,
+          "latitudeDeg": 37.7
+        }
+      },
+      "transceiverModel": [
+        {
+          "id": "transceiver-model",
+          "transmitter": {
+            "name": "tx",
+            "channelSet": {
+              "band-profile-id": {
+                "channel": {
+                  "11000000000": {
+                    "maxPowerWatts": 100
+                  }
+                }
+              }
+            },
+            "signalProcessingStep": [
+              {
+                "amplifier": {
+                  "constantGain": {
+                    "gainDb": 10,
+                    "noiseFactor": 1,
+                    "referenceTemperatureK": 290
+                  }
+                }
+              }
+            ]
+          },
+          "receiver": {
+            "name": "rx",
+            "channelSet": {
+              "band-profile-id": {
+                "centerFrequencyHz": [
+                  "12000000000"
+                ]
+              }
+            },
+            "signalProcessingStep": [
+              {
+                "amplifier": {
+                  "constantGain": {
+                    "gainDb": 10,
+                    "noiseFactor": 1,
+                    "referenceTemperatureK": 290
+                  }
+                }
+              }
+            ]
+          },
+          "antenna": {
+            "name": "antenna",
+            "antennaPatternId": "antenna-pattern-id",
+            "targeting": {
+            },
+            "fieldOfRegard": {
+                "conic": {
+                    "outer_half_angle_deg": 50
+                }
+            }
+          }
+        }
+      ]
+    }
+  }
+  

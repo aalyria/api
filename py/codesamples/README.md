@@ -19,3 +19,17 @@ To run the `list_entities` sample, run:
 ```sh
     bazel run //py/codesamples:list_entities -- "$DOMAIN" "$AGENT_EMAIL" "$AGENT_PRIV_KEY_ID" "$AGENT_PRIV_KEY_FILE"
 ```
+
+To run the `create_user_terminal_platform_definition` sample, run:
+```sh
+    bazel run //py/codesamples:create_user_terminal_platform_definition -- "$DOMAIN" "$AGENT_EMAIL" "$AGENT_PRIV_KEY_ID" "$AGENT_PRIV_KEY_FILE"
+```
+
+To run the `create_user_terminal_platform_definition_from_json` sample with the platform definition in `resources/user_terminal_platform_definition.json`, run:
+```sh
+    bazel run //py/codesamples:create_user_terminal_platform_definition_from_json -- "$DOMAIN" "$AGENT_EMAIL" "$AGENT_PRIV_KEY_ID" "$AGENT_PRIV_KEY_FILE"
+```
+Or, to provide your own JSON file, run:
+```sh
+    bazel run //py/codesamples:create_user_terminal_platform_definition_from_json -- "$DOMAIN" "$AGENT_EMAIL" "$AGENT_PRIV_KEY_ID" "$AGENT_PRIV_KEY_FILE" "/path/to/your/json/platform/definition/file.json"
+```

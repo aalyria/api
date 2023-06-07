@@ -22,3 +22,27 @@ py_binary(
         "//py/authentication",
     ],
 )
+
+py_binary(
+    name = "create_user_terminal_platform_definition",
+    srcs = ["create_user_terminal_platform_definition.py"],
+    deps = [
+        "//api/common:common_python_proto",
+        "//api/nbi/v1alpha:nbi_python_grpc",
+        "//py/authentication",
+    ],
+)
+
+py_binary(
+    name = "create_user_terminal_platform_definition_from_json",
+    srcs = ["create_user_terminal_platform_definition_from_json.py"],
+    data = [
+        "resources/user_terminal_platform_definition.json",
+    ],
+    deps = [
+        "//api/common:common_python_proto",
+        "//api/nbi/v1alpha:nbi_python_grpc",
+        "//py/authentication",
+        "@com_google_protobuf//:protobuf_python",
+    ],
+)
