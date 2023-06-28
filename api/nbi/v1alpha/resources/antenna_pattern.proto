@@ -24,7 +24,7 @@ option go_package = "aalyria.com/spacetime/api/nbi/v1alpha/resources";
 // Models an antenna radiation pattern. Multiple platform definitions can
 // reference the same antenna pattern.
 message AntennaPattern {
-  reserved 8, 11 to max;
+  reserved 8, 12 to max;
 
   // A custom / user-defined antenna radiation pattern.
   message CustomAntennaPattern {
@@ -117,6 +117,13 @@ message AntennaPattern {
     optional double near_field_range_m = 3;
   }
 
+  // Applies a different antenna radiation pattern for the transmitter 
+  // and receiver. 
+  message TransmitterAndReceiverAntennaPattern {
+    optional AntennaPattern transmitter_pattern = 1;
+    optional AntennaPattern receiver_pattern = 2;
+  }
+
   oneof pattern_type {
     CustomAntennaPattern custom_pattern = 1;
     GaussianAntennaPattern gaussian_pattern = 2;
@@ -127,5 +134,6 @@ message AntennaPattern {
     GaussianOpticalAntennaPattern gaussian_optical_pattern = 7;
     PhasedArrayAntennaPattern phased_array_pattern = 10;
     NearAndFarFieldAntennaPattern near_and_far_field_pattern = 9;
+    TransmitterAndReceiverAntennaPattern transmitter_and_receiver_pattern = 11;
   }
 }
