@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+name: Bazel
+
 on: [pull_request]
 
 jobs:
@@ -19,9 +21,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Mount bazel cache 
-        uses: actions/cache@v3
+      - uses: actions/cache@v3
         with:
           path: "~/.cache/bazel"
           key: bazel
+          path: |
+            ~/.cache/bazelisk
+            ~/.cache/bazel
+          key: bazel-${{ hashFiles('.bazelrc', '.bazelversion', 'WORKSPACE', 'requirements.txt') }}
+          restore-keys: bazel-
       - run: bazelisk build //...
