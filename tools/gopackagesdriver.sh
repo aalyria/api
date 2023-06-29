@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+#
 # Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,20 +14,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: Bazel
-
-on: [pull_request]
-
-jobs:
-  bazel-build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cache/bazelisk
-            ~/.cache/bazel
-          key: bazel-${{ hashFiles('.bazelrc', '.bazelversion', 'WORKSPACE', 'requirements.txt') }}
-          restore-keys: bazel-
-      - run: bazelisk build //...
+exec bazel run -- @io_bazel_rules_go//go/tools/gopackagesdriver "${@}"
