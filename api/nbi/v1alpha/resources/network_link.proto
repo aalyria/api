@@ -207,6 +207,12 @@ message WirelessLinkReport {
 
       // The modeled data rate capacity, in layer 2 bits per second.
       optional double data_rate_bps = 6;
+
+      // The transmitter antenna's gain in the link direction, in dB.
+      optional double transmitter_antenna_gain_in_link_direction_db = 7;
+
+      // The receiver antenna's gain in the link direction, in dB.
+      optional double receiver_antenna_gain_in_link_direction_db = 8;
     }
     repeated WirelessLinkMetrics sampled_metrics = 4;
   }
