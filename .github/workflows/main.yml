@@ -18,6 +18,11 @@ on: [pull_request]
 
 jobs:
   bazel-build:
+    strategy:
+      matrix:
+        os: [linux, windows, darwin]
+        arch: [amd64, arm64]
+
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -28,4 +33,18 @@ jobs:
             ~/.cache/bazel
           key: bazel-${{ hashFiles('.bazelrc', '.bazelversion', 'WORKSPACE', 'requirements.txt') }}
           restore-keys: bazel-
-      - run: bazelisk build //...
+      - run: bazelisk build "--platforms=@io_bazel_rules_go//go/toolchain:${{ matrix.os }}_${{ matrix.arch }}" //...
+      - name: Upload nbictl binary
+        uses: actions/upload-artifact@v3
+        with:
+          name: nbictl-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl*
+
+      - name: Upload cdpi_agent binary
+        uses: actions/upload-artifact@v3
+        with:
+          name: cdpi_agent-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            bazel-bin/cdpi_agent/cmd/agent/agent_/agent*
+
