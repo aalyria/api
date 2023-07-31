@@ -52,14 +52,14 @@ jobs:
       - run: bazelisk build "--platforms=@io_bazel_rules_go//go/toolchain:${{ matrix.os }}_${{ matrix.arch }}" "${{ matrix.target }}"
       - name: Upload nbictl binary
         uses: actions/upload-artifact@v3
-        if: ${{ matrix.target == "//tools/nbictl/cmd/nbictl" }}
+        if: matrix.target == '//tools/nbictl/cmd/nbictl'
         with:
           name: nbictl-${{ matrix.os }}-${{ matrix.arch }}
           path: |
             bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl*
       - name: Upload cdpi_agent binary
         uses: actions/upload-artifact@v3
-        if: ${{ matrix.target == "//cdpi_agent/cmd/agent" }}
+        if: matrix.target == '//cdpi_agent/cmd/agent'
         with:
           name: cdpi_agent-${{ matrix.os }}-${{ matrix.arch }}
           path: |
