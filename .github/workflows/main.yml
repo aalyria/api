@@ -31,6 +31,7 @@ jobs:
       - run: bazelisk test //...
 
   build-and-push-tools:
+    needs: [build-and-test]
     strategy:
       matrix:
         target:
@@ -56,12 +57,14 @@ jobs:
         with:
           name: nbictl-${{ matrix.os }}-${{ matrix.arch }}
           path: |
-            bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl*
+            bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl
+            bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl.exe
       - name: Upload cdpi_agent binary
         uses: actions/upload-artifact@v3
         if: matrix.target == '//cdpi_agent/cmd/agent'
         with:
           name: cdpi_agent-${{ matrix.os }}-${{ matrix.arch }}
           path: |
-            bazel-bin/cdpi_agent/cmd/agent/agent_/agent*
+            bazel-bin/cdpi_agent/cmd/agent/agent_/agent
+            bazel-bin/cdpi_agent/cmd/agent/agent_/agent.exe
 
