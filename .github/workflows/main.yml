@@ -17,7 +17,7 @@ name: Bazel
 on: [pull_request]
 
 jobs:
-  bazel-build:
+  build-and-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -28,4 +28,44 @@ jobs:
             ~/.cache/bazel
           key: bazel-${{ hashFiles('.bazelrc', '.bazelversion', 'WORKSPACE', 'requirements.txt') }}
           restore-keys: bazel-
-      - run: bazelisk build //...
+      - run: bazelisk test //...
+
+  build-and-upload-tools:
+    needs: [build-and-test]
+    strategy:
+      matrix:
+        # Only the go_binary targets support cross-compilation at the moment:
+        target:
+          - //cdpi_agent/cmd/agent
+          - //tools/nbictl/cmd/nbictl
+        os: [linux, windows, darwin]
+        arch: [amd64, arm64]
+
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/bazelisk
+            ~/.cache/bazel
+          key: bazel-${{ hashFiles('.bazelrc', '.bazelversion', 'WORKSPACE', 'requirements.txt') }}
+          restore-keys: bazel-
+      - run: bazelisk build "--platforms=@io_bazel_rules_go//go/toolchain:${{ matrix.os }}_${{ matrix.arch }}" "${{ matrix.target }}"
+      - name: Upload nbictl binary
+        uses: actions/upload-artifact@v3
+        if: matrix.target == '//tools/nbictl/cmd/nbictl'
+        with:
+          name: nbictl-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl
+            bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl.exe
+      - name: Upload cdpi_agent binary
+        uses: actions/upload-artifact@v3
+        if: matrix.target == '//cdpi_agent/cmd/agent'
+        with:
+          name: cdpi_agent-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            bazel-bin/cdpi_agent/cmd/agent/agent_/agent
+            bazel-bin/cdpi_agent/cmd/agent/agent_/agent.exe
+
