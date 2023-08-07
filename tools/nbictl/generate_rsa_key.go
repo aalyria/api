@@ -32,8 +32,6 @@ import (
 	"os"
 	"path/filepath"
 	"time"
-
-	pb "aalyria.com/spacetime/api/nbi/v1alpha"
 )
 
 const (
@@ -51,13 +49,13 @@ type RSAKeyPath struct {
 	CertificatePath string
 }
 
-func GenerateKeys(ctx context.Context, client pb.NetOpsClient, args []string) error {
+func GenerateKeys(ctx context.Context, args []string) error {
 	generateKey := flag.NewFlagSet(clientName+" generate-key", flag.ExitOnError)
-	directory := generateKey.String("dir", "", "directory where you want your RSA keys to be stored.")
-	country := generateKey.String("country", "", "optional country of certificate")
-	org := generateKey.String("org", "", "organization of certificate")
-	state := generateKey.String("state", "", "optional state of certificate")
-	location := generateKey.String("location", "", "optional location of certificate")
+	directory := generateKey.String("dir", "", "`directory` where you want your RSA keys to be stored. Default: ~/.nbictl/")
+	country := generateKey.String("country", "", "country of certificate")
+	org := generateKey.String("org", "", "[REQUIRED] organization of certificate")
+	state := generateKey.String("state", "", "state of certificate")
+	location := generateKey.String("location", "", "location of certificate")
 
 	generateKey.Parse(args)
 	if _, err := GenerateRSAKeys(*directory, *country, *org, *state, *location); err != nil {

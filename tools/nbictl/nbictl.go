@@ -31,17 +31,38 @@ var typeList = generateTypeList()
 
 const (
 	clientName = "nbictl"
+
+	// if oidcURL is empty, the Spacetime OAUTH library will use its default URL
+	oidcURLDefault = ""
 )
 
-func Create(ctx context.Context, client pb.NetOpsClient, args []string) error {
-	create := flag.NewFlagSet(clientName+" create", flag.ExitOnError)
-	files := create.String("files", "", "a path to the textproto file containing information of the entity you want to create")
-
-	create.Parse(args)
+func Create(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet(clientName+" create", flag.ExitOnError)
+	contextName := fs.String("context", "", "name of context you want to use")
+	files := fs.String("files", "", "[REQUIRED] a `path` to the textproto file containing information of the entity you want to create")
+	fs.Parse(args)
 
 	if *files == "" {
-		return errors.New("--file required")
+		return errors.New("--files required")
 	}
+
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		return fmt.Errorf("unable to obtain the default config directory: %w", err)
+	}
+	filePath := filepath.Join(configDir, clientName, confFileName)
+
+	setting, err := GetContext(*contextName, filePath)
+	if err != nil {
+		return fmt.Errorf("unable to obtain context information: %w", err)
+	}
+	conn, err := OpenConnection(ctx, setting)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	client := pb.NewNetOpsClient(conn)
 
 	textprotoFiles, err := filepath.Glob(*files)
 	if err != nil {
@@ -78,14 +99,34 @@ func Create(ctx context.Context, client pb.NetOpsClient, args []string) error {
 	return nil
 }
 
-func Update(ctx context.Context, client pb.NetOpsClient, args []string) error {
-	update := flag.NewFlagSet(clientName+" update", flag.ExitOnError)
-	files := update.String("files", "", "a path to the textproto file containing information of the entity you want to update")
-	update.Parse(args)
+func Update(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet(clientName+" update", flag.ExitOnError)
+	contextName := fs.String("context", "", "name of context you want to use")
+	files := fs.String("files", "", "[REQUIRED] a `path` to the textproto file containing information of the entity you want to update")
+	fs.Parse(args)
 
 	if *files == "" {
 		return errors.New("--files required")
 	}
+
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		return fmt.Errorf("unable to obtain the default config directory: %w", err)
+	}
+	filePath := filepath.Join(configDir, clientName, confFileName)
+
+	setting, err := GetContext(*contextName, filePath)
+	if err != nil {
+		return fmt.Errorf("unable to obtain context information: %w", err)
+	}
+
+	conn, err := OpenConnection(ctx, setting)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	client := pb.NewNetOpsClient(conn)
 
 	textprotoFiles, err := filepath.Glob(*files)
 	if err != nil {
@@ -126,14 +167,14 @@ func Update(ctx context.Context, client pb.NetOpsClient, args []string) error {
 	return nil
 }
 
-func Delete(ctx context.Context, client pb.NetOpsClient, args []string) error {
-	deleteOption := flag.NewFlagSet(clientName+" delete", flag.ExitOnError)
-	entityType := deleteOption.String("type", "", fmt.Sprintf("type of entities you want to delete. list of possible types: %v", typeList))
+func Delete(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet(clientName+" delete", flag.ExitOnError)
+	entityType := fs.String("type", "", fmt.Sprintf("[REQUIRED] type of entities you want to delete. list of possible types: %v", typeList))
+	id := fs.String("id", "", "[REQUIRED] the id of the entity you want to delete")
+	commitTime := fs.Int64("commit_time", -1, "[REQUIRED] commit timestamp of the entity you want to delete")
+	contextName := fs.String("context", "", "name of context you want to use")
 
-	id := deleteOption.String("id", "", "the id of the entity you want to delete")
-	commitTime := deleteOption.Int64("commit_time", -1, "commit timestamp of the entity you want to delete")
-
-	deleteOption.Parse(args)
+	fs.Parse(args)
 	switch {
 	case *entityType == "":
 		return errors.New("--type required")
@@ -142,6 +183,25 @@ func Delete(ctx context.Context, client pb.NetOpsClient, args []string) error {
 	case *commitTime == -1:
 		return errors.New("--commit_time required")
 	}
+
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		return fmt.Errorf("unable to obtain the default config directory: %w", err)
+	}
+	filePath := filepath.Join(configDir, clientName, confFileName)
+
+	setting, err := GetContext(*contextName, filePath)
+	if err != nil {
+		return fmt.Errorf("unable to obtain context information: %w", err)
+	}
+
+	conn, err := OpenConnection(ctx, setting)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	client := pb.NewNetOpsClient(conn)
 
 	deleteEntityRequest := &pb.DeleteEntityRequest{Type: entityType, Id: id, CommitTimestamp: commitTime}
 
@@ -152,15 +212,33 @@ func Delete(ctx context.Context, client pb.NetOpsClient, args []string) error {
 	return nil
 }
 
-func List(ctx context.Context, client pb.NetOpsClient, args []string) error {
+func List(ctx context.Context, args []string) error {
 	list := flag.NewFlagSet(clientName+" list", flag.ExitOnError)
-
-	listType := list.String("type", "", fmt.Sprintf("type of entities you want to query. list of possible types: %v", typeList))
+	contextName := list.String("context", "", "name of context you want to use")
+	listType := list.String("type", "", fmt.Sprintf("[REQUIRED] type of entities you want to query. list of possible types: %v", typeList))
 	list.Parse(args)
 
 	if *listType == "" {
 		return errors.New("--type required")
 	}
+
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		return fmt.Errorf("unable to obtain the default config directory: %w", err)
+	}
+	filePath := filepath.Join(configDir, clientName, confFileName)
+
+	setting, err := GetContext(*contextName, filePath)
+	if err != nil {
+		return fmt.Errorf("unable to obtain context information: %w", err)
+	}
+
+	conn, err := OpenConnection(ctx, setting)
+	if err != nil {
+		return err
+	}
+
+	client := pb.NewNetOpsClient(conn)
 
 	if _, exists := pb.EntityType_value[*listType]; !exists {
 		return fmt.Errorf("unknown entity type %q is not one of [%s]", *listType, strings.Join(typeList, ", "))

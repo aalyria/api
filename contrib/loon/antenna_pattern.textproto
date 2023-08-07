@@ -19,7 +19,7 @@ id: "gain/payload/mmwave/1"
 antenna_pattern {
   near_and_far_field_pattern: {
     near_field_pattern: {
-      custom_pattern: {
+      custom_phi_theta_pattern: {
         gain_value {
           gain_db: 13.566
           phi_rad: 0.0
@@ -163,7 +163,7 @@ antenna_pattern {
       }
     }
     far_field_pattern: {
-      custom_pattern: {
+      custom_phi_theta_pattern: {
         gain_value {
           gain_db: 44.0
           phi_rad: 0.0
