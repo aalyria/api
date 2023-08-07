@@ -12,7 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("//bazel/java_rules:def.bzl", "java_library")
+load("//bazel/java_format_rules:def.bzl", "java_format_test")
+
 package(default_visibility = ["//visibility:public"])
+
+java_format_test(
+    name = "java_format_test",
+    srcs = glob(["*.java"]),
+)
 
 java_library(
     name = "Authentication",

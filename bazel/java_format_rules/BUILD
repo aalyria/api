@@ -12,20 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Build rules for the Go CDPI agent. These shouldn't depend on any other
-# internal packages apart from those found in //api.
-
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
-
-go_library(
-    name = "nbictl_lib",
-    srcs = ["nbictl.go"],
-    importpath = "aalyria.com/spacetime/github/tools/nbictl/cmd/nbictl",
-    deps = ["//tools/nbictl"],
-)
-
-go_binary(
-    name = "nbictl",
-    embed = [":nbictl_lib"],
-    visibility = ["//visibility:public"],
-)
+exports_files([
+    "def.bzl",
+    "runner.bash.template",
+])

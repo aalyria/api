@@ -24,10 +24,11 @@ option go_package = "aalyria.com/spacetime/api/nbi/v1alpha/resources";
 // Models an antenna radiation pattern. Multiple platform definitions can
 // reference the same antenna pattern.
 message AntennaPattern {
-  reserved 8, 13 to max;
+  reserved 8, 14 to max;
 
-  // A custom / user-defined antenna radiation pattern.
-  message CustomAntennaPattern {
+  // A custom / user-defined antenna radiation pattern defined in the Phi-Theta
+  // spherical coordinate system.
+  message CustomPhiThetaAntennaPattern {
     message SphericalGainValue {
       // A gain value (in decibels) must be provided for each phi and each
       // theta value such that the values in aggregate can be transformed into
@@ -44,8 +45,30 @@ message AntennaPattern {
     repeated SphericalGainValue gain_value = 1;
   }
 
+  // A custom / user-defined antenna radiation pattern defined in the 
+  // Azimuth-Elevation rectangular coordinate system.
+  message CustomAzElAntennaPattern {
+    message AzElGainValue {
+      // A gain value (in decibels) for the given Azimuth-Elevation angle pair.
+      optional double gain_db = 1;
+
+      // Azimuth is defined as the angle from the z-axis to the projection 
+      // of the direction vector onto the z-x plane. 
+      // Positive azimuth is measured toward the positive x-axis. 
+      // Range: [-180, 180].
+      optional double az_deg = 2;
+
+      // Elevation is defined as the angle from the z-axis to the projection
+      // of the direction vector onto the z-y plane.
+      // Positive elevation is measured toward the negative y-axis. 
+      // Range [-180, 180].
+      optional double el_deg = 3;
+    }
+    repeated AzElGainValue gain_values = 1;
+  }
+
   // Represents antennas that have gain patterns which vary based on the
-  // scan angle. 
+  // scan angle.
   message CustomAntennaPatternPerAngle {
     message ScanAngleAndCustomPattern {
       // Scan angle.
@@ -62,19 +85,19 @@ message AntennaPattern {
       // These patterns assign a gain value to each look angle.
       // The phi and theta in these patterns must also conform to the ranges
       // above.
-      optional CustomAntennaPattern custom_pattern = 3;  
-    } 
-    // The list of custom antenna patterns for each scan angle.   
-    // The phi angles must have an equal interval between them, and 
-    // the theta angles must also have an equal interval between them. 
+      optional CustomPhiThetaAntennaPattern custom_pattern = 3;
+    }
+    // The list of custom antenna patterns for each scan angle.
+    // The phi angles must have an equal interval between them, and
+    // the theta angles must also have an equal interval between them.
     // The interval for the phi angles does not have to be the same as
     // the interval for the theta angles.
-    // The interval for the scan angle does not have to be the same as the 
-    // interval for the look angles. But, each CustomAntennaPattern must 
+    // The interval for the scan angle does not have to be the same as the
+    // interval for the look angles. But, each CustomAntennaPattern must
     // have the same phi and theta range.
     // The phi and theta angles for both the scan angles and look angles must
     // be able to be transformed into two dimensional arrays where there
-    // are no missing values. 
+    // are no missing values.
     repeated ScanAngleAndCustomPattern scan_angle_and_custom_patterns = 1;
   }
 
@@ -151,15 +174,15 @@ message AntennaPattern {
     optional double near_field_range_m = 3;
   }
 
-  // Applies a different antenna radiation pattern for the transmitter 
-  // and receiver. 
+  // Applies a different antenna radiation pattern for the transmitter
+  // and receiver.
   message TransmitterAndReceiverAntennaPattern {
     optional AntennaPattern transmitter_pattern = 1;
     optional AntennaPattern receiver_pattern = 2;
   }
 
   oneof pattern_type {
-    CustomAntennaPattern custom_pattern = 1;
+    CustomPhiThetaAntennaPattern custom_phi_theta_pattern = 1;
     GaussianAntennaPattern gaussian_pattern = 2;
     HelicalAntennaPattern helical_pattern = 3;
     IsotropicAntennaPattern isotropic_pattern = 4;
@@ -170,5 +193,6 @@ message AntennaPattern {
     NearAndFarFieldAntennaPattern near_and_far_field_pattern = 9;
     TransmitterAndReceiverAntennaPattern transmitter_and_receiver_pattern = 11;
     CustomAntennaPatternPerAngle custom_antenna_pattern_per_angle = 12;
+    CustomAzElAntennaPattern custom_az_el_pattern = 13;
   }
 }

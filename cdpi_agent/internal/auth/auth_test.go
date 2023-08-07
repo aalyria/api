@@ -123,7 +123,7 @@ func TestNewCredentials(t *testing.T) {
 		PrivateKeyID: "1",
 		Clock:        clockwork.NewFakeClockAt(time.Date(2011, time.February, 16, 0, 0, 0, 0, time.UTC)),
 
-		oidcURL: "http://" + ts.Listener.Addr().String() + "/",
+		OIDCURL: "http://" + ts.Listener.Addr().String() + "/",
 	}
 
 	creds, err := NewCredentials(ctx, conf)

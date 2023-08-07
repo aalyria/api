@@ -33,6 +33,7 @@ const (
 )
 
 func TestGenerateKey_ValiddateWithOpenSSL(t *testing.T) {
+	t.Parallel()
 	if _, err := exec.LookPath("openssl"); err != nil {
 		t.Skipf("unable to find openssl path: %v", err)
 	}
@@ -65,6 +66,7 @@ func TestGenerateKey_ValiddateWithOpenSSL(t *testing.T) {
 }
 
 func TestGenerateKey_ValidateWithGoLib(t *testing.T) {
+	t.Parallel()
 	nbictlConfig, err := bazel.NewTmpDir("nbictl")
 	if err != nil {
 		t.Fatal(err)
@@ -98,6 +100,7 @@ func TestGenerateKey_ValidateWithGoLib(t *testing.T) {
 }
 
 func TestGenerateKey_ValidateSubjectAndIssuer(t *testing.T) {
+	t.Parallel()
 	nbictlConfig, err := bazel.NewTmpDir("nbictl")
 	if err != nil {
 		t.Fatal(err)
@@ -144,6 +147,7 @@ func TestGenerateKey_ValidateSubjectAndIssuer(t *testing.T) {
 }
 
 func TestGenerateKey_FilePermission(t *testing.T) {
+	t.Parallel()
 	nbictlConfig, err := bazel.NewTmpDir("nbictl")
 	if err != nil {
 		t.Fatal(err)
@@ -176,6 +180,7 @@ func TestGenerateKey_FilePermission(t *testing.T) {
 }
 
 func TestGenerateKey_DirPermision(t *testing.T) {
+	t.Parallel()
 	nbictlConfig, err := bazel.NewTmpDir("test_nbictl")
 	if err != nil {
 		t.Fatal(err)

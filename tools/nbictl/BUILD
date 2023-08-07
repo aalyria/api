@@ -20,20 +20,43 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "nbictl",
     srcs = [
+        "connection.go",
         "generate_rsa_key.go",
         "nbictl.go",
+        "set_context.go",
     ],
     importpath = "aalyria.com/spacetime/github/tools/nbictl",
     visibility = ["//visibility:public"],
     deps = [
         "//api/nbi/v1alpha:nbi_go_grpc",
+        "//cdpi_agent/internal/auth",
+        "//tools/nbictl/proto:nbictl_go_proto",
+        "@com_github_jonboulle_clockwork//:clockwork",
+        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//credentials",
+        "@org_golang_google_grpc//credentials/insecure",
         "@org_golang_google_protobuf//encoding/prototext",
     ],
 )
 
 go_test(
     name = "nbictl_test",
-    srcs = ["generate_rsa_key_test.go"],
+    srcs = [
+        "connection_test.go",
+        "fake_nbi_server_test.go",
+        "generate_rsa_key_test.go",
+        "set_context_test.go",
+    ],
     embed = [":nbictl"],
-    deps = ["@io_bazel_rules_go//go/tools/bazel:go_default_library"],
+    deps = [
+        "//api/nbi/v1alpha:nbi_go_grpc",
+        "//tools/nbictl/proto:nbictl_go_proto",
+        "@com_github_google_go_cmp//cmp",
+        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
+        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//metadata",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//testing/protocmp",
+        "@org_golang_x_sync//errgroup",
+    ],
 )

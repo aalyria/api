@@ -437,6 +437,15 @@ go_repository(
     version = "v0.3.7",
 )
 
+SCIP_JAVA_VERSION = "0.0.6"
+
+http_archive(
+    name = "scip_java",
+    sha256 = "7013fa54a6c764999cb5dce0b8a04a983d6335d3fa73e474f4f229dcbf2ce30b",
+    strip_prefix = "scip-java-{}".format(SCIP_JAVA_VERSION),
+    url = "https://github.com/ciarand/scip-java/archive/refs/tags/v{}.zip".format(SCIP_JAVA_VERSION),
+)
+
 load("@io_grpc_grpc_java//:repositories.bzl", "IO_GRPC_GRPC_JAVA_ARTIFACTS", "IO_GRPC_GRPC_JAVA_OVERRIDE_TARGETS", "grpc_java_repositories")
 
 # When updating the artifacts or repositories in the maven_install, update
@@ -448,6 +457,7 @@ maven_install(
     artifacts = 
         IO_GRPC_GRPC_JAVA_ARTIFACTS + 
         ["com.google.code.gson:gson:2.10.1",
+        "com.google.googlejavaformat:google-java-format:1.17.0",
         "io.helidon.grpc:helidon-grpc-core:3.2.0",
         "org.bouncycastle:bcprov-jdk15on:1.70",
         "junit:junit:4.13.2",

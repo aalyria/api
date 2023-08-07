@@ -75,7 +75,7 @@ type Config struct {
 	PrivateKeyID string
 	Email        string
 
-	oidcURL string
+	OIDCURL string
 }
 
 // NewCredentials creates a credentials.PerRPCCredentials implementation that
@@ -97,8 +97,8 @@ func NewCredentials(ctx context.Context, c Config) (credentials.PerRPCCredential
 		return nil, errors.Join(errs...)
 	}
 
-	if c.oidcURL == "" {
-		c.oidcURL = googleOIDCUrl
+	if c.OIDCURL == "" {
+		c.OIDCURL = googleOIDCUrl
 	}
 
 	pkeyBytes, err := io.ReadAll(c.PrivateKey)
@@ -127,7 +127,7 @@ func newProxyTokenSource(ctx context.Context, c Config, pkeyBytes []byte) (func(
 		PrivateKey:    pkeyBytes,
 		PrivateKeyID:  c.PrivateKeyID,
 		Expires:       tokenLifetime,
-		TokenURL:      c.oidcURL,
+		TokenURL:      c.OIDCURL,
 		PrivateClaims: map[string]interface{}{"target_audience": proxyAudience},
 		UseIDToken:    true,
 	}
