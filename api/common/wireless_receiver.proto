@@ -29,6 +29,9 @@ message RxChannels {
   // The set of supported channel frequencies, in Hz, for this channel set.
   // For RF transceivers, this is the carrier frequency.
   // For optical transceivers, this may be converted to wavelength.
+  // TODO: Refactor this to be a repeated field of
+  // `aalyria.spacetime.api.common.Signal`s in order to
+  // consolidate the modeling of transmitted and received signals.
   repeated int64 center_frequency_hz = 1;
 }
 

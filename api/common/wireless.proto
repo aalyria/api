@@ -16,6 +16,8 @@ syntax = "proto2";
 
 package aalyria.spacetime.api.common;
 
+import "api/common/platform_antenna.proto";
+
 option java_package = "com.aalyria.spacetime.api.common";
 option go_package = "aalyria.com/spacetime/api/common";
 
@@ -46,4 +48,17 @@ message MiscGainOrLoss {
 
   // The gain (positive values) or loss (negative values), in dB.
   optional double gain_or_loss_db = 2;
+}
+
+// Represents a signal, with properties such as a
+// center frequency, bandwidth, and polarization.
+message Signal {
+  // The center frequency (Hz) of the signal.
+  optional uint64 center_frequency_hz = 1;
+
+  // The bandwidth (Hz) of the signal.
+  optional uint64 bandwidth_hz = 2;
+
+  // The polarization of the signal.
+  optional aalyria.spacetime.api.common.Polarization polarization = 3;
 }

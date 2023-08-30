@@ -21,6 +21,7 @@ syntax = "proto2";
 
 package aalyria.spacetime.api.common;
 
+import "api/common/bent_pipe.proto";
 import "api/common/coordinates.proto";
 import "api/common/wireless_transceiver.proto";
 
@@ -29,7 +30,7 @@ option go_package = "aalyria.com/spacetime/api/common";
 
 // Models a physical platform with optional communications assets.
 message PlatformDefinition {
-  reserved 1, 5 to 7, 8, 9, 10, 11, 18 to max;
+  reserved 1, 5 to 7, 8, 9, 10, 11, 19 to max;
 
   // Optional friendly, human-readable strings for UI purposes.
   optional string name = 2;
@@ -61,9 +62,15 @@ message PlatformDefinition {
   // a launch maneuver, followed by a TLE, etc).
   optional string motion_ref_id = 4;
 
+  // Communications assets on this platform.
+  // TransceiverModels and/or BentPipePayloads can be specified on a 
+  // PlatformDefinition.
+  //
   // Transceiver models associated with this platform.
   // Multiple physical devices on the platform may share the same model.
   repeated TransceiverModel transceiver_model = 15;
+  // Bent pipe payloads on this platform.
+  repeated BentPipePayload bent_pipe_payloads = 18;
 
   // Automatic dependent surveillance—broadcast (ADS-B) information.
   // This field is optional and is only relevant to aircraft platforms.
