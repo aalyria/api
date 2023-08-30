@@ -23,6 +23,7 @@ package(default_visibility = ["//visibility:public"])
 proto_library(
     name = "common_proto",
     srcs = [
+        "bent_pipe.proto",
         "channel.proto",
         "control.proto",
         "control_beam.proto",
