@@ -24,10 +24,13 @@ proto_library(
     name = "nbi_proto",
     srcs = [
         "nbi.proto",
+        "signal_propagation.proto",
     ],
     deps = [
         "//api/common:common_proto",
         "//api/nbi/v1alpha/resources:nbi_resources_proto",
+        "@com_google_protobuf//:duration_proto",
+        "@com_google_protobuf//:timestamp_proto",
         "@go_googleapis//google/api:annotations_proto",
         "@go_googleapis//google/type:interval_proto",
     ],

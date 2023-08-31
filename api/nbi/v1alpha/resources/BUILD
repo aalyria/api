@@ -32,6 +32,7 @@ proto_library(
         "network_link.proto",
         "scenario_settings.proto",
         "service_request.proto",
+        "wireless_evaluation.proto",
         "wireless_interference.proto",
     ],
     deps = [
