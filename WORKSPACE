@@ -147,6 +147,41 @@ gazelle_dependencies()
 # Downloads are not cached in version control mode.
 
 go_repository(
+    name = "com_github_bufbuild_protocompile",
+    importpath = "github.com/bufbuild/protocompile",
+    sum = "h1:Uu7WiSQ6Yj9DbkdnOe7U4mNKp58y9WDMKDn28/ZlunY=",
+    version = "v0.6.0",
+)
+
+go_repository(
+    name = "com_github_urfave_cli_v2",
+    importpath = "github.com/urfave/cli/v2",
+    sum = "h1:VAzn5oq403l5pHjc4OhD54+XGO9cdKVL/7lDjF+iKUs=",
+    version = "v2.25.7",
+)
+
+go_repository(
+    name = "com_github_xrash_smetrics",
+    importpath = "github.com/xrash/smetrics",
+    sum = "h1:bAn7/zixMGCfxrRTfdpNzjtPYqr8smhKouy9mxVdGPU=",
+    version = "v0.0.0-20201216005158-039620a65673",
+)
+
+go_repository(
+    name = "com_github_cpuguy83_go_md2man_v2",
+    importpath = "github.com/cpuguy83/go-md2man/v2",
+    sum = "h1:p1EgwI/C7NhT0JmVkwCD2ZBK8j4aeHQX2pMHHBfMQ6w=",
+    version = "v2.0.2",
+)
+
+go_repository(
+    name = "com_github_russross_blackfriday_v2",
+    importpath = "github.com/russross/blackfriday/v2",
+    sum = "h1:JIOH55/0cWyOuilr9/qlrm0BSXldqnqwMsf35Ld67mk=",
+    version = "v2.1.0",
+)
+
+go_repository(
     name = "com_github_cenkalti_backoff_v4",
     importpath = "github.com/cenkalti/backoff/v4",
     sum = "h1:HN5dHm3WBOgndBH6E8V0q2jIYIR3s9yglV8k/+MN3u4=",
@@ -158,6 +193,13 @@ go_repository(
     importpath = "github.com/felixge/httpsnoop",
     sum = "h1:s/nj+GCswXYzN5v2DpNMuMQYe+0DDwt5WVCU6CWBdXk=",
     version = "v1.0.3",
+)
+
+go_repository(
+    name = "com_github_fullstorydev_grpcurl",
+    importpath = "github.com/fullstorydev/grpcurl",
+    sum = "h1:xJWosq3BQovQ4QrdPO72OrPiWuGgEsxY8ldYsJbPrqI=",
+    version = "v1.8.7",
 )
 
 go_repository(
@@ -193,6 +235,14 @@ go_repository(
     importpath = "github.com/grpc-ecosystem/grpc-gateway/v2",
     sum = "h1:gDLXvp5S9izjldquuoAhDzccbskOL6tDC5jMSyx3zxE=",
     version = "v2.15.2",
+)
+
+go_repository(
+    name = "com_github_jhump_protoreflect",
+    build_file_proto_mode = "legacy",
+    importpath = "github.com/jhump/protoreflect",
+    sum = "h1:7YppbATX94jEt9KLAc5hICx4h6Yt3SaavhQRsIUEHP0=",
+    version = "v1.15.2",
 )
 
 go_repository(

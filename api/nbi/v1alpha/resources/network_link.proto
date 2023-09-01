@@ -108,7 +108,7 @@ enum Accessibility {
 
 // A modeled, physical-layer wireless link budget.
 message WirelessLinkBudget {
-  reserved 10 to 14, 16 to max;
+  reserved 10 to 14, 17 to max;
 
   // The transmitter antenna's gain in the link direction, in dB.
   optional double transmitter_antenna_gain_in_link_direction_db = 1;
@@ -138,6 +138,10 @@ message WirelessLinkBudget {
 
   // The carrier to noise ratio.
   optional double carrier_to_noise_db = 8;
+  
+  // The carrier to noise-plus-interference ratio (C / (N + I)),
+  // in dB.
+  optional double carrier_to_noise_plus_interference_db = 16;
 
   // The carrier to noise density, in dB/Hz.
   optional double carrier_to_noise_density_db_per_hz = 9;

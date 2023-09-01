@@ -15,7 +15,6 @@
 package nbictl
 
 import (
-	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1"
@@ -25,13 +24,14 @@ import (
 	"encoding/hex"
 	"encoding/pem"
 	"errors"
-	"flag"
 	"fmt"
 	"math"
 	"math/big"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/urfave/cli/v2"
 )
 
 const (
@@ -49,26 +49,17 @@ type RSAKeyPath struct {
 	CertificatePath string
 }
 
-func GenerateKeys(ctx context.Context, args []string) error {
-	generateKey := flag.NewFlagSet(clientName+" generate-key", flag.ExitOnError)
-	directory := generateKey.String("dir", "", "`directory` where you want your RSA keys to be stored. Default: ~/.nbictl/")
-	country := generateKey.String("country", "", "country of certificate")
-	org := generateKey.String("org", "", "[REQUIRED] organization of certificate")
-	state := generateKey.String("state", "", "state of certificate")
-	location := generateKey.String("location", "", "location of certificate")
+func GenerateKeys(appCtx *cli.Context) error {
+	directory := appCtx.String("dir")
+	country := appCtx.String("country")
+	org := appCtx.String("org")
+	state := appCtx.String("state")
+	location := appCtx.String("location")
 
-	generateKey.Parse(args)
-	if _, err := GenerateRSAKeys(*directory, *country, *org, *state, *location); err != nil {
-		return fmt.Errorf("unable to generate RSA keys: %w", err)
-	}
-	return nil
-}
-
-func GenerateRSAKeys(rsaKeyDir, country, org, state, location string) (RSAKeyPath, error) {
 	certIssuer := pkix.Name{}
 
 	if org == "" {
-		return RSAKeyPath{}, errors.New("missing required key --org: organization for the certification must be provided")
+		return errors.New("missing required key --org: organization for the certification must be provided")
 	} else {
 		certIssuer.Organization = []string{org}
 	}
@@ -83,37 +74,37 @@ func GenerateRSAKeys(rsaKeyDir, country, org, state, location string) (RSAKeyPat
 		certIssuer.Locality = []string{location}
 	}
 
-	generatedKeysDir := rsaKeyDir
+	generatedKeysDir := directory
 	if generatedKeysDir == "" {
 		configDir, err := os.UserConfigDir()
 		if err != nil {
-			return RSAKeyPath{}, err
+			return err
 		}
-		generatedKeysDir = filepath.Join(configDir, clientName, generatedKeysDirDefault)
+		generatedKeysDir = filepath.Join(configDir, appCtx.App.Name, generatedKeysDirDefault)
 	}
 
 	if err := os.MkdirAll(generatedKeysDir, generatedKeysDirPerm); err != nil {
-		return RSAKeyPath{}, err
+		return err
 	}
 
 	dirInfo, err := os.Stat(generatedKeysDir)
 	if err != nil {
-		return RSAKeyPath{}, fmt.Errorf("unable to get directory info: %w", err)
+		return fmt.Errorf("unable to get directory info: %w", err)
 	}
 
 	if dirPerm := dirInfo.Mode().Perm(); dirPerm != generatedKeysDirPerm {
-		return RSAKeyPath{}, fmt.Errorf("directory does not have an appropriate permission: must have %v but have %v", generatedKeysDirPerm, dirPerm)
+		return fmt.Errorf("directory does not have an appropriate permission: must have %v but have %v", generatedKeysDirPerm, dirPerm)
 	}
 
 	now := time.Now()
 	certSerialNumber, err := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
 	if err != nil {
-		return RSAKeyPath{}, err
+		return err
 	}
 
 	privateKey, err := rsa.GenerateKey(rand.Reader, rsaKeysBitSize)
 	if err != nil {
-		return RSAKeyPath{}, fmt.Errorf("unable to generate private key: %w", err)
+		return fmt.Errorf("unable to generate private key: %w", err)
 	}
 
 	publicKey := privateKey.PublicKey
@@ -136,7 +127,7 @@ func GenerateRSAKeys(rsaKeyDir, country, org, state, location string) (RSAKeyPat
 
 	cert, err := x509.CreateCertificate(rand.Reader, certTemplate, certTemplate, &publicKey, privateKey)
 	if err != nil {
-		return RSAKeyPath{}, fmt.Errorf("unable to create certificate: %w", err)
+		return fmt.Errorf("unable to create certificate: %w", err)
 	}
 
 	pemPrivateBlock := &pem.Block{
@@ -158,25 +149,25 @@ func GenerateRSAKeys(rsaKeyDir, country, org, state, location string) (RSAKeyPat
 
 	privFile, err := os.OpenFile(rsaKeyPaths.PrivateKeyPath, os.O_CREATE|os.O_RDWR|os.O_EXCL, privateKeysFilePerm)
 	if err != nil {
-		return RSAKeyPath{}, fmt.Errorf("unable to create file: %w", err)
+		return fmt.Errorf("unable to create file: %w", err)
 	}
 	defer privFile.Close()
 
 	pubFile, err := os.OpenFile(rsaKeyPaths.CertificatePath, os.O_CREATE|os.O_RDWR|os.O_EXCL, pubCertFilePerm)
 	if err != nil {
-		return RSAKeyPath{}, fmt.Errorf("unable to create file: %w", err)
+		return fmt.Errorf("unable to create file: %w", err)
 	}
 	defer pubFile.Close()
 
 	if err = pem.Encode(privFile, pemPrivateBlock); err != nil {
-		return RSAKeyPath{}, fmt.Errorf("unable to encode private key: %w", err)
+		return fmt.Errorf("unable to encode private key: %w", err)
 	}
 
 	if err := pem.Encode(pubFile, pemCertBlock); err != nil {
-		return RSAKeyPath{}, fmt.Errorf("unable to encode certificate: %w", err)
+		return fmt.Errorf("unable to encode certificate: %w", err)
 	}
 
-	fmt.Printf("private key is stored under: %s\n", rsaKeyPaths.PrivateKeyPath)
-	fmt.Printf("certificate is stored under: %s\n", rsaKeyPaths.CertificatePath)
-	return rsaKeyPaths, nil
+	fmt.Fprintf(appCtx.App.ErrWriter, "private key is stored under: %s\n", rsaKeyPaths.PrivateKeyPath)
+	fmt.Fprintf(appCtx.App.ErrWriter, "certificate is stored under: %s\n", rsaKeyPaths.CertificatePath)
+	return nil
 }

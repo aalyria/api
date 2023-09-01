@@ -32,7 +32,6 @@ import "api/nbi/v1alpha/resources/network_link.proto";
 import "api/nbi/v1alpha/resources/scenario_settings.proto";
 import "api/nbi/v1alpha/resources/service_request.proto";
 import "api/nbi/v1alpha/resources/wireless_interference.proto";
-import "google/api/annotations.proto";
 import "google/type/interval.proto";
 
 option java_package = "com.aalyria.spacetime.api.nbi.v1alpha";
@@ -123,46 +122,18 @@ message Entity {
 }
 
 service NetOps {
-  // Creates a Spacetime Entity using the app: 'Spacetime Netops'.
-  rpc CreateEntity(CreateEntityRequest) returns (Entity) {
-    option (google.api.http) = {
-      post: "/v1/entities/type/{type=*}"
-      body: "entity"
-    };
-  }
+  rpc GetEntity(GetEntityRequest) returns (Entity) {}
 
-  // Updates a Spacetime Entity using the app: 'Spacetime Netops'.
-  rpc UpdateEntity(UpdateEntityRequest) returns (Entity) {
-    option (google.api.http) = {
-      put: "/v1/entities/type/{type=*}/id/{id=*}"
-      body: "entity"
-    };
-  }
+  rpc CreateEntity(CreateEntityRequest) returns (Entity) {}
 
-  // Lists all specified entities of the selected type.
-  // TODO: implement pagination
-  rpc ListEntities(ListEntitiesRequest) returns (ListEntitiesResponse) {
-    option (google.api.http) = {
-      get: "/v1/entities"
-    };
-  }
+  rpc UpdateEntity(UpdateEntityRequest) returns (Entity) {}
 
-  // Lists all specified entities of the selected type over the provided time
-  // interval.
-  // TODO: implement pagination
+  rpc ListEntities(ListEntitiesRequest) returns (ListEntitiesResponse) {}
+
   rpc ListEntitiesOverTime(ListEntitiesOverTimeRequest)
-      returns (ListEntitiesOverTimeResponse) {
-    option (google.api.http) = {
-      get: "/v1/entities/over_time"
-    };
-  }
+      returns (ListEntitiesOverTimeResponse) {}
 
-  // Deletes an Entity.
-  rpc DeleteEntity(DeleteEntityRequest) returns (DeleteEntityResponse) {
-    option (google.api.http) = {
-      delete: "/v1/entities/type/{type=*}/id/{id=*}/commit_timestamp/{commit_timestamp=*}" 
-    };
-  }
+  rpc DeleteEntity(DeleteEntityRequest) returns (DeleteEntityResponse) {}
 
   // Loads a scenario specified as a
   // com.aalyria.resources.ScenarioSettings proto.
@@ -170,11 +141,12 @@ service NetOps {
   // more general purpose interface.
   rpc LoadScenario(LoadScenarioRequest) returns (LoadScenarioResponse) {
     option deprecated = true;
-    option (google.api.http) = {
-      post: "/v1/load_scenario"
-      body: "scenario_settings"
-    };
   }
+}
+
+message GetEntityRequest {
+  optional EntityType type = 1;
+  optional string id = 2;
 }
 
 // The id can be omitted, in which case a unique ID will be generated
@@ -224,6 +196,16 @@ message ListEntitiesOverTimeRequest {
 
   // If set, only return entities with an ID in the list.
   repeated string ids = 5;
+
+  // If set, only return entities that changed between the interval's start
+  // and end times. End may be before start to diff backwards in time.
+  // 
+  // If multiple versions of an entity exist during the interval, the version
+  // that existed at the end time is returned (latest commit timestamp that's
+  // before or equal to the end time). If the entity doesn't exist or doesn't
+  // match the filter at the end time, but did exist or match at the start
+  // time, an entity with no value is returned.
+  optional bool diff = 6;
 }
 
 message ListEntitiesOverTimeResponse {

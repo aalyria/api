@@ -12,18 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
-
-import (
-	"fmt"
-	"os"
-
-	"aalyria.com/spacetime/github/tools/nbictl"
-)
-
-func main() {
-	if err := nbictl.App().Run(os.Args); err != nil {
-		fmt.Fprintf(os.Stderr, "fatal error: %v\n", err)
-		os.Exit(1)
-	}
-}
+// Package auth provides credential helpers for connecting to Spacetime APIs.
+//
+// Users will create a [Config] and call [NewCredentials] to create a
+// [google.golang.org/grpc/credentials.PerRPCCredentials] instance that can be
+// used with the [google.golang.org/grpc.WithPerRPCCredentials] dial option to
+// authenticate RPCs. See the [auth documentation] for more information.
+//
+// [auth documentation]: https://docs.spacetime.aalyria.com/authentication
+package auth
