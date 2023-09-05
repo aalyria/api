@@ -224,6 +224,16 @@ message ListEntitiesOverTimeRequest {
 
   // If set, only return entities with an ID in the list.
   repeated string ids = 5;
+
+  // If set, only return entities that changed between the interval's start
+  // and end times. End may be before start to diff backwards in time.
+  // 
+  // If multiple versions of an entity exist during the interval, the version
+  // that existed at the end time is returned (latest commit timestamp that's
+  // before or equal to the end time). If the entity doesn't exist or doesn't
+  // match the filter at the end time, but did exist or match at the start
+  // time, an entity with no value is returned.
+  optional bool diff = 6;
 }
 
 message ListEntitiesOverTimeResponse {

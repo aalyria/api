@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	pb "aalyria.com/spacetime/github/tools/nbictl/resource"
+	"aalyria.com/spacetime/github/tools/nbictl/nbictlpb"
 	"github.com/bazelbuild/rules_go/go/tools/bazel"
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/protobuf/proto"
@@ -29,7 +29,7 @@ import (
 )
 
 var (
-	testContext = &pb.Context{
+	testConfig = &nbictlpb.Config{
 		Name:    "unit_testing",
 		KeyId:   "privateKey.id",
 		Email:   "privateKey.userID",
@@ -37,7 +37,7 @@ var (
 		Url:     "test_url",
 		OidcUrl: "test_oidc",
 	}
-	testContextForUpdate = &pb.Context{
+	testConfigForUpdate = &nbictlpb.Config{
 		Name:    "test update",
 		KeyId:   "update_key_id",
 		Email:   "update_user_id",
@@ -45,41 +45,41 @@ var (
 		Url:     "update_url",
 		OidcUrl: "update_oidc",
 	}
-	testContexts = &pb.NbiCtlConfig{
-		Contexts: []*pb.Context{testContext},
+	testConfigs = &nbictlpb.AppConfig{
+		Configs: []*nbictlpb.Config{testConfig},
 	}
 )
 
-func TestGetContext(t *testing.T) {
+func TestGetConfig(t *testing.T) {
 	t.Parallel()
 	nbictlConfig, err := bazel.NewTmpDir("nbictl")
 	checkErr(t, err)
 	nbictlConfig = filepath.Join(nbictlConfig, confFileName)
 
-	err = setContext(testContext, nbictlConfig)
+	err = setConfig(testConfig, nbictlConfig)
 	checkErr(t, err)
 
-	got, err := GetContext(testContext.GetName(), nbictlConfig)
+	got, err := GetConfig(testConfig.GetName(), nbictlConfig)
 	checkErr(t, err)
 
-	assertProtosEqual(t, testContext, got)
+	assertProtosEqual(t, testConfig, got)
 }
 
-func TestGetContext_WithOnlyOneContextInConfig(t *testing.T) {
+func TestGetConfig_WithOnlyOneContextInConfig(t *testing.T) {
 	t.Parallel()
 	nbictlConfig, err := bazel.NewTmpDir("nbictl")
 	checkErr(t, err)
 
 	nbictlConfig = filepath.Join(nbictlConfig, confFileName)
-	checkErr(t, setContext(testContext, nbictlConfig))
+	checkErr(t, setConfig(testConfig, nbictlConfig))
 
-	got, err := GetContext("", nbictlConfig)
+	got, err := GetConfig("", nbictlConfig)
 	checkErr(t, err)
 
-	assertProtosEqual(t, testContext, got)
+	assertProtosEqual(t, testConfig, got)
 }
 
-func TestGetContext_WithNoContextWithMultipleContextInConfig(t *testing.T) {
+func TestGetConfig_WithNoContextWithMultipleContextInConfig(t *testing.T) {
 	t.Parallel()
 	nbictlConfig, err := bazel.NewTmpDir("nbictl")
 	checkErr(t, err)
@@ -93,20 +93,20 @@ func TestGetContext_WithNoContextWithMultipleContextInConfig(t *testing.T) {
 	wantErrMsg := "--context flag required because there are multiple contexts defined in the configuration."
 
 	for _, contextToCreate := range contextsToCreate {
-		context := &pb.Context{
+		context := &nbictlpb.Config{
 			Name: contextToCreate,
 		}
-		checkErr(t, setContext(context, nbictlConfig))
+		checkErr(t, setConfig(context, nbictlConfig))
 	}
 
-	_, err = GetContext("", nbictlConfig)
+	_, err = GetConfig("", nbictlConfig)
 	gotErrMsg := err.Error()
 	if !strings.Contains(gotErrMsg, wantErrMsg) {
 		t.Fatalf("want: %s, got %s", wantErrMsg, gotErrMsg)
 	}
 }
 
-func TestGetContexts_WithFileWithNoPermission(t *testing.T) {
+func TestGetConfigs_WithFileWithNoPermission(t *testing.T) {
 	t.Parallel()
 	nbictlConfig, err := bazel.NewTmpDir("nbictl")
 	checkErr(t, err)
@@ -118,14 +118,14 @@ func TestGetContexts_WithFileWithNoPermission(t *testing.T) {
 
 	checkErr(t, os.Chmod(nbictlConfig, 0000))
 
-	if _, err = getContexts(nbictlConfig); err == nil {
+	if _, err = getConfigs(nbictlConfig); err == nil {
 		t.Fatal("unable to detect that issues with selected config file")
 		checkErr(t, os.Remove(nbictlConfig))
 		t.FailNow()
 	}
 }
 
-func TestGetContext_WithNonExistingContextName(t *testing.T) {
+func TestGetConfig_WithNonExistingContextName(t *testing.T) {
 	t.Parallel()
 	nbictlConfig, err := bazel.NewTmpDir("nbictl")
 	checkErr(t, err)
@@ -140,20 +140,20 @@ func TestGetContext_WithNonExistingContextName(t *testing.T) {
 	wantErrMsg := fmt.Sprintf("unable to get the context with the name: %s. the list of available context names are the following: %v", nonExistingContext, contextsToCreate)
 
 	for _, contextToCreate := range contextsToCreate {
-		context := &pb.Context{
+		context := &nbictlpb.Config{
 			Name: contextToCreate,
 		}
-		checkErr(t, setContext(context, nbictlConfig))
+		checkErr(t, setConfig(context, nbictlConfig))
 	}
 
-	_, err = GetContext(nonExistingContext, nbictlConfig)
+	_, err = GetConfig(nonExistingContext, nbictlConfig)
 	gotErrMsg := err.Error()
 	if !strings.Contains(gotErrMsg, wantErrMsg) {
 		t.Fatalf("want: %s, got %s", wantErrMsg, gotErrMsg)
 	}
 }
 
-func TestSetContext_WithNoUpdate(t *testing.T) {
+func TestSetConfig_WithNoUpdate(t *testing.T) {
 	t.Parallel()
 	// create a temporary directory
 	nbictlConfig, err := bazel.NewTmpDir("nbictl")
@@ -161,22 +161,22 @@ func TestSetContext_WithNoUpdate(t *testing.T) {
 	nbictlConfig = filepath.Join(nbictlConfig, confFileName)
 
 	// initial setup
-	checkErr(t, setContext(testContext, nbictlConfig))
-	wantContexts, err := getContexts(nbictlConfig)
+	checkErr(t, setConfig(testConfig, nbictlConfig))
+	wantContexts, err := getConfigs(nbictlConfig)
 	checkErr(t, err)
-	assertProtosEqual(t, testContexts, wantContexts)
+	assertProtosEqual(t, testConfigs, wantContexts)
 
-	contextWithNoChange := &pb.Context{
-		Name: testContext.GetName(),
+	contextWithNoChange := &nbictlpb.Config{
+		Name: testConfig.GetName(),
 	}
-	checkErr(t, setContext(contextWithNoChange, nbictlConfig))
+	checkErr(t, setConfig(contextWithNoChange, nbictlConfig))
 
-	gotContexts, err := getContexts(nbictlConfig)
+	gotContexts, err := getConfigs(nbictlConfig)
 	checkErr(t, err)
 	assertProtosEqual(t, wantContexts, gotContexts)
 }
 
-func TestSetContext_UpdatePrivateKey(t *testing.T) {
+func TestSetConfig_UpdatePrivateKey(t *testing.T) {
 	t.Parallel()
 	// create a temporary directory
 	nbictlConfig, err := bazel.NewTmpDir("nbictl")
@@ -184,28 +184,28 @@ func TestSetContext_UpdatePrivateKey(t *testing.T) {
 	nbictlConfig = filepath.Join(nbictlConfig, confFileName)
 
 	// initial setup
-	checkErr(t, setContext(testContext, nbictlConfig))
-	checkErr(t, setContext(testContextForUpdate, nbictlConfig))
+	checkErr(t, setConfig(testConfig, nbictlConfig))
+	checkErr(t, setConfig(testConfigForUpdate, nbictlConfig))
 
 	// update the existing context with a new private key
-	checkErr(t, setContext(&pb.Context{
-		Name:    testContext.GetName(),
+	checkErr(t, setConfig(&nbictlpb.Config{
+		Name:    testConfig.GetName(),
 		PrivKey: "private_key.updated",
 	}, nbictlConfig))
 
-	updatedContext := proto.Clone(testContext).(*pb.Context)
-	updatedContext.PrivKey = "private_key.updated"
-	wantContexts := &pb.NbiCtlConfig{
-		Contexts: []*pb.Context{updatedContext, testContextForUpdate},
+	updatedConfig := proto.Clone(testConfig).(*nbictlpb.Config)
+	updatedConfig.PrivKey = "private_key.updated"
+	wantContexts := &nbictlpb.AppConfig{
+		Configs: []*nbictlpb.Config{updatedConfig, testConfigForUpdate},
 	}
 
 	// check if the private key is updated
-	gotContexts, err := getContexts(nbictlConfig)
+	gotContexts, err := getConfigs(nbictlConfig)
 	checkErr(t, err)
 	assertProtosEqual(t, wantContexts, gotContexts)
 }
 
-func TestSetContext_UpdateKeyId(t *testing.T) {
+func TestSetConfig_UpdateKeyId(t *testing.T) {
 	t.Parallel()
 	// create a temporary directory
 	nbictlConfig, err := bazel.NewTmpDir("nbictl")
@@ -213,29 +213,29 @@ func TestSetContext_UpdateKeyId(t *testing.T) {
 	nbictlConfig = filepath.Join(nbictlConfig, confFileName)
 
 	// initial setup
-	checkErr(t, setContext(testContext, nbictlConfig))
-	checkErr(t, setContext(testContextForUpdate, nbictlConfig))
+	checkErr(t, setConfig(testConfig, nbictlConfig))
+	checkErr(t, setConfig(testConfigForUpdate, nbictlConfig))
 
 	// update the existing context with a new key id
-	checkErr(t, setContext(&pb.Context{
-		Name:  testContextForUpdate.GetName(),
+	checkErr(t, setConfig(&nbictlpb.Config{
+		Name:  testConfigForUpdate.GetName(),
 		KeyId: "key_id.updated",
 	}, nbictlConfig))
 
-	updatedContext := proto.Clone(testContextForUpdate).(*pb.Context)
-	updatedContext.KeyId = "key_id.updated"
-	wantContexts := &pb.NbiCtlConfig{
-		Contexts: []*pb.Context{testContext, updatedContext},
+	updatedConfig := proto.Clone(testConfigForUpdate).(*nbictlpb.Config)
+	updatedConfig.KeyId = "key_id.updated"
+	wantContexts := &nbictlpb.AppConfig{
+		Configs: []*nbictlpb.Config{testConfig, updatedConfig},
 	}
 
 	// check if the key id is updated
-	gotContexts, err := getContexts(nbictlConfig)
+	gotContexts, err := getConfigs(nbictlConfig)
 	checkErr(t, err)
 
 	assertProtosEqual(t, wantContexts, gotContexts)
 }
 
-func TestSetContext_UpdateUserID(t *testing.T) {
+func TestSetConfig_UpdateUserID(t *testing.T) {
 	t.Parallel()
 	// create a temporary directory
 	nbictlConfig, err := bazel.NewTmpDir("nbictl")
@@ -243,30 +243,30 @@ func TestSetContext_UpdateUserID(t *testing.T) {
 	nbictlConfig = filepath.Join(nbictlConfig, confFileName)
 
 	// initial setup
-	checkErr(t, setContext(testContext, nbictlConfig))
-	checkErr(t, setContext(testContextForUpdate, nbictlConfig))
+	checkErr(t, setConfig(testConfig, nbictlConfig))
+	checkErr(t, setConfig(testConfigForUpdate, nbictlConfig))
 
 	// update the existing context with a new user id
 
-	checkErr(t, setContext(&pb.Context{
-		Name:  testContext.GetName(),
+	checkErr(t, setConfig(&nbictlpb.Config{
+		Name:  testConfig.GetName(),
 		Email: "email.updated",
 	}, nbictlConfig))
 
-	updatedContext := proto.Clone(testContext).(*pb.Context)
-	updatedContext.Email = "email.updated"
-	wantContexts := &pb.NbiCtlConfig{
-		Contexts: []*pb.Context{updatedContext, testContextForUpdate},
+	updatedConfig := proto.Clone(testConfig).(*nbictlpb.Config)
+	updatedConfig.Email = "email.updated"
+	wantContexts := &nbictlpb.AppConfig{
+		Configs: []*nbictlpb.Config{updatedConfig, testConfigForUpdate},
 	}
 
 	// check if the user id is updated
-	gotContexts, err := getContexts(nbictlConfig)
+	gotContexts, err := getConfigs(nbictlConfig)
 	checkErr(t, err)
 
 	assertProtosEqual(t, wantContexts, gotContexts)
 }
 
-func TestSetContext_UpdateUrl(t *testing.T) {
+func TestSetConfig_UpdateUrl(t *testing.T) {
 	t.Parallel()
 	// create a temporary directory
 	nbictlConfig, err := bazel.NewTmpDir("nbictl")
@@ -274,27 +274,27 @@ func TestSetContext_UpdateUrl(t *testing.T) {
 	nbictlConfig = filepath.Join(nbictlConfig, confFileName)
 
 	// initial setup
-	checkErr(t, setContext(testContext, nbictlConfig))
-	checkErr(t, setContext(testContextForUpdate, nbictlConfig))
+	checkErr(t, setConfig(testConfig, nbictlConfig))
+	checkErr(t, setConfig(testConfigForUpdate, nbictlConfig))
 
 	// update the existing context with a new url
 
-	checkErr(t, setContext(&pb.Context{
-		Name: testContext.GetName(),
+	checkErr(t, setConfig(&nbictlpb.Config{
+		Name: testConfig.GetName(),
 		Url:  "url.updated",
 	}, nbictlConfig))
 
-	updatedContext := proto.Clone(testContext).(*pb.Context)
-	updatedContext.Url = "url.updated"
-	wantContexts := &pb.NbiCtlConfig{
-		Contexts: []*pb.Context{updatedContext, testContextForUpdate},
+	updatedConfig := proto.Clone(testConfig).(*nbictlpb.Config)
+	updatedConfig.Url = "url.updated"
+	wantContexts := &nbictlpb.AppConfig{
+		Configs: []*nbictlpb.Config{updatedConfig, testConfigForUpdate},
 	}
 
 	// check if the url is updated
-	gotContexts, err := getContexts(nbictlConfig)
+	gotConfigs, err := getConfigs(nbictlConfig)
 	checkErr(t, err)
 
-	assertProtosEqual(t, wantContexts, gotContexts)
+	assertProtosEqual(t, wantContexts, gotConfigs)
 }
 
 func checkErr(t *testing.T, err error) {

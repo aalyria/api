@@ -15,55 +15,15 @@
 package main
 
 import (
-	"context"
-	"errors"
-	"flag"
 	"fmt"
-	"log"
+	"os"
 
-	nbictl "aalyria.com/spacetime/github/tools/nbictl"
+	"aalyria.com/spacetime/github/tools/nbictl"
 )
-
-var subCmds = map[string]func(context.Context, []string) error{
-	"list":          nbictl.List,
-	"create":        nbictl.Create,
-	"update":        nbictl.Update,
-	"delete":        nbictl.Delete,
-	"generate-keys": nbictl.GenerateKeys,
-	"set-context":   nbictl.SetContext,
-}
-
-const (
-	linkToAuthGuide = "https://docs.spacetime.aalyria.com/authentication"
-	clientName      = "nbictl"
-)
-
-func getSubcommandNames() []string {
-	var cmdList []string
-	for cmd := range subCmds {
-		cmdList = append(cmdList, cmd)
-	}
-	return cmdList
-}
-
-func run() error {
-	args := flag.Args()
-	if flag.NArg() == 0 {
-		return errors.New("Please specify a subcommand")
-	}
-	cmd, args := args[0], args[1:]
-	ctx := context.Background()
-
-	cmdToPerform, ok := subCmds[cmd]
-	if !ok {
-		return fmt.Errorf("invalid command: %s. must be one of %v", cmd, getSubcommandNames())
-	}
-	return cmdToPerform(ctx, args)
-}
 
 func main() {
-	flag.Parse()
-	if err := run(); err != nil {
-		log.Fatalf("fatal error: %v", err)
+	if err := nbictl.App().Run(os.Args); err != nil {
+		fmt.Fprintf(os.Stderr, "fatal error: %v\n", err)
+		os.Exit(1)
 	}
 }
