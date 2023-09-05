@@ -28,7 +28,7 @@ import (
 	"time"
 
 	nbi "aalyria.com/spacetime/api/nbi/v1alpha"
-	pb "aalyria.com/spacetime/github/tools/nbictl/resource"
+	"aalyria.com/spacetime/github/tools/nbictl/nbictlpb"
 	"github.com/bazelbuild/rules_go/go/tools/bazel"
 	"golang.org/x/sync/errgroup"
 )
@@ -106,13 +106,13 @@ func TestOpenConnection_insecure(t *testing.T) {
 	checkErr(t, err)
 
 	// Invoke OpenConnection
-	nbiContext := &pb.Context{
+	nbiConf := &nbictlpb.Config{
 		Url: lis.Addr().String(),
-		TransportSecurity: &pb.Context_TransportSecurity{
-			Type: &pb.Context_TransportSecurity_Insecure{},
+		TransportSecurity: &nbictlpb.Config_TransportSecurity{
+			Type: &nbictlpb.Config_TransportSecurity_Insecure{},
 		},
 	}
-	conn, err := OpenConnection(ctx, nbiContext)
+	conn, err := OpenConnection(ctx, nbiConf)
 	checkErr(t, err)
 	defer conn.Close()
 
@@ -144,8 +144,8 @@ func TestOpenConnection_serverCertificate(t *testing.T) {
 	checkErr(t, err)
 	serverCertPath := filepath.Join(nbictlConfig, "localhost.crt")
 	checkErr(t, os.WriteFile(serverCertPath, LocalhostCert, 0o644))
-	userRsaKeyPath, err := GenerateRSAKeys(nbictlConfig, "", "user.organization", "", "")
-	checkErr(t, err)
+
+	userKeys := generateKeysForTesting(t, "--org", "user.organization")
 
 	// Start fake NBI server WITH TLS and a timeout for the test
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -166,22 +166,22 @@ func TestOpenConnection_serverCertificate(t *testing.T) {
 	defer ts.Close()
 
 	// Invoke OpenConnection
-	nbiContext := &pb.Context{
+	nbiConf := &nbictlpb.Config{
 		Url:     lis.Addr().String(),
-		PrivKey: userRsaKeyPath.PrivateKeyPath,
+		PrivKey: userKeys.key,
 		Name:    "test",
 		KeyId:   "1",
 		Email:   "some@example.com",
 		OidcUrl: "http://" + ts.Listener.Addr().String() + "/",
-		TransportSecurity: &pb.Context_TransportSecurity{
-			Type: &pb.Context_TransportSecurity_ServerCertificate_{
-				ServerCertificate: &pb.Context_TransportSecurity_ServerCertificate{
+		TransportSecurity: &nbictlpb.Config_TransportSecurity{
+			Type: &nbictlpb.Config_TransportSecurity_ServerCertificate_{
+				ServerCertificate: &nbictlpb.Config_TransportSecurity_ServerCertificate{
 					CertFilePath: serverCertPath,
 				},
 			},
 		},
 	}
-	conn, err := OpenConnection(ctx, nbiContext)
+	conn, err := OpenConnection(ctx, nbiConf)
 	checkErr(t, err)
 	defer conn.Close()
 

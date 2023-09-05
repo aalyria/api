@@ -18,23 +18,18 @@ package aalyria.spacetime.github.tools.nbictl;
 
 import "google/protobuf/empty.proto";
 
-option go_package = "aalyria.com/spacetime/github/tools/nbictl/resource";
+option go_package = "aalyria.com/spacetime/github/tools/nbictl/nbictlpb";
 
-message NbiCtlConfig {
-  repeated Context contexts = 1;
+message AppConfig {
+  repeated Config configs = 1;
 }
 
-message Context {
+message Config {
   string name = 1;
-
   string key_id = 2;
-
   string email = 3;
-
   string priv_key = 4;
-
   string url = 5;
-
   string oidc_url = 6;
 
   message TransportSecurity {

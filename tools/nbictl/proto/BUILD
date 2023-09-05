@@ -28,6 +28,6 @@ proto_library(
 go_proto_library(
     name = "nbictl_go_proto",
     compilers = ["@io_bazel_rules_go//proto:go_grpc"],
-    importpath = "aalyria.com/spacetime/github/tools/nbictl/resource",
+    importpath = "aalyria.com/spacetime/github/tools/nbictl/nbictlpb",
     protos = [":nbictl_proto"],
 )
