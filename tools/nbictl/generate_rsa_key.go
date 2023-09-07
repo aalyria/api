@@ -167,7 +167,7 @@ func GenerateKeys(appCtx *cli.Context) error {
 		return fmt.Errorf("unable to encode certificate: %w", err)
 	}
 
-	fmt.Printf("private key is stored under: %s\n", rsaKeyPaths.PrivateKeyPath)
-	fmt.Printf("certificate is stored under: %s\n", rsaKeyPaths.CertificatePath)
+	fmt.Fprintf(appCtx.App.ErrWriter, "private key is stored under: %s\n", rsaKeyPaths.PrivateKeyPath)
+	fmt.Fprintf(appCtx.App.ErrWriter, "certificate is stored under: %s\n", rsaKeyPaths.CertificatePath)
 	return nil
 }

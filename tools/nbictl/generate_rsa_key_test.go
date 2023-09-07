@@ -35,18 +35,8 @@ const (
 
 type testKeyPath struct{ key, cert string }
 
-func generateKeysForTesting(t *testing.T, args ...string) testKeyPath {
-	tmpDir, err := bazel.NewTmpDir("nbictl")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := os.RemoveAll(tmpDir); err != nil {
-			t.Logf("failed to remove tmp dir %s: %v", tmpDir, err)
-		}
-	})
-
-	if err := App().Run(append([]string{"nbictl", "generate-keys", "--dir", tmpDir}, args...)); err != nil {
+func generateKeysForTesting(t *testing.T, tmpDir string, args ...string) testKeyPath {
+	if err := newTestApp().Run(append([]string{"nbictl", "--config_dir", tmpDir, "generate-keys", "--dir", tmpDir}, args...)); err != nil {
 		t.Fatalf("unable to generate RSA keys: %v", err)
 	}
 
@@ -76,7 +66,10 @@ func TestGenerateKey_ValidateWithOpenSSL(t *testing.T) {
 		t.Skipf("unable to find path to openssl binary: %v", err)
 	}
 
-	keys := generateKeysForTesting(t, "--org", exampleCertOrganization)
+	tmpDir, err := bazel.NewTmpDir("nbictl")
+	checkErr(t, err)
+
+	keys := generateKeysForTesting(t, tmpDir, "--org", exampleCertOrganization)
 	privCmd := exec.Command("openssl", "rsa", "-noout", "-modulus", "-in", keys.key)
 	certCmd := exec.Command("openssl", "x509", "-noout", "-modulus", "-in", keys.cert)
 
@@ -97,7 +90,10 @@ func TestGenerateKey_ValidateWithOpenSSL(t *testing.T) {
 func TestGenerateKey_ValidateWithGoLib(t *testing.T) {
 	t.Parallel()
 
-	keys := generateKeysForTesting(t, "--org", exampleCertOrganization)
+	tmpDir, err := bazel.NewTmpDir("nbictl")
+	checkErr(t, err)
+
+	keys := generateKeysForTesting(t, tmpDir, "--org", exampleCertOrganization)
 	rawPrivateKey, err := os.ReadFile(keys.key)
 	if err != nil {
 		t.Fatalf("failed to read file containing private key: %v", err)
@@ -122,7 +118,10 @@ func TestGenerateKey_ValidateWithGoLib(t *testing.T) {
 func TestGenerateKey_ValidateSubjectAndIssuer(t *testing.T) {
 	t.Parallel()
 
-	keys := generateKeysForTesting(t,
+	tmpDir, err := bazel.NewTmpDir("nbictl")
+	checkErr(t, err)
+
+	keys := generateKeysForTesting(t, tmpDir,
 		"--org", exampleCertOrganization,
 		"--country", exampleCertCountry,
 		"--state", exampleCertState,
@@ -166,7 +165,9 @@ func TestGenerateKey_ValidateSubjectAndIssuer(t *testing.T) {
 func TestGenerateKey_FilePermission(t *testing.T) {
 	t.Parallel()
 
-	keys := generateKeysForTesting(t, "--org", exampleCertOrganization)
+	tmpDir, err := bazel.NewTmpDir("nbictl")
+	checkErr(t, err)
+	keys := generateKeysForTesting(t, tmpDir, "--org", exampleCertOrganization)
 
 	privKeyInfo, err := os.Stat(keys.key)
 	if err != nil {
@@ -187,14 +188,12 @@ func TestGenerateKey_FilePermission(t *testing.T) {
 
 func TestGenerateKey_DirPermision(t *testing.T) {
 	t.Parallel()
-	tmpDir, err := bazel.NewTmpDir("test_nbictl")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(tmpDir, 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := App().Run([]string{"nbictl", "generate-keys", "--dir", tmpDir, "--org", exampleCertOrganization}); err == nil {
+
+	tmpDir, err := bazel.NewTmpDir("nbictl")
+	checkErr(t, err)
+	checkErr(t, os.Chmod(tmpDir, 0755))
+
+	if err := newTestApp().Run([]string{"nbictl", "generate-keys", "--dir", tmpDir, "--org", exampleCertOrganization}); err == nil {
 		t.Fatal("unable to detect wrong directory permission (expected non-nil error, got nil)")
 	}
 }

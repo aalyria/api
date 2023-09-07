@@ -30,7 +30,6 @@ message Config {
   string email = 3;
   string priv_key = 4;
   string url = 5;
-  string oidc_url = 6;
 
   message TransportSecurity {
     message ServerCertificate {

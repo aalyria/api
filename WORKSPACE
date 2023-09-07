@@ -147,6 +147,13 @@ gazelle_dependencies()
 # Downloads are not cached in version control mode.
 
 go_repository(
+    name = "com_github_bufbuild_protocompile",
+    importpath = "github.com/bufbuild/protocompile",
+    sum = "h1:Uu7WiSQ6Yj9DbkdnOe7U4mNKp58y9WDMKDn28/ZlunY=",
+    version = "v0.6.0",
+)
+
+go_repository(
     name = "com_github_urfave_cli_v2",
     importpath = "github.com/urfave/cli/v2",
     sum = "h1:VAzn5oq403l5pHjc4OhD54+XGO9cdKVL/7lDjF+iKUs=",
@@ -189,6 +196,13 @@ go_repository(
 )
 
 go_repository(
+    name = "com_github_fullstorydev_grpcurl",
+    importpath = "github.com/fullstorydev/grpcurl",
+    sum = "h1:xJWosq3BQovQ4QrdPO72OrPiWuGgEsxY8ldYsJbPrqI=",
+    version = "v1.8.7",
+)
+
+go_repository(
     name = "com_github_go_logr_logr",
     importpath = "github.com/go-logr/logr",
     sum = "h1:2DntVwHkVopvECVRSlL5PSo9eG+cAkDCuckLubN+rq0=",
@@ -221,6 +235,14 @@ go_repository(
     importpath = "github.com/grpc-ecosystem/grpc-gateway/v2",
     sum = "h1:gDLXvp5S9izjldquuoAhDzccbskOL6tDC5jMSyx3zxE=",
     version = "v2.15.2",
+)
+
+go_repository(
+    name = "com_github_jhump_protoreflect",
+    build_file_proto_mode = "legacy",
+    importpath = "github.com/jhump/protoreflect",
+    sum = "h1:7YppbATX94jEt9KLAc5hICx4h6Yt3SaavhQRsIUEHP0=",
+    version = "v1.15.2",
 )
 
 go_repository(

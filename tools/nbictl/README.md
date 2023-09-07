@@ -10,16 +10,26 @@ nbictl - Interact with the Spacetime NBI service from the command line.
 # SYNOPSIS
 
 ```
-nbictl [--context=value] [--help] [-h] <command> [COMMAND OPTIONS] [ARGUMENTS...]
+nbictl [--context=value] [--config_dir=value] [--help] [-h] <command> [COMMAND OPTIONS] [ARGUMENTS...]
 ```
 
 # GLOBAL OPTIONS
+
+**--config_dir**="": Directory to use for configuration. (default: $XDG_CONFIG_HOME/nbictl)
 
 **--context**="": Context (configuration profile) to reference for connection settings.
 
 **--help, -h**: show help
 
 # COMMANDS
+
+## get
+
+Gets the entity with the given type and ID.
+
+**--id**="": [REQUIRED] ID of entity to delete.
+
+**--type, -t**="": [REQUIRED] Type of entity to delete. Allowed values: [ANTENNA_PATTERN, BAND_PROFILE, CDPI_STREAM_INFO, COMPUTED_MOTION, DEVICES_IN_REGION, DRAIN_PROVISION, INTENT, INTERFACE_LINK_REPORT, INTERFERENCE_CONSTRAINT, MOTION_DEFINITION, NETWORK_NODE, NETWORK_STATS_REPORT, PLATFORM_DEFINITION, PROPAGATION_WEATHER, SERVICE_REQUEST, STATION_SET, SURFACE_REGION, TRANSCEIVER_LINK_REPORT]
 
 ## create
 
@@ -108,6 +118,26 @@ Sets or updates a configuration profile that contains NBI connection settings. Y
 **--url**="": URL of the NBI endpoint.
 
 **--user_id**="": User ID associated with the private key provided by Aalyria.
+
+## grpcurl
+
+Provides curl-like equivalents for interacting with the NBI.
+
+### describe
+
+Takes an optional fully-qualified symbol (service, enum, or message). If provided, the descriptor for that symbol is shown. If not provided, the descriptor for all exposed or known services are shown.
+
+### list
+
+Takes an optional fully-qualified service name. If provided, lists all methods of that service. If not provided, all exposed services are listed.
+
+### call, invoke
+
+Takes a fully-qualified method name in 'service.method' or 'service/method' format. Invokes the method using the provided request body.
+
+**--format, -f**="": Protobuf format to use for input and output. Allowed values: [text, json] (default: json)
+
+**--request, -r**="": File containing the request to make encoded in the selected --format. Defaults to -, which uses stdin. (default: -)
 
 ## help, h
 

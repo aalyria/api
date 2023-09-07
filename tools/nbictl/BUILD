@@ -20,10 +20,11 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "nbictl",
     srcs = [
+        "config.go",
         "connection.go",
         "generate_rsa_key.go",
+        "grpcurl.go",
         "nbictl.go",
-        "set_config.go",
     ],
     importpath = "aalyria.com/spacetime/github/tools/nbictl",
     visibility = ["//visibility:public"],
@@ -31,8 +32,11 @@ go_library(
         "//api/common:common_go_proto",
         "//api/nbi/v1alpha:nbi_go_grpc",
         "//api/nbi/v1alpha/resources:nbi_resources_go_grpc",
-        "//cdpi_agent/internal/auth",
+        "//auth",
         "//tools/nbictl/proto:nbictl_go_proto",
+        "@com_github_fullstorydev_grpcurl//:grpcurl",
+        "@com_github_jhump_protoreflect//desc",
+        "@com_github_jhump_protoreflect//grpcreflect",
         "@com_github_jonboulle_clockwork//:clockwork",
         "@com_github_urfave_cli_v2//:cli",
         "@go_googleapis//google/type:interval_go_proto",
@@ -41,6 +45,8 @@ go_library(
         "@org_golang_google_grpc//credentials/insecure",
         "@org_golang_google_protobuf//encoding/prototext",
         "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+        "@org_golang_google_protobuf//types/descriptorpb",
         "@org_golang_google_protobuf//types/known/durationpb",
         "@org_golang_google_protobuf//types/known/timestamppb",
     ],
@@ -49,21 +55,40 @@ go_library(
 go_test(
     name = "nbictl_test",
     srcs = [
+        "config_test.go",
         "connection_test.go",
         "fake_nbi_server_test.go",
         "generate_rsa_key_test.go",
-        "set_config_test.go",
+        "nbictl_test.go",
     ],
     embed = [":nbictl"],
     deps = [
         "//api/nbi/v1alpha:nbi_go_grpc",
+        "//api/nbi/v1alpha/resources:nbi_resources_go_grpc",
+        "//auth/authtest",
         "//tools/nbictl/proto:nbictl_go_proto",
         "@com_github_google_go_cmp//cmp",
+        "@com_github_urfave_cli_v2//:cli",
         "@io_bazel_rules_go//go/tools/bazel:go_default_library",
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_google_grpc//metadata",
+        "@org_golang_google_grpc//reflection",
+        "@org_golang_google_protobuf//encoding/prototext",
         "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//testing/protocmp",
         "@org_golang_x_sync//errgroup",
+    ],
+)
+
+# Check that the README.md file matches the output of the nbictl tool's
+# "readme" subcommand exactly. Normally the README file would be a `genfile`
+# rule, but for ease of browsing documentation we want it to be checked in.
+sh_test(
+    name = "readme_test",
+    size = "small",
+    srcs = ["readme_test.sh"],
+    data = [
+        ":README.md",
+        "//tools/nbictl/cmd/nbictl",
     ],
 )
