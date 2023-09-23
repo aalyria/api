@@ -23,9 +23,12 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/reflection"
 )
 
 type FakeNetOpsServer struct {
+	listener net.Listener
+
 	nbi.UnimplementedNetOpsServer
 	IncomingMetadata     []metadata.MD
 	NumCallsListEntities *atomic.Int64
@@ -37,16 +40,19 @@ func (s *FakeNetOpsServer) ListEntities(ctx context.Context, req *nbi.ListEntiti
 	md, _ = metadata.FromIncomingContext(ctx)
 	s.IncomingMetadata = append(s.IncomingMetadata, md)
 	s.NumCallsListEntities.Add(1)
-	return &nbi.ListEntitiesResponse{}, nil
+	return s.ListEntityResponse, nil
 }
 
 func startFakeNbiServer(ctx context.Context, g *errgroup.Group, listener net.Listener) (*FakeNetOpsServer, error) {
 	fakeNbiServer := &FakeNetOpsServer{
 		IncomingMetadata:     make([]metadata.MD, 0),
 		NumCallsListEntities: &atomic.Int64{},
+		listener:             listener,
+		ListEntityResponse:   &nbi.ListEntitiesResponse{},
 	}
 	server := grpc.NewServer()
 	nbi.RegisterNetOpsServer(server, fakeNbiServer)
+	reflection.Register(server)
 
 	g.Go(func() error {
 		return server.Serve(listener)

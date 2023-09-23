@@ -44,6 +44,20 @@ message TransceiverModel {
 
   // Supported MAC-layer parameters.
   repeated WirelessMac macs = 6;
+
+  message Impairment {
+    // Unique identifier, within the list of impairments for this transceiver.
+    optional string id = 1;
+    // Time this impairment was added to the interface model.
+    optional int64 timestamp_usec = 3;
+    // The reason for this impairment.
+    optional string reason = 4;
+  }
+
+  // Multiple operational impairements can be recorded by different actors
+  // (e.g. network operators, monitoring sub-systems inside the agent).
+  // Spacetime will avoid the use of any transceiver that contains impairments.
+  repeated Impairment operational_impairments = 7;
 }
 
 // Uniquely identifies a temporospatial transceiver model.

@@ -17,16 +17,34 @@ package nbictl
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"aalyria.com/spacetime/github/tools/nbictl/nbictlpb"
 	"github.com/urfave/cli/v2"
 	"google.golang.org/protobuf/encoding/prototext"
 )
 
-func GetConfig(context, confDir string) (*nbictlpb.Config, error) {
-	confs, err := getConfigs(confDir)
+func getAppConfDir(appCtx *cli.Context) (string, error) {
+	if appCtx.IsSet("config_dir") {
+		appConfDir := appCtx.String("config_dir")
+		if appConfDir == "" {
+			return "", errors.New("--config_dir can't be empty")
+		}
+		return appConfDir, nil
+	}
+
+	confDir, err := os.UserConfigDir()
+	if err != nil {
+		return "", fmt.Errorf("unable to obtain the default config directory: %w", err)
+	}
+	return filepath.Join(confDir, appCtx.App.Name), nil
+}
+
+func readConfig(context, confDir string) (*nbictlpb.Config, error) {
+	confs, err := readConfigs(confDir)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get config contexts: %w", err)
 	}
@@ -49,12 +67,12 @@ func GetConfig(context, confDir string) (*nbictlpb.Config, error) {
 		}
 		confNames = append(confNames, conf.GetName())
 	}
-	return nil, fmt.Errorf("unable to get the context with the name: %s. the list of available context names are the following: %v", context, confNames)
+	return nil, fmt.Errorf("unable to get the context with the name: %q (expected one of [%s])", context, strings.Join(confNames, ", "))
 }
 
-func getConfigs(confFilePath string) (*nbictlpb.AppConfig, error) {
-	confBytes, err := os.ReadFile(confFilePath)
+func readConfigs(confFilePath string) (*nbictlpb.AppConfig, error) {
 	confProto := &nbictlpb.AppConfig{}
+	confBytes, err := os.ReadFile(confFilePath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return confProto, nil
@@ -79,11 +97,11 @@ func SetConfig(appCtx *cli.Context) error {
 	url := appCtx.String("url")
 	transportSecurity := appCtx.String("transport_security")
 
-	confDir, err := os.UserConfigDir()
+	confDir, err := getAppConfDir(appCtx)
 	if err != nil {
-		return fmt.Errorf("unable to obtain the default root directory: %w", err)
+		return fmt.Errorf("unable to obtain the default config directory: %w", err)
 	}
-	confPath := filepath.Join(confDir, appCtx.App.Name, confFileName)
+	confPath := filepath.Join(confDir, confFileName)
 
 	var transportSecurityPb *nbictlpb.Config_TransportSecurity
 
@@ -114,15 +132,15 @@ func SetConfig(appCtx *cli.Context) error {
 		TransportSecurity: transportSecurityPb,
 	}
 
-	return setConfig(contextToCreate, confPath)
+	return setConfig(appCtx.App.Writer, appCtx.App.ErrWriter, contextToCreate, confPath)
 }
 
-func setConfig(confToCreate *nbictlpb.Config, confFile string) error {
+func setConfig(outWriter, errWriter io.Writer, confToCreate *nbictlpb.Config, confFile string) error {
 	if confToCreate.GetName() == "" {
 		return errors.New("missing required --context flag")
 	}
 
-	confProto, err := getConfigs(confFile)
+	confProto, err := readConfigs(confFile)
 	if err != nil {
 		return fmt.Errorf("unable to get configs from file %s: %w", confFile, err)
 	}
@@ -174,7 +192,7 @@ func setConfig(confToCreate *nbictlpb.Config, confFile string) error {
 	if err != nil {
 		return fmt.Errorf("unable to convert the nbictl context into textproto format: %w", err)
 	}
-	fmt.Fprintf(os.Stderr, "configuration successfully updated; the configuration file is stored under: %s\n", confFile)
-	fmt.Println(string(protoMessage))
+	fmt.Fprintf(errWriter, "configuration successfully updated; the configuration file is stored under: %s\n", confFile)
+	fmt.Println(outWriter, string(protoMessage))
 	return nil
 }

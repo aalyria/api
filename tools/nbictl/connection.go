@@ -21,21 +21,36 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 
-	"aalyria.com/spacetime/cdpi_agent/internal/auth"
+	"aalyria.com/spacetime/auth"
 	"aalyria.com/spacetime/github/tools/nbictl/nbictlpb"
 	"github.com/jonboulle/clockwork"
+	"github.com/urfave/cli/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-func OpenConnection(ctx context.Context, setting *nbictlpb.Config) (*grpc.ClientConn, error) {
+func openConnection(appCtx *cli.Context) (*grpc.ClientConn, error) {
+	ctxName := appCtx.String("context")
+
+	appConfDir, err := getAppConfDir(appCtx)
+	if err != nil {
+		return nil, err
+	}
+	setting, err := readConfig(ctxName, filepath.Join(appConfDir, confFileName))
+	if err != nil {
+		return nil, fmt.Errorf("unable to obtain context information: %w", err)
+	}
+	return dial(appCtx.Context, setting)
+}
+
+func dial(ctx context.Context, setting *nbictlpb.Config) (*grpc.ClientConn, error) {
 	dialOpts, err := getDialOpts(ctx, setting)
 	if err != nil {
 		return nil, fmt.Errorf("unable to construct dial options: %w", err)
 	}
-
 	conn, err := grpc.DialContext(ctx, setting.GetUrl(), dialOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to the server: %w", err)
@@ -90,12 +105,11 @@ func getDialOpts(ctx context.Context, setting *nbictlpb.Config) ([]grpc.DialOpti
 			PrivateKey:   privateKey,
 			PrivateKeyID: setting.GetKeyId(),
 			Email:        setting.GetEmail(),
-			OIDCURL:      setting.GetOidcUrl(),
 		}
 
 		creds, err := auth.NewCredentials(ctx, config)
 		if err != nil {
-			return nil, fmt.Errorf("unable to get new credentials with provided information from %s: %w", config.OIDCURL, err)
+			return nil, fmt.Errorf("unable to get new credentials with provided information: %w", err)
 		}
 
 		dialOpts = append(dialOpts, grpc.WithPerRPCCredentials(creds))

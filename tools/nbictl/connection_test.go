@@ -17,10 +17,6 @@ package nbictl
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
-	"net"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -28,6 +24,7 @@ import (
 	"time"
 
 	nbi "aalyria.com/spacetime/api/nbi/v1alpha"
+	"aalyria.com/spacetime/auth/authtest"
 	"aalyria.com/spacetime/github/tools/nbictl/nbictlpb"
 	"github.com/bazelbuild/rules_go/go/tools/bazel"
 	"golang.org/x/sync/errgroup"
@@ -36,6 +33,7 @@ import (
 const (
 	authHeader      = "authorization"
 	proxyAuthHeader = "proxy-authorization"
+	oidcToken       = `eyJhbGciOiJSUzI1NiIsImtpZCI6IjcyMTk0YjI2MzU0YzIzYzBiYTU5YTZkNzUxZGZmYWEyNTg2NTkwNGUiLCJ0eXAiOiJKV1QifQ.eyJhdWQiOiJodHRwczovL3d3dy5nb29nbGVhcGlzLmNvbS9vYXV0aDIvdjQvdG9rZW4iLCJleHAiOjE2ODE3OTIzMTksImlhdCI6MTY4MTc4ODcxOSwiaXNzIjoiY2RwaS1hZ2VudEBhNWEtc3BhY2V0aW1lLWdrZS1iYWNrLWRldi5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSIsInN1YiI6ImNkcGktYWdlbnRAYTVhLXNwYWNldGltZS1na2UtYmFjay1kZXYuaWFtLmdzZXJ2aWNlYWNjb3VudC5jb20iLCJ0YXJnZXRfYXVkaWVuY2UiOiI2MDI5MjQwMzEzOS1tZTY4dGpnYWpsNWRjZGJwbmxtMmVrODMwbHZzbnNscS5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSJ9.QyOi7vkFCwdmjT4ChT3_yVY4ZObUJkZkYC0q7alF_thiotdJKRiSo1ZHp_XnS0nM4WSWcQYLGHUDdAMPS0R22brFGzCl8ndgNjqI38yp_LDL8QVTqnLBGUj-m3xB5wH17Q_Dt8riBB4IE-mSS8FB-R6sqSwn-seMfMDydScC0FrtOF3-2BCYpIAlf1AQKN083QdtKgNEVDi72npPr2MmsWV3tct6ydXHWNbxG423kfSD6vCZSUTvWXAuVjuOwnbc2LHZS04U-jiLpvHxu06OwHOQ5LoGVPyd69o8Ny_Bapd2m0YCX2xJr8_HH2nw1jH7EplFf-owbBYz9ZtQoQ2YTA`
 )
 
 // LocalhostCert is a PEM-encoded TLS cert with SAN IPs
@@ -93,26 +91,24 @@ xiUZS4SoaJq6ZvcBYS62Yr1t8n09iG47YL8ibgtmH3L+svaotvpVxVK+d7BLevA/
 ZboOWVe3icTy64BT3OQhmg==
 -----END RSA TESTING KEY-----`))
 
-func TestOpenConnection_insecure(t *testing.T) {
+func TestDial_insecure(t *testing.T) {
 	t.Parallel()
+
 	// Start fake NBI server and a timeout for the test
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	g, ctx := errgroup.WithContext(ctx)
-	defer g.Wait()
+	defer func() { checkErr(t, g.Wait()) }()
 	defer cancel()
-	lis, err := net.Listen("tcp", ":0")
-	checkErr(t, err)
-	fakeGrpcServer, err := startFakeNbiServer(ctx, g, lis)
-	checkErr(t, err)
 
+	srv := startInsecureServer(ctx, t, g)
 	// Invoke OpenConnection
 	nbiConf := &nbictlpb.Config{
-		Url: lis.Addr().String(),
+		Url: srv.listener.Addr().String(),
 		TransportSecurity: &nbictlpb.Config_TransportSecurity{
 			Type: &nbictlpb.Config_TransportSecurity_Insecure{},
 		},
 	}
-	conn, err := OpenConnection(ctx, nbiConf)
+	conn, err := dial(ctx, nbiConf)
 	checkErr(t, err)
 	defer conn.Close()
 
@@ -123,34 +119,34 @@ func TestOpenConnection_insecure(t *testing.T) {
 	checkErr(t, err)
 
 	// Verify that the method invocation reached the server
-	if fakeGrpcServer.NumCallsListEntities.Load() != 1 {
+	if srv.NumCallsListEntities.Load() != 1 {
 		t.Fatal("ListEntities has not been invoked correctly")
 	}
 	// Verify that when transportSecurity = insecure, the gRPC headers
 	// authHeader and proxyAuthHeader are NOT transmitted to the server.
-	if len(fakeGrpcServer.IncomingMetadata[0].Get(authHeader)) > 0 {
+	if len(srv.IncomingMetadata[0].Get(authHeader)) > 0 {
 		t.Fatal("Unexpected Incoming Metadata: ", authHeader)
 	}
-	if len(fakeGrpcServer.IncomingMetadata[0].Get(proxyAuthHeader)) > 0 {
+	if len(srv.IncomingMetadata[0].Get(proxyAuthHeader)) > 0 {
 		t.Fatal("Unexpected Incoming Metadata: ", proxyAuthHeader)
 	}
 }
 
-func TestOpenConnection_serverCertificate(t *testing.T) {
+func TestDial_serverCertificate(t *testing.T) {
 	t.Parallel()
 
 	// Store on filesystem the localhost certificate and the user priv/pub key
-	nbictlConfig, err := bazel.NewTmpDir("nbictl")
+	tmpDir, err := bazel.NewTmpDir("nbictl")
 	checkErr(t, err)
-	serverCertPath := filepath.Join(nbictlConfig, "localhost.crt")
+	serverCertPath := filepath.Join(tmpDir, "localhost.crt.tls")
 	checkErr(t, os.WriteFile(serverCertPath, LocalhostCert, 0o644))
 
-	userKeys := generateKeysForTesting(t, "--org", "user.organization")
+	userKeys := generateKeysForTesting(t, tmpDir, "--org", "user.organization")
 
 	// Start fake NBI server WITH TLS and a timeout for the test
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	g, ctx := errgroup.WithContext(ctx)
-	defer g.Wait()
+	defer func() { checkErr(t, g.Wait()) }()
 	defer cancel()
 	cert, _ := tls.X509KeyPair(LocalhostCert, LocalhostKey)
 	lis, err := tls.Listen("tcp", "127.0.0.1:0", &tls.Config{Certificates: []tls.Certificate{cert}})
@@ -158,12 +154,10 @@ func TestOpenConnection_serverCertificate(t *testing.T) {
 	fakeGrpcServer, err := startFakeNbiServer(ctx, g, lis)
 	checkErr(t, err)
 
-	// Start a fake OidcServer
-	const oidcToken = `eyJhbGciOiJSUzI1NiIsImtpZCI6IjcyMTk0YjI2MzU0YzIzYzBiYTU5YTZkNzUxZGZmYWEyNTg2NTkwNGUiLCJ0eXAiOiJKV1QifQ.eyJhdWQiOiJodHRwczovL3d3dy5nb29nbGVhcGlzLmNvbS9vYXV0aDIvdjQvdG9rZW4iLCJleHAiOjE2ODE3OTIzMTksImlhdCI6MTY4MTc4ODcxOSwiaXNzIjoiY2RwaS1hZ2VudEBhNWEtc3BhY2V0aW1lLWdrZS1iYWNrLWRldi5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSIsInN1YiI6ImNkcGktYWdlbnRAYTVhLXNwYWNldGltZS1na2UtYmFjay1kZXYuaWFtLmdzZXJ2aWNlYWNjb3VudC5jb20iLCJ0YXJnZXRfYXVkaWVuY2UiOiI2MDI5MjQwMzEzOS1tZTY4dGpnYWpsNWRjZGJwbmxtMmVrODMwbHZzbnNscS5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSJ9.QyOi7vkFCwdmjT4ChT3_yVY4ZObUJkZkYC0q7alF_thiotdJKRiSo1ZHp_XnS0nM4WSWcQYLGHUDdAMPS0R22brFGzCl8ndgNjqI38yp_LDL8QVTqnLBGUj-m3xB5wH17Q_Dt8riBB4IE-mSS8FB-R6sqSwn-seMfMDydScC0FrtOF3-2BCYpIAlf1AQKN083QdtKgNEVDi72npPr2MmsWV3tct6ydXHWNbxG423kfSD6vCZSUTvWXAuVjuOwnbc2LHZS04U-jiLpvHxu06OwHOQ5LoGVPyd69o8Ny_Bapd2m0YCX2xJr8_HH2nw1jH7EplFf-owbBYz9ZtQoQ2YTA`
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		json.NewEncoder(w).Encode(map[string]interface{}{"id_token": oidcToken})
-	}))
+	// Start a fake OIDCServer
+	ts := authtest.NewOIDCServer(oidcToken)
 	defer ts.Close()
+	ctx = ts.WithContextClient(ctx)
 
 	// Invoke OpenConnection
 	nbiConf := &nbictlpb.Config{
@@ -172,7 +166,6 @@ func TestOpenConnection_serverCertificate(t *testing.T) {
 		Name:    "test",
 		KeyId:   "1",
 		Email:   "some@example.com",
-		OidcUrl: "http://" + ts.Listener.Addr().String() + "/",
 		TransportSecurity: &nbictlpb.Config_TransportSecurity{
 			Type: &nbictlpb.Config_TransportSecurity_ServerCertificate_{
 				ServerCertificate: &nbictlpb.Config_TransportSecurity_ServerCertificate{
@@ -181,7 +174,7 @@ func TestOpenConnection_serverCertificate(t *testing.T) {
 			},
 		},
 	}
-	conn, err := OpenConnection(ctx, nbiConf)
+	conn, err := dial(ctx, nbiConf)
 	checkErr(t, err)
 	defer conn.Close()
 
