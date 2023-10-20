@@ -23,11 +23,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bazelbuild/rules_go/go/tools/bazel"
+	"golang.org/x/sync/errgroup"
+
 	nbi "aalyria.com/spacetime/api/nbi/v1alpha"
 	"aalyria.com/spacetime/auth/authtest"
 	"aalyria.com/spacetime/github/tools/nbictl/nbictlpb"
-	"github.com/bazelbuild/rules_go/go/tools/bazel"
-	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -113,9 +114,8 @@ func TestDial_insecure(t *testing.T) {
 	defer conn.Close()
 
 	// Test a gRPC method invocation
-	listEntityType := "TYPE"
 	client := nbi.NewNetOpsClient(conn)
-	_, err = client.ListEntities(ctx, &nbi.ListEntitiesRequest{Type: &listEntityType})
+	_, err = client.ListEntities(ctx, &nbi.ListEntitiesRequest{Type: nbi.EntityType_ANTENNA_PATTERN.Enum()})
 	checkErr(t, err)
 
 	// Verify that the method invocation reached the server
@@ -180,8 +180,7 @@ func TestDial_serverCertificate(t *testing.T) {
 
 	// Test a gRPC method invocation
 	client := nbi.NewNetOpsClient(conn)
-	listEntityType := "TYPE"
-	_, err = client.ListEntities(ctx, &nbi.ListEntitiesRequest{Type: &listEntityType})
+	_, err = client.ListEntities(ctx, &nbi.ListEntitiesRequest{Type: nbi.EntityType_ANTENNA_PATTERN.Enum()})
 	checkErr(t, err)
 
 	// Verify that the method invocation reached the server

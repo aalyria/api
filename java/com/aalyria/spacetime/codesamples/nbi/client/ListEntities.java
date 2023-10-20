@@ -74,7 +74,7 @@ public class ListEntities {
 
     // This stub can now be used to call any method in the NetOps service.
     ListEntitiesRequest request =
-        ListEntitiesRequest.newBuilder().setType(EntityType.PLATFORM_DEFINITION.name()).build();
+        ListEntitiesRequest.newBuilder().setType(EntityType.PLATFORM_DEFINITION).build();
     ListEntitiesResponse entities = stub.listEntities(request);
     System.out.println("ListEntitiesResponse received: \n" + entities.toString());
   }

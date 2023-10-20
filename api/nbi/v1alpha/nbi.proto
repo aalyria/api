@@ -152,21 +152,18 @@ message GetEntityRequest {
 // The id can be omitted, in which case a unique ID will be generated
 // by the backend.
 message CreateEntityRequest {
-  optional string type = 1;
-  optional Entity entity = 2;
+  optional Entity entity = 1;
 }
 
 // The posted Entity is merged with the existing one. The provided entity should
 // only specify the fields to be update, ID and Type should be omited.
 message UpdateEntityRequest {
-  optional string type = 1;
-  optional string id = 2;
-  optional Entity entity = 3;
+  optional Entity entity = 1;
 }
 
 message ListEntitiesRequest {
-  reserved 2, 7 to max;      // NEXT_ID: 6
-  optional string type = 1;  // required.
+  reserved 2, 7 to max;      // NEXT_ID: 7
+  optional EntityType type = 1;  // required.
   // The time interval of the history being requested. If both start and end
   // time are empty, return only the latest entities of the above type.
   // Do not use yet; results may be incomplete.
@@ -183,7 +180,7 @@ message ListEntitiesResponse {
 }
 
 message ListEntitiesOverTimeRequest {
-  optional string type = 1;  // required.
+  optional EntityType type = 1; // required.
 
   // The time range of the history being requested.
   optional aalyria.spacetime.api.common.TimeInterval interval = 2;  // required.
@@ -228,7 +225,7 @@ message EntityFilter {
 }
 
 message DeleteEntityRequest {
-  optional string type = 1;
+  optional EntityType type = 1;
   optional string id = 2;
 
   // This is a required field. The client must provide the latest known

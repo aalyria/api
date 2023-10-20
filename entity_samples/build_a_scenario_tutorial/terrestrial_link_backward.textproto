@@ -17,18 +17,16 @@ group: {
   type: INTERFACE_LINK_REPORT
 }
 interface_link_report: {
-  links: {
-    access_intervals: {
-      accessibility: ACCESS_EXISTS
-      data_rate_bps: 1e+12
-    }
-    dst: {
-      node_id: "test-pop-network-node"
-      interface_id: "wan"
-    }
-  }
   src: {
     node_id: "test-gateway-network-node"
     interface_id: "wan"
+  }
+  dst: {
+    node_id: "test-pop-network-node"
+    interface_id: "wan"
+  }
+  access_intervals: {
+    accessibility: ACCESS_EXISTS
+    data_rate_bps: 1e+12
   }
 }

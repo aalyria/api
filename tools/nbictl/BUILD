@@ -79,3 +79,16 @@ go_test(
         "@org_golang_x_sync//errgroup",
     ],
 )
+
+# Check that the README.md file matches the output of the nbictl tool's
+# "readme" subcommand exactly. Normally the README file would be a `genfile`
+# rule, but for ease of browsing documentation we want it to be checked in.
+sh_test(
+    name = "readme_test",
+    size = "small",
+    srcs = ["readme_test.sh"],
+    data = [
+        ":README.md",
+        "//tools/nbictl/cmd/nbictl",
+    ],
+)

@@ -54,8 +54,8 @@ message BeamStats {
 
     enum ConnectionStatus {
       UNKNOWN = 0;
-      SEEKING = 1;
-      LOCKED = 2;
+      SEEKING = 1; 
+      LOCKED = 2;  
     }
 
     // The progress of establishing a connection with the target specified in
@@ -143,6 +143,10 @@ message ReceiverStats {
   // The mean squared error, in dB, of the signal processed by the receiver.
   optional double mse_db = 6;
 
+  // The carrier to noise plus interference ratio (CINR), in dB, measured
+  // by the receiver.
+  optional double carrier_to_noise_plus_interference_db = 7;
+
   reserved 1;
 }
 
@@ -211,8 +215,8 @@ message RadioEvent {
   }
   enum LinkStatus {
     UNKNOWN = 0;
-    DOWN = 1;
-    UP = 2;
+    DOWN = 1; 
+    UP = 2;   
   }
   oneof event {
     LinkStatus link_status = 3;
@@ -224,8 +228,8 @@ message PortEvent {
   optional string port_id = 1;
   enum PortStatus {
     UNKNOWN = 0;
-    DOWN = 1;
-    UP = 2;
+    DOWN = 1; 
+    UP = 2;   
   }
   oneof event {
     PortStatus port_status = 2;
@@ -237,8 +241,8 @@ message InterfaceEvent {
   optional string interface_id = 1;
   enum InterfaceStatus {
     UNKNOWN = 0;
-    DISABLED = 1;
-    ENABLED = 2;
+    DISABLED = 1; 
+    ENABLED = 2;  
   }
   oneof event {
     InterfaceStatus interface_status = 2;
