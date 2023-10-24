@@ -415,8 +415,7 @@ func Create(appCtx *cli.Context) error {
 	}
 
 	for idx, entity := range entities {
-		entityType := entity.Group.GetType().String()
-		createEntityRequest := &nbipb.CreateEntityRequest{Type: &entityType, Entity: entity}
+		createEntityRequest := &nbipb.CreateEntityRequest{Entity: entity}
 
 		res, err := client.CreateEntity(appCtx.Context, createEntityRequest)
 		if err != nil {
@@ -460,9 +459,7 @@ func Update(appCtx *cli.Context) error {
 	}
 
 	for idx, entity := range entities {
-		entityType := entity.Group.GetType().String()
-		entityID := entity.GetId()
-		updateEntityRequest := &nbipb.UpdateEntityRequest{Type: &entityType, Id: &entityID, Entity: entity}
+		updateEntityRequest := &nbipb.UpdateEntityRequest{Entity: entity}
 		res, err := client.UpdateEntity(appCtx.Context, updateEntityRequest)
 		if err != nil {
 			return fmt.Errorf("unable to update the entity: %w", err)
@@ -509,6 +506,11 @@ func Get(appCtx *cli.Context) error {
 
 func Delete(appCtx *cli.Context) error {
 	entityType := appCtx.String("type")
+	entityTypeEnumValue, found := nbipb.EntityType_value[entityType]
+	if !found {
+		return fmt.Errorf("invalid type: %q", entityType)
+	}
+	entityTypeEnum := nbipb.EntityType(entityTypeEnumValue)
 	id := appCtx.String("id")
 	commitTime := appCtx.Int64("timestamp")
 
@@ -519,7 +521,7 @@ func Delete(appCtx *cli.Context) error {
 	defer conn.Close()
 	client := nbipb.NewNetOpsClient(conn)
 
-	if _, err := client.DeleteEntity(appCtx.Context, &nbipb.DeleteEntityRequest{Type: &entityType, Id: &id, CommitTimestamp: &commitTime}); err != nil {
+	if _, err := client.DeleteEntity(appCtx.Context, &nbipb.DeleteEntityRequest{Type: &entityTypeEnum, Id: &id, CommitTimestamp: &commitTime}); err != nil {
 		return fmt.Errorf("unable to delete the entity: %w", err)
 	}
 	fmt.Fprintln(appCtx.App.ErrWriter, "deletion successful")
@@ -528,9 +530,11 @@ func Delete(appCtx *cli.Context) error {
 
 func List(appCtx *cli.Context) error {
 	entityType := appCtx.String("type")
-	if _, exists := nbipb.EntityType_value[entityType]; !exists {
+	entityTypeEnumValue, found := nbipb.EntityType_value[entityType]
+	if !found {
 		return fmt.Errorf("unknown entity type %q is not one of [%s]", entityType, strings.Join(entityTypeList, ", "))
 	}
+	entityTypeEnum := nbipb.EntityType(entityTypeEnumValue)
 
 	conn, err := openConnection(appCtx)
 	if err != nil {
@@ -539,7 +543,7 @@ func List(appCtx *cli.Context) error {
 	defer conn.Close()
 	client := nbipb.NewNetOpsClient(conn)
 
-	res, err := client.ListEntities(appCtx.Context, &nbipb.ListEntitiesRequest{Type: &entityType})
+	res, err := client.ListEntities(appCtx.Context, &nbipb.ListEntitiesRequest{Type: &entityTypeEnum})
 	if err != nil {
 		return fmt.Errorf("unable to list entities: %w", err)
 	}

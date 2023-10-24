@@ -28,23 +28,30 @@ message AdaptiveDataRateTable {
   optional string id = 3;  // required.
 
   // Maps a data-rate to the minimum C/(N+I) that is required to maintain it.
-  message ChannelStateDataRateMapping {
+  message CarrierToNoisePlusInterferenceDataRateMapping {
     // The ratio of the power of the carrier (or signal) at the demod input to
     // the noise power of the signal plus the power of the interfering signals,
     // commonly abbreviated C/(N+I), in units of dB.
     optional double min_carrier_to_noise_plus_interference_db = 1;
 
-    // The layer 2 data rate expected, in bps, based on the channel state
-    // information from the receiver that would be sent back to the transmitter.
+    // The layer 2 data rate achievable, in bps, provided the receiver receives
+    // at least the min_carrier_to_noise_plus_interference_db specified above.
     optional double tx_data_rate_bps = 2;
   }
   // Steps should be sorted by C/(N+I) in ascending order.
-  repeated ChannelStateDataRateMapping step = 2;
+  repeated CarrierToNoisePlusInterferenceDataRateMapping
+      carrier_to_noise_plus_interference_steps = 2;
 
-  // Deprecated (use step).
-  message ReceivedSignalLevelDataRateMapping {
-    optional double min_received_signal_power_dbw = 1 [deprecated = true];
-    optional double tx_data_rate_bps = 2 [deprecated = true];
+  // Maps a data-rate to the minimum received signal power, at the receiver
+  // output, that is required to maintain it.
+  message ReceivedSignalPowerDataRateMapping {
+    optional double min_received_signal_power_dbw = 1;
+    optional double tx_data_rate_bps = 2;
   }
-  repeated ReceivedSignalLevelDataRateMapping steps = 1 [deprecated = true];
+  // Prefer using `carrier_to_noise_plus_interference_steps`.
+  // This field is used as fallback if
+  // `carrier_to_noise_plus_interference_steps` are not provided,
+  // or if the receiver does not support CNIR.
+  // Steps should be sorted by min_received_signal_power_dbw in ascending order.
+  repeated ReceivedSignalPowerDataRateMapping received_signal_power_steps = 1;
 }
