@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/urfave/cli/v2"
+	"golang.org/x/sync/errgroup"
 	intervalpb "google.golang.org/genproto/googleapis/type/interval"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
@@ -192,26 +193,28 @@ func App() *cli.App {
 			{
 				Name:     "delete",
 				Category: "entities",
-				Usage:    "Deletes the entity with the given type and ID.",
+				Usage:    "Deletes one or more entities. Provide the type, ID, and timestamp to delete a single entity, or a directory of Entity textproto files to delete multiple entities.",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:     "type",
-						Usage:    fmt.Sprintf("[REQUIRED] Type of entity to delete. Allowed values: [%s]", strings.Join(entityTypeList, ", ")),
-						Aliases:  []string{"t"},
-						Required: true,
-						Action:   validateEntityType,
+						Name:    "type",
+						Usage:   fmt.Sprintf("Type of entity to delete. Allowed values: [%s]", strings.Join(entityTypeList, ", ")),
+						Aliases: []string{"t"},
+						Action:  validateEntityType,
 					},
 					&cli.StringFlag{
-						Name:     "id",
-						Usage:    "[REQUIRED] ID of entity to delete.",
-						Aliases:  []string{},
-						Required: true,
+						Name:    "id",
+						Usage:   "ID of entity to delete.",
+						Aliases: []string{},
 					},
 					&cli.IntFlag{
-						Name:     "timestamp",
-						Usage:    "[REQUIRED] Commit timestamp of entity to delete.",
-						Aliases:  []string{"commit_time"},
-						Required: true,
+						Name:    "timestamp",
+						Usage:   "Commit timestamp of entity to delete.",
+						Aliases: []string{"commit_time"},
+					},
+					&cli.StringFlag{
+						Name:    "files",
+						Usage:   "Glob of textproto files that represent one or more Entity messages.",
+						Aliases: []string{"f"},
 					},
 				},
 				Action: Delete,
@@ -405,30 +408,38 @@ func Create(appCtx *cli.Context) error {
 		return fmt.Errorf("no files found under the given file path: %s", fileGlob)
 	}
 
-	entities := make([]*nbipb.Entity, 0, len(files))
+	g, ctx := errgroup.WithContext(appCtx.Context)
 	for _, f := range files {
-		entity := &nbipb.Entity{}
-		if err := readFromFile(f, entity); err != nil {
-			return fmt.Errorf("error while parsing create entity request for file %s: %w", f, err)
-		}
-		entities = append(entities, entity)
+		file := f
+		g.Go(func() error {
+			entity := &nbipb.Entity{}
+			if err := readFromFile(file, entity); err != nil {
+				return fmt.Errorf("error while parsing create entity request for file %s: %w", file, err)
+			}
+			createEntityReq := &nbipb.CreateEntityRequest{Entity: entity}
+
+			res, err := client.CreateEntity(ctx, createEntityReq)
+			if err != nil {
+				return fmt.Errorf("nbi.CreateEntity: %w", err)
+			}
+
+			protoMessage, err := prototext.MarshalOptions{Multiline: true}.Marshal(res)
+			if err != nil {
+				return fmt.Errorf("unable to convert the response into textproto format: %w", err)
+			}
+
+			fmt.Fprintln(appCtx.App.Writer, string(protoMessage))
+			fmt.Fprintf(appCtx.App.ErrWriter, "entity successfully created!:\nid: %s commit_timestamp: %d type: %v file_location: %s\n",
+				*res.Id, *res.CommitTimestamp, res.GetGroup().GetType(), file)
+
+			return nil
+		})
 	}
 
-	for idx, entity := range entities {
-		createEntityRequest := &nbipb.CreateEntityRequest{Entity: entity}
-
-		res, err := client.CreateEntity(appCtx.Context, createEntityRequest)
-		if err != nil {
-			return fmt.Errorf("unable to create an entity: %w", err)
-		}
-		protoMessage, err := prototext.MarshalOptions{Multiline: true}.Marshal(res)
-		if err != nil {
-			return fmt.Errorf("unable to convert the response into textproto format: %w", err)
-		}
-		fmt.Fprintln(appCtx.App.Writer, string(protoMessage))
-		fmt.Fprintf(appCtx.App.ErrWriter, "entity successfully created!:\nid: %s commit_timestamp: %d type: %v file_location: %s\n",
-			*res.Id, *res.CommitTimestamp, res.GetGroup().GetType(), files[idx])
+	if err := g.Wait(); err != nil {
+		return fmt.Errorf("unable to create an entity: %w", err)
 	}
+
 	return nil
 }
 
@@ -449,28 +460,46 @@ func Update(appCtx *cli.Context) error {
 		return fmt.Errorf("no files found under the given file path: %s", fileGlob)
 	}
 
-	entities := make([]*nbipb.Entity, 0, len(files))
+	g, ctx := errgroup.WithContext(appCtx.Context)
 	for _, f := range files {
-		entity := &nbipb.Entity{}
-		if err := readFromFile(f, entity); err != nil {
-			return fmt.Errorf("error while parsing update entity for file %s: %w", f, err)
-		}
-		entities = append(entities, entity)
+		file := f
+		g.Go(func() error {
+			entity := &nbipb.Entity{}
+			if err := readFromFile(file, entity); err != nil {
+				return fmt.Errorf("error while parsing update entity for file %s: %w", file, err)
+			}
+
+			// Ensures that the commit timestamp of the entity matches
+			// the current version in Spacetime.
+			// TODO: Add support in the NBI to update an entity
+			// without passing a commit timestamp.
+			getEntityReq := &nbipb.GetEntityRequest{Type: entity.GetGroup().Type, Id: entity.Id}
+			getEntityRes, err := client.GetEntity(ctx, getEntityReq)
+			if err != nil {
+				return fmt.Errorf("nbi.GetEntity: %w", err)
+			}
+			entity.CommitTimestamp = getEntityRes.CommitTimestamp
+
+			updateEntityReq := &nbipb.UpdateEntityRequest{Entity: entity}
+			res, err := client.UpdateEntity(appCtx.Context, updateEntityReq)
+			if err != nil {
+				return fmt.Errorf("nbi.UpdateEntity: %w", err)
+			}
+
+			protoMessage, err := prototext.MarshalOptions{Multiline: true}.Marshal(res)
+			if err != nil {
+				return fmt.Errorf("unable to convert the response into textproto format: %w", err)
+			}
+
+			fmt.Fprintln(appCtx.App.Writer, string(protoMessage))
+			fmt.Fprintf(appCtx.App.ErrWriter, "update successful:\n id: %s commit_timestamp: %d type: %v file_location: %s\n", *res.Id, *res.CommitTimestamp, res.GetGroup().GetType(), file)
+
+			return nil
+		})
 	}
 
-	for idx, entity := range entities {
-		updateEntityRequest := &nbipb.UpdateEntityRequest{Entity: entity}
-		res, err := client.UpdateEntity(appCtx.Context, updateEntityRequest)
-		if err != nil {
-			return fmt.Errorf("unable to update the entity: %w", err)
-		}
-
-		protoMessage, err := prototext.MarshalOptions{Multiline: true}.Marshal(res)
-		if err != nil {
-			return fmt.Errorf("unable to convert the response into textproto format: %w", err)
-		}
-		fmt.Fprintln(appCtx.App.Writer, string(protoMessage))
-		fmt.Fprintf(appCtx.App.ErrWriter, "update successful:\n id: %s commit_timestamp: %d type: %v file_location: %s\n", *res.Id, *res.CommitTimestamp, res.GetGroup().GetType(), files[idx])
+	if err := g.Wait(); err != nil {
+		return fmt.Errorf("unable to update an entity: %w", err)
 	}
 
 	return nil
@@ -505,15 +534,6 @@ func Get(appCtx *cli.Context) error {
 }
 
 func Delete(appCtx *cli.Context) error {
-	entityType := appCtx.String("type")
-	entityTypeEnumValue, found := nbipb.EntityType_value[entityType]
-	if !found {
-		return fmt.Errorf("invalid type: %q", entityType)
-	}
-	entityTypeEnum := nbipb.EntityType(entityTypeEnumValue)
-	id := appCtx.String("id")
-	commitTime := appCtx.Int64("timestamp")
-
 	conn, err := openConnection(appCtx)
 	if err != nil {
 		return err
@@ -521,9 +541,68 @@ func Delete(appCtx *cli.Context) error {
 	defer conn.Close()
 	client := nbipb.NewNetOpsClient(conn)
 
-	if _, err := client.DeleteEntity(appCtx.Context, &nbipb.DeleteEntityRequest{Type: &entityTypeEnum, Id: &id, CommitTimestamp: &commitTime}); err != nil {
-		return fmt.Errorf("unable to delete the entity: %w", err)
+	reqs := make([]*nbipb.DeleteEntityRequest, 0)
+	if appCtx.IsSet("type") && appCtx.IsSet("id") && appCtx.IsSet("timestamp") {
+		entityType := appCtx.String("type")
+		entityTypeEnumValue, found := nbipb.EntityType_value[entityType]
+		if !found {
+			return fmt.Errorf("invalid type: %q", entityType)
+		}
+		entityTypeEnum := nbipb.EntityType(entityTypeEnumValue)
+
+		id := appCtx.String("id")
+		commitTime := appCtx.Int64("timestamp")
+		reqs = append(reqs, &nbipb.DeleteEntityRequest{Type: &entityTypeEnum, Id: &id, CommitTimestamp: &commitTime})
+	} else if appCtx.IsSet("files") {
+		fileGlob := appCtx.String("files")
+		files, err := filepath.Glob(fileGlob)
+		if err != nil {
+			return fmt.Errorf("unable to expand the file path %w", err)
+		} else if len(files) == 0 {
+			return fmt.Errorf("no files found under the given file path: %s", fileGlob)
+		}
+
+		for _, f := range files {
+			entity := &nbipb.Entity{}
+			if err := readFromFile(f, entity); err != nil {
+				return fmt.Errorf("error while parsing the entity for file %s: %w", f, err)
+			}
+
+			entityType := entity.GetGroup().GetType()
+			id := entity.GetId()
+			commitTime := entity.GetCommitTimestamp()
+			reqs = append(reqs, &nbipb.DeleteEntityRequest{Type: &entityType, Id: &id, CommitTimestamp: &commitTime})
+		}
+	} else {
+		return fmt.Errorf(`Either the "type", "id", and "timestamp" flags must be set, or the "files" flag must be set.`)
 	}
+
+	g, ctx := errgroup.WithContext(appCtx.Context)
+	for _, r := range reqs {
+		req := r
+		g.Go(func() error {
+			// Ensures that the commit timestamp of the entity matches
+			// the current version in Spacetime.
+			// TODO: Add support in the NBI to delete an entity without
+			// passing a commit timestamp.
+			getEntityReq := &nbipb.GetEntityRequest{Type: req.Type, Id: req.Id}
+			getEntityRes, err := client.GetEntity(ctx, getEntityReq)
+			if err != nil {
+				return fmt.Errorf("nbi.GetEntity: %w", err)
+			}
+
+			req.CommitTimestamp = getEntityRes.CommitTimestamp
+			if _, err := client.DeleteEntity(ctx, req); err != nil {
+				return fmt.Errorf("nbi.DeleteEntity: %w", err)
+			}
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return fmt.Errorf("deletion failed: %w", err)
+	}
+
 	fmt.Fprintln(appCtx.App.ErrWriter, "deletion successful")
 	return nil
 }

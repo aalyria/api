@@ -19,6 +19,9 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -31,6 +34,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 
+	commonpb "aalyria.com/spacetime/api/common"
 	nbipb "aalyria.com/spacetime/api/nbi/v1alpha"
 	respb "aalyria.com/spacetime/api/nbi/v1alpha/resources"
 )
@@ -118,9 +122,28 @@ func TestDelete_rejectsUnknownEntities(t *testing.T) {
 func TestDelete_requiresID(t *testing.T) {
 	t.Parallel()
 
-	switch want, err := `Required flag "id" not set`, newTestApp().Run([]string{
-		"nbictl", "delete", "--type", "NETWORK_NODE", "--timestamp", "3",
-	}); {
+	tmpDir, err := bazel.NewTmpDir("nbictl")
+	checkErr(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	g, ctx := errgroup.WithContext(ctx)
+	defer func() { checkErr(t, g.Wait()) }()
+	defer cancel()
+	srv := startInsecureServer(ctx, t, g)
+
+	keys := generateKeysForTesting(t, tmpDir, "--org", "example org")
+	checkErr(t, newTestApp().Run([]string{
+		"nbictl", "--config_dir", tmpDir,
+		"set-config",
+		"--transport_security", "insecure",
+		"--user_id", "usr1",
+		"--key_id", "key1",
+		"--priv_key", keys.key,
+		"--url", srv.listener.Addr().String(),
+	}))
+
+	args := []string{"nbictl", "--config_dir", tmpDir, "--context", "DEFAULT", "delete", "--type", "NETWORK_NODE", "--timestamp", "3"}
+	switch want, err := `Either the "type", "id", and "timestamp" flags must be set, or the "files" flag must be set.`, newTestApp().Run(args); {
 	case err == nil:
 		t.Fatal("expected missing --id to cause an error, got nil")
 	case !strings.Contains(err.Error(), want):
@@ -131,9 +154,28 @@ func TestDelete_requiresID(t *testing.T) {
 func TestDelete_requiresTimestamp(t *testing.T) {
 	t.Parallel()
 
-	switch want, err := `Required flag "timestamp" not set`, newTestApp().Run([]string{
-		"nbictl", "delete", "--type", "NETWORK_NODE", "--id", "boba-cafe",
-	}); {
+	tmpDir, err := bazel.NewTmpDir("nbictl")
+	checkErr(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	g, ctx := errgroup.WithContext(ctx)
+	defer func() { checkErr(t, g.Wait()) }()
+	defer cancel()
+	srv := startInsecureServer(ctx, t, g)
+
+	keys := generateKeysForTesting(t, tmpDir, "--org", "example org")
+	checkErr(t, newTestApp().Run([]string{
+		"nbictl", "--config_dir", tmpDir,
+		"set-config",
+		"--transport_security", "insecure",
+		"--user_id", "usr1",
+		"--key_id", "key1",
+		"--priv_key", keys.key,
+		"--url", srv.listener.Addr().String(),
+	}))
+
+	args := []string{"nbictl", "--config_dir", tmpDir, "--context", "DEFAULT", "delete", "--type", "NETWORK_NODE", "--id", "boba-cafe"}
+	switch want, err := `Either the "type", "id", and "timestamp" flags must be set, or the "files" flag must be set.`, newTestApp().Run(args); {
 	case err == nil:
 		t.Fatal("expected missing --timestamp to cause an error, got nil")
 	case !strings.Contains(err.Error(), want):
@@ -215,14 +257,87 @@ func startInsecureServer(ctx context.Context, t *testing.T, g *errgroup.Group) *
 	return srv
 }
 
+// Writes entities to the given directory in files named {entity ID}.textproto.
+func writeEntitiesToFile(entities []*nbipb.Entity, filePath string) error {
+	for _, entity := range entities {
+		textprotoBytes, err := prototext.MarshalOptions{Multiline: true}.Marshal(entity)
+		if err != nil {
+			return err
+		}
+
+		err = os.WriteFile(filepath.Join(filePath, entity.GetId()+".textproto"), textprotoBytes, 0o666)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func readEntitiesFromFile(filePath string) ([]*nbipb.Entity, error) {
+	files, err := filepath.Glob(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("unable to expand the file path: %w", err)
+	} else if len(files) == 0 {
+		return nil, fmt.Errorf("no files found under the given file path: %s", filePath)
+	}
+
+	entities := make([]*nbipb.Entity, 0, len(files))
+	for _, f := range files {
+		msg, err := os.ReadFile(f)
+		if err != nil {
+			return nil, fmt.Errorf("invalid file path: %w", err)
+		}
+
+		entity := &nbipb.Entity{}
+		if err := prototext.Unmarshal(msg, entity); err != nil {
+			return nil, fmt.Errorf("invalid file contents: %w", err)
+		}
+		entities = append(entities, entity)
+	}
+
+	return entities, nil
+}
+
+// Returns PLATFORM_DEFINITION entities whose IDs are 'entity-{i}',
+// where i runs from 0 to (numEntities - 1).
+func buildTestEntities(numEntities int) []*nbipb.Entity {
+	entities := make([]*nbipb.Entity, 0, numEntities)
+	for i := 0; i < numEntities; i++ {
+		entityIdStr := "entity-" + strconv.Itoa(i)
+		entities = append(entities, &nbipb.Entity{
+			Id: proto.String(entityIdStr),
+			Group: &nbipb.EntityGroup{
+				Type: nbipb.EntityType_PLATFORM_DEFINITION.Enum(),
+			},
+			Value: &nbipb.Entity_Platform{
+				Platform: &commonpb.PlatformDefinition{
+					Name: proto.String(entityIdStr),
+				},
+			},
+		})
+	}
+	return entities
+}
+
 func TestEndToEnd(t *testing.T) {
 	t.Parallel()
 
 	type endToEndTestCase struct {
-		name         string
-		cmd          []string
-		expectFn     func([]byte) error
-		changeServer func(*FakeNetOpsServer)
+		name string
+		cmd  []string
+		// Entities that are provided as inputs to the test case.
+		// These are written to a temporary directory, which is
+		// passed in the --files argument.
+		entityFiles []*nbipb.Entity
+		expectFn    func([]byte) error
+		// Whether to verify the output of the test based on the
+		// state of the fake server.
+		expectServerStateFn func(*FakeNetOpsServer) error
+		// Whether to verify the output of the test based on the
+		// contents of the files containing the entities.
+		expectEntityFilesFn func(string) error
+		changeServer        func(*FakeNetOpsServer)
 	}
 
 	expectLines := func(lines ...string) func([]byte) error {
@@ -251,6 +366,26 @@ func TestEndToEnd(t *testing.T) {
 			return nil
 		}
 	}
+
+	// Verifies that all of the expected entities were processed by the server.
+	expectEntityIDs := func(expectedEntities []*nbipb.Entity) func(*FakeNetOpsServer) error {
+		return func(testServer *FakeNetOpsServer) error {
+			missingEntityIDs := []string{}
+			for _, e := range expectedEntities {
+				id := e.GetId()
+				if _, ok := testServer.EntityIDsModified[id]; !ok {
+					missingEntityIDs = append(missingEntityIDs, id)
+				}
+			}
+
+			if len(missingEntityIDs) > 0 {
+				return fmt.Errorf("expected entities were not modified:\n%v", missingEntityIDs)
+			}
+			return nil
+		}
+	}
+
+	defaultTestEntities := buildTestEntities(100)
 
 	listResponse := &nbipb.ListEntitiesResponse{
 		Entities: []*nbipb.Entity{
@@ -312,6 +447,37 @@ func TestEndToEnd(t *testing.T) {
 			},
 			expectFn: expectTextProto(listResponse),
 		},
+		{
+			name:                "create",
+			cmd:                 []string{"create"},
+			entityFiles:         defaultTestEntities,
+			expectServerStateFn: expectEntityIDs(defaultTestEntities),
+		},
+		{
+			name:                "update",
+			cmd:                 []string{"update"},
+			entityFiles:         defaultTestEntities,
+			expectServerStateFn: expectEntityIDs(defaultTestEntities),
+		},
+		{
+			name: "delete single entity",
+			cmd:  []string{"delete", "--type", "PLATFORM_DEFINITION", "--id", "my-id", "--timestamp", "123456"},
+			expectServerStateFn: expectEntityIDs([]*nbipb.Entity{
+				{
+					Group: &nbipb.EntityGroup{
+						Type: nbipb.EntityType_PLATFORM_DEFINITION.Enum(),
+					},
+					Id:              proto.String("my-id"),
+					CommitTimestamp: proto.Int64(123456),
+				},
+			}),
+		},
+		{
+			name:                "delete from files",
+			cmd:                 []string{"delete"},
+			entityFiles:         defaultTestEntities,
+			expectServerStateFn: expectEntityIDs(defaultTestEntities),
+		},
 	}
 
 	for _, tc := range testCases {
@@ -345,8 +511,27 @@ func TestEndToEnd(t *testing.T) {
 			}))
 
 			app := newTestApp()
-			checkErr(t, app.Run(append([]string{"nbictl", "--config_dir", tmpDir, "--context", "DEFAULT"}, tc.cmd...)))
-			checkErr(t, tc.expectFn(app.stdout.Bytes()))
+			args := append([]string{"nbictl", "--config_dir", tmpDir, "--context", "DEFAULT"}, tc.cmd...)
+
+			entityFilesDir, err := bazel.NewTmpDir("entities")
+			checkErr(t, err)
+			// Makes the entity files directory into a glob from which the entities are read.
+			entityFilesGlob := entityFilesDir + "/*"
+			if tc.entityFiles != nil {
+				checkErr(t, writeEntitiesToFile(tc.entityFiles, entityFilesDir))
+				args = append(args, "--files", entityFilesGlob)
+			}
+
+			checkErr(t, app.Run(args))
+			if tc.expectFn != nil {
+				checkErr(t, tc.expectFn(app.stdout.Bytes()))
+			}
+			if tc.expectServerStateFn != nil {
+				checkErr(t, tc.expectServerStateFn(srv))
+			}
+			if tc.expectEntityFilesFn != nil {
+				checkErr(t, tc.expectEntityFilesFn(entityFilesGlob))
+			}
 		})
 	}
 }
