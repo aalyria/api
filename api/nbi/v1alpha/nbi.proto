@@ -156,9 +156,12 @@ message CreateEntityRequest {
 }
 
 // The posted Entity is merged with the existing one. The provided entity should
-// only specify the fields to be update, ID and Type should be omited.
+// only specify the fields to be updated, ID and Type should be omited.
 message UpdateEntityRequest {
   optional Entity entity = 1;
+
+  // TODO: Add an option to update an entity without passing a
+  // commit timestamp.
 }
 
 message ListEntitiesRequest {
@@ -232,6 +235,9 @@ message DeleteEntityRequest {
   // commit_timestamp for the Entity which will be checked against the stored
   // version. If it is out of sync the rpc will fail.
   optional int64 commit_timestamp = 3;  // required. Units are microseconds.
+
+  // TODO: Add an option to delete an entity without passing a
+  // commit timestamp.
 }
 
 message DeleteEntityResponse {

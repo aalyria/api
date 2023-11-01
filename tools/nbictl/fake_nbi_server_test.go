@@ -17,14 +17,19 @@ package nbictl
 import (
 	"context"
 	"net"
+	"sync"
 	"sync/atomic"
 
-	nbi "aalyria.com/spacetime/api/nbi/v1alpha"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/reflection"
+	"google.golang.org/protobuf/proto"
+
+	nbi "aalyria.com/spacetime/api/nbi/v1alpha"
 )
+
+const DEFAULT_COMMIT_TIMESTAMP = int64(123456)
 
 type FakeNetOpsServer struct {
 	listener net.Listener
@@ -33,6 +38,10 @@ type FakeNetOpsServer struct {
 	IncomingMetadata     []metadata.MD
 	NumCallsListEntities *atomic.Int64
 	ListEntityResponse   *nbi.ListEntitiesResponse
+
+	EntityIDsModified map[string]struct{}
+	// Synchronizes access to EntityIDsModified.
+	mu sync.Mutex
 }
 
 func (s *FakeNetOpsServer) ListEntities(ctx context.Context, req *nbi.ListEntitiesRequest) (*nbi.ListEntitiesResponse, error) {
@@ -43,10 +52,73 @@ func (s *FakeNetOpsServer) ListEntities(ctx context.Context, req *nbi.ListEntiti
 	return s.ListEntityResponse, nil
 }
 
+// Returns the Entity in the request, with the default commit timestamp.
+// Assumes that the ID has been set in the Entity within the CreateEntityRequest.
+func (s *FakeNetOpsServer) CreateEntity(ctx context.Context, req *nbi.CreateEntityRequest) (*nbi.Entity, error) {
+	md := make(metadata.MD)
+	md, _ = metadata.FromIncomingContext(ctx)
+	s.IncomingMetadata = append(s.IncomingMetadata, md)
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.EntityIDsModified[req.GetEntity().GetId()] = struct{}{}
+
+	res := *req.GetEntity()
+	res.CommitTimestamp = proto.Int64(DEFAULT_COMMIT_TIMESTAMP)
+	return &res, nil
+}
+
+// Returns an Entity with the same type and ID as in the request,
+// along with the default commit timestamp.
+// This method does not increment EntityIDsModified.
+func (s *FakeNetOpsServer) GetEntity(ctx context.Context, req *nbi.GetEntityRequest) (*nbi.Entity, error) {
+	md := make(metadata.MD)
+	md, _ = metadata.FromIncomingContext(ctx)
+	s.IncomingMetadata = append(s.IncomingMetadata, md)
+
+	res := &nbi.Entity{
+		Id: req.Id,
+		Group: &nbi.EntityGroup{
+			Type: req.Type,
+		},
+		CommitTimestamp: proto.Int64(DEFAULT_COMMIT_TIMESTAMP),
+	}
+	return res, nil
+}
+
+// Returns the Entity in the request, with the default commit timestamp.
+func (s *FakeNetOpsServer) UpdateEntity(ctx context.Context, req *nbi.UpdateEntityRequest) (*nbi.Entity, error) {
+	md := make(metadata.MD)
+	md, _ = metadata.FromIncomingContext(ctx)
+	s.IncomingMetadata = append(s.IncomingMetadata, md)
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.EntityIDsModified[req.GetEntity().GetId()] = struct{}{}
+
+	res := *req.GetEntity()
+	res.CommitTimestamp = proto.Int64(DEFAULT_COMMIT_TIMESTAMP)
+	return &res, nil
+}
+
+// Returns a DeleteEntityResponse regardless of the request.
+func (s *FakeNetOpsServer) DeleteEntity(ctx context.Context, req *nbi.DeleteEntityRequest) (*nbi.DeleteEntityResponse, error) {
+	md := make(metadata.MD)
+	md, _ = metadata.FromIncomingContext(ctx)
+	s.IncomingMetadata = append(s.IncomingMetadata, md)
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.EntityIDsModified[req.GetId()] = struct{}{}
+
+	return &nbi.DeleteEntityResponse{}, nil
+}
+
 func startFakeNbiServer(ctx context.Context, g *errgroup.Group, listener net.Listener) (*FakeNetOpsServer, error) {
 	fakeNbiServer := &FakeNetOpsServer{
 		IncomingMetadata:     make([]metadata.MD, 0),
 		NumCallsListEntities: &atomic.Int64{},
+		EntityIDsModified:    make(map[string]struct{}, 0),
 		listener:             listener,
 		ListEntityResponse:   &nbi.ListEntitiesResponse{},
 	}

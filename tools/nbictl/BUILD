@@ -49,6 +49,7 @@ go_library(
         "@org_golang_google_protobuf//types/descriptorpb",
         "@org_golang_google_protobuf//types/known/durationpb",
         "@org_golang_google_protobuf//types/known/timestamppb",
+        "@org_golang_x_sync//errgroup",
     ],
 )
 
@@ -63,6 +64,7 @@ go_test(
     ],
     embed = [":nbictl"],
     deps = [
+        "//api/common:common_go_proto",
         "//api/nbi/v1alpha:nbi_go_grpc",
         "//api/nbi/v1alpha/resources:nbi_resources_go_grpc",
         "//auth/authtest",
@@ -77,5 +79,18 @@ go_test(
         "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//testing/protocmp",
         "@org_golang_x_sync//errgroup",
+    ],
+)
+
+# Check that the README.md file matches the output of the nbictl tool's
+# "readme" subcommand exactly. Normally the README file would be a `genfile`
+# rule, but for ease of browsing documentation we want it to be checked in.
+sh_test(
+    name = "readme_test",
+    size = "small",
+    srcs = ["readme_test.sh"],
+    data = [
+        ":README.md",
+        "//tools/nbictl/cmd/nbictl",
     ],
 )

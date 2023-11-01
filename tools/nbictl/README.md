@@ -51,13 +51,15 @@ Lists all entities of a given type.
 
 ## delete
 
-Deletes the entity with the given type and ID.
+Deletes one or more entities. Provide the type, ID, and timestamp to delete a single entity, or a directory of Entity textproto files to delete multiple entities.
 
-**--id**="": [REQUIRED] ID of entity to delete.
+**--files, -f**="": Glob of textproto files that represent one or more Entity messages.
 
-**--timestamp, --commit_time**="": [REQUIRED] Commit timestamp of entity to delete. (default: 0)
+**--id**="": ID of entity to delete.
 
-**--type, -t**="": [REQUIRED] Type of entity to delete. Allowed values: [ANTENNA_PATTERN, BAND_PROFILE, CDPI_STREAM_INFO, COMPUTED_MOTION, DEVICES_IN_REGION, DRAIN_PROVISION, INTENT, INTERFACE_LINK_REPORT, INTERFERENCE_CONSTRAINT, MOTION_DEFINITION, NETWORK_NODE, NETWORK_STATS_REPORT, PLATFORM_DEFINITION, PROPAGATION_WEATHER, SERVICE_REQUEST, STATION_SET, SURFACE_REGION, TRANSCEIVER_LINK_REPORT]
+**--timestamp, --commit_time**="": Commit timestamp of entity to delete. (default: 0)
+
+**--type, -t**="": Type of entity to delete. Allowed values: [ANTENNA_PATTERN, BAND_PROFILE, CDPI_STREAM_INFO, COMPUTED_MOTION, DEVICES_IN_REGION, DRAIN_PROVISION, INTENT, INTERFACE_LINK_REPORT, INTERFERENCE_CONSTRAINT, MOTION_DEFINITION, NETWORK_NODE, NETWORK_STATS_REPORT, PLATFORM_DEFINITION, PROPAGATION_WEATHER, SERVICE_REQUEST, STATION_SET, SURFACE_REGION, TRANSCEIVER_LINK_REPORT]
 
 ## get-link-budget
 
