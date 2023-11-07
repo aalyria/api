@@ -14,10 +14,11 @@
 
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
+package(default_visibility = ["//visibility:public"])
+
 go_library(
     name = "enactment",
     srcs = ["enactment.go"],
     importpath = "aalyria.com/spacetime/cdpi_agent/enactment",
-    visibility = ["//visibility:public"],
     deps = ["//api/common:common_go_proto"],
 )

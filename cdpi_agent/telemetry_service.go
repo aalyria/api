@@ -31,6 +31,7 @@ import (
 )
 
 type telemetryService struct {
+	nodeID          string
 	nc              *nodeController
 	telemetryClient afpb.NetworkTelemetryStreamingClient
 	tb              telemetry.Backend
@@ -38,6 +39,7 @@ type telemetryService struct {
 
 func (nc *nodeController) newTelemetryService(tc afpb.NetworkTelemetryStreamingClient, tb telemetry.Backend) task.Task {
 	return task.Task((&telemetryService{
+		nodeID:          nc.id,
 		nc:              nc,
 		telemetryClient: tc,
 		tb:              tb,
@@ -106,7 +108,10 @@ func (ts *telemetryService) run(ctx context.Context) error {
 		WithPanicCatcher().
 		WithCtx(ctx))
 
-	triggerCh <- struct{}{}
+	select {
+	case triggerCh <- struct{}{}:
+	case <-ctx.Done():
+	}
 
 	return g.Wait()
 }
@@ -118,7 +123,7 @@ func (ts *telemetryService) statLoop(triggerCh <-chan struct{}, sendCh chan<- *a
 		zerolog.Ctx(ctx).Trace().Msg("got trigger")
 		var report *apipb.NetworkStatsReport
 		if err := task.Task(func(ctx context.Context) (err error) {
-			report, err = ts.tb(ctx)
+			report, err = ts.tb(ctx, ts.nodeID)
 			return err
 		}).WithNewSpan("telemetry.Backend")(ctx); err != nil {
 			return nil, err
@@ -127,7 +132,7 @@ func (ts *telemetryService) statLoop(triggerCh <-chan struct{}, sendCh chan<- *a
 			Object("report", loggable.Proto(report)).
 			Msg("generated stats report")
 
-		return &afpb.TelemetryUpdate{Type: &afpb.TelemetryUpdate_Statistics{Statistics: report}}, nil
+		return &afpb.TelemetryUpdate{NodeId: &ts.nodeID, Type: &afpb.TelemetryUpdate_Statistics{Statistics: report}}, nil
 	}
 
 	return channels.MapBetween(triggerCh, sendCh, mapFn)

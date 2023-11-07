@@ -14,11 +14,12 @@
 
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
+package(default_visibility = ["//visibility:public"])
+
 go_library(
     name = "extprocs",
     srcs = ["extprocs.go"],
     importpath = "aalyria.com/spacetime/cdpi_agent/internal/extprocs",
-    visibility = ["//cdpi_agent:__subpackages__"],
     deps = [
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",

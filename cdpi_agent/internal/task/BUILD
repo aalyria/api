@@ -14,7 +14,7 @@
 
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
-package(default_visibility = ["//cdpi_agent:__subpackages__"])
+package(default_visibility = ["//visibility:public"])
 
 go_library(
     name = "task",
@@ -25,7 +25,6 @@ go_library(
         "@com_github_rs_zerolog//:zerolog",
         "@io_opentelemetry_go_otel//attribute",
         "@io_opentelemetry_go_otel//codes",
-        "@io_opentelemetry_go_otel_sdk//trace",
         "@io_opentelemetry_go_otel_trace//:trace",
         "@org_golang_x_sync//errgroup",
     ],
@@ -33,6 +32,7 @@ go_library(
 
 go_test(
     name = "task_test",
+    size = "small",
     srcs = ["task_test.go"],
     embed = [":task"],
     deps = [

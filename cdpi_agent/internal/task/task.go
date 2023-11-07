@@ -28,14 +28,11 @@ import (
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel/attribute"
 	otelcodes "go.opentelemetry.io/otel/codes"
-	otelsdktrace "go.opentelemetry.io/otel/sdk/trace"
 	oteltrace "go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 )
 
-var (
-	errNoTasks = errors.New("no tasks provided")
-)
+var errNoTasks = errors.New("no tasks provided")
 
 // Task is an abstraction over any context-bound, fallible activity.
 type Task func(context.Context) error
@@ -141,7 +138,7 @@ func Noop() Task { return func(_ context.Context) error { return nil } }
 
 // WithOtelTracerProvider returns a task that injects the provided
 // TracerProvider into the context before invoking the inner task.
-func (t Task) WithOtelTracerProvider(tp *otelsdktrace.TracerProvider) Task {
+func (t Task) WithOtelTracerProvider(tp oteltrace.TracerProvider) Task {
 	return func(ctx context.Context) error {
 		return t(InjectTracerProvider(ctx, tp))
 	}
@@ -234,8 +231,10 @@ func (t Task) LoopUntilError() Task {
 	}
 }
 
-type tracerKey struct{}
-type tracerProviderKey struct{}
+type (
+	tracerKey         struct{}
+	tracerProviderKey struct{}
+)
 
 // ExtractTracer extracts the otel tracer from the provided context. Use
 // `InjectTracer` to prepare a context for use with this function.
@@ -253,13 +252,13 @@ func InjectTracer(ctx context.Context, t oteltrace.Tracer) context.Context {
 // ExtractTracerProvider extracts the otel tracer provider from the provided
 // context. Use `InjectTracerProvider` to prepare a context for use with this
 // function.
-func ExtractTracerProvider(ctx context.Context) (*otelsdktrace.TracerProvider, bool) {
-	tp, ok := ctx.Value(tracerProviderKey{}).(*otelsdktrace.TracerProvider)
+func ExtractTracerProvider(ctx context.Context) (oteltrace.TracerProvider, bool) {
+	tp, ok := ctx.Value(tracerProviderKey{}).(oteltrace.TracerProvider)
 	return tp, ok
 }
 
 // InjectTracerProvider returns a new context with the provided TracerProvider
 // injected. Use `ExtractTracerProvider` to retrieve it.
-func InjectTracerProvider(ctx context.Context, tp *otelsdktrace.TracerProvider) context.Context {
+func InjectTracerProvider(ctx context.Context, tp oteltrace.TracerProvider) context.Context {
 	return context.WithValue(ctx, tracerProviderKey{}, tp)
 }

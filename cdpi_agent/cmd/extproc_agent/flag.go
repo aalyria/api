@@ -30,8 +30,8 @@ import (
 	"strings"
 	"time"
 
-	afpb "aalyria.com/spacetime/api/cdpi/v1alpha"
-	"aalyria.com/spacetime/cdpi_agent"
+	apipb "aalyria.com/spacetime/api/common"
+	agent "aalyria.com/spacetime/cdpi_agent"
 	enact_extproc "aalyria.com/spacetime/cdpi_agent/enactment/extproc"
 	"aalyria.com/spacetime/cdpi_agent/internal/protofmt"
 	"aalyria.com/spacetime/cdpi_agent/internal/task"
@@ -52,7 +52,6 @@ import (
 	channelz "google.golang.org/grpc/channelz/service"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/protobuf/proto"
 )
 
 // multiStringFlag is a flag.Value implementation that can be set multiple
@@ -293,14 +292,14 @@ func (opts *cliOpts) newAgent(ctx context.Context) (a *agent.Agent, err error) {
 		// and telemetry commands are applied to all nodes
 		commonNodeOpts := []agent.NodeOption{agent.WithEnactmentBackend(enactmentImpl)}
 		if cmd := opts.telemetryCmd; len(cmd) != 0 {
-			commonNodeOpts = append(commonNodeOpts, agent.WithTelemetryBackend(telem_extproc.New(func(ctx context.Context) *exec.Cmd {
+			commonNodeOpts = append(commonNodeOpts, agent.WithTelemetryBackend(telem_extproc.New(func(ctx context.Context, nodeID string) *exec.Cmd {
 				return exec.CommandContext(ctx, opts.telemetryCmd[0], opts.telemetryCmd[1:]...)
 			}, protofmt.JSON)))
 		}
 
 		for _, n := range opts.nodeIDs {
 			nodeOpts := append([]agent.NodeOption{
-				agent.WithInitialState(&afpb.ControlStateNotification{NodeId: proto.String(n)}),
+				agent.WithInitialState(&apipb.ControlPlaneState{}),
 			},
 				commonNodeOpts...)
 

@@ -50,6 +50,10 @@ message AuthStrategy {
     // The specifications for a JWT that should be generated and signed by the
     // agent.
     Jwt jwt = 1;
+
+    // No authentication options should be used. This is unlikely to work for
+    // you.
+    google.protobuf.Empty none = 2;
   }
 }
 
@@ -175,6 +179,10 @@ message ObservabilityParams {
   // The OTEL gRPC collector endpoint the exporter will connect to. If blank,
   // no exporter will be configured.
   string otel_collector_endpoint = 1;
+  // Whether to connect to the OTEL gRPC collector over a plaintext (insecure)
+  // connection. Corresponds to the "WithInsecure" exporter option
+  // https://pkg.go.dev/go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc#WithInsecure 
+  bool use_insecure_connection_for_otel_collector = 4;
 
   // Channelz is a gRPC introspection service that can aid in debugging and
   // understanding gRPC behavior. See

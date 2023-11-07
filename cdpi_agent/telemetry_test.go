@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -34,6 +35,8 @@ import (
 )
 
 func TestStreamStartsWithInitialReport(t *testing.T) {
+	t.Parallel()
+
 	ctx, cancel := context.WithTimeout(baseContext(t), time.Second)
 	defer cancel()
 
@@ -47,7 +50,7 @@ func TestStreamStartsWithInitialReport(t *testing.T) {
 			},
 		},
 	}
-	tb := func(ctx context.Context) (*apipb.NetworkStatsReport, error) {
+	tb := func(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) {
 		return servedReport, nil
 	}
 
@@ -61,6 +64,52 @@ func TestStreamStartsWithInitialReport(t *testing.T) {
 
 	gotReport := <-ts.inChan
 	assertProtosEqual(t, &afpb.TelemetryUpdate{
+		NodeId: proto.String("mynode"),
+		Type: &afpb.TelemetryUpdate_Statistics{
+			Statistics: servedReport,
+		},
+	}, gotReport)
+
+	cancel()
+	checkErrIsDueToCanceledContext(t, <-errCh)
+}
+
+func TestBackendReceivesNodeID(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithTimeout(baseContext(t), time.Second)
+	defer cancel()
+
+	wantNodeID := "foobar"
+
+	ts := NewTelemetryServer()
+	servedReport := &apipb.NetworkStatsReport{
+		NodeId: proto.String(wantNodeID),
+		InterfaceStatsById: map[string]*apipb.InterfaceStats{
+			"lo0": {
+				TxBytes: proto.Int64(1),
+				RxBytes: proto.Int64(12),
+			},
+		},
+	}
+	tb := func(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) {
+		if nodeID != wantNodeID {
+			t.Errorf("Unexpected nodeID. Want %s got %s", wantNodeID, nodeID)
+		}
+		return servedReport, nil
+	}
+
+	a := newAgent(t,
+		WithClock(clockwork.NewFakeClock()),
+		WithServerEndpoint(ts.Start(ctx, t)),
+		WithDialOpts(grpc.WithTransportCredentials(insecure.NewCredentials())),
+		WithNode(wantNodeID, WithTelemetryBackend(tb)))
+	errCh := make(chan error)
+	go func() { errCh <- a.Run(ctx) }()
+
+	gotReport := <-ts.inChan
+	assertProtosEqual(t, &afpb.TelemetryUpdate{
+		NodeId: proto.String("foobar"),
 		Type: &afpb.TelemetryUpdate_Statistics{
 			Statistics: servedReport,
 		},
@@ -71,6 +120,8 @@ func TestStreamStartsWithInitialReport(t *testing.T) {
 }
 
 func TestCanRequestOneOffReport(t *testing.T) {
+	t.Parallel()
+
 	ctx, cancel := context.WithTimeout(baseContext(t), time.Second)
 	defer cancel()
 
@@ -84,7 +135,7 @@ func TestCanRequestOneOffReport(t *testing.T) {
 			},
 		},
 	}
-	tb := func(ctx context.Context) (*apipb.NetworkStatsReport, error) {
+	tb := func(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) {
 		return servedReport, nil
 	}
 
@@ -114,6 +165,7 @@ func TestCanRequestOneOffReport(t *testing.T) {
 	}
 
 	assertProtosEqual(t, &afpb.TelemetryUpdate{
+		NodeId: proto.String("mynode"),
 		Type: &afpb.TelemetryUpdate_Statistics{
 			Statistics: servedReport,
 		},
@@ -124,6 +176,8 @@ func TestCanRequestOneOffReport(t *testing.T) {
 }
 
 func TestIgnoresUnknownRequestType(t *testing.T) {
+	t.Parallel()
+
 	ctx, cancel := context.WithTimeout(baseContext(t), time.Second)
 	defer cancel()
 
@@ -137,7 +191,7 @@ func TestIgnoresUnknownRequestType(t *testing.T) {
 			},
 		},
 	}
-	tb := func(ctx context.Context) (*apipb.NetworkStatsReport, error) {
+	tb := func(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) {
 		return servedReport, nil
 	}
 
@@ -176,6 +230,8 @@ func TestIgnoresUnknownRequestType(t *testing.T) {
 }
 
 func TestPeriodicUpdates(t *testing.T) {
+	t.Parallel()
+
 	ctx, cancel := context.WithTimeout(baseContext(t), time.Second)
 	defer cancel()
 
@@ -204,7 +260,7 @@ func TestPeriodicUpdates(t *testing.T) {
 	reportCh <- periodicReport
 	reportCh <- periodicReport
 
-	tb := func(ctx context.Context) (*apipb.NetworkStatsReport, error) { return <-reportCh, nil }
+	tb := func(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) { return <-reportCh, nil }
 
 	clock := clockwork.NewFakeClock()
 	a := newAgent(t,
@@ -253,13 +309,16 @@ func TestPeriodicUpdates(t *testing.T) {
 	}
 
 	assertProtosEqual(t, &afpb.TelemetryUpdate{
-		Type: &afpb.TelemetryUpdate_Statistics{Statistics: initialReport},
+		NodeId: proto.String("mynode"),
+		Type:   &afpb.TelemetryUpdate_Statistics{Statistics: initialReport},
 	}, gotFirst)
 	assertProtosEqual(t, &afpb.TelemetryUpdate{
-		Type: &afpb.TelemetryUpdate_Statistics{Statistics: periodicReport},
+		NodeId: proto.String("mynode"),
+		Type:   &afpb.TelemetryUpdate_Statistics{Statistics: periodicReport},
 	}, gotSecond)
 	assertProtosEqual(t, &afpb.TelemetryUpdate{
-		Type: &afpb.TelemetryUpdate_Statistics{Statistics: periodicReport},
+		NodeId: proto.String("mynode"),
+		Type:   &afpb.TelemetryUpdate_Statistics{Statistics: periodicReport},
 	}, gotThird)
 
 	cancel()
@@ -267,6 +326,8 @@ func TestPeriodicUpdates(t *testing.T) {
 }
 
 func TestInitialReportFailsToGenerate(t *testing.T) {
+	t.Parallel()
+
 	ctx, cancel := context.WithTimeout(baseContext(t), time.Second)
 	defer cancel()
 
@@ -274,7 +335,7 @@ func TestInitialReportFailsToGenerate(t *testing.T) {
 
 	// errors of type context.Canceled don't get retried
 	fatalErr := fmt.Errorf("something went wrong: %w", context.Canceled)
-	tb := func(ctx context.Context) (*apipb.NetworkStatsReport, error) { return nil, fatalErr }
+	tb := func(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) { return nil, fatalErr }
 
 	a := newAgent(t,
 		WithClock(clockwork.NewFakeClock()),
@@ -296,6 +357,8 @@ func TestInitialReportFailsToGenerate(t *testing.T) {
 }
 
 func TestPeriodicUpdatesAreStoppedWhenHzIsZero(t *testing.T) {
+	t.Parallel()
+
 	ctx, cancel := context.WithTimeout(baseContext(t), time.Second)
 	defer cancel()
 
@@ -319,12 +382,13 @@ func TestPeriodicUpdatesAreStoppedWhenHzIsZero(t *testing.T) {
 		},
 	}
 
-	reportCh := make(chan *apipb.NetworkStatsReport, 3)
-	reportCh <- initialReport
-	reportCh <- periodicReport
-	reportCh <- periodicReport
-
-	tb := func(ctx context.Context) (*apipb.NetworkStatsReport, error) { return <-reportCh, nil }
+	times := &atomic.Int64{}
+	tb := func(_ context.Context, _ string) (*apipb.NetworkStatsReport, error) {
+		if times.Add(1) == 1 {
+			return initialReport, nil
+		}
+		return periodicReport, nil
+	}
 
 	clock := clockwork.NewFakeClock()
 	a := newAgent(t,
@@ -373,19 +437,38 @@ func TestPeriodicUpdatesAreStoppedWhenHzIsZero(t *testing.T) {
 		},
 	}
 
-	clock.Advance(5 * time.Second)
+	// We don't have any way of ensuring the telemetry service has processed
+	// the disabling request yet and because of how the fake clockwork.Clock
+	// works we can't synchronize on the underlying ticker being stopped.
+	// Instead, we'll send a one-off report request here and wait for the
+	// response which will ensure the disabling request has been processed in
+	// time.
+	ts.outChan <- &afpb.TelemetryRequest{
+		NodeId: proto.String("mynode"),
+		Type:   &afpb.TelemetryRequest_QueryStatistics{},
+	}
+	select {
+	case <-ts.inChan:
+	case <-ctx.Done():
+		t.Errorf("timed out waiting for one-off report")
+	}
 
+	// now that we know the disabling request has been processed, we can check
+	// to ensure that there's no more periodic updates
+	clock.Advance(1 * time.Second)
 	select {
 	case <-ts.inChan:
 		t.Errorf("got unexpected third periodic report")
-	default:
+	case <-ctx.Done():
+		t.Errorf("test took too long")
+	case <-time.After(100 * time.Millisecond):
 	}
 
 	assertProtosEqual(t, &afpb.TelemetryUpdate{
-		Type: &afpb.TelemetryUpdate_Statistics{Statistics: initialReport},
+		NodeId: proto.String("mynode"), Type: &afpb.TelemetryUpdate_Statistics{Statistics: initialReport},
 	}, gotFirst)
 	assertProtosEqual(t, &afpb.TelemetryUpdate{
-		Type: &afpb.TelemetryUpdate_Statistics{Statistics: periodicReport},
+		NodeId: proto.String("mynode"), Type: &afpb.TelemetryUpdate_Statistics{Statistics: periodicReport},
 	}, gotSecond)
 
 	cancel()
@@ -393,6 +476,8 @@ func TestPeriodicUpdatesAreStoppedWhenHzIsZero(t *testing.T) {
 }
 
 func TestRequestsForWrongNodeIDAreIgnored(t *testing.T) {
+	t.Parallel()
+
 	ctx, cancel := context.WithTimeout(baseContext(t), time.Second)
 	defer cancel()
 
@@ -420,7 +505,7 @@ func TestRequestsForWrongNodeIDAreIgnored(t *testing.T) {
 	reportCh <- initialReport
 	reportCh <- periodicReport
 
-	tb := func(ctx context.Context) (*apipb.NetworkStatsReport, error) { return <-reportCh, nil }
+	tb := func(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) { return <-reportCh, nil }
 
 	clock := clockwork.NewFakeClock()
 	a := newAgent(t,

@@ -14,10 +14,11 @@
 
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
+package(default_visibility = ["//visibility:public"])
+
 go_library(
     name = "telemetry",
     srcs = ["telemetry.go"],
     importpath = "aalyria.com/spacetime/cdpi_agent/telemetry",
-    visibility = ["//visibility:public"],
     deps = ["//api/common:common_go_proto"],
 )

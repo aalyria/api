@@ -14,11 +14,12 @@
 
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 
+package(default_visibility = ["//visibility:public"])
+
 go_library(
     name = "prom2spacetime_lib",
     srcs = ["prom2spacetime.go"],
     importpath = "aalyria.com/spacetime/cdpi_agent/cmd/prom2spacetime",
-    visibility = ["//visibility:private"],
     deps = [
         "//api/common:common_go_proto",
         "//cdpi_agent/telemetry/prometheus",
@@ -32,5 +33,4 @@ go_library(
 go_binary(
     name = "prom2spacetime",
     embed = [":prom2spacetime_lib"],
-    visibility = ["//visibility:public"],
 )

@@ -18,7 +18,10 @@ import (
 	"sync"
 	"time"
 
+	apipb "aalyria.com/spacetime/api/common"
+
 	"github.com/jonboulle/clockwork"
+	"google.golang.org/protobuf/proto"
 )
 
 func hzToDuration(hz float64) time.Duration {
@@ -26,36 +29,16 @@ func hzToDuration(hz float64) time.Duration {
 	return time.Duration(float64(time.Second) / hz)
 }
 
-// safeTimer is a tiny wrapper around the clockwork.Timer interface that also
-// provides a channel that listeners can use to determine if the timer has been
-// stopped (otherwise reads from the t.Chan() channel will block forever if the
-// timer is cancelled before it fires). Timer instances should not be reused.
-//
-// This can be removed once
-// https://github.com/jonboulle/clockwork/commit/d574a97c1e79cc70d6ee2a5e6e690a6f1be6be3b
-// is tagged in a release.
-type safeTimer struct {
-	t        clockwork.Timer
-	done     chan struct{}
-	stopOnce *sync.Once
-}
-
-func (s *safeTimer) Stop() bool {
-	s.stopOnce.Do(func() { close(s.done) })
-	return s.t.Stop()
-}
-
 // reusableTicker is a wrapper around time.Ticker / clockwork.Ticker interface
 // that can be created without being started and that always has a valid
 // Chan(). If the ticker hasn't been started yet, the resulting channel will
 // never receive any messages.
 type reusableTicker struct {
-	mu    sync.Mutex
-	clock clockwork.Clock
-
-	isActive     bool
-	inactiveCh   chan time.Time
+	mu           sync.Mutex
+	clock        clockwork.Clock
 	activeTicker clockwork.Ticker
+	inactiveCh   chan time.Time
+	isActive     bool
 }
 
 func newReusableTicker(clock clockwork.Clock) *reusableTicker {
@@ -102,5 +85,11 @@ func (r *reusableTicker) Chan() <-chan time.Time {
 		return r.activeTicker.Chan()
 	} else {
 		return r.inactiveCh
+	}
+}
+
+func timeToProto(t time.Time) *apipb.DateTime {
+	return &apipb.DateTime{
+		UnixTimeUsec: proto.Int64(t.UnixMicro()),
 	}
 }

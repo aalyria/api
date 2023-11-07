@@ -16,10 +16,11 @@ load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 
+package(default_visibility = ["//visibility:public"])
+
 proto_library(
     name = "configpb_proto",
     srcs = ["config.proto"],
-    visibility = ["//visibility:public"],
     deps = [
         "//api/common:common_proto",
         "@com_google_protobuf//:duration_proto",
@@ -39,20 +40,17 @@ go_proto_library(
 go_binary(
     name = "agent",
     embed = [":agent_lib"],
-    visibility = ["//visibility:public"],
 )
 
 go_library(
     name = "agent_lib",
     srcs = ["agent.go"],
     importpath = "aalyria.com/spacetime/cdpi_agent/cmd/agent",
-    visibility = ["//visibility:private"],
     deps = [
         ":configpb_go_proto",
-        "//api/cdpi/v1alpha:cdpi_go_grpc",
+        "//auth",
         "//cdpi_agent",
         "//cdpi_agent/enactment/extproc",
-        "//cdpi_agent/internal/auth",
         "//cdpi_agent/internal/protofmt",
         "//cdpi_agent/internal/task",
         "//cdpi_agent/telemetry/extproc",
@@ -65,6 +63,7 @@ go_library(
         "@io_opentelemetry_go_otel_exporters_otlp_otlptrace_otlptracegrpc//:otlptracegrpc",
         "@io_opentelemetry_go_otel_sdk//resource",
         "@io_opentelemetry_go_otel_sdk//trace",
+        "@io_opentelemetry_go_otel_trace//:trace",
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_google_grpc//backoff",
         "@org_golang_google_grpc//channelz/service",
