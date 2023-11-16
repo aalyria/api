@@ -17,7 +17,7 @@
 
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
-package(default_visibility = ["//cdpi_agent:__subpackages__"])
+package(default_visibility = ["//visibility:public"])
 
 go_library(
     name = "cdpi_agent",
@@ -36,6 +36,7 @@ go_library(
         "//cdpi_agent/internal/channels",
         "//cdpi_agent/internal/loggable",
         "//cdpi_agent/internal/task",
+        "//cdpi_agent/internal/worker",
         "//cdpi_agent/telemetry",
         "@com_github_jonboulle_clockwork//:clockwork",
         "@com_github_rs_zerolog//:zerolog",
@@ -52,7 +53,9 @@ go_library(
 
 go_test(
     name = "cdpi_agent_test",
+    size = "small",
     srcs = [
+        "agent_test.go",
         "common_test.go",
         "enactment_test.go",
         "telemetry_test.go",
@@ -64,6 +67,7 @@ go_test(
         "//api/common:common_go_proto",
         "//cdpi_agent/enactment",
         "//cdpi_agent/internal/channels",
+        "//cdpi_agent/internal/task",
         "@com_github_google_go_cmp//cmp",
         "@com_github_jonboulle_clockwork//:clockwork",
         "@com_github_rs_zerolog//:zerolog",
@@ -73,6 +77,7 @@ go_test(
         "@org_golang_google_grpc//status",
         "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//testing/protocmp",
+        "@org_golang_google_protobuf//types/known/emptypb",
         "@org_golang_google_protobuf//types/known/timestamppb",
         "@org_golang_x_sync//errgroup",
     ],

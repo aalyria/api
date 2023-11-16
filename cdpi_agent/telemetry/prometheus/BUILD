@@ -14,11 +14,12 @@
 
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
+package(default_visibility = ["//visibility:public"])
+
 go_library(
     name = "prometheus",
     srcs = ["scraper.go"],
     importpath = "aalyria.com/spacetime/cdpi_agent/telemetry/prometheus",
-    visibility = ["//visibility:public"],
     deps = [
         "//api/common:common_go_proto",
         "@com_github_jonboulle_clockwork//:clockwork",

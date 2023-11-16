@@ -14,24 +14,22 @@
 
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
+package(default_visibility = ["//visibility:public"])
+
 go_library(
-    name = "auth",
-    srcs = ["auth.go"],
-    importpath = "aalyria.com/spacetime/cdpi_agent/internal/auth",
-    visibility = ["//visibility:public"],
-    deps = [
-        "@com_github_golang_jwt_jwt_v5//:jwt",
-        "@com_github_jonboulle_clockwork//:clockwork",
-        "@org_golang_google_grpc//credentials",
-        "@org_golang_x_oauth2//:oauth2",
-        "@org_golang_x_oauth2//jwt",
-    ],
+    name = "worker",
+    srcs = ["worker.go"],
+    importpath = "aalyria.com/spacetime/cdpi_agent/internal/worker",
 )
 
 go_test(
-    name = "auth_test",
-    srcs = ["auth_test.go"],
-    embed = [":auth"],
-    tags = ["block-network"],
-    deps = ["@com_github_jonboulle_clockwork//:clockwork"],
+    name = "worker_test",
+    srcs = ["worker_test.go"],
+    embed = [":worker"],
+    deps = [
+        "@com_github_google_go_cmp//cmp",
+        "@com_github_google_go_cmp//cmp/cmpopts",
+        "@com_github_jonboulle_clockwork//:clockwork",
+        "@org_golang_x_sync//errgroup",
+    ],
 )

@@ -23,4 +23,4 @@ import (
 // Backend is the component that generates TelemetryUpdate messages for a given
 // node. It may be called either periodically or as a result of a one-off
 // TelemetryRequest.
-type Backend func(context.Context) (*apipb.NetworkStatsReport, error)
+type Backend func(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error)

@@ -75,7 +75,7 @@ class JwtManager:
         return base64.urlsafe_b64encode(encoded_header)
 
     def generate_payload(self) -> bytes:
-        now = datetime.now()
+        now = datetime.utcnow()
         issue_time = int(now.timestamp())
         expiration_time = int((now + self.lifetime).timestamp())
 

@@ -34,19 +34,19 @@ import (
 var errEmptyReport = errors.New("command generated an empty response")
 
 type backend struct {
-	cmdFn    func(context.Context) *exec.Cmd
+	cmdFn    func(ctx context.Context, nodeID string) *exec.Cmd
 	protoFmt protofmt.Format
 }
 
-func New(cmdFn func(context.Context) *exec.Cmd, format protofmt.Format) telemetry.Backend {
+func New(cmdFn func(ctx context.Context, nodeID string) *exec.Cmd, format protofmt.Format) telemetry.Backend {
 	return (&backend{cmdFn: cmdFn, protoFmt: format}).generateReport
 }
 
-func (tb *backend) generateReport(ctx context.Context) (*apipb.NetworkStatsReport, error) {
+func (tb *backend) generateReport(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) {
 	log := zerolog.Ctx(ctx).With().Str("backend", "extproc").Logger()
 
 	log.Trace().Msg("running command")
-	reportData, err := tb.cmdFn(ctx).Output()
+	reportData, err := tb.cmdFn(ctx, nodeID).Output()
 	if err != nil {
 		return nil, extprocs.CommandError(err)
 	}

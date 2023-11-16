@@ -14,10 +14,11 @@
 
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 
+package(default_visibility = ["//visibility:public"])
+
 go_binary(
     name = "extproc_agent",
     embed = [":extproc_agent_lib"],
-    visibility = ["//visibility:public"],
 )
 
 go_library(
@@ -27,9 +28,8 @@ go_library(
         "flag.go",
     ],
     importpath = "aalyria.com/spacetime/cdpi_agent/cmd/extproc_agent",
-    visibility = ["//visibility:private"],
     deps = [
-        "//api/cdpi/v1alpha:cdpi_go_grpc",
+        "//api/common:common_go_proto",
         "//cdpi_agent",
         "//cdpi_agent/enactment/extproc",
         "//cdpi_agent/internal/protofmt",
@@ -52,6 +52,5 @@ go_library(
         "@org_golang_google_grpc//credentials",
         "@org_golang_google_grpc//credentials/insecure",
         "@org_golang_google_grpc//status",
-        "@org_golang_google_protobuf//proto",
     ],
 )

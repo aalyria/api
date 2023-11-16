@@ -14,7 +14,7 @@
 
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
-package(default_visibility = ["//cdpi_agent:__subpackages__"])
+package(default_visibility = ["//visibility:public"])
 
 go_library(
     name = "loggable",
@@ -28,6 +28,7 @@ go_library(
 
 go_test(
     name = "loggable_test",
+    size = "small",
     srcs = ["loggable_test.go"],
     embed = [":loggable"],
     deps = [
