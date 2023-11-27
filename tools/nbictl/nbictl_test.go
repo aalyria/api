@@ -110,7 +110,7 @@ func TestDelete_rejectsUnknownEntities(t *testing.T) {
 	t.Parallel()
 
 	switch want, err := `unknown entity type "UFO"`, newTestApp().Run([]string{
-		"nbictl", "delete", "--type", "UFO", "--timestamp", "3", "--id", "boba-cafe",
+		"nbictl", "delete", "--type", "UFO", "--id", "boba-cafe",
 	}); {
 	case err == nil:
 		t.Fatal("expected --type UFO to cause an error, got nil")
@@ -142,8 +142,8 @@ func TestDelete_requiresID(t *testing.T) {
 		"--url", srv.listener.Addr().String(),
 	}))
 
-	args := []string{"nbictl", "--config_dir", tmpDir, "--context", "DEFAULT", "delete", "--type", "NETWORK_NODE", "--timestamp", "3"}
-	switch want, err := `Either the "type", "id", and "timestamp" flags must be set, or the "files" flag must be set.`, newTestApp().Run(args); {
+	args := []string{"nbictl", "--config_dir", tmpDir, "--context", "DEFAULT", "delete", "--type", "NETWORK_NODE"}
+	switch want, err := `either the "type" and "id" flags must be set, or the "files" flag must be set.`, newTestApp().Run(args); {
 	case err == nil:
 		t.Fatal("expected missing --id to cause an error, got nil")
 	case !strings.Contains(err.Error(), want):
@@ -151,7 +151,7 @@ func TestDelete_requiresID(t *testing.T) {
 	}
 }
 
-func TestDelete_requiresTimestamp(t *testing.T) {
+func TestDelete_requiresLastCommitTimestampOrIgnoreConsistencyCheck(t *testing.T) {
 	t.Parallel()
 
 	tmpDir, err := bazel.NewTmpDir("nbictl")
@@ -174,12 +174,20 @@ func TestDelete_requiresTimestamp(t *testing.T) {
 		"--url", srv.listener.Addr().String(),
 	}))
 
-	args := []string{"nbictl", "--config_dir", tmpDir, "--context", "DEFAULT", "delete", "--type", "NETWORK_NODE", "--id", "boba-cafe"}
-	switch want, err := `Either the "type", "id", and "timestamp" flags must be set, or the "files" flag must be set.`, newTestApp().Run(args); {
+	args := []string{"nbictl", "--config_dir", tmpDir, "--context", "DEFAULT", "delete", "--type", "NETWORK_NODE", "--id", "abc"}
+	switch want, err := `when deleting a single entity, either "last_commit_timestamp" or "ignore_consistency_check" flags should be set.`, newTestApp().Run(args); {
 	case err == nil:
-		t.Fatal("expected missing --timestamp to cause an error, got nil")
+		t.Fatal("expected missing both --last_commit_timestamp and --ignore_consistency_check to cause an error, got nil")
 	case !strings.Contains(err.Error(), want):
-		t.Fatalf("expected error to contain %v, but got %s", want, err.Error())
+		t.Fatalf("expected error to contain %q, but got %q", want, err.Error())
+	}
+
+	args = []string{"nbictl", "--config_dir", tmpDir, "--context", "DEFAULT", "delete", "--type", "NETWORK_NODE", "--id", "abc", "--last_commit_timestamp", "123", "--ignore_consistency_check"}
+	switch want, err := `when deleting a single entity, either "last_commit_timestamp" or "ignore_consistency_check" flags should be set.`, newTestApp().Run(args); {
+	case err == nil:
+		t.Fatal("expected providing both --last_commit_timestamp and --ignore_consistency_check to cause an error, got nil")
+	case !strings.Contains(err.Error(), want):
+		t.Fatalf("expected error to contain %q, but got %q", want, err.Error())
 	}
 }
 
@@ -461,7 +469,7 @@ func TestEndToEnd(t *testing.T) {
 		},
 		{
 			name: "delete single entity",
-			cmd:  []string{"delete", "--type", "PLATFORM_DEFINITION", "--id", "my-id", "--timestamp", "123456"},
+			cmd:  []string{"delete", "--type", "PLATFORM_DEFINITION", "--id", "my-id", "--last_commit_timestamp", "123456"},
 			expectServerStateFn: expectEntityIDs([]*nbipb.Entity{
 				{
 					Group: &nbipb.EntityGroup{

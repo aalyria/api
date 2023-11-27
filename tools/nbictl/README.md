@@ -39,9 +39,11 @@ Create one or more entities described in textproto files.
 
 ## update
 
-Updates one or more entities described in textproto files.
+Updates, or creates if missing, one or more entities described in textproto files.
 
 **--files, -f**="": [REQUIRED] Glob of textproto files that represent one or more Entity messages.
+
+**--ignore_consistency_check**: Always update or create the entity, without verifying that the provided `commit_timestamp` matches the currently stored entity.
 
 ## list
 
@@ -51,13 +53,15 @@ Lists all entities of a given type.
 
 ## delete
 
-Deletes one or more entities. Provide the type, ID, and timestamp to delete a single entity, or a directory of Entity textproto files to delete multiple entities.
+Deletes one or more entities. Provide the type and ID to delete a single entity, or a directory of Entity textproto files to delete multiple entities.
 
 **--files, -f**="": Glob of textproto files that represent one or more Entity messages.
 
 **--id**="": ID of entity to delete.
 
-**--timestamp, --commit_time**="": Commit timestamp of entity to delete. (default: 0)
+**--ignore_consistency_check**: Always update or create the entity, without verifying that the provided `commit_timestamp` matches the value in the currently stored entity.
+
+**--last_commit_timestamp**="": Delete the entity only if `last_commit_timestamp` matches the `commit_timestamp` of the currently stored entity. (default: 0)
 
 **--type, -t**="": Type of entity to delete. Allowed values: [ANTENNA_PATTERN, BAND_PROFILE, CDPI_STREAM_INFO, COMPUTED_MOTION, DEVICES_IN_REGION, DRAIN_PROVISION, INTENT, INTERFACE_LINK_REPORT, INTERFERENCE_CONSTRAINT, MOTION_DEFINITION, NETWORK_NODE, NETWORK_STATS_REPORT, PLATFORM_DEFINITION, PROPAGATION_WEATHER, SERVICE_REQUEST, STATION_SET, SURFACE_REGION, TRANSCEIVER_LINK_REPORT]
 
