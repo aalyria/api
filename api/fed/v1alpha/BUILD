@@ -22,6 +22,7 @@ proto_library(
     visibility = ["//visibility:public"],
     deps = [
         "//api/common:common_proto",
+        "@com_google_protobuf//:duration_proto",
         "@com_google_protobuf//:empty_proto",
         "@go_googleapis//google/type:interval_proto",
         "@go_googleapis//google/type:money_proto",

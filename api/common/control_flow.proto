@@ -73,8 +73,16 @@ message FlowRule {
         reserved 2, 4 to max;
       }
 
+      // Forward specifies details of the forwarding action to be configured
       message Forward {
+        // out_interface_id specifies the outbound interface_id over which to
+        // forward traffic. This interface_id is the node-unique identifier
+        // specified in NetworkNode.
         optional string out_interface_id = 1;
+
+        // next_hop_ip (sometimes known as gateway IP) to direct traffic to.
+        // May be IPv4 or IPv6.
+        optional string next_hop_ip = 2;
       }
 
       // Vis. OpenFlow Switch Specification v1.5.1 S5.8, multiple

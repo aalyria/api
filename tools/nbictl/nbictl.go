@@ -164,13 +164,18 @@ func App() *cli.App {
 			{
 				Name:     "update",
 				Category: "entities",
-				Usage:    "Updates one or more entities described in textproto files.",
+				Usage:    "Updates, or creates if missing, one or more entities described in textproto files.",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:     "files",
 						Usage:    "[REQUIRED] Glob of textproto files that represent one or more Entity messages.",
 						Aliases:  []string{"f"},
 						Required: true,
+					},
+					&cli.BoolFlag{
+						Name:        "ignore_consistency_check",
+						DefaultText: "false",
+						Usage:       "Always update or create the entity, without verifying that the provided `commit_timestamp` matches the currently stored entity.",
 					},
 				},
 				Action: Update,
@@ -193,7 +198,7 @@ func App() *cli.App {
 			{
 				Name:     "delete",
 				Category: "entities",
-				Usage:    "Deletes one or more entities. Provide the type, ID, and timestamp to delete a single entity, or a directory of Entity textproto files to delete multiple entities.",
+				Usage:    "Deletes one or more entities. Provide the type and ID to delete a single entity, or a directory of Entity textproto files to delete multiple entities.",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:    "type",
@@ -207,9 +212,15 @@ func App() *cli.App {
 						Aliases: []string{},
 					},
 					&cli.IntFlag{
-						Name:    "timestamp",
-						Usage:   "Commit timestamp of entity to delete.",
-						Aliases: []string{"commit_time"},
+						Name:    "last_commit_timestamp",
+						Usage:   "Delete the entity only if `last_commit_timestamp` matches the `commit_timestamp` of the currently stored entity.",
+						Aliases: []string{},
+					},
+					&cli.BoolFlag{
+						Name:        "ignore_consistency_check",
+						DefaultText: "false",
+						Usage:       "Always update or create the entity, without verifying that the provided `commit_timestamp` matches the value in the currently stored entity.",
+						Aliases:     []string{},
 					},
 					&cli.StringFlag{
 						Name:    "files",
@@ -469,19 +480,8 @@ func Update(appCtx *cli.Context) error {
 				return fmt.Errorf("error while parsing update entity for file %s: %w", file, err)
 			}
 
-			// Ensures that the commit timestamp of the entity matches
-			// the current version in Spacetime.
-			// TODO: Add support in the NBI to update an entity
-			// without passing a commit timestamp.
-			getEntityReq := &nbipb.GetEntityRequest{Type: entity.GetGroup().Type, Id: entity.Id}
-			getEntityRes, err := client.GetEntity(ctx, getEntityReq)
-			if err != nil {
-				return fmt.Errorf("nbi.GetEntity: %w", err)
-			}
-			entity.CommitTimestamp = getEntityRes.CommitTimestamp
-
 			updateEntityReq := &nbipb.UpdateEntityRequest{Entity: entity}
-			res, err := client.UpdateEntity(appCtx.Context, updateEntityReq)
+			res, err := client.UpdateEntity(ctx, updateEntityReq)
 			if err != nil {
 				return fmt.Errorf("nbi.UpdateEntity: %w", err)
 			}
@@ -542,17 +542,27 @@ func Delete(appCtx *cli.Context) error {
 	client := nbipb.NewNetOpsClient(conn)
 
 	reqs := make([]*nbipb.DeleteEntityRequest, 0)
-	if appCtx.IsSet("type") && appCtx.IsSet("id") && appCtx.IsSet("timestamp") {
+	if appCtx.IsSet("type") && appCtx.IsSet("id") {
 		entityType := appCtx.String("type")
 		entityTypeEnumValue, found := nbipb.EntityType_value[entityType]
 		if !found {
 			return fmt.Errorf("invalid type: %q", entityType)
 		}
+		if appCtx.IsSet("last_commit_timestamp") == appCtx.Bool("ignore_consistency_check") {
+			return fmt.Errorf(`when deleting a single entity, either "last_commit_timestamp" or "ignore_consistency_check" flags should be set.`)
+		}
 		entityTypeEnum := nbipb.EntityType(entityTypeEnumValue)
-
-		id := appCtx.String("id")
-		commitTime := appCtx.Int64("timestamp")
-		reqs = append(reqs, &nbipb.DeleteEntityRequest{Type: &entityTypeEnum, Id: &id, CommitTimestamp: &commitTime})
+		req := &nbipb.DeleteEntityRequest{
+			Type: &entityTypeEnum,
+			Id:   proto.String(appCtx.String("id")),
+		}
+		if appCtx.IsSet("last_commit_timestamp") {
+			req.LastCommitTimestamp = proto.Int64(appCtx.Int64("last_commit_timestamp"))
+		}
+		if appCtx.Bool("ignore_consistency_check") {
+			req.IgnoreConsistencyCheck = proto.Bool(true)
+		}
+		reqs = append(reqs, req)
 	} else if appCtx.IsSet("files") {
 		fileGlob := appCtx.String("files")
 		files, err := filepath.Glob(fileGlob)
@@ -570,28 +580,23 @@ func Delete(appCtx *cli.Context) error {
 
 			entityType := entity.GetGroup().GetType()
 			id := entity.GetId()
-			commitTime := entity.GetCommitTimestamp()
-			reqs = append(reqs, &nbipb.DeleteEntityRequest{Type: &entityType, Id: &id, CommitTimestamp: &commitTime})
+			req := &nbipb.DeleteEntityRequest{Type: &entityType, Id: &id}
+			if entity.CommitTimestamp != nil {
+				req.LastCommitTimestamp = entity.CommitTimestamp
+			}
+			if appCtx.Bool("ignore_consistency_check") {
+				req.IgnoreConsistencyCheck = proto.Bool(true)
+			}
+			reqs = append(reqs, req)
 		}
 	} else {
-		return fmt.Errorf(`Either the "type", "id", and "timestamp" flags must be set, or the "files" flag must be set.`)
+		return fmt.Errorf(`either the "type" and "id" flags must be set, or the "files" flag must be set.`)
 	}
 
 	g, ctx := errgroup.WithContext(appCtx.Context)
 	for _, r := range reqs {
 		req := r
 		g.Go(func() error {
-			// Ensures that the commit timestamp of the entity matches
-			// the current version in Spacetime.
-			// TODO: Add support in the NBI to delete an entity without
-			// passing a commit timestamp.
-			getEntityReq := &nbipb.GetEntityRequest{Type: req.Type, Id: req.Id}
-			getEntityRes, err := client.GetEntity(ctx, getEntityReq)
-			if err != nil {
-				return fmt.Errorf("nbi.GetEntity: %w", err)
-			}
-
-			req.CommitTimestamp = getEntityRes.CommitTimestamp
 			if _, err := client.DeleteEntity(ctx, req); err != nil {
 				return fmt.Errorf("nbi.DeleteEntity: %w", err)
 			}
