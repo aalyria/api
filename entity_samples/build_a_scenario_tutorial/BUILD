@@ -12,30 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-id: "test-satellite-network-node"
-group: {
-  type: NETWORK_NODE
-}
-network_node {
-  name: "sat"
-  type: "GEO"
-  subnet: "191.165.104.62/32"
-  node_interface: {
-    interface_id: "user-link"
-    wireless: {
-      transceiver_model_id: {
-        platform_id: "test-satellite-platform-definition"
-        transceiver_model_id: "user-link-transceiver-model"
-      }
-    }
-  }
-  node_interface: {
-    interface_id: "gateway-link"
-    wireless: {
-      transceiver_model_id: {
-        platform_id: "test-satellite-platform-definition"
-        transceiver_model_id: "gateway-link-transceiver-model"
-      }
-    }
-  }
-}
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "build_a_scenario_tutorial",
+    srcs = glob(["*.textproto"]),
+)

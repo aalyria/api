@@ -19,6 +19,7 @@ group: {
 network_node {
   name: "gateway"
   type: "Gateway"
+  subnet: "211.154.172.215/32"
   node_interface: {
     interface_id: "wireless"
     wireless: {
@@ -32,5 +33,4 @@ network_node {
     interface_id: "wan"
     wired: {}
   }
-
 }
