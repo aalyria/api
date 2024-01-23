@@ -12,13 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+package(default_visibility = ["//visibility:public"])
 
-go_library(
-    name = "authtest",
-    testonly = 1,
-    srcs = ["authtest.go"],
-    importpath = "aalyria.com/spacetime/auth/authtest",
-    visibility = ["//visibility:public"],
-    deps = ["@org_golang_x_oauth2//:oauth2"],
+filegroup(
+    name = "build_a_scenario_tutorial",
+    srcs = glob(["*.textproto"]),
 )

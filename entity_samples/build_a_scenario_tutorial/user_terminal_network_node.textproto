@@ -19,6 +19,7 @@ group: {
 network_node {
   name: "user-terminal"
   type: "UserTerminal"
+  subnet: "107.89.175.219/32"
   node_interface: {
     interface_id: "wireless"
     wireless: {
@@ -28,5 +29,4 @@ network_node {
       }
     }
   }
-  subnet: "fd00:0:0:2a:0:0:0:0/64"
 }

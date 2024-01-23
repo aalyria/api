@@ -19,6 +19,7 @@ group: {
 network_node {
   name: "pop"
   type: "POP"
+  subnet: "121.201.204.104/32"
   node_interface: {
     interface_id: "wan"
     wired: {}

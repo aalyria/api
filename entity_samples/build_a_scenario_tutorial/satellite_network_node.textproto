@@ -19,6 +19,7 @@ group: {
 network_node {
   name: "sat"
   type: "GEO"
+  subnet: "191.165.104.62/32"
   node_interface: {
     interface_id: "user-link"
     wireless: {
