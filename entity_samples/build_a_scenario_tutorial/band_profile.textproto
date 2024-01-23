@@ -19,15 +19,15 @@ group: {
 band_profile {
   channel_width_hz: 250000000
   rate_table: {
-    steps: {
+    received_signal_power_steps: {
       min_received_signal_power_dbw: -100
       tx_data_rate_bps: 1e8
     }
-    steps: {
+    received_signal_power_steps: {
       min_received_signal_power_dbw: -90
       tx_data_rate_bps: 2e8
     }
-    steps: {
+    received_signal_power_steps: {
       min_received_signal_power_dbw: -80
       tx_data_rate_bps: 3e8
     }
