@@ -22,29 +22,6 @@ import "google/protobuf/duration.proto";
 option java_package = "com.aalyria.spacetime.api.common";
 option go_package = "aalyria.com/spacetime/api/common";
 
-// Weather parameters affecting wireless signal propagation.
-message PropagationWeather {
-  // The interval for which the weather parameters are applicable.
-  optional TimeInterval interval = 1;
-
-  // {@link S2CellId} for which the weather parameters are applicable.
-  optional uint64 s2_cell_id = 2;
-
-  // PropagationWeather holds time-dynamic forecast data from multiple sources.
-  // Pruning of older data is handled by the weather server.
-  repeated WeatherDataForecast forecasts = 6;
-
-  // Each table contains a multi-dimensional array of values for one or more
-  // weather parameters at specific times and optionally specific heights.
-  repeated WeatherTable tables = 7;
-
-  // Sparse data samples. For example, data sourced from a weather station in
-  // the region.
-  repeated SparseWeatherSamples samples = 8;
-
-  reserved 3 to 5, 9 to max;
-}
-
 enum Parameter {
   UNSPECIFIED_PARAMETER = 0;
 

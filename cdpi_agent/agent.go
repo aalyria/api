@@ -18,7 +18,9 @@ package agent
 import (
 	"context"
 	"errors"
+	"expvar"
 	"fmt"
+	"sync"
 
 	afpb "aalyria.com/spacetime/api/cdpi/v1alpha"
 	apipb "aalyria.com/spacetime/api/common"
@@ -31,6 +33,15 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"google.golang.org/grpc"
 )
+
+var (
+	statsMap   *expvar.Map
+	statsMapMu = &sync.Mutex{}
+)
+
+func init() {
+	statsMap = expvar.NewMap("agent")
+}
 
 var (
 	errNoClock          = errors.New("no clock provided (see WithClock)")
@@ -180,12 +191,27 @@ func WithInitialState(initState *apipb.ControlPlaneState) NodeOption {
 // Run starts the Agent and blocks until a fatal error is encountered or all
 // node controllers terminate.
 func (a *Agent) Run(ctx context.Context) error {
+	agentMap := &expvar.Map{}
+	agentMap.Init()
+
+	statKey := fmt.Sprintf("%p", a)
+
+	statsMapMu.Lock()
+	statsMap.Set(statKey, agentMap)
+	statsMapMu.Unlock()
+
+	defer func() {
+		statsMapMu.Lock()
+		statsMap.Delete(statKey)
+		statsMapMu.Unlock()
+	}()
+
 	// We can't use an errgroup here because we explicitly want all the errors,
 	// not just the first one.
 	//
 	// TODO: switch this to sourcegraph's conc library
 	errCh := make(chan error)
-	if err := a.start(ctx, errCh); err != nil {
+	if err := a.start(ctx, agentMap, errCh); err != nil {
 		return err
 	}
 
@@ -198,7 +224,7 @@ func (a *Agent) Run(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 
-func (a *Agent) start(ctx context.Context, errCh chan error) error {
+func (a *Agent) start(ctx context.Context, agentMap *expvar.Map, errCh chan error) error {
 	log := zerolog.Ctx(ctx)
 
 	log.Trace().Str("endpoint", a.endpoint).Msg("contacting the CDPI endpoint")
@@ -214,6 +240,8 @@ func (a *Agent) start(ctx context.Context, errCh chan error) error {
 		ctx, done := context.WithCancel(ctx)
 
 		nc := a.newNodeController(n, done, cdpiClient, telemetryClient)
+		agentMap.Set(n.id, expvar.Func(nc.Stats))
+
 		srv := task.Task(nc.run).
 			WithStartingStoppingLogs("node controller", zerolog.DebugLevel).
 			WithLogField("nodeID", n.id).

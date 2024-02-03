@@ -19,7 +19,9 @@ package(default_visibility = ["//visibility:public"])
 
 proto_library(
     name = "nbictl_proto",
-    srcs = ["nbi_ctl_config.proto"],
+    srcs = [
+        "nbi_ctl_config.proto",
+    ],
     deps = [
         "@com_google_protobuf//:empty_proto",
     ],
@@ -27,7 +29,6 @@ proto_library(
 
 go_proto_library(
     name = "nbictl_go_proto",
-    compilers = ["@io_bazel_rules_go//proto:go_grpc"],
     importpath = "aalyria.com/spacetime/github/tools/nbictl/nbictlpb",
-    protos = [":nbictl_proto"],
+    proto = ":nbictl_proto",
 )

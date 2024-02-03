@@ -20,9 +20,10 @@ package aalyria.spacetime.cdpi_agent.cmd.agent;
 
 import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
+import "google/protobuf/any.proto";
 import "api/common/control.proto";
 
-option go_package = "aalyria.com/spacetime/cdpi_agent/cmd/agent/configpb";
+option go_package = "aalyria.com/spacetime/cdpi_agent/internal/configpb";
 
 // A strategy for signing a JWT.
 message SigningStrategy {
@@ -134,6 +135,16 @@ message NetworkNode {
     ProtoFormat proto_format = 2;
   }
 
+  // NetlinkEnactment does not yet require any specialty fields, but may in the future.
+  message NetlinkEnactment {
+    // The route table number in which destination routes will be managed.
+    int32 route_table_id = 1;
+
+    // The Linux PBR priority to use for looking up routes in table
+    // |route_table_id| (above).
+    int32 route_table_lookup_priority = 2;
+  }
+
   // An EnactmentBackend is responsible for processing incoming enactments for
   // a given node.
   message EnactmentBackend {
@@ -143,7 +154,22 @@ message NetworkNode {
       // command may optionally write a new ControlPlaneState message to
       // standard out.
       ExternalCommand external_command = 1;
+
+      // Use the Linux-only netlink APIs to process enactments.
+      NetlinkEnactment netlink = 2;
+
+      // Use an agent-specific backend to process enactments.
+      google.protobuf.Any dynamic = 3;
     }
+  }
+
+  message MonitoredInterface {
+    // The interface_id as specified by the NetworkNode's NetworkInterface.
+    string interface_id = 1;
+  }
+
+  message NetlinkTelemetry {
+    repeated MonitoredInterface monitored_interfaces = 1;
   }
 
   // A TelemetryBackend is responsible for generating telemetry reports for a
@@ -154,6 +180,12 @@ message NetworkNode {
       // should write a NetworkStatsReport message in the appropriate format to
       // standard out when executed.
       ExternalCommand external_command = 1;
+
+      // Use the Linux-only netlink APIs to gather telemetry.
+      NetlinkTelemetry netlink = 2;
+
+      // Use an agent-specific backend to gather telemetry.
+      google.protobuf.Any dynamic = 3;
     }
   }
 

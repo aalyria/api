@@ -23,4 +23,9 @@ import (
 // Backend is the component that takes a ScheduledControlUpdate message for a
 // given node and returns the new state for that node. If the error returned
 // implements the gRPCStatus interface, the appropriate status will be used.
-type Backend func(context.Context, *apipb.ScheduledControlUpdate) (*apipb.ControlPlaneState, error)
+type Backend interface {
+	Apply(context.Context, *apipb.ScheduledControlUpdate) (*apipb.ControlPlaneState, error)
+	Stats() interface{}
+	Init(context.Context) error
+	Close() error
+}

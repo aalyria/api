@@ -25,12 +25,20 @@ import "google/protobuf/empty.proto";
 import "google/type/interval.proto";
 import "google/type/money.proto";
 
+option java_package = "com.aalyria.spacetime.api.fed.v1alpha";
+option go_package = "aalyria.com/spacetime/api/fed/v1alpha";
+
 // Federation service
 //
 // The Federation service enables clients to subscribe to notifications of
 // resources available on neutral-host aerospace and ground station networks,
 // and request to reserve those resources.
 service Federation {
+  // For the initial proof-of-concept, we will only have one network interface
+  // to return.
+  // DO NOT USE. We do not guarantee the longevity of this RPC.
+  rpc AvailabilityUnary(google.protobuf.Empty) returns (AvailabilityResponse) {}
+
   // Subscribes to a stream of availability advertisements.
   rpc Availability(google.protobuf.Empty)
       returns (stream AvailabilityResponse) {}

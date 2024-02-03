@@ -32,9 +32,9 @@ proto_library(
     ],
     deps = [
         "//api/common:common_proto",
+        "@com_google_googleapis//google/rpc:status_proto",
         "@com_google_protobuf//:empty_proto",
         "@com_google_protobuf//:timestamp_proto",
-        "@go_googleapis//google/rpc:status_proto",
     ],
 )
 
@@ -51,10 +51,10 @@ go_proto_library(
     name = "cdpi_go_grpc",
     compilers = ["@io_bazel_rules_go//proto:go_grpc"],
     importpath = "aalyria.com/spacetime/api/cdpi/v1alpha",
-    protos = [":cdpi_proto"],
+    proto = ":cdpi_proto",
     deps = [
         "//api/common:common_go_proto",
-        "@go_googleapis//google/rpc:status_go_proto",
+        "@org_golang_google_genproto_googleapis_rpc//status",
     ],
 )
 
