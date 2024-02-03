@@ -42,6 +42,27 @@ message GeodeticMsl {
   optional double height_msl_m = 3;
 }
 
+// A set of curvilinear 3 dimensional coordinates, relative to either
+// the WGS84 ellipsoid (https://en.wikipedia.org/wiki/World_Geodetic_System)
+// or mean sea level.
+message Geodetic {
+  // Required.
+  optional double latitude_deg = 1;
+  // Required.
+  optional double longitude_deg = 2;
+  // Required.
+  optional double height_m = 3;
+  
+  // Additional values are unlikely to be added.
+  enum VerticalDatum {
+    VERTICAL_DATUM_UNSPECIFIED = 0;
+    WGS84_ELLIPSOID = 1;
+    MEAN_SEA_LEVEL = 2;
+  }
+  // Required.
+  optional VerticalDatum vertical_datum = 4;
+}
+
 // A collection of S2 cells (see http://s2geometry.io).
 message S2Cells {
   repeated uint64 ids = 1;
@@ -127,6 +148,12 @@ message GeodeticWgs84Temporal {
   optional google.protobuf.Timestamp time = 2;
 }
 
+// A timestamped geodetic coordinate.
+message GeodeticTemporal {
+  optional Geodetic point = 1;
+  optional google.protobuf.Timestamp time = 2;
+}
+
 // Enumerates celestial bodies.
 enum CentralBody {
   UNKNOWN_CENTRAL_BODY = 0;
@@ -149,6 +176,12 @@ message PointAxesTemporalInterpolation {
 
 message GeodeticWgs84TemporalInterpolation {
   repeated GeodeticWgs84Temporal locations_over_time = 1;
+  optional InterpolationMethod interpolation_method = 2 [default = LINEAR];
+  optional int32 interpolation_degree = 3 [default = 1];
+}
+
+message GeodeticTemporalInterpolation {
+  repeated GeodeticTemporal locations_over_time = 1;
   optional InterpolationMethod interpolation_method = 2 [default = LINEAR];
   optional int32 interpolation_degree = 3 [default = 1];
 }
@@ -294,6 +327,7 @@ message Motion {
     ECEF_FIXED = 2;
     ECEF_INTERPOLATION = 3;
     CARTOGRAPHIC_WAYPOINTS = 4;
+    GEODETIC_WAYPOINTS = 12;
     TLE = 5;
     KEPLERIAN_ELEMENTS = 6;
     STATE_VECTOR = 9;
@@ -317,6 +351,7 @@ message Motion {
     // Interpolated cartographic positions on Earth.
     // The implied orientation of each position is EastNorthUp.
     GeodeticWgs84TemporalInterpolation cartographic_waypoints = 4;
+    GeodeticTemporalInterpolation geodetic_waypoints = 12;
 
     // Satellite orbital information, expressed as a TLE.
     // See https://en.wikipedia.org/wiki/Two-line_element_set for details.
@@ -345,7 +380,7 @@ message Motion {
     StkEphemAndAttitudeFile stk_ephem_and_attitude_file = 11;
   }
 
-  reserved 12 to max;  // next field number
+  reserved 13 to max;  // next field number
 }
 
 message MotionDefinition {

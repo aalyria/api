@@ -41,7 +41,6 @@ enum EntityType {
   ENTITY_TYPE_UNSPECIFIED = 0;
   ANTENNA_PATTERN = 12;      
   BAND_PROFILE = 16;         
-  CDPI_STREAM_INFO = 17;     
   DEVICES_IN_REGION = 24;    
   STATION_SET = 21;          
   SURFACE_REGION = 22;       
@@ -53,12 +52,11 @@ enum EntityType {
   NETWORK_NODE = 3;         
   NETWORK_STATS_REPORT = 8; 
   PLATFORM_DEFINITION = 1;  
-  PROPAGATION_WEATHER = 15; 
   SERVICE_REQUEST = 2;      
   TRANSCEIVER_LINK_REPORT = 19;
   COMPUTED_MOTION = 7; 
 
-  reserved 14, 25 to max;  // (-- Next ID --)
+  reserved 14, 15, 17, 25 to max;  // (-- Next ID --)
 }
 
 message EntityGroup {
@@ -104,7 +102,6 @@ message Entity {
     aalyria.spacetime.api.nbi.v1alpha.resources.AntennaPattern antenna_pattern =
         15;
     aalyria.spacetime.api.common.BandProfile band_profile = 20;
-    aalyria.spacetime.api.common.CdpiStreamInfo cdpi_stream_info = 23;
     aalyria.spacetime.api.nbi.v1alpha.resources.ComputedMotion computed_motion =
         10;
     aalyria.spacetime.api.nbi.v1alpha.resources.DevicesInRegion
@@ -129,7 +126,7 @@ message Entity {
         transceiver_link_report = 25;
   }
 
-  reserved 18, 35 to max;
+  reserved 18, 23, 35 to max;
 }
 
 service NetOps {

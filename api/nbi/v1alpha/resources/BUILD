@@ -37,11 +37,12 @@ proto_library(
     ],
     deps = [
         "//api/common:common_proto",
+        "@com_google_googleapis//google/rpc:code_proto",
+        "@com_google_googleapis//google/type:interval_proto",
+        "@com_google_googleapis//google/type:money_proto",
         "@com_google_protobuf//:any_proto",
         "@com_google_protobuf//:duration_proto",
         "@com_google_protobuf//:timestamp_proto",
-        "@go_googleapis//google/rpc:code_proto",
-        "@go_googleapis//google/type:interval_proto",
     ],
 )
 
@@ -54,19 +55,19 @@ cpp_grpc_library(
         "@com_google_googleapis//google/api:annotations_cc_proto",
         "@com_google_googleapis//google/rpc:code_cc_proto",
         "@com_google_googleapis//google/type:interval_cc_proto",
+        "@com_google_googleapis//google/type:money_cc_proto",
     ],
 )
 
 go_proto_library(
     name = "nbi_resources_go_grpc",
-    compilers = ["@io_bazel_rules_go//proto:go_grpc"],
     importpath = "aalyria.com/spacetime/api/nbi/v1alpha/resources",
-    protos = [":nbi_resources_proto"],
+    proto = ":nbi_resources_proto",
     deps = [
         "//api/common:common_go_proto",
-        "@go_googleapis//google/api:annotations_go_proto",
-        "@go_googleapis//google/rpc:code_go_proto",
-        "@go_googleapis//google/type:interval_go_proto",
+        "@org_golang_google_genproto//googleapis/type/interval",
+        "@org_golang_google_genproto//googleapis/type/money",
+        "@org_golang_google_genproto_googleapis_rpc//code",
     ],
 )
 
@@ -87,5 +88,6 @@ python_grpc_library(
     deps = [
         "//api/common:common_python_proto",
         "@com_google_googleapis//google/rpc:code_py_proto",
+        "@com_google_googleapis//google/type:money_py_proto",
     ],
 )

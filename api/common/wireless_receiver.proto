@@ -66,15 +66,19 @@ message ReceiveSignalProcessor {
 
 // Models a signal filter.
 message Filter {
-  // This field is optional; it should be omitted for receivers that can
-  // automatically reconfigure their frequency to match that of the intended
-  // transmitter. Set this only if the filter's frequency is static.
+  // Optional. Set this only if the filter's frequency is static.
+  // If the field is not set, it will be configured dynamically according to the
+  // center of frequency of the channel in use.
   optional double frequency_hz = 1;
 
-  // The offset to the lower bandwidth limit, in Hz.
+  // Optional. The offset to the lower bandwidth limit, in Hz.
+  // If the field is not set, it will be configured dynamically according to the
+  // bandwidth of the channel in use, provided through the BAND_PROFILE entity.
   optional double lower_bandwidth_limit_hz = 2;
 
-  // The offset to the upper bandwidth limit, in Hz.
+  // Optional. The offset to the upper bandwidth limit, in Hz.
+  // If the field is not set, it will be configured dynamically according to the
+  // bandwidth of the channel in use, provided through the BAND_PROFILE entity.
   optional double upper_bandwidth_limit_hz = 3;
 
   // The thermal noise temperature of the filter, in Kelvin.
