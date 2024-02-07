@@ -39,10 +39,14 @@ type backend struct {
 }
 
 func New(cmdFn func(ctx context.Context, nodeID string) *exec.Cmd, format protofmt.Format) telemetry.Backend {
-	return (&backend{cmdFn: cmdFn, protoFmt: format}).generateReport
+	return &backend{cmdFn: cmdFn, protoFmt: format}
 }
 
-func (tb *backend) generateReport(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) {
+func (tb *backend) Close() error               { return nil }
+func (tb *backend) Init(context.Context) error { return nil }
+func (tb *backend) Stats() interface{}         { return nil }
+
+func (tb *backend) GenerateReport(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) {
 	log := zerolog.Ctx(ctx).With().Str("backend", "extproc").Logger()
 
 	log.Trace().Msg("running command")

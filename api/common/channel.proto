@@ -33,7 +33,6 @@ message BandProfile {
   reserved 1, 4 to max;
 
   // Specifies the channel bandwidth or spacing configuration, in Hz.
-  // This is required for RF transmitters but is optional for FSOC.
   optional uint64 channel_width_hz = 2;
 
   // This field is used to relate the intended receiver's received signal

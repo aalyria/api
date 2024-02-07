@@ -40,12 +40,10 @@ func NewSink[T any](c chan<- T) Sink[T] { return Sink[T](c) }
 func (s Sink[T]) FillFrom(recv Receiver[T]) task.Task {
 	return task.Task(func(ctx context.Context) error {
 		log := zerolog.Ctx(ctx)
-		log.Trace().Msg("waiting for message")
 		msg, err := recv()
 		if err != nil {
 			return err
 		}
-		log.Trace().Msg("got msg")
 
 		select {
 		case <-ctx.Done():
@@ -62,13 +60,11 @@ func (s Sink[T]) FillFrom(recv Receiver[T]) task.Task {
 
 func (s Source[T]) ForwardTo(send Sender[T]) task.Task {
 	return task.Task(func(ctx context.Context) error {
-		log := zerolog.Ctx(ctx)
 		select {
 		case <-ctx.Done():
 			return context.Cause(ctx)
 
 		case msg := <-s:
-			log.Trace().Msg("sending message")
 			if err := send(msg); err != nil {
 				return err
 			}

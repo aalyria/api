@@ -37,6 +37,11 @@ message AdaptiveDataRateTable {
     // The layer 2 data rate achievable, in bps, provided the receiver receives
     // at least the min_carrier_to_noise_plus_interference_db specified above.
     optional double tx_data_rate_bps = 2;
+
+    // A human readable name (e.g. "QPSK-LDPC-2-3") describing the modulation
+    // and coding scheme associated with the carrier to noise plus interference
+    // to data rate mapping.
+    optional string mod_cod_scheme_name = 3;
   }
   // Steps should be sorted by C/(N+I) in ascending order.
   repeated CarrierToNoisePlusInterferenceDataRateMapping

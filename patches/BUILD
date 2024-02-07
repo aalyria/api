@@ -12,4 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-exports_files(["grpc.patch"])
+exports_files([
+    "com_github_grpc_grpc-hermetic-python.patch",
+    "com_google_protobuf-rename-exec_tools-to-tools.patch",
+])

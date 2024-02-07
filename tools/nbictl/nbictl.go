@@ -15,9 +15,11 @@
 package nbictl
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -160,6 +162,27 @@ func App() *cli.App {
 					},
 				},
 				Action: Create,
+			},
+			{
+				Name:     "edit",
+				Category: "entities",
+				Usage:    "Opens the specified entity as a textproto in $EDITOR, then updates the NBI's version with any updates made.",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "type",
+						Usage:    fmt.Sprintf("[REQUIRED] Type of entity to edit. Allowed values: [%s]", strings.Join(entityTypeList, ", ")),
+						Aliases:  []string{"t"},
+						Required: true,
+						Action:   validateEntityType,
+					},
+					&cli.StringFlag{
+						Name:     "id",
+						Usage:    "[REQUIRED] ID of entity to edit.",
+						Aliases:  []string{},
+						Required: true,
+					},
+				},
+				Action: Edit,
 			},
 			{
 				Name:     "update",
@@ -403,7 +426,36 @@ func App() *cli.App {
 }
 
 func Create(appCtx *cli.Context) error {
-	fileGlob := appCtx.String("files")
+	conn, err := openConnection(appCtx)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	client := nbipb.NewNetOpsClient(conn)
+
+	createEntityFunc := func(ctx context.Context, e *nbipb.Entity) error {
+		req := &nbipb.CreateEntityRequest{Entity: e}
+		res, err := client.CreateEntity(ctx, req)
+		if err != nil {
+			return fmt.Errorf("create failed for entity %s/%s: %w", req.Entity.GetGroup().GetType(), req.GetEntity().GetId(), err)
+		}
+		fmt.Fprintf(appCtx.App.ErrWriter, "successfully created:  %s/%s\n", res.GetGroup().GetType(), res.GetId())
+		return nil
+	}
+	return processEntitiesFromFiles(appCtx.Context, appCtx.String("files"), createEntityFunc)
+}
+
+func Edit(appCtx *cli.Context) error {
+	ed := ""
+	for _, env := range []string{"VISUAL", "EDITOR"} {
+		ed = os.Getenv(env)
+		if ed != "" {
+			break
+		}
+	}
+	if ed == "" {
+		return fmt.Errorf("No $EDITOR value set, don't know which editor to use")
+	}
 
 	conn, err := openConnection(appCtx)
 	if err != nil {
@@ -412,51 +464,57 @@ func Create(appCtx *cli.Context) error {
 	defer conn.Close()
 	client := nbipb.NewNetOpsClient(conn)
 
-	files, err := filepath.Glob(fileGlob)
+	id := appCtx.String("id")
+	entityType := appCtx.String("type")
+	et, found := nbipb.EntityType_value[entityType]
+	if !found {
+		return fmt.Errorf("invalid type: %q", entityType)
+	}
+	oldEntity, err := client.GetEntity(appCtx.Context, &nbipb.GetEntityRequest{Type: nbipb.EntityType(et).Enum(), Id: &id})
 	if err != nil {
-		return fmt.Errorf("unable to expand the file path: %w", err)
-	} else if len(files) == 0 {
-		return fmt.Errorf("no files found under the given file path: %s", fileGlob)
+		return fmt.Errorf("unable to get the entity via the NBI: %w", err)
 	}
 
-	g, ctx := errgroup.WithContext(appCtx.Context)
-	for _, f := range files {
-		file := f
-		g.Go(func() error {
-			entity := &nbipb.Entity{}
-			if err := readFromFile(file, entity); err != nil {
-				return fmt.Errorf("error while parsing create entity request for file %s: %w", file, err)
-			}
-			createEntityReq := &nbipb.CreateEntityRequest{Entity: entity}
+	tmp, err := os.MkdirTemp("", "nbictl")
+	if err != nil {
+		return fmt.Errorf("opening tmp dir: %w", err)
+	}
+	defer os.RemoveAll(tmp)
 
-			res, err := client.CreateEntity(ctx, createEntityReq)
-			if err != nil {
-				return fmt.Errorf("nbi.CreateEntity: %w", err)
-			}
-
-			protoMessage, err := prototext.MarshalOptions{Multiline: true}.Marshal(res)
-			if err != nil {
-				return fmt.Errorf("unable to convert the response into textproto format: %w", err)
-			}
-
-			fmt.Fprintln(appCtx.App.Writer, string(protoMessage))
-			fmt.Fprintf(appCtx.App.ErrWriter, "entity successfully created!:\nid: %s commit_timestamp: %d type: %v file_location: %s\n",
-				*res.Id, *res.CommitTimestamp, res.GetGroup().GetType(), file)
-
-			return nil
-		})
+	oldTxt, err := (prototext.MarshalOptions{
+		Multiline: true,
+		Indent:    "  ",
+	}).Marshal(oldEntity)
+	if err != nil {
+		return fmt.Errorf("marshalling entity as textproto: %w", err)
 	}
 
-	if err := g.Wait(); err != nil {
-		return fmt.Errorf("unable to create an entity: %w", err)
+	fname := filepath.Join(tmp, "entity.textproto")
+	if err := os.WriteFile(fname, oldTxt, 0o755); err != nil {
+		return fmt.Errorf("writing entity to file %s: %w", fname, err)
 	}
 
+	cmd := exec.CommandContext(appCtx.Context, ed, fname)
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("command `%s` exited with an error: %w", cmd.Args, err)
+	}
+
+	newTxt, err := os.ReadFile(fname)
+	if err != nil {
+		return fmt.Errorf("reading modified entity from %s: %w", fname, err)
+	}
+	newEntity := &nbipb.Entity{}
+	if err := prototext.Unmarshal(newTxt, newEntity); err != nil {
+		return fmt.Errorf("unmarshalling modified entity as textproto: %w", err)
+	}
+	if _, err := client.UpdateEntity(appCtx.Context, &nbipb.UpdateEntityRequest{Entity: newEntity}); err != nil {
+		return fmt.Errorf("calling UpdateEntity: %w", err)
+	}
 	return nil
 }
 
 func Update(appCtx *cli.Context) error {
-	fileGlob := appCtx.String("files")
-
 	conn, err := openConnection(appCtx)
 	if err != nil {
 		return err
@@ -464,45 +522,16 @@ func Update(appCtx *cli.Context) error {
 	defer conn.Close()
 	client := nbipb.NewNetOpsClient(conn)
 
-	files, err := filepath.Glob(fileGlob)
-	if err != nil {
-		return fmt.Errorf("unable to expand the file path %w", err)
-	} else if len(files) == 0 {
-		return fmt.Errorf("no files found under the given file path: %s", fileGlob)
+	updateEntityFunc := func(ctx context.Context, e *nbipb.Entity) error {
+		req := &nbipb.UpdateEntityRequest{Entity: e, IgnoreConsistencyCheck: proto.Bool(true)}
+		res, err := client.UpdateEntity(ctx, req)
+		if err != nil {
+			return fmt.Errorf("update failed for entity %s/%s: %w", req.Entity.GetGroup().GetType(), req.GetEntity().GetId(), err)
+		}
+		fmt.Fprintf(appCtx.App.ErrWriter, "successfully updated: %s/%s\n", res.GetGroup().GetType(), res.GetId())
+		return nil
 	}
-
-	g, ctx := errgroup.WithContext(appCtx.Context)
-	for _, f := range files {
-		file := f
-		g.Go(func() error {
-			entity := &nbipb.Entity{}
-			if err := readFromFile(file, entity); err != nil {
-				return fmt.Errorf("error while parsing update entity for file %s: %w", file, err)
-			}
-
-			updateEntityReq := &nbipb.UpdateEntityRequest{Entity: entity}
-			res, err := client.UpdateEntity(ctx, updateEntityReq)
-			if err != nil {
-				return fmt.Errorf("nbi.UpdateEntity: %w", err)
-			}
-
-			protoMessage, err := prototext.MarshalOptions{Multiline: true}.Marshal(res)
-			if err != nil {
-				return fmt.Errorf("unable to convert the response into textproto format: %w", err)
-			}
-
-			fmt.Fprintln(appCtx.App.Writer, string(protoMessage))
-			fmt.Fprintf(appCtx.App.ErrWriter, "update successful:\n id: %s commit_timestamp: %d type: %v file_location: %s\n", *res.Id, *res.CommitTimestamp, res.GetGroup().GetType(), file)
-
-			return nil
-		})
-	}
-
-	if err := g.Wait(); err != nil {
-		return fmt.Errorf("unable to update an entity: %w", err)
-	}
-
-	return nil
+	return processEntitiesFromFiles(appCtx.Context, appCtx.String("files"), updateEntityFunc)
 }
 
 func Get(appCtx *cli.Context) error {
@@ -525,11 +554,14 @@ func Get(appCtx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("unable to get the entity: %w", err)
 	}
-	entityTextProto, err := prototext.MarshalOptions{Multiline: true}.Marshal(entity)
+	entitiesOutput := &nbipb.TxtpbEntities{
+		Entity: []*nbipb.Entity{entity},
+	}
+	entitiesOutputTextProto, err := prototext.MarshalOptions{Multiline: true}.Marshal(entitiesOutput)
 	if err != nil {
 		return fmt.Errorf("unable to convert the response into textproto format: %w", err)
 	}
-	fmt.Fprintln(appCtx.App.Writer, string(entityTextProto))
+	fmt.Fprintln(appCtx.App.Writer, string(entitiesOutputTextProto))
 	return nil
 }
 
@@ -541,8 +573,16 @@ func Delete(appCtx *cli.Context) error {
 	defer conn.Close()
 	client := nbipb.NewNetOpsClient(conn)
 
-	reqs := make([]*nbipb.DeleteEntityRequest, 0)
+	deleteFunc := func(ctx context.Context, req *nbipb.DeleteEntityRequest) error {
+		if _, err := client.DeleteEntity(appCtx.Context, req); err != nil {
+			return fmt.Errorf("deletion failed for entity %s/%s: %w", req.Type, *req.Id, err)
+		}
+		fmt.Fprintf(appCtx.App.ErrWriter, "successfully deleted: %s/%s\n", req.Type, *req.Id)
+		return nil
+	}
+
 	if appCtx.IsSet("type") && appCtx.IsSet("id") {
+		entityId := appCtx.String("id")
 		entityType := appCtx.String("type")
 		entityTypeEnumValue, found := nbipb.EntityType_value[entityType]
 		if !found {
@@ -552,64 +592,31 @@ func Delete(appCtx *cli.Context) error {
 			return fmt.Errorf(`when deleting a single entity, either "last_commit_timestamp" or "ignore_consistency_check" flags should be set.`)
 		}
 		entityTypeEnum := nbipb.EntityType(entityTypeEnumValue)
-		req := &nbipb.DeleteEntityRequest{
-			Type: &entityTypeEnum,
-			Id:   proto.String(appCtx.String("id")),
-		}
+		req := &nbipb.DeleteEntityRequest{Type: &entityTypeEnum, Id: &entityId}
 		if appCtx.IsSet("last_commit_timestamp") {
 			req.LastCommitTimestamp = proto.Int64(appCtx.Int64("last_commit_timestamp"))
 		}
 		if appCtx.Bool("ignore_consistency_check") {
 			req.IgnoreConsistencyCheck = proto.Bool(true)
 		}
-		reqs = append(reqs, req)
+		return deleteFunc(appCtx.Context, req)
 	} else if appCtx.IsSet("files") {
-		fileGlob := appCtx.String("files")
-		files, err := filepath.Glob(fileGlob)
-		if err != nil {
-			return fmt.Errorf("unable to expand the file path %w", err)
-		} else if len(files) == 0 {
-			return fmt.Errorf("no files found under the given file path: %s", fileGlob)
-		}
-
-		for _, f := range files {
-			entity := &nbipb.Entity{}
-			if err := readFromFile(f, entity); err != nil {
-				return fmt.Errorf("error while parsing the entity for file %s: %w", f, err)
-			}
-
-			entityType := entity.GetGroup().GetType()
-			id := entity.GetId()
-			req := &nbipb.DeleteEntityRequest{Type: &entityType, Id: &id}
-			if entity.CommitTimestamp != nil {
-				req.LastCommitTimestamp = entity.CommitTimestamp
+		deleteEntityFunc := func(ctx context.Context, e *nbipb.Entity) error {
+			entityId := e.GetId()
+			entityType := e.GetGroup().GetType()
+			req := &nbipb.DeleteEntityRequest{Type: &entityType, Id: &entityId}
+			if e.CommitTimestamp != nil {
+				req.LastCommitTimestamp = e.CommitTimestamp
 			}
 			if appCtx.Bool("ignore_consistency_check") {
 				req.IgnoreConsistencyCheck = proto.Bool(true)
 			}
-			reqs = append(reqs, req)
+			return deleteFunc(ctx, req)
 		}
+		return processEntitiesFromFiles(appCtx.Context, appCtx.String("files"), deleteEntityFunc)
 	} else {
 		return fmt.Errorf(`either the "type" and "id" flags must be set, or the "files" flag must be set.`)
 	}
-
-	g, ctx := errgroup.WithContext(appCtx.Context)
-	for _, r := range reqs {
-		req := r
-		g.Go(func() error {
-			if _, err := client.DeleteEntity(ctx, req); err != nil {
-				return fmt.Errorf("nbi.DeleteEntity: %w", err)
-			}
-			return nil
-		})
-	}
-
-	if err := g.Wait(); err != nil {
-		return fmt.Errorf("deletion failed: %w", err)
-	}
-
-	fmt.Fprintln(appCtx.App.ErrWriter, "deletion successful")
-	return nil
 }
 
 func List(appCtx *cli.Context) error {
@@ -631,11 +638,14 @@ func List(appCtx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("unable to list entities: %w", err)
 	}
-	protoMessage, err := prototext.MarshalOptions{Multiline: true}.Marshal(res)
+	entitiesOutput := &nbipb.TxtpbEntities{
+		Entity: res.Entities,
+	}
+	entitiesOutputTextProto, err := prototext.MarshalOptions{Multiline: true}.Marshal(entitiesOutput)
 	if err != nil {
 		return fmt.Errorf("unable to convert the response into textproto format: %w", err)
 	}
-	fmt.Fprintln(appCtx.App.Writer, string(protoMessage))
+	fmt.Fprintln(appCtx.App.Writer, string(entitiesOutputTextProto))
 	fmt.Fprintf(appCtx.App.ErrWriter, "successfully queried a list of entities. number of entities: %d\n", len(res.Entities))
 	return nil
 }
@@ -790,15 +800,31 @@ func generateTypeList() []string {
 	return typeList
 }
 
-func readFromFile(filePath string, entity *nbipb.Entity) error {
-	msg, err := os.ReadFile(filePath)
+func processEntitiesFromFiles(ctx context.Context, fileGlob string, f func(context.Context, *nbipb.Entity) error) error {
+	files, err := filepath.Glob(fileGlob)
 	if err != nil {
-		return fmt.Errorf("invalid file path: %w", err)
+		return fmt.Errorf("unable to expand the file path %w", err)
+	} else if len(files) == 0 {
+		return fmt.Errorf("no files found under the given file path: %s", fileGlob)
 	}
-	if err := prototext.Unmarshal(msg, entity); err != nil {
-		return fmt.Errorf("invalid file contents: %w", err)
+	g, gCtx := errgroup.WithContext(ctx)
+	for _, filePath := range files {
+		entities := &nbipb.TxtpbEntities{}
+		msg, err := os.ReadFile(filePath)
+		if err != nil {
+			return fmt.Errorf("invalid file path: %w", err)
+		}
+		if err := prototext.Unmarshal(msg, entities); err != nil {
+			return fmt.Errorf("error while parsing file %s: %w", filePath, err)
+		}
+		for _, e := range entities.Entity {
+			entity := e
+			g.Go(func() error {
+				return f(gCtx, entity)
+			})
+		}
 	}
-	return nil
+	return g.Wait()
 }
 
 func validateEntityType(_ *cli.Context, t string) error {

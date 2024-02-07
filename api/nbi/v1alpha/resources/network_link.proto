@@ -190,6 +190,10 @@ message WirelessLinkReport {
 
       // The receiver antenna's gain in the link direction, in dB.
       optional double receiver_antenna_gain_in_link_direction_db = 8;
+
+      // A human readable name (e.g. "QPSK-LDPC-2-3") describing the modulation
+      // and coding scheme associated with the modeled data rate capacity.
+      optional string mod_cod_scheme_name = 9;
     }
     repeated WirelessLinkMetrics sampled_metrics = 4;
   }

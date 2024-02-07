@@ -14,7 +14,7 @@
 
 load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@rules_proto_grpc//cpp:defs.bzl", "cpp_proto_library")
-load("@rules_proto_grpc//go:defs.bzl", "go_proto_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 load("@rules_proto_grpc//java:defs.bzl", "java_proto_library")
 load("@rules_proto_grpc//python:defs.bzl", "python_proto_library")
 
@@ -35,7 +35,7 @@ cpp_proto_library(
 go_proto_library(
     name = "types_go_proto",
     importpath = "aalyria.com/spacetime/api/types",
-    protos = [":types_proto"],
+    proto = ":types_proto",
 )
 
 java_proto_library(

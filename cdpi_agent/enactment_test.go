@@ -25,7 +25,6 @@ import (
 
 	afpb "aalyria.com/spacetime/api/cdpi/v1alpha"
 	apipb "aalyria.com/spacetime/api/common"
-	"aalyria.com/spacetime/cdpi_agent/enactment"
 	"aalyria.com/spacetime/cdpi_agent/internal/channels"
 	"aalyria.com/spacetime/cdpi_agent/internal/task"
 
@@ -1107,7 +1106,7 @@ func (tc *testCase) runTest(t *testing.T) {
 		opts = append(opts, WithNode(n.id,
 			WithInitialState(&apipb.ControlPlaneState{}),
 			WithChannelPriority(n.priority),
-			WithEnactmentBackend(enact.toBackend())))
+			WithEnactmentBackend(enact)))
 	}
 	agent := newAgent(t, opts...)
 
@@ -1116,32 +1115,36 @@ func (tc *testCase) runTest(t *testing.T) {
 }
 
 type delegatingBackend struct {
-	m    map[string]enactment.Backend
+	m    map[string]backendFn
 	errs []error
 }
 
+type backendFn func(context.Context, *apipb.ScheduledControlUpdate) (*apipb.ControlPlaneState, error)
+
 func newDelegatingBackend() *delegatingBackend {
 	return &delegatingBackend{
-		m:    map[string]enactment.Backend{},
+		m:    map[string]backendFn{},
 		errs: []error{},
 	}
 }
 
-func (d *delegatingBackend) setBackendForUpdateID(updateID string, b enactment.Backend) {
+func (d *delegatingBackend) Init(context.Context) error { return nil }
+func (d *delegatingBackend) Close() error               { return nil }
+func (d *delegatingBackend) Stats() interface{}         { return nil }
+
+func (d *delegatingBackend) setBackendForUpdateID(updateID string, b backendFn) {
 	d.m[updateID] = b
 }
 
-func (d *delegatingBackend) toBackend() enactment.Backend {
-	return func(ctx context.Context, scu *apipb.ScheduledControlUpdate) (*apipb.ControlPlaneState, error) {
-		uid := scu.GetUpdateId()
-		if b, ok := d.m[uid]; ok {
-			return b(ctx, scu)
-		}
-
-		err := fmt.Errorf("no delegate for update with ID %s", uid)
-		d.errs = append(d.errs, err)
-		return nil, err
+func (d *delegatingBackend) Apply(ctx context.Context, scu *apipb.ScheduledControlUpdate) (*apipb.ControlPlaneState, error) {
+	uid := scu.GetUpdateId()
+	if b, ok := d.m[uid]; ok {
+		return b(ctx, scu)
 	}
+
+	err := fmt.Errorf("no delegate for update with ID %s", uid)
+	d.errs = append(d.errs, err)
+	return nil, err
 }
 
 func (d *delegatingBackend) checkNoUnhandledUpdates(t *testing.T) {
@@ -1584,7 +1587,7 @@ func (f *testFixture) advanceClock(ctx context.Context, dur time.Duration) {
 	f.clock.Advance(dur)
 }
 
-func (f *testFixture) prepareEnactmentBackendForUpdateID(ctx context.Context, updateID string, eb enactment.Backend) {
+func (f *testFixture) prepareEnactmentBackendForUpdateID(ctx context.Context, updateID string, eb backendFn) {
 	zerolog.Ctx(ctx).Debug().Str("updateID", updateID).Msg("preparing response for update")
 	f.eb.setBackendForUpdateID(updateID, eb)
 }

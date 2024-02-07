@@ -16,6 +16,8 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 go_binary(
     name = "generate_jwt",
     embed = [":generate_jwt_lib"],
+    pure = "on",
+    static = "on",
     visibility = ["//visibility:public"],
 )
 

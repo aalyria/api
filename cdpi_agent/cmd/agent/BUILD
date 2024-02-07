@@ -12,30 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
-load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 
 package(default_visibility = ["//visibility:public"])
-
-proto_library(
-    name = "configpb_proto",
-    srcs = ["config.proto"],
-    deps = [
-        "//api/common:common_proto",
-        "@com_google_protobuf//:duration_proto",
-        "@com_google_protobuf//:empty_proto",
-    ],
-)
-
-go_proto_library(
-    name = "configpb_go_proto",
-    importpath = "aalyria.com/spacetime/cdpi_agent/cmd/agent/configpb",
-    protos = [":configpb_proto"],
-    deps = [
-        "//api/common:common_go_proto",
-    ],
-)
 
 go_binary(
     name = "agent",
@@ -46,29 +25,5 @@ go_library(
     name = "agent_lib",
     srcs = ["agent.go"],
     importpath = "aalyria.com/spacetime/cdpi_agent/cmd/agent",
-    deps = [
-        ":configpb_go_proto",
-        "//auth",
-        "//cdpi_agent",
-        "//cdpi_agent/enactment/extproc",
-        "//cdpi_agent/internal/protofmt",
-        "//cdpi_agent/internal/task",
-        "//cdpi_agent/telemetry/extproc",
-        "@com_github_jonboulle_clockwork//:clockwork",
-        "@com_github_rs_zerolog//:zerolog",
-        "@io_opentelemetry_go_contrib_instrumentation_google_golang_org_grpc_otelgrpc//:otelgrpc",
-        "@io_opentelemetry_go_otel//attribute",
-        "@io_opentelemetry_go_otel//propagation",
-        "@io_opentelemetry_go_otel//semconv/v1.17.0:v1_17_0",
-        "@io_opentelemetry_go_otel_exporters_otlp_otlptrace_otlptracegrpc//:otlptracegrpc",
-        "@io_opentelemetry_go_otel_sdk//resource",
-        "@io_opentelemetry_go_otel_sdk//trace",
-        "@io_opentelemetry_go_otel_trace//:trace",
-        "@org_golang_google_grpc//:go_default_library",
-        "@org_golang_google_grpc//backoff",
-        "@org_golang_google_grpc//channelz/service",
-        "@org_golang_google_grpc//credentials",
-        "@org_golang_google_grpc//credentials/insecure",
-        "@org_golang_x_sync//errgroup",
-    ],
+    deps = ["//cdpi_agent/internal/agentcli:agentcli_lib"],
 )

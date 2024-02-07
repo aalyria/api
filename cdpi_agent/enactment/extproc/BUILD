@@ -37,5 +37,6 @@ go_test(
     deps = [
         "//api/common:common_go_proto",
         "//cdpi_agent/internal/protofmt",
+        "@com_github_google_go_cmp//cmp",
     ],
 )

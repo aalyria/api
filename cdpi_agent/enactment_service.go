@@ -59,11 +59,13 @@ type enactmentService struct {
 
 type scheduledUpdate struct {
 	timer  clockwork.Timer
-	update *apipb.ScheduledControlUpdate
+	Update *apipb.ScheduledControlUpdate
+	Status *status.Status
+	Result *apipb.ControlPlaneState
 }
 
-func (nc *nodeController) newEnactmentService(cc afpb.CdpiClient, eb enactment.Backend) task.Task {
-	return task.Task((&enactmentService{
+func (nc *nodeController) newEnactmentService(cc afpb.CdpiClient, eb enactment.Backend) *enactmentService {
+	return &enactmentService{
 		eb:               eb,
 		cc:               cc,
 		mu:               sync.Mutex{},
@@ -72,11 +74,27 @@ func (nc *nodeController) newEnactmentService(cc afpb.CdpiClient, eb enactment.B
 		nodeID:           nc.id,
 		initState:        nc.initState,
 		priority:         nc.priority,
-	}).run).WithNewSpan("enactment_service")
+	}
+}
+
+func (es *enactmentService) Stats() interface{} {
+	return struct {
+		Backend          interface{}
+		ScheduledUpdates map[string]*scheduledUpdate
+		Priority         uint32
+	}{
+		Backend:          es.eb.Stats(),
+		ScheduledUpdates: es.scheduledUpdates,
+		Priority:         es.priority,
+	}
 }
 
 func (es *enactmentService) run(ctx context.Context) error {
 	g, ctx := errgroup.WithContext(ctx)
+
+	if err := es.eb.Init(ctx); err != nil {
+		return fmt.Errorf("%T.Init() failed: %w", es.eb, err)
+	}
 
 	stream, err := es.cc.Cdpi(ctx)
 	if err != nil {
@@ -177,6 +195,10 @@ func (es *enactmentService) run(ctx context.Context) error {
 	})
 
 	if es.initState != nil {
+		if es.initState.ForwardingState != nil {
+			es.initState.GetForwardingState().Timestamp = timeToProto(es.clock.Now())
+		}
+
 		g.Go(func() error {
 			_, err := es.cc.UpdateNodeState(ctx, &afpb.CdpiNodeStateRequest{
 				NodeId: &es.nodeID,
@@ -241,11 +263,9 @@ func (s *enactmentScheduler) enqueue(ctx context.Context, update *apipb.Schedule
 func (es *enactmentService) applyUpdate(ctx context.Context, upd *apipb.ScheduledControlUpdate) error {
 	updateID := *upd.UpdateId
 	log := zerolog.Ctx(ctx).With().Str("updateID", updateID).Int64("sequenceNum", sequenceNumberOf(upd)).Logger()
-	now := es.clock.Now()
-
 	var newState *apipb.ControlPlaneState
 	eb := task.Task(func(ctx context.Context) (err error) {
-		newState, err = es.eb(ctx, upd)
+		newState, err = es.eb.Apply(ctx, upd)
 		return err
 	}).WithNewSpan("enactment.Backend")
 
@@ -257,13 +277,25 @@ func (es *enactmentService) applyUpdate(ctx context.Context, upd *apipb.Schedule
 		enactmentResult = OK()
 	}
 
-	es.clock.AfterFunc(attemptedUpdateKeepAliveTimeout, func() {
-		log.Trace().Msg("cleaning already attempted scheduled update")
+	es.mu.Lock()
+	if su, ok := es.scheduledUpdates[updateID]; ok {
+		su.Status = enactmentResult
+		su.Result = newState
+	} else {
+		log.Error().Msgf("failed to find update in state map")
+	}
+	es.mu.Unlock()
 
+	es.clock.AfterFunc(attemptedUpdateKeepAliveTimeout, func() {
 		es.mu.Lock()
 		delete(es.scheduledUpdates, updateID)
 		es.mu.Unlock()
 	})
+
+	log.Trace().
+		Interface("state", newState).
+		Interface("status", enactmentResult).
+		Msg("got new state from backend")
 
 	if newState != nil {
 		if _, err := es.cc.UpdateNodeState(ctx, &afpb.CdpiNodeStateRequest{
@@ -277,7 +309,7 @@ func (es *enactmentService) applyUpdate(ctx context.Context, upd *apipb.Schedule
 		NodeId: &es.nodeID,
 		Status: &apipb.ScheduledControlUpdateStatus{
 			UpdateId:  &updateID,
-			Timestamp: timeToProto(now),
+			Timestamp: timeToProto(es.clock.Now()),
 			State: &apipb.ScheduledControlUpdateStatus_EnactmentAttempted{
 				EnactmentAttempted: enactmentResult.Proto(),
 			},
@@ -391,7 +423,7 @@ func (es *enactmentService) handleFutureScheduledUpdate(
 
 	es.mu.Lock()
 	switch existingUpd, updateExists := es.scheduledUpdates[updateID]; {
-	case updateExists && sequenceNumberOf(existingUpd.update) >= newSeqNum:
+	case updateExists && sequenceNumberOf(existingUpd.Update) >= newSeqNum:
 		// Our version of the update supercedes the most recently received one,
 		// no need to change anything.
 		state.State = &apipb.ScheduledControlUpdateStatus_Scheduled{
@@ -412,9 +444,9 @@ func (es *enactmentService) handleFutureScheduledUpdate(
 		// version with the most recently received one and set a timer for it.
 		es.scheduledUpdates[updateID] = &scheduledUpdate{
 			timer:  es.clock.AfterFunc(delay, updateCallback),
-			update: upd,
+			Update: upd,
 		}
-		state.State = &apipb.ScheduledControlUpdateStatus_Scheduled{}
+		state.State = &apipb.ScheduledControlUpdateStatus_Scheduled{Scheduled: OK().Proto()}
 	}
 	es.mu.Unlock()
 

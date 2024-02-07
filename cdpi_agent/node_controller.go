@@ -40,15 +40,20 @@ type nodeController struct {
 	services  []task.Task
 	// The channel priority of this controller's stream.
 	priority uint32
+
+	enactmentStats func() interface{}
+	telemetryStats func() interface{}
 }
 
 func (a *Agent) newNodeController(node *node, done func(), cdpiClient afpb.CdpiClient, telemetryClient afpb.NetworkTelemetryStreamingClient) *nodeController {
 	nc := &nodeController{
-		id:        node.id,
-		priority:  node.priority,
-		done:      done,
-		clock:     a.clock,
-		initState: node.initState,
+		id:             node.id,
+		priority:       node.priority,
+		done:           done,
+		clock:          a.clock,
+		initState:      node.initState,
+		enactmentStats: func() interface{} { return nil },
+		telemetryStats: func() interface{} { return nil },
 	}
 
 	rc := task.RetryConfig{
@@ -66,16 +71,26 @@ func (a *Agent) newNodeController(node *node, done func(), cdpiClient afpb.CdpiC
 
 	nc.services = []task.Task{}
 	if node.telemetryEnabled {
-		nc.services = append(nc.services, nc.newTelemetryService(telemetryClient, node.tb).
+		ts := nc.newTelemetryService(telemetryClient, node.tb)
+
+		nc.services = append(nc.services, task.Task(ts.run).
+			WithNewSpan("telemetry_service").
 			WithLogField("service", "telemetry").
 			WithRetries(rc).
 			WithPanicCatcher())
+
+		nc.telemetryStats = ts.Stats
 	}
 	if node.enactmentsEnabled {
-		nc.services = append(nc.services, nc.newEnactmentService(cdpiClient, node.eb).
+		es := nc.newEnactmentService(cdpiClient, node.eb)
+
+		nc.services = append(nc.services, task.Task(es.run).
+			WithNewSpan("enactment_service").
 			WithLogField("service", "enactment").
 			WithRetries(rc).
 			WithPanicCatcher())
+
+		nc.enactmentStats = es.Stats
 	}
 
 	return nc
@@ -84,4 +99,16 @@ func (a *Agent) newNodeController(node *node, done func(), cdpiClient afpb.CdpiC
 func (nc *nodeController) run(ctx context.Context) error {
 	defer nc.done()
 	return task.Group(nc.services...).WithPanicCatcher()(ctx)
+}
+
+type nodeControllerStats struct {
+	Enactment interface{}
+	Telemetry interface{}
+}
+
+func (nc *nodeController) Stats() interface{} {
+	return nodeControllerStats{
+		Enactment: nc.enactmentStats(),
+		Telemetry: nc.telemetryStats(),
+	}
 }

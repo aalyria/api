@@ -33,4 +33,6 @@ go_library(
 go_binary(
     name = "prom2spacetime",
     embed = [":prom2spacetime_lib"],
+    pure = "on",
+    static = "on",
 )

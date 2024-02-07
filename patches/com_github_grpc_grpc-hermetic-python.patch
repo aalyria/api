@@ -21,3 +21,12 @@
 @@ -35,1 +35,1 @@
 -        actual = "@local_config_python//:python_headers",
 +        actual = python_headers or "@local_config_python//:python_headers",
+
+--- src/core/lib/surface/call.cc
++++ src/core/lib/surface/call.cc
+@@ -725,1 +725,1 @@
+-
++  grpc_call_context_element context_[GRPC_CONTEXT_COUNT] = {};
+@@ -744,1 +744,1 @@
+-  grpc_call_context_element context_[GRPC_CONTEXT_COUNT] = {};
++

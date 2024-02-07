@@ -143,20 +143,3 @@ message ScheduledControlUpdateReq {
 message TaskCdpiStreamCount {
   map<uint32, int32> stream_count_per_priority = 1;
 }
-
-// Stores info regarding the CDPI streams attached to a CDPI Frontend task.
-// If the task is down, the info may be out of date.
-message CdpiFrontendInfo {
-  // Holds a count of active CDPI streams for a CDPI Frontend task, broken down
-  // by stream priority and node ID.
-  map<string, TaskCdpiStreamCount> stream_count_per_node = 1;
-}
-
-// Stores info regarding the CDPI streams available for a network node.
-message CdpiStreamInfo {
-  reserved 1, 4 to max;  // NEXT ID
-  // Holds a count of active CDPI streams for a CDPI Frontend task, broken down
-  // by stream priority.
-  map<string, TaskCdpiStreamCount> stream_count_per_task = 2;
-  map<uint32, int32> stream_count_per_priority = 3;
-}

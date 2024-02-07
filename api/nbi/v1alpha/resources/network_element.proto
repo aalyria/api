@@ -116,12 +116,17 @@ message SdnAgent {
 }
 
 // Models a network interface (aka network device, port, cable, or adapter).
-// Next ID: 17
+// Next ID: 18
 message NetworkInterface {
-  reserved 2, 5, 7, 9 to 13, 17 to max;
+  reserved 2, 5, 7, 9 to 13, 18 to max;
 
   // A node-unique identifier for the network interface.
   optional string interface_id = 1;
+
+  // Optional friendly, human-readable string. Named after the analagous
+  // description field in the YANG model for interfaces. See:
+  // https://datatracker.ietf.org/doc/html/rfc8343#section-5
+  optional string description = 17;
 
   // The interface's IP address represented as a CIDR notation subnet or single
   // IP address string.

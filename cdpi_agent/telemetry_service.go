@@ -16,6 +16,7 @@ package agent
 
 import (
 	"context"
+	"fmt"
 
 	afpb "aalyria.com/spacetime/api/cdpi/v1alpha"
 	apipb "aalyria.com/spacetime/api/common"
@@ -37,17 +38,23 @@ type telemetryService struct {
 	tb              telemetry.Backend
 }
 
-func (nc *nodeController) newTelemetryService(tc afpb.NetworkTelemetryStreamingClient, tb telemetry.Backend) task.Task {
-	return task.Task((&telemetryService{
+func (nc *nodeController) newTelemetryService(tc afpb.NetworkTelemetryStreamingClient, tb telemetry.Backend) *telemetryService {
+	return &telemetryService{
 		nodeID:          nc.id,
 		nc:              nc,
 		telemetryClient: tc,
 		tb:              tb,
-	}).run).WithNewSpan("telemetry_service")
+	}
 }
+
+func (ts *telemetryService) Stats() interface{} { return ts.tb.Stats() }
 
 func (ts *telemetryService) run(ctx context.Context) error {
 	g, ctx := errgroup.WithContext(ctx)
+
+	if err := ts.tb.Init(ctx); err != nil {
+		return fmt.Errorf("%T.Init() failed: %w", ts.tb, err)
+	}
 
 	ti, err := ts.telemetryClient.TelemetryInterface(ctx)
 	if err != nil {
@@ -120,10 +127,9 @@ func (ts *telemetryService) run(ctx context.Context) error {
 // forwards them to the `sendCh`.
 func (ts *telemetryService) statLoop(triggerCh <-chan struct{}, sendCh chan<- *afpb.TelemetryUpdate) task.Task {
 	mapFn := func(ctx context.Context, _ struct{}) (*afpb.TelemetryUpdate, error) {
-		zerolog.Ctx(ctx).Trace().Msg("got trigger")
 		var report *apipb.NetworkStatsReport
 		if err := task.Task(func(ctx context.Context) (err error) {
-			report, err = ts.tb(ctx, ts.nodeID)
+			report, err = ts.tb.GenerateReport(ctx, ts.nodeID)
 			return err
 		}).WithNewSpan("telemetry.Backend")(ctx); err != nil {
 			return nil, err
@@ -154,7 +160,6 @@ func (ts *telemetryService) mainLoop(triggerCh chan<- struct{}, recvCh <-chan *a
 
 			case <-ticker.Chan():
 				span.AddEvent("periodic telemetry report upload triggered")
-				log.Trace().Msg("triggering periodic report generation")
 				select {
 				case triggerCh <- struct{}{}:
 				case <-ctx.Done():
@@ -176,8 +181,6 @@ func (ts *telemetryService) mainLoop(triggerCh chan<- struct{}, recvCh <-chan *a
 				switch req.Type.(type) {
 				case *afpb.TelemetryRequest_QueryStatistics:
 					span.AddEvent("received request to trigger one-off report generation")
-					log.Trace().Msg("triggering one-off report generation")
-
 					select {
 					case triggerCh <- struct{}{}:
 					case <-ctx.Done():

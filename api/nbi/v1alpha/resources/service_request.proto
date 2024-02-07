@@ -22,6 +22,7 @@ import "api/common/tunnel.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 import "google/type/interval.proto";
+import "google/type/money.proto";
 
 option java_package = "com.aalyria.spacetime.api.nbi.v1alpha.resources";
 option go_package = "aalyria.com/spacetime/api/nbi/v1alpha/resources";
@@ -151,8 +152,15 @@ message ServiceRequest {
   // time.
   repeated IntentAndIntervals intent_dependencies = 14;
 
+  // This should be set to true if the requestor wants to allow service
+  // fulfillment using partner resources. Defaults to false.
+  optional bool allow_partner_resources = 19;
+
+  // The maximum budget allowed for this service request.
+  optional google.type.Money cost_per_minute_maximum = 20;
+
   reserved 1, 3, 7, 17;
-  reserved 19 to max;  // Next IDs.
+  reserved 21 to max;  // Next IDs.
 }
 
 // An external request to avoid using an otherwise available node to
