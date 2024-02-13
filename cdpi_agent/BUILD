@@ -65,7 +65,6 @@ go_test(
     deps = [
         "//api/cdpi/v1alpha:cdpi_go_grpc",
         "//api/common:common_go_proto",
-        "//cdpi_agent/enactment",
         "//cdpi_agent/internal/channels",
         "//cdpi_agent/internal/task",
         "@com_github_google_go_cmp//cmp",

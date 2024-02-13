@@ -44,9 +44,9 @@ http_archive(
         # See https://github.com/grpc/grpc/issues/31892
         "//patches:grpc.patch",
     ],
-    sha256 = "9cf1a69a921534ac0b760dcbefb900f3c2f735f56070bf0536506913bb5bfd74",
-    strip_prefix = "grpc-1.55.0",
-    urls = ["https://github.com/grpc/grpc/archive/refs/tags/v1.55.0.tar.gz"],
+    sha256 = "916f88a34f06b56432611aaa8c55befee96d0a7b7d7457733b9deeacbc016f99",
+    strip_prefix = "grpc-1.59.1",
+    urls = ["https://github.com/grpc/grpc/archive/refs/tags/v1.59.1.tar.gz"],
 )
 
 
@@ -75,9 +75,9 @@ http_archive(
 
 http_archive(
     name = "io_grpc_grpc_java",
-    sha256 = "be779db38a72a0c693706c433133189538b04979eba1b728eaa21f4fd0f967d8",
-    strip_prefix = "grpc-java-1.55.1",
-    urls = ["https://github.com/grpc/grpc-java/archive/v1.55.1.tar.gz"],
+    sha256 = "5b934dedf42e3fe080fa8143619fddc7cfdc1ec0101a731d0b55c3f6e30aaaad",
+    strip_prefix = "grpc-java-1.59.1",
+    urls = ["https://github.com/grpc/grpc-java/archive/v1.59.1.tar.gz"],
 )
 
 # Bazel platforms
@@ -111,6 +111,49 @@ http_archive(
     strip_prefix = "rules_python-0.22.0",
     url = "https://github.com/bazelbuild/rules_python/releases/download/0.22.0/rules_python-0.22.0.tar.gz",
 )
+
+http_archive(
+    name = "container_structure_test",
+    sha256 = "4fd1e0d4974fb95e06d0e94e6ceaae126382bf958524062db4e582232590b863",
+    strip_prefix = "container-structure-test-1.16.1",
+    urls = ["https://github.com/GoogleContainerTools/container-structure-test/archive/refs/tags/v1.16.1.zip"],
+)
+
+###### rules_oci
+http_archive(
+    name = "rules_oci",
+    sha256 = "d41d0ba7855f029ad0e5ee35025f882cbe45b0d5d570842c52704f7a47ba8668",
+    strip_prefix = "rules_oci-1.4.3",
+    url = "https://github.com/bazel-contrib/rules_oci/releases/download/v1.4.3/rules_oci-v1.4.3.tar.gz",
+)
+
+load("@rules_oci//oci:dependencies.bzl", "rules_oci_dependencies")
+
+rules_oci_dependencies()
+
+load("@rules_oci//oci:repositories.bzl", "LATEST_CRANE_VERSION", "oci_register_toolchains")
+
+oci_register_toolchains(
+    name = "oci",
+    crane_version = LATEST_CRANE_VERSION,
+    # Uncommenting the zot toolchain will cause it to be used instead of crane for some tasks.
+    # Note that it does not support docker-format images.
+    # zot_version = LATEST_ZOT_VERSION,
+)
+
+# You can pull your base images using oci_pull like this:
+load("@rules_oci//oci:pull.bzl", "oci_pull")
+
+oci_pull(
+    name = "alpine_base",
+    digest = "sha256:21a3deaa0d32a8057914f36584b5288d2e5ecc984380bc0118285c70fa8c9300",
+    image = "docker.io/library/alpine",
+    #tag = "3.15.0",
+    platforms = [
+        "linux/amd64",
+    ],
+)
+###########
 
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
 load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
@@ -453,6 +496,13 @@ go_repository(
 )
 
 go_repository(
+    name = "org_golang_x_exp",
+    importpath = "golang.org/x/exp",
+    sum = "h1:Gvh4YaCaXNs6dKTlfgismwWZKyjVZXwOPfIyUaqU3No=",
+    version = "v0.0.0-20231127185646-65229373498e",
+)
+
+go_repository(
     name = "org_golang_x_net",
     importpath = "golang.org/x/net",
     sum = "h1:cCR+9mKLOGyX4Zx+uBZDXEDAQsvKQ/XbW4vreG5v1jU=",
@@ -476,8 +526,8 @@ go_repository(
 go_repository(
     name = "org_golang_x_sys",
     importpath = "golang.org/x/sys",
-    sum = "h1:w36l2Uw3dRan1K3TyXriXvY+6T56GNmlKGcqiQUJDfM=",
-    version = "v0.0.0-20220517195934-5e4e11fc645e",
+    sum = "h1:Vz7Qs629MkJkGyHxUlRHizWJRG2j8fbQKjELVSNhy7Q=",
+    version = "v0.14.0",
 )
 
 go_repository(
@@ -485,6 +535,18 @@ go_repository(
     importpath = "golang.org/x/text",
     sum = "h1:olpwvP2KacW1ZWvsR7uQhoyTYvKAupfQrRGBFM352Gk=",
     version = "v0.3.7",
+)
+
+go_repository(
+    name = "com_github_vishvananda_netlink",
+    commit = "77df5d35f725f10c8ca5f5552c95782fd639b46c",
+    importpath = "github.com/vishvananda/netlink",
+)
+
+go_repository(
+    name = "com_github_vishvananda_netns",
+    commit = "fa017945dda9c92ba0b860b9f5d189b1ec827190",
+    importpath = "github.com/vishvananda/netns",
 )
 
 SCIP_JAVA_VERSION = "0.0.6"
@@ -504,11 +566,11 @@ load("@io_grpc_grpc_java//:repositories.bzl", "IO_GRPC_GRPC_JAVA_ARTIFACTS", "IO
 # REPIN=1 bazel run @unpinned_maven//:pin
 # Resolve and fetch grpc-java dependencies from a Maven respository.
 maven_install(
-    artifacts = 
-        IO_GRPC_GRPC_JAVA_ARTIFACTS + 
+    artifacts =
+        IO_GRPC_GRPC_JAVA_ARTIFACTS +
         ["com.google.code.gson:gson:2.10.1",
         "com.google.googlejavaformat:google-java-format:1.17.0",
-        "io.helidon.grpc:helidon-grpc-core:3.2.0",
+        "io.helidon.grpc:helidon-grpc-core:3.2.5",
         "org.bouncycastle:bcprov-jdk15on:1.70",
         "junit:junit:4.13.2",
         "org.mockito:mockito-core:4.5.1",

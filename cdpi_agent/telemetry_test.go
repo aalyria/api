@@ -34,6 +34,18 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+type CannedReportBackend struct {
+	fn func(context.Context, string) (*apipb.NetworkStatsReport, error)
+}
+
+func (c *CannedReportBackend) GenerateReport(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) {
+	return c.fn(ctx, nodeID)
+}
+
+func (c *CannedReportBackend) Init(ctx context.Context) error { return nil }
+func (c *CannedReportBackend) Close() error                   { return nil }
+func (c *CannedReportBackend) Stats() interface{}             { return nil }
+
 func TestStreamStartsWithInitialReport(t *testing.T) {
 	t.Parallel()
 
@@ -50,9 +62,9 @@ func TestStreamStartsWithInitialReport(t *testing.T) {
 			},
 		},
 	}
-	tb := func(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) {
+	tb := &CannedReportBackend{fn: func(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) {
 		return servedReport, nil
-	}
+	}}
 
 	a := newAgent(t,
 		WithClock(clockwork.NewFakeClock()),
@@ -92,12 +104,12 @@ func TestBackendReceivesNodeID(t *testing.T) {
 			},
 		},
 	}
-	tb := func(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) {
+	tb := &CannedReportBackend{fn: func(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) {
 		if nodeID != wantNodeID {
 			t.Errorf("Unexpected nodeID. Want %s got %s", wantNodeID, nodeID)
 		}
 		return servedReport, nil
-	}
+	}}
 
 	a := newAgent(t,
 		WithClock(clockwork.NewFakeClock()),
@@ -135,9 +147,9 @@ func TestCanRequestOneOffReport(t *testing.T) {
 			},
 		},
 	}
-	tb := func(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) {
+	tb := &CannedReportBackend{fn: func(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) {
 		return servedReport, nil
-	}
+	}}
 
 	a := newAgent(t,
 		WithClock(clockwork.NewFakeClock()),
@@ -191,9 +203,9 @@ func TestIgnoresUnknownRequestType(t *testing.T) {
 			},
 		},
 	}
-	tb := func(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) {
+	tb := &CannedReportBackend{fn: func(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) {
 		return servedReport, nil
-	}
+	}}
 
 	a := newAgent(t,
 		WithClock(clockwork.NewFakeClock()),
@@ -260,7 +272,7 @@ func TestPeriodicUpdates(t *testing.T) {
 	reportCh <- periodicReport
 	reportCh <- periodicReport
 
-	tb := func(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) { return <-reportCh, nil }
+	tb := &CannedReportBackend{fn: func(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) { return <-reportCh, nil }}
 
 	clock := clockwork.NewFakeClock()
 	a := newAgent(t,
@@ -335,7 +347,7 @@ func TestInitialReportFailsToGenerate(t *testing.T) {
 
 	// errors of type context.Canceled don't get retried
 	fatalErr := fmt.Errorf("something went wrong: %w", context.Canceled)
-	tb := func(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) { return nil, fatalErr }
+	tb := &CannedReportBackend{fn: func(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) { return nil, fatalErr }}
 
 	a := newAgent(t,
 		WithClock(clockwork.NewFakeClock()),
@@ -383,12 +395,12 @@ func TestPeriodicUpdatesAreStoppedWhenHzIsZero(t *testing.T) {
 	}
 
 	times := &atomic.Int64{}
-	tb := func(_ context.Context, _ string) (*apipb.NetworkStatsReport, error) {
+	tb := &CannedReportBackend{fn: func(_ context.Context, _ string) (*apipb.NetworkStatsReport, error) {
 		if times.Add(1) == 1 {
 			return initialReport, nil
 		}
 		return periodicReport, nil
-	}
+	}}
 
 	clock := clockwork.NewFakeClock()
 	a := newAgent(t,
@@ -505,7 +517,7 @@ func TestRequestsForWrongNodeIDAreIgnored(t *testing.T) {
 	reportCh <- initialReport
 	reportCh <- periodicReport
 
-	tb := func(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) { return <-reportCh, nil }
+	tb := &CannedReportBackend{fn: func(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) { return <-reportCh, nil }}
 
 	clock := clockwork.NewFakeClock()
 	a := newAgent(t,

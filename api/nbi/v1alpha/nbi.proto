@@ -53,12 +53,11 @@ enum EntityType {
   NETWORK_NODE = 3;         
   NETWORK_STATS_REPORT = 8; 
   PLATFORM_DEFINITION = 1;  
-  PROPAGATION_WEATHER = 15; 
   SERVICE_REQUEST = 2;      
   TRANSCEIVER_LINK_REPORT = 19;
   COMPUTED_MOTION = 7; 
 
-  reserved 14, 25 to max;  // (-- Next ID --)
+  reserved 14, 15, 25 to max;  // (-- Next ID --)
 }
 
 message EntityGroup {

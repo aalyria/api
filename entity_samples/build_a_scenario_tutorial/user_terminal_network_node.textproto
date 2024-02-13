@@ -12,20 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-id: "test-user-terminal-network-node"
-group: {
-  type: NETWORK_NODE
-}
-network_node {
-  name: "user-terminal"
-  type: "UserTerminal"
-  subnet: "107.89.175.219/32"
-  node_interface: {
-    interface_id: "wireless"
-    wireless: {
-      transceiver_model_id: {
-        platform_id: "test-user-terminal-platform-definition"
-        transceiver_model_id: "transceiver-model"
+entity {
+  id: "test-user-terminal-network-node"
+  group: {
+    type: NETWORK_NODE
+  }
+  network_node {
+    name: "user-terminal"
+    type: "UserTerminal"
+    subnet: "107.89.175.219/32"
+    node_interface: {
+      interface_id: "wireless"
+      wireless: {
+        transceiver_model_id: {
+          platform_id: "test-user-terminal-platform-definition"
+          transceiver_model_id: "transceiver-model"
+        }
       }
     }
   }

@@ -12,16 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-id: "test-pop-network-node"
-group: {
-  type: NETWORK_NODE
-}
-network_node {
-  name: "pop"
-  type: "POP"
-  subnet: "121.201.204.104/32"
-  node_interface: {
-    interface_id: "wan"
-    wired: {}
+entity {
+  id: "test-pop-network-node"
+  group: {
+    type: NETWORK_NODE
+  }
+  network_node {
+    name: "pop"
+    type: "POP"
+    subnet: "121.201.204.104/32"
+    node_interface: {
+      interface_id: "wan"
+      wired: {}
+    }
   }
 }

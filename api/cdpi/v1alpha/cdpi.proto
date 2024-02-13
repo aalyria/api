@@ -133,31 +133,6 @@ message SensorWeatherData {
   reserved 1, 2, 5 to max;
 }
 
-// This service defines the Spacetime control plane interface for Software 
-// Defined Wireless Networks (SDWN). It is implemented by controllers and 
-// CDPI agents.
-service NetworkControllerStreaming {
-  // Network elements initiate this bidirectional streaming interface by sending
-  // a ControlStateNotification that contains their current ControlPlaneState.
-  // The server will then begin streaming scheduled updates to the control-plane
-  // state of the network element.
-  //
-  // After enacting each ScheduledControlUpdate (whether enacted immediately, or
-  // at a specified time to enact), network elements should respond with a
-  // status update in a ControlStateNotification. For updates which take some
-  // time to execute, this response will not be immediate. For instance, upon
-  // executing a BeamUpdate which tasks a mechanically steered antenna to change
-  // its targeting task, the network element should not respond until after the
-  // beam has slewed and established a PHY-layer link with its target.
-  //
-  // Elements should also send a status update to notify the network controller
-  // of any unscheduled control-plane state changes or unexpected link failures.
-  //
-  // Only one network element may interface with Spacetime on a stream.
-  rpc ControlPlaneInterface(stream ControlStateNotification)
-      returns (stream ControlStateChangeRequest) {}
-}
-
 // This service defines the Spacetime network telemetry interface for Software
 // Defined Wireless Networks (SDWN). It is implemented by controllers and CDPI
 // agents.

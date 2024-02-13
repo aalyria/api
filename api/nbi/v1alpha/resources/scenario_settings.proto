@@ -67,7 +67,7 @@ message ScenarioSettings {
           ISL_PATTERN_NONE = 0;  // no ISLs
           ISL_PATTERN_NSEW =
               1;  // one ISL in each of North, South, East, West directions
-          ISL_PATTERN_NS = 2; // Forward and backward in-plane ISLs only.
+          ISL_PATTERN_NS = 2;  // Forward and backward in-plane ISLs only.
         }
         optional IslPattern isl_pattern = 6 [default = ISL_PATTERN_NONE];
       }
@@ -122,13 +122,13 @@ message ScenarioSettings {
     repeated SequentialChannelDefinition sequential_channel_definition = 2;
 
     // Determines whether or not the SDN performs channel assignment.
-    optional .aalyria.spacetime.api.common.ChannelSelectionMethod 
+    optional .aalyria.spacetime.api.common.ChannelSelectionMethod
         channel_selection_method = 3;
 
     // Allows the user to configure an ordered sequence that describes how the
     // wireless transmission is created or modified prior to the input of
     // the platform antenna that propagates the signal.
-    repeated .aalyria.spacetime.api.common.TransmitSignalProcessor 
+    repeated .aalyria.spacetime.api.common.TransmitSignalProcessor
         signal_processing_step = 4;
   }
 
@@ -140,13 +140,13 @@ message ScenarioSettings {
     repeated SequentialChannelDefinition sequential_channel_definition = 2;
 
     // Determines whether or not the SDN performs channel assignment.
-    optional .aalyria.spacetime.api.common.ChannelSelectionMethod 
+    optional .aalyria.spacetime.api.common.ChannelSelectionMethod
         channel_selection_method = 3;
 
     // Allows the user to configure an ordered sequence that describes how the
     // wireless transmission is modified or reconfigured starting from the
     // output of the platform antenna that receives the signal.
-    repeated .aalyria.spacetime.api.common.ReceiveSignalProcessor 
+    repeated .aalyria.spacetime.api.common.ReceiveSignalProcessor
         signal_processing_step = 4;
   }
 
@@ -154,10 +154,9 @@ message ScenarioSettings {
     optional string id = 1;
     optional TransmitterDefinition transmitter = 2;
     optional ReceiverDefinition receiver = 3;
-    optional .aalyria.spacetime.api.common.AntennaDefinition 
+    optional .aalyria.spacetime.api.common.AntennaDefinition
         antenna_definition = 4;
-    repeated .aalyria.spacetime.api.common.WirelessMac 
-        macs = 5;
+    repeated .aalyria.spacetime.api.common.WirelessMac macs = 5;
   }
 
   // Defines a set of sequential channel definitions, that is, a set of
@@ -187,12 +186,17 @@ message ScenarioSettings {
     // Gateway name, whatever string the user wants.
     optional string name = 1;
 
+    // The origin of this gateway. Used to specify 3rd party provenance.
+    // If this is empty, then this gateway belongs to the current instance
+    // by default.
+    optional string provider_endpoint = 11;
+
     // Saved location for this Ground Station.
     optional .aalyria.spacetime.api.common.GeodeticWgs84 location = 2;
 
     repeated TransceiverModel transceiver_models = 8;
     repeated WirelessInterface wireless_interfaces = 9;
-    
+
     // Each Gateway has exactly one wired interface.
     optional string wired_interface_id = 10 [default = "WAN"];
 
@@ -230,8 +234,8 @@ message ScenarioSettings {
     message UserTerminalGridDefinition {
       optional string name = 6;
 
-      optional .aalyria.spacetime.api.common.GeodeticWgs84 
-        south_west_corner = 1;
+      optional .aalyria.spacetime.api.common.GeodeticWgs84 south_west_corner =
+          1;
 
       optional uint32 row_count = 2;
 
@@ -322,11 +326,11 @@ message ScenarioSettings {
 
   repeated ShipFleet shipfleets = 9;
 
-  // A mapping of Gateways to the PoPs that each is allowed to connect to. 
+  // A mapping of Gateways to the PoPs that each is allowed to connect to.
   // The key and value are treated as keyword matchers: if a Gateway's name
   // contains one of the keys in this map, this Gateway will only be connected
   // to PoPs whose name contains the corresponding value.
   // Gateways whose names do not correspond to any keys will be
-  // connected to the closest PoP. 
+  // connected to the closest PoP.
   map<string, string> gateway_to_permitted_pops = 10;
 }

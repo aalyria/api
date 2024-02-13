@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-id: "test-pop-to-user-terminal-service-request"
-group: {
-  type: SERVICE_REQUEST
-}
-service_request {
-  src_node_id: "test-pop-network-node"
-  dst_node_id: "test-user-terminal-network-node"
-  requirements: {
-    bandwidth_bps_requested: 1e+06
+entity {
+  id: "test-pop-to-user-terminal-service-request"
+  group: {
+    type: SERVICE_REQUEST
+  }
+  service_request {
+    src_node_id: "test-pop-network-node"
+    dst_node_id: "test-user-terminal-network-node"
+    requirements: {
+      bandwidth_bps_requested: 1e+06
+    }
   }
 }
