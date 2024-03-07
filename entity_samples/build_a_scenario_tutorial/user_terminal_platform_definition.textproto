@@ -12,76 +12,78 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-id: "test-user-terminal-platform-definition"
-group: {
-  type: PLATFORM_DEFINITION
-}
-platform {
-  name: "user-terminal"
-  type: "UserTerminal"
-  coordinates: {
-    geodetic_wgs84: {
-      longitude_deg: -121.7
-      latitude_deg: 37.7
-    }
+entity {
+  id: "test-user-terminal-platform-definition"
+  group: {
+    type: PLATFORM_DEFINITION
   }
-
-  transceiver_model: {
-    id: "transceiver-model"
-
-    transmitter: {
-      name: "tx"
-      channel_set: {
-        key: "test-band-profile"
-        value: {
-          channel: {
-            key: 1000000000
-            value: {
-              max_power_watts: 100
+  platform {
+    name: "user-terminal"
+    type: "UserTerminal"
+    coordinates: {
+      geodetic_wgs84: {
+        longitude_deg: -121.7
+        latitude_deg: 37.7
+      }
+    }
+  
+    transceiver_model: {
+      id: "transceiver-model"
+  
+      transmitter: {
+        name: "tx"
+        channel_set: {
+          key: "test-band-profile"
+          value: {
+            channel: {
+              key: 1000000000
+              value: {
+                max_power_watts: 100
+              }
+            }
+          }
+        }
+        signal_processing_step: {
+          amplifier: {
+            constant_gain: {
+              gain_db: 10
+              noise_factor: 1
+              reference_temperature_k: 290
             }
           }
         }
       }
-      signal_processing_step: {
-        amplifier: {
-          constant_gain: {
-            gain_db: 10
-            noise_factor: 1
-            reference_temperature_k: 290
+  
+      receiver: {
+        name: "rx"
+        channel_set: {
+          key: "test-band-profile"
+          value: {
+            center_frequency_hz: 12000000000
+          }
+        }
+        signal_processing_step: {
+          amplifier: {
+            constant_gain: {
+              gain_db: 10
+              noise_factor: 1
+              reference_temperature_k: 290
+            }
           }
         }
       }
-    }
-
-    receiver: {
-      name: "rx"
-      channel_set: {
-        key: "test-band-profile"
-        value: {
-          center_frequency_hz: 12000000000
-        }
+  
+      antenna: {
+        name: "antenna"
+        antenna_pattern_id: "test-antenna-pattern"
+        targeting: {}
       }
-      signal_processing_step: {
-        amplifier: {
-          constant_gain: {
-            gain_db: 10
-            noise_factor: 1
-            reference_temperature_k: 290
-          }
-        }
+  
+      macs {
+        type: "DVBS2"
+        role: "HUB"
+        max_connections: 1
       }
-    }
-
-    antenna: {
-      name: "antenna"
-      antenna_pattern_id: "test-antenna-pattern"
-      targeting: {}
-    }
-
-    macs {
-      type: "DVBS2"
-      role: "HUB"
-      max_connections: 1
     }
   }
 }
