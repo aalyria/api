@@ -46,10 +46,14 @@ type backend struct {
 }
 
 func New(cmdFn func(context.Context) *exec.Cmd, format protofmt.Format) enactment.Backend {
-	return (&backend{cmdFn: cmdFn, protoFmt: format}).handleRequest
+	return &backend{cmdFn: cmdFn, protoFmt: format}
 }
 
-func (eb *backend) handleRequest(ctx context.Context, req *apipb.ScheduledControlUpdate) (*apipb.ControlPlaneState, error) {
+func (eb *backend) Close() error               { return nil }
+func (eb *backend) Init(context.Context) error { return nil }
+func (eb *backend) Stats() interface{}         { return nil }
+
+func (eb *backend) Apply(ctx context.Context, req *apipb.ScheduledControlUpdate) (*apipb.ControlPlaneState, error) {
 	log := zerolog.Ctx(ctx).With().Str("backend", "extproc").Logger()
 
 	js, err := eb.protoFmt.Marshal(req)
@@ -58,22 +62,14 @@ func (eb *backend) handleRequest(ctx context.Context, req *apipb.ScheduledContro
 	}
 
 	stdinBuf := bytes.NewBuffer(js)
-	stdoutBuf := bytes.NewBuffer(nil)
 
 	cmd := eb.cmdFn(ctx)
 	cmd.Stdin = stdinBuf
 
-	log.Trace().Msg("starting command")
-	if err = cmd.Start(); err != nil {
-		return nil, fmt.Errorf("starting command: %w", err)
-	}
-
-	log.Trace().Msg("waiting for command")
-	if err = cmd.Wait(); err != nil {
+	reportData, err := cmd.Output()
+	if err != nil {
 		return nil, extprocs.CommandError(err)
 	}
-
-	reportData := stdoutBuf.Bytes()
 	if len(reportData) == 0 {
 		log.Trace().Msg("command exited with no new status")
 		return nil, nil

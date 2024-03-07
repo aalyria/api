@@ -21,7 +21,7 @@ load("@rules_proto_grpc//python:defs.bzl", "python_grpc_library")
 package(default_visibility = ["//visibility:public"])
 
 proto_library(
-    name = "nbi_resources_proto",
+    name = "resources_proto",
     srcs = [
         "antenna_pattern.proto",
         "coverage.proto",
@@ -30,49 +30,49 @@ proto_library(
         "motion_evaluation.proto",
         "network_element.proto",
         "network_link.proto",
-        "scenario_settings.proto",
         "service_request.proto",
         "wireless_evaluation.proto",
         "wireless_interference.proto",
     ],
     deps = [
         "//api/common:common_proto",
+        "@com_google_googleapis//google/rpc:code_proto",
+        "@com_google_googleapis//google/type:interval_proto",
+        "@com_google_googleapis//google/type:money_proto",
         "@com_google_protobuf//:any_proto",
         "@com_google_protobuf//:duration_proto",
         "@com_google_protobuf//:timestamp_proto",
-        "@go_googleapis//google/rpc:code_proto",
-        "@go_googleapis//google/type:interval_proto",
     ],
 )
 
 cpp_grpc_library(
     name = "nbi_resources_cpp_grpc",
     generate_mocks = True,
-    protos = [":nbi_resources_proto"],
+    protos = [":resources_proto"],
     deps = [
         "//api/common:common_cpp_proto",
         "@com_google_googleapis//google/api:annotations_cc_proto",
         "@com_google_googleapis//google/rpc:code_cc_proto",
         "@com_google_googleapis//google/type:interval_cc_proto",
+        "@com_google_googleapis//google/type:money_cc_proto",
     ],
 )
 
 go_proto_library(
     name = "nbi_resources_go_grpc",
-    compilers = ["@io_bazel_rules_go//proto:go_grpc"],
     importpath = "aalyria.com/spacetime/api/nbi/v1alpha/resources",
-    protos = [":nbi_resources_proto"],
+    proto = ":resources_proto",
     deps = [
         "//api/common:common_go_proto",
-        "@go_googleapis//google/api:annotations_go_proto",
-        "@go_googleapis//google/rpc:code_go_proto",
-        "@go_googleapis//google/type:interval_go_proto",
+        "@org_golang_google_genproto//googleapis/type/interval",
+        "@org_golang_google_genproto//googleapis/type/money",
+        "@org_golang_google_genproto_googleapis_rpc//code",
     ],
 )
 
 java_grpc_library(
     name = "nbi_resources_java_grpc",
-    protos = [":nbi_resources_proto"],
+    protos = [":resources_proto"],
     deps = [
         "//api/common:common_java_proto",
         "@com_google_googleapis//google/api:api_java_proto",
@@ -83,9 +83,10 @@ java_grpc_library(
 
 python_grpc_library(
     name = "nbi_resources_python_grpc",
-    protos = [":nbi_resources_proto"],
+    protos = [":resources_proto"],
     deps = [
         "//api/common:common_python_proto",
         "@com_google_googleapis//google/rpc:code_py_proto",
+        "@com_google_googleapis//google/type:money_py_proto",
     ],
 )

@@ -30,7 +30,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//api/common:common_go_proto",
-        "//api/nbi/v1alpha:nbi_go_grpc",
+        "//api/nbi/v1alpha:v1alpha_go_proto",
         "//api/nbi/v1alpha/resources:nbi_resources_go_grpc",
         "//auth",
         "//tools/nbictl/proto:nbictl_go_proto",
@@ -39,7 +39,7 @@ go_library(
         "@com_github_jhump_protoreflect//grpcreflect",
         "@com_github_jonboulle_clockwork//:clockwork",
         "@com_github_urfave_cli_v2//:cli",
-        "@go_googleapis//google/type:interval_go_proto",
+        "@org_golang_google_genproto//googleapis/type/interval",
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_google_grpc//credentials",
         "@org_golang_google_grpc//credentials/insecure",
@@ -65,7 +65,7 @@ go_test(
     embed = [":nbictl"],
     deps = [
         "//api/common:common_go_proto",
-        "//api/nbi/v1alpha:nbi_go_grpc",
+        "//api/nbi/v1alpha:v1alpha_go_proto",
         "//api/nbi/v1alpha/resources:nbi_resources_go_grpc",
         "//auth/authtest",
         "//tools/nbictl/proto:nbictl_go_proto",

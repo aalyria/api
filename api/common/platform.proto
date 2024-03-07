@@ -51,6 +51,7 @@ message PlatformDefinition {
   }
   optional MotionSource motion_source = 16;
 
+  // WARNING: This field is under development and not fully supported.
   // A string identifier indicating the `MotionDefinition` ID to be used for
   // the description of this platform's motion.
   //

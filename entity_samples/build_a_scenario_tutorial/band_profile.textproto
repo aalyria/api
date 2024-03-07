@@ -12,24 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-id: "test-band-profile"
-group: {
-  type: BAND_PROFILE
-}
-band_profile {
-  channel_width_hz: 250000000
-  rate_table: {
-    received_signal_power_steps: {
-      min_received_signal_power_dbw: -100
-      tx_data_rate_bps: 1e8
-    }
-    received_signal_power_steps: {
-      min_received_signal_power_dbw: -90
-      tx_data_rate_bps: 2e8
-    }
-    received_signal_power_steps: {
-      min_received_signal_power_dbw: -80
-      tx_data_rate_bps: 3e8
+entity {
+  id: "test-band-profile"
+  group: {
+    type: BAND_PROFILE
+  }
+  band_profile {
+    channel_width_hz: 250000000
+    rate_table: {
+      received_signal_power_steps: {
+        min_received_signal_power_dbw: -100
+        tx_data_rate_bps: 1e8
+      }
+      received_signal_power_steps: {
+        min_received_signal_power_dbw: -90
+        tx_data_rate_bps: 2e8
+      }
+      received_signal_power_steps: {
+        min_received_signal_power_dbw: -80
+        tx_data_rate_bps: 3e8
+      }
     }
   }
 }

@@ -14,7 +14,7 @@
 
 load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@rules_proto_grpc//cpp:defs.bzl", "cpp_proto_library")
-load("@rules_proto_grpc//go:defs.bzl", "go_proto_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 load("@rules_proto_grpc//java:defs.bzl", "java_proto_library")
 load("@rules_proto_grpc//python:defs.bzl", "python_proto_library")
 
@@ -39,18 +39,17 @@ proto_library(
         "tunnel.proto",
         "wireless.proto",
         "wireless_modcod.proto",
-        "wireless_propagation.proto",
         "wireless_receiver.proto",
         "wireless_transceiver.proto",
         "wireless_transmitter.proto",
     ],
     deps = [
         "//api/types:types_proto",
+        "@com_google_googleapis//google/rpc:status_proto",
+        "@com_google_googleapis//google/type:interval_proto",
         "@com_google_protobuf//:duration_proto",
         "@com_google_protobuf//:empty_proto",
         "@com_google_protobuf//:timestamp_proto",
-        "@go_googleapis//google/rpc:status_proto",
-        "@go_googleapis//google/type:interval_proto",
     ],
 )
 
@@ -67,11 +66,11 @@ cpp_proto_library(
 go_proto_library(
     name = "common_go_proto",
     importpath = "aalyria.com/spacetime/api/common",
-    protos = [":common_proto"],
+    proto = ":common_proto",
     deps = [
         "//api/types:types_go_proto",
-        "@go_googleapis//google/rpc:status_go_proto",
-        "@go_googleapis//google/type:interval_go_proto",
+        "@org_golang_google_genproto//googleapis/type/interval",
+        "@org_golang_google_genproto_googleapis_rpc//status",
     ],
 )
 

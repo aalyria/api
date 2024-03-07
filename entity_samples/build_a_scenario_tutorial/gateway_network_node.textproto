@@ -12,25 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-id: "test-gateway-network-node"
-group: {
-  type: NETWORK_NODE
-}
-network_node {
-  name: "gateway"
-  type: "Gateway"
-  subnet: "211.154.172.215/32"
-  node_interface: {
-    interface_id: "wireless"
-    wireless: {
-      transceiver_model_id: {
-        platform_id: "test-gateway-platform-definition"
-        transceiver_model_id: "transceiver-model"
+entity {
+  id: "test-gateway-network-node"
+  group: {
+    type: NETWORK_NODE
+  }
+  network_node {
+    name: "gateway"
+    type: "Gateway"
+    subnet: "211.154.172.215/32"
+    node_interface: {
+      interface_id: "wireless"
+      wireless: {
+        transceiver_model_id: {
+          platform_id: "test-gateway-platform-definition"
+          transceiver_model_id: "transceiver-model"
+        }
       }
     }
-  }
-  node_interface: {
-    interface_id: "wan"
-    wired: {}
+    node_interface: {
+      interface_id: "wan"
+      wired: {}
+    }
   }
 }
