@@ -43,16 +43,13 @@ message TxChannels {
 
 // Models a wireless transmitter.
 message TransmitterDefinition {
-  reserved 1, 3 to 12, 16, 18 to max;
+  reserved 1, 3 to 12, 13, 16, 18 to max;
 
   // An optional friendly, human-readable string.
   optional string name = 2;
 
   // Maps a band profile ID to a set of channels.
   map<string, TxChannels> channel_set = 14;
-
-  // Determines whether or not the SDN performs channel assignment.
-  optional ChannelSelectionMethod channel_selection_method = 13;
 
   // Allows the user to configure an ordered sequence that describes how the
   // wireless transmission is created or modified prior to the input of

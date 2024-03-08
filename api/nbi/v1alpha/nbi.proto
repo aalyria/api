@@ -29,7 +29,6 @@ import "api/nbi/v1alpha/resources/intent.proto";
 import "api/nbi/v1alpha/resources/motion_evaluation.proto";
 import "api/nbi/v1alpha/resources/network_element.proto";
 import "api/nbi/v1alpha/resources/network_link.proto";
-import "api/nbi/v1alpha/resources/scenario_settings.proto";
 import "api/nbi/v1alpha/resources/service_request.proto";
 import "api/nbi/v1alpha/resources/wireless_interference.proto";
 import "google/type/interval.proto";
@@ -41,7 +40,6 @@ enum EntityType {
   ENTITY_TYPE_UNSPECIFIED = 0;
   ANTENNA_PATTERN = 12;      
   BAND_PROFILE = 16;         
-  CDPI_STREAM_INFO = 17;     
   DEVICES_IN_REGION = 24;    
   STATION_SET = 21;          
   SURFACE_REGION = 22;       
@@ -49,16 +47,17 @@ enum EntityType {
   INTENT = 6;                
   INTERFACE_LINK_REPORT = 5; 
   INTERFERENCE_CONSTRAINT = 23;
+  // WARNING: This type is under development and not fully supported.
   MOTION_DEFINITION = 4;    
   NETWORK_NODE = 3;         
   NETWORK_STATS_REPORT = 8; 
   PLATFORM_DEFINITION = 1;  
-  PROPAGATION_WEATHER = 15; 
   SERVICE_REQUEST = 2;      
   TRANSCEIVER_LINK_REPORT = 19;
+  // WARNING: This type is under development and not fully supported.
   COMPUTED_MOTION = 7; 
 
-  reserved 14, 25 to max;  // (-- Next ID --)
+  reserved 14, 15, 17, 25 to max;  // (-- Next ID --)
 }
 
 message EntityGroup {
@@ -104,7 +103,7 @@ message Entity {
     aalyria.spacetime.api.nbi.v1alpha.resources.AntennaPattern antenna_pattern =
         15;
     aalyria.spacetime.api.common.BandProfile band_profile = 20;
-    aalyria.spacetime.api.common.CdpiStreamInfo cdpi_stream_info = 23;
+    // WARNING: This message is under development and not fully supported.
     aalyria.spacetime.api.nbi.v1alpha.resources.ComputedMotion computed_motion =
         10;
     aalyria.spacetime.api.nbi.v1alpha.resources.DevicesInRegion
@@ -119,6 +118,7 @@ message Entity {
         interface_link_report = 8;
     aalyria.spacetime.api.nbi.v1alpha.resources.InterferenceConstraint
         interference_constraint = 29;
+    // WARNING: This message is under development and not fully supported.
     aalyria.spacetime.api.common.MotionDefinition motion_definition = 7;
     aalyria.spacetime.api.nbi.v1alpha.resources.NetworkNode network_node = 6;
     aalyria.spacetime.api.common.NetworkStatsReport network_stats_report = 11;
@@ -129,7 +129,7 @@ message Entity {
         transceiver_link_report = 25;
   }
 
-  reserved 18, 35 to max;
+  reserved 18, 23, 35 to max;
 }
 
 service NetOps {
@@ -145,14 +145,6 @@ service NetOps {
       returns (ListEntitiesOverTimeResponse) {}
 
   rpc DeleteEntity(DeleteEntityRequest) returns (DeleteEntityResponse) {}
-
-  // Loads a scenario specified as a
-  // com.aalyria.resources.ScenarioSettings proto.
-  // Deprecated. This endpoint is in the process of being replaced by a
-  // more general purpose interface.
-  rpc LoadScenario(LoadScenarioRequest) returns (LoadScenarioResponse) {
-    option deprecated = true;
-  }
 }
 
 message GetEntityRequest {
@@ -256,13 +248,4 @@ message DeleteEntityRequest {
 }
 
 message DeleteEntityResponse {
-}
-
-message LoadScenarioRequest {
-  // Specifies the entities within the scenario that will be loaded.
-  optional aalyria.spacetime.api.nbi.v1alpha.resources.ScenarioSettings
-      scenario_settings = 1;
-}
-
-message LoadScenarioResponse {
 }

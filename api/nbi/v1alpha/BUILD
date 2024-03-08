@@ -25,13 +25,14 @@ proto_library(
     srcs = [
         "nbi.proto",
         "signal_propagation.proto",
+        "txtpb_entities.proto",
     ],
     deps = [
         "//api/common:common_proto",
-        "//api/nbi/v1alpha/resources:nbi_resources_proto",
+        "//api/nbi/v1alpha/resources:resources_proto",
+        "@com_google_googleapis//google/type:interval_proto",
         "@com_google_protobuf//:duration_proto",
         "@com_google_protobuf//:timestamp_proto",
-        "@go_googleapis//google/type:interval_proto",
     ],
 )
 
@@ -44,19 +45,6 @@ cpp_grpc_library(
         "//api/nbi/v1alpha/resources:nbi_resources_cpp_grpc",
         "@com_google_googleapis//google/rpc:code_cc_proto",
         "@com_google_googleapis//google/type:interval_cc_proto",
-    ],
-)
-
-go_proto_library(
-    name = "nbi_go_grpc",
-    compilers = ["@io_bazel_rules_go//proto:go_grpc"],
-    importpath = "aalyria.com/spacetime/api/nbi/v1alpha",
-    protos = [":nbi_proto"],
-    deps = [
-        "//api/common:common_go_proto",
-        "//api/nbi/v1alpha/resources:nbi_resources_go_grpc",
-        "@go_googleapis//google/rpc:code_go_proto",
-        "@go_googleapis//google/type:interval_go_proto",
     ],
 )
 
@@ -78,5 +66,17 @@ python_grpc_library(
     deps = [
         "//api/common:common_python_proto",
         "//api/nbi/v1alpha/resources:nbi_resources_python_grpc",
+    ],
+)
+
+go_proto_library(
+    name = "v1alpha_go_proto",
+    compilers = ["@io_bazel_rules_go//proto:go_grpc"],
+    importpath = "aalyria.com/spacetime/api/nbi/v1alpha",
+    proto = ":nbi_proto",
+    deps = [
+        "//api/common:common_go_proto",
+        "//api/nbi/v1alpha/resources:nbi_resources_go_grpc",
+        "@org_golang_google_genproto//googleapis/type/interval",
     ],
 )

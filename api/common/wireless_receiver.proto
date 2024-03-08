@@ -37,16 +37,13 @@ message RxChannels {
 
 // Models a wireless receiver.
 message ReceiverDefinition {
-  reserved 1, 3 to 8, 12, 13 to max;
+  reserved 1, 3 to 8, 9, 12, 13 to max;
 
   // An optional friendly, human-readable string.
   optional string name = 2;
 
   // Maps a band profile ID to a set of channels.
   map<string, RxChannels> channel_set = 10;
-
-  // Determines whether or not the SDN performs channel assignment.
-  optional ChannelSelectionMethod channel_selection_method = 9;
 
   // Allows the user to configure an ordered sequence that describes how the
   // wireless transmission is modified or reconfigured starting from the output
@@ -66,15 +63,19 @@ message ReceiveSignalProcessor {
 
 // Models a signal filter.
 message Filter {
-  // This field is optional; it should be omitted for receivers that can
-  // automatically reconfigure their frequency to match that of the intended
-  // transmitter. Set this only if the filter's frequency is static.
+  // Optional. Set this only if the filter's frequency is static.
+  // If the field is not set, it will be configured dynamically according to the
+  // center of frequency of the channel in use.
   optional double frequency_hz = 1;
 
-  // The offset to the lower bandwidth limit, in Hz.
+  // Optional. The offset to the lower bandwidth limit, in Hz.
+  // If the field is not set, it will be configured dynamically according to the
+  // bandwidth of the channel in use, provided through the BAND_PROFILE entity.
   optional double lower_bandwidth_limit_hz = 2;
 
-  // The offset to the upper bandwidth limit, in Hz.
+  // Optional. The offset to the upper bandwidth limit, in Hz.
+  // If the field is not set, it will be configured dynamically according to the
+  // bandwidth of the channel in use, provided through the BAND_PROFILE entity.
   optional double upper_bandwidth_limit_hz = 3;
 
   // The thermal noise temperature of the filter, in Kelvin.

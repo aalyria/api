@@ -13,18 +13,63 @@
 # limitations under the License.
 
 load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+load("@rules_proto_grpc//cpp:defs.bzl", "cpp_grpc_library")
+load("@rules_proto_grpc//java:defs.bzl", "java_grpc_library")
+load("@rules_proto_grpc//python:defs.bzl", "python_grpc_library")
+
+package(default_visibility = ["//visibility:public"])
 
 proto_library(
     name = "fed_proto",
     srcs = [
         "fed.proto",
     ],
-    visibility = ["//visibility:public"],
     deps = [
         "//api/common:common_proto",
+        "@com_google_googleapis//google/type:interval_proto",
+        "@com_google_googleapis//google/type:money_proto",
         "@com_google_protobuf//:duration_proto",
         "@com_google_protobuf//:empty_proto",
-        "@go_googleapis//google/type:interval_proto",
-        "@go_googleapis//google/type:money_proto",
+    ],
+)
+
+cpp_grpc_library(
+    name = "fed_cpp_grpc",
+    generate_mocks = True,
+    protos = [":fed_proto"],
+    deps = [
+        "//api/common:common_cpp_proto",
+        "@com_google_googleapis//google/type:money_cc_proto",
+    ],
+)
+
+go_proto_library(
+    name = "fed_go_grpc",
+    compilers = ["@io_bazel_rules_go//proto:go_grpc"],
+    importpath = "aalyria.com/spacetime/api/fed/v1alpha",
+    proto = ":fed_proto",
+    deps = [
+        "//api/common:common_go_proto",
+        "@org_golang_google_genproto//googleapis/type/interval",
+        "@org_golang_google_genproto//googleapis/type/money",
+    ],
+)
+
+java_grpc_library(
+    name = "fed_java_grpc",
+    protos = [":fed_proto"],
+    deps = [
+        "//api/common:common_java_proto",
+        "@com_google_googleapis//google/type:type_java_proto",
+        "@maven//:com_google_api_grpc_proto_google_common_protos",
+    ],
+)
+
+python_grpc_library(
+    name = "fed_python_grpc",
+    protos = [":fed_proto"],
+    deps = [
+        "//api/common:common_python_proto",
     ],
 )

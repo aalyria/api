@@ -21,7 +21,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -265,15 +264,16 @@ func startInsecureServer(ctx context.Context, t *testing.T, g *errgroup.Group) *
 	return srv
 }
 
-// Writes entities to the given directory in files named {entity ID}.textproto.
-func writeEntitiesToFile(entities []*nbipb.Entity, filePath string) error {
-	for _, entity := range entities {
-		textprotoBytes, err := prototext.MarshalOptions{Multiline: true}.Marshal(entity)
+// Writes entities to the given directory in files named entities-%d.textproto.
+func writeEntitiesToFiles(entitiesFiles [][]*nbipb.Entity, filePath string) error {
+	for i, entities := range entitiesFiles {
+		entitiesProto := &nbipb.TxtpbEntities{Entity: entities}
+		textprotoBytes, err := prototext.MarshalOptions{Multiline: true}.Marshal(entitiesProto)
 		if err != nil {
 			return err
 		}
 
-		err = os.WriteFile(filepath.Join(filePath, entity.GetId()+".textproto"), textprotoBytes, 0o666)
+		err = os.WriteFile(filepath.Join(filePath, fmt.Sprintf("entities-%d.textproto", i)), textprotoBytes, 0o666)
 		if err != nil {
 			return err
 		}
@@ -307,25 +307,29 @@ func readEntitiesFromFile(filePath string) ([]*nbipb.Entity, error) {
 	return entities, nil
 }
 
-// Returns PLATFORM_DEFINITION entities whose IDs are 'entity-{i}',
-// where i runs from 0 to (numEntities - 1).
-func buildTestEntities(numEntities int) []*nbipb.Entity {
-	entities := make([]*nbipb.Entity, 0, numEntities)
-	for i := 0; i < numEntities; i++ {
-		entityIdStr := "entity-" + strconv.Itoa(i)
-		entities = append(entities, &nbipb.Entity{
-			Id: proto.String(entityIdStr),
-			Group: &nbipb.EntityGroup{
-				Type: nbipb.EntityType_PLATFORM_DEFINITION.Enum(),
-			},
-			Value: &nbipb.Entity_Platform{
-				Platform: &commonpb.PlatformDefinition{
-					Name: proto.String(entityIdStr),
+// Returns PLATFORM_DEFINITION entities whose IDs are 'entity-{f}-{i}',
+// where f runs from 0 to (numFiles - 1) and i runs from 0 to (numEntities - 1).
+func buildTestEntities(numFiles int, numEntities int) [][]*nbipb.Entity {
+	files := make([][]*nbipb.Entity, 0)
+	for f := 0; f < numFiles; f++ {
+		entities := make([]*nbipb.Entity, 0)
+		for i := 0; i < numEntities; i++ {
+			entityIdStr := fmt.Sprintf("entity-%d-%d", f, i)
+			entities = append(entities, &nbipb.Entity{
+				Id: proto.String(entityIdStr),
+				Group: &nbipb.EntityGroup{
+					Type: nbipb.EntityType_PLATFORM_DEFINITION.Enum(),
 				},
-			},
-		})
+				Value: &nbipb.Entity_Platform{
+					Platform: &commonpb.PlatformDefinition{
+						Name: proto.String(entityIdStr),
+					},
+				},
+			})
+			files = append(files, entities)
+		}
 	}
-	return entities
+	return files
 }
 
 func TestEndToEnd(t *testing.T) {
@@ -337,8 +341,8 @@ func TestEndToEnd(t *testing.T) {
 		// Entities that are provided as inputs to the test case.
 		// These are written to a temporary directory, which is
 		// passed in the --files argument.
-		entityFiles []*nbipb.Entity
-		expectFn    func([]byte) error
+		entitiesFiles [][]*nbipb.Entity
+		expectFn      func([]byte) error
 		// Whether to verify the output of the test based on the
 		// state of the fake server.
 		expectServerStateFn func(*FakeNetOpsServer) error
@@ -376,13 +380,15 @@ func TestEndToEnd(t *testing.T) {
 	}
 
 	// Verifies that all of the expected entities were processed by the server.
-	expectEntityIDs := func(expectedEntities []*nbipb.Entity) func(*FakeNetOpsServer) error {
+	expectEntityIDs := func(expectedEntities [][]*nbipb.Entity) func(*FakeNetOpsServer) error {
 		return func(testServer *FakeNetOpsServer) error {
 			missingEntityIDs := []string{}
-			for _, e := range expectedEntities {
-				id := e.GetId()
-				if _, ok := testServer.EntityIDsModified[id]; !ok {
-					missingEntityIDs = append(missingEntityIDs, id)
+			for _, entities := range expectedEntities {
+				for _, e := range entities {
+					id := e.GetId()
+					if _, ok := testServer.EntityIDsModified[id]; !ok {
+						missingEntityIDs = append(missingEntityIDs, id)
+					}
 				}
 			}
 
@@ -393,7 +399,7 @@ func TestEndToEnd(t *testing.T) {
 		}
 	}
 
-	defaultTestEntities := buildTestEntities(100)
+	defaultTestEntities := buildTestEntities(5, 10)
 
 	listResponse := &nbipb.ListEntitiesResponse{
 		Entities: []*nbipb.Entity{
@@ -409,6 +415,9 @@ func TestEndToEnd(t *testing.T) {
 			},
 		},
 	}
+	listOutput := &nbipb.TxtpbEntities{
+		Entity: listResponse.Entities,
+	}
 
 	testCases := []endToEndTestCase{
 		{
@@ -423,6 +432,7 @@ func TestEndToEnd(t *testing.T) {
 			cmd:  []string{"grpcurl", "describe"},
 			expectFn: expectLines(
 				"aalyria.spacetime.api.nbi.v1alpha.NetOps is a service",
+				"grpc.reflection.v1.ServerReflection is a service",
 				"grpc.reflection.v1alpha.ServerReflection is a service",
 			),
 		},
@@ -431,6 +441,7 @@ func TestEndToEnd(t *testing.T) {
 			cmd:  []string{"grpcurl", "list"},
 			expectFn: expectLines(
 				"aalyria.spacetime.api.nbi.v1alpha.NetOps",
+				"grpc.reflection.v1.ServerReflection",
 				"grpc.reflection.v1alpha.ServerReflection",
 			),
 		},
@@ -443,7 +454,6 @@ func TestEndToEnd(t *testing.T) {
 				"aalyria.spacetime.api.nbi.v1alpha.NetOps.GetEntity",
 				"aalyria.spacetime.api.nbi.v1alpha.NetOps.ListEntities",
 				"aalyria.spacetime.api.nbi.v1alpha.NetOps.ListEntitiesOverTime",
-				"aalyria.spacetime.api.nbi.v1alpha.NetOps.LoadScenario",
 				"aalyria.spacetime.api.nbi.v1alpha.NetOps.UpdateEntity",
 			),
 		},
@@ -453,24 +463,24 @@ func TestEndToEnd(t *testing.T) {
 			changeServer: func(srv *FakeNetOpsServer) {
 				srv.ListEntityResponse = listResponse
 			},
-			expectFn: expectTextProto(listResponse),
+			expectFn: expectTextProto(listOutput),
 		},
 		{
 			name:                "create",
 			cmd:                 []string{"create"},
-			entityFiles:         defaultTestEntities,
+			entitiesFiles:       defaultTestEntities,
 			expectServerStateFn: expectEntityIDs(defaultTestEntities),
 		},
 		{
 			name:                "update",
 			cmd:                 []string{"update"},
-			entityFiles:         defaultTestEntities,
+			entitiesFiles:       defaultTestEntities,
 			expectServerStateFn: expectEntityIDs(defaultTestEntities),
 		},
 		{
 			name: "delete single entity",
 			cmd:  []string{"delete", "--type", "PLATFORM_DEFINITION", "--id", "my-id", "--last_commit_timestamp", "123456"},
-			expectServerStateFn: expectEntityIDs([]*nbipb.Entity{
+			expectServerStateFn: expectEntityIDs([][]*nbipb.Entity{{
 				{
 					Group: &nbipb.EntityGroup{
 						Type: nbipb.EntityType_PLATFORM_DEFINITION.Enum(),
@@ -478,12 +488,12 @@ func TestEndToEnd(t *testing.T) {
 					Id:              proto.String("my-id"),
 					CommitTimestamp: proto.Int64(123456),
 				},
-			}),
+			}}),
 		},
 		{
 			name:                "delete from files",
 			cmd:                 []string{"delete"},
-			entityFiles:         defaultTestEntities,
+			entitiesFiles:       defaultTestEntities,
 			expectServerStateFn: expectEntityIDs(defaultTestEntities),
 		},
 	}
@@ -521,13 +531,13 @@ func TestEndToEnd(t *testing.T) {
 			app := newTestApp()
 			args := append([]string{"nbictl", "--config_dir", tmpDir, "--context", "DEFAULT"}, tc.cmd...)
 
-			entityFilesDir, err := bazel.NewTmpDir("entities")
+			entitiesFilesDir, err := bazel.NewTmpDir("entities")
 			checkErr(t, err)
 			// Makes the entity files directory into a glob from which the entities are read.
-			entityFilesGlob := entityFilesDir + "/*"
-			if tc.entityFiles != nil {
-				checkErr(t, writeEntitiesToFile(tc.entityFiles, entityFilesDir))
-				args = append(args, "--files", entityFilesGlob)
+			entitiesFilesGlob := entitiesFilesDir + "/*"
+			if tc.entitiesFiles != nil {
+				checkErr(t, writeEntitiesToFiles(tc.entitiesFiles, entitiesFilesDir))
+				args = append(args, "--files", entitiesFilesGlob)
 			}
 
 			checkErr(t, app.Run(args))
@@ -538,7 +548,7 @@ func TestEndToEnd(t *testing.T) {
 				checkErr(t, tc.expectServerStateFn(srv))
 			}
 			if tc.expectEntityFilesFn != nil {
-				checkErr(t, tc.expectEntityFilesFn(entityFilesGlob))
+				checkErr(t, tc.expectEntityFilesFn(entitiesFilesGlob))
 			}
 		})
 	}

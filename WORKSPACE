@@ -17,20 +17,10 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive", "http_jar")
 # Download bazel_gazelle Bazel repository.
 http_archive(
     name = "bazel_gazelle",
-    sha256 = "29d5dafc2a5582995488c6735115d1d366fcd6a0fc2e2a153f02988706349825",
+    sha256 = "32938bda16e6700063035479063d9d24c60eda8d79fd4739563f50d331cb3209",
     urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v0.31.0/bazel-gazelle-v0.31.0.tar.gz",
-        "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.31.0/bazel-gazelle-v0.31.0.tar.gz",
-    ],
-)
-
-# @bazel_skylib - https://github.com/bazelbuild/bazel-skylib/releases
-http_archive(
-    name = "bazel_skylib",
-    sha256 = "b8a1527901774180afc798aeb28c4634bdccf19c4d98e7bdd1ce79d1fe9aaad7",
-    urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/1.4.1/bazel-skylib-1.4.1.tar.gz",
-        "https://github.com/bazelbuild/bazel-skylib/releases/download/1.4.1/bazel-skylib-1.4.1.tar.gz",
+        "https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v0.35.0/bazel-gazelle-v0.35.0.tar.gz",
+        "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.35.0/bazel-gazelle-v0.35.0.tar.gz",
     ],
 )
 
@@ -42,11 +32,11 @@ http_archive(
         # behavior.
         #
         # See https://github.com/grpc/grpc/issues/31892
-        "//patches:grpc.patch",
+        "//patches:com_github_grpc_grpc-hermetic-python.patch",
     ],
-    sha256 = "9cf1a69a921534ac0b760dcbefb900f3c2f735f56070bf0536506913bb5bfd74",
-    strip_prefix = "grpc-1.55.0",
-    urls = ["https://github.com/grpc/grpc/archive/refs/tags/v1.55.0.tar.gz"],
+    sha256 = "916f88a34f06b56432611aaa8c55befee96d0a7b7d7457733b9deeacbc016f99",
+    strip_prefix = "grpc-1.59.1",
+    urls = ["https://github.com/grpc/grpc/archive/refs/tags/v1.59.1.tar.gz"],
 )
 
 
@@ -59,50 +49,63 @@ http_archive(
 
 http_archive(
     name = "com_google_protobuf",
+    # TODO: remove this patch and upgrade the proto dep once a newer
+    # version is available in the BCR and compatible with both rules_proto_grpc
+    # and the rest of the ecosystem
+    #
+    # See:
+    # * https://github.com/protocolbuffers/protobuf/issues/13618
+    # * https://github.com/rules-proto-grpc/rules_proto_grpc/issues/299
+    # * https://github.com/bazelbuild/rules_proto/issues/179
+    patches = [
+        "//patches:com_google_protobuf-rename-exec_tools-to-tools.patch",
+    ],
     sha256 = "dc167b7d23ec0d6e4a3d4eae1798de6c8d162e69fa136d39753aaeb7a6e1289d",
     strip_prefix = "protobuf-23.1",
     urls = ["https://github.com/protocolbuffers/protobuf/archive/v23.1.tar.gz"],
 )
 
 http_archive(
+    name = "build_bazel_rules_apple",
+    sha256 = "34c41bfb59cdaea29ac2df5a2fa79e5add609c71bb303b2ebb10985f93fa20e7",
+    url = "https://github.com/bazelbuild/rules_apple/releases/download/3.1.1/rules_apple.3.1.1.tar.gz",
+)
+
+http_archive(
+    name = "build_bazel_apple_support",
+    sha256 = "cf4d63f39c7ba9059f70e995bf5fe1019267d3f77379c2028561a5d7645ef67c",
+    url = "https://github.com/bazelbuild/apple_support/releases/download/1.11.1/apple_support.1.11.1.tar.gz",
+)
+
+http_archive(
     name = "io_bazel_rules_go",
-    sha256 = "6dc2da7ab4cf5d7bfc7c949776b1b7c733f05e56edc4bcd9022bb249d2e2a996",
+    sha256 = "80a98277ad1311dacd837f9b16db62887702e9f1d1c4c9f796d0121a46c8e184",
     urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.39.1/rules_go-v0.39.1.zip",
-        "https://github.com/bazelbuild/rules_go/releases/download/v0.39.1/rules_go-v0.39.1.zip",
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.46.0/rules_go-v0.46.0.zip",
+        "https://github.com/bazelbuild/rules_go/releases/download/v0.46.0/rules_go-v0.46.0.zip",
     ],
 )
 
 http_archive(
     name = "io_grpc_grpc_java",
-    sha256 = "be779db38a72a0c693706c433133189538b04979eba1b728eaa21f4fd0f967d8",
-    strip_prefix = "grpc-java-1.55.1",
-    urls = ["https://github.com/grpc/grpc-java/archive/v1.55.1.tar.gz"],
-)
-
-# Bazel platforms
-http_archive(
-    name = "platforms",
-    sha256 = "5308fc1d8865406a49427ba24a9ab53087f17f5266a7aabbfc28823f3916e1ca",
-    urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/platforms/releases/download/0.0.6/platforms-0.0.6.tar.gz",
-        "https://github.com/bazelbuild/platforms/releases/download/0.0.6/platforms-0.0.6.tar.gz",
-    ],
+    sha256 = "5b934dedf42e3fe080fa8143619fddc7cfdc1ec0101a731d0b55c3f6e30aaaad",
+    strip_prefix = "grpc-java-1.59.1",
+    urls = ["https://github.com/grpc/grpc-java/archive/v1.59.1.tar.gz"],
 )
 
 http_archive(
     name = "rules_jvm_external",
-    sha256 = "c9ae901381ae7f7eca08aed96caeb542f96c5449052db9c9d27274a8dc154cdf",
-    strip_prefix = "rules_jvm_external-5.2",
-    url = "https://github.com/bazelbuild/rules_jvm_external/archive/5.2.tar.gz",
+    sha256 = "8ac1c5c2a8681c398883bb2cabc18f913337f165059f24e8c55714e05757761e",
+    strip_prefix = "rules_jvm_external-5.3",
+    url = "https://github.com/bazelbuild/rules_jvm_external/archive/5.3.tar.gz",
 )
 
 # Download rules_proto_grpc respository.
 http_archive(
     name = "rules_proto_grpc",
-    sha256 = "507e38c8d95c7efa4f3b1c0595a8e8f139c885cb41a76cab7e20e4e67ae87731",
-    strip_prefix = "rules_proto_grpc-4.1.1",
-    urls = ["https://github.com/rules-proto-grpc/rules_proto_grpc/archive/4.1.1.tar.gz"],
+    sha256 = "c0d718f4d892c524025504e67a5bfe83360b3a982e654bc71fed7514eb8ac8ad",
+    strip_prefix = "rules_proto_grpc-4.6.0",
+    urls = ["https://github.com/rules-proto-grpc/rules_proto_grpc/archive/4.6.0.tar.gz"],
 )
 
 http_archive(
@@ -113,12 +116,11 @@ http_archive(
 )
 
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
-load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
 load("@com_google_googleapis//:repository_rules.bzl", "switched_rules_by_language")
 load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
-load("@io_grpc_grpc_java//:repositories.bzl", "IO_GRPC_GRPC_JAVA_OVERRIDE_TARGETS", "grpc_java_repositories")
+load("@io_grpc_grpc_java//:repositories.bzl", "IO_GRPC_GRPC_JAVA_ARTIFACTS", "IO_GRPC_GRPC_JAVA_OVERRIDE_TARGETS", "grpc_java_repositories")
 load("@rules_jvm_external//:defs.bzl", "maven_install")
 load("@rules_jvm_external//:repositories.bzl", "rules_jvm_external_deps")
 load("@rules_proto_grpc//:repositories.bzl", "rules_proto_grpc_toolchains")
@@ -129,13 +131,11 @@ load("@rules_proto_grpc//python:repositories.bzl", rules_proto_grpc_python_repos
 load("@rules_python//python:pip.bzl", "pip_parse")
 load("@rules_python//python:repositories.bzl", "py_repositories", "python_register_toolchains")
 
-bazel_skylib_workspace()
-
 go_rules_dependencies()
 
 # Install the Go toolchains. (https://github.com/bazelbuild/rules_go/blob/master/go/toolchains.rst#go-toolchain)
 go_register_toolchains(
-    version = "1.20",
+    version = "1.22.1",
 )
 
 gazelle_dependencies()
@@ -226,15 +226,47 @@ go_repository(
 go_repository(
     name = "com_github_google_go_cmp",
     importpath = "github.com/google/go-cmp",
-    sum = "h1:Xye71clBPdm5HgqGwUkwhbynsUJZhDbS20FvLhQ2izg=",
-    version = "v0.3.1",
+    sum = "h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=",
+    version = "v0.6.0",
+)
+
+go_repository(
+    name = "org_golang_google_genproto_googleapis_api",
+    importpath = "google.golang.org/genproto/googleapis/api",
+    sum = "h1:s1w3X6gQxwrLEpxnLd/qXTVLgQE2yXwaOaoa6IlY/+o=",
+    version = "v0.0.0-20231212172506-995d672761c0",
+)
+
+go_repository(
+    name = "org_golang_google_genproto_googleapis_rpc",
+    importpath = "google.golang.org/genproto/googleapis/rpc",
+    sum = "h1:/jFB8jK5R3Sq3i/lmeZO0cATSzFfZaJq1J2Euan3XKU=",
+    version = "v0.0.0-20231212172506-995d672761c0",
+)
+
+go_repository(
+    name = "org_golang_google_genproto",
+    importpath = "google.golang.org/genproto",
+    sum = "h1:YJ5pD9rF8o9Qtta0Cmy9rdBwkSjrTCT6XTiUQVOtIos=",
+    version = "v0.0.0-20231212172506-995d672761c0",
+)
+
+go_repository(
+    name = "com_github_googleapis_gax_go",
+    build_directives = [
+        "gazelle:resolve proto go google/rpc/code.proto @org_golang_google_genproto_googleapis_rpc//code",  # keep
+        "gazelle:resolve proto proto google/rpc/code.proto @com_google_googleapis//google/rpc:code_proto",  # keep
+    ],
+    importpath = "github.com/googleapis/gax-go/v2",
+    sum = "h1:A+gCJKdRfqXkr+BIRGtZLibNXf0m1f9E4HG56etFpas=",
+    version = "v2.12.0",
 )
 
 go_repository(
     name = "com_github_grpc_ecosystem_grpc_gateway_v2",
     importpath = "github.com/grpc-ecosystem/grpc-gateway/v2",
-    sum = "h1:gDLXvp5S9izjldquuoAhDzccbskOL6tDC5jMSyx3zxE=",
-    version = "v2.15.2",
+    sum = "h1:RtRsiaGvWxcwd8y3BiRZxsylPT8hLWZ5SPcfI+3IDNk=",
+    version = "v2.18.0",
 )
 
 go_repository(
@@ -441,8 +473,8 @@ go_repository(
     # https://github.com/bazelbuild/rules_go/blob/master/go/dependencies.rst#grpc-dependencies.
     build_file_proto_mode = "disable",
     importpath = "google.golang.org/grpc",
-    sum = "h1:3Oj82/tFSCeUrRTg/5E/7d/W5A1tj6Ky1ABAuZuv5ag=",
-    version = "v1.55.0",
+    sum = "h1:TOvOcuXn30kRao+gfcvsebNEa5iZIiLkisYEkf7R7o0=",
+    version = "v1.61.0",
 )
 
 go_repository(
@@ -453,17 +485,24 @@ go_repository(
 )
 
 go_repository(
+    name = "org_golang_x_exp",
+    importpath = "golang.org/x/exp",
+    sum = "h1:Gvh4YaCaXNs6dKTlfgismwWZKyjVZXwOPfIyUaqU3No=",
+    version = "v0.0.0-20231127185646-65229373498e",
+)
+
+go_repository(
     name = "org_golang_x_net",
     importpath = "golang.org/x/net",
-    sum = "h1:cCR+9mKLOGyX4Zx+uBZDXEDAQsvKQ/XbW4vreG5v1jU=",
-    version = "v0.0.0-20220517181318-183a9ca12b87",
+    sum = "h1:AQyQV4dYCvJ7vGmJyKki9+PBdyvhkSd8EIx/qb0AYv4=",
+    version = "v0.21.0",
 )
 
 go_repository(
     name = "org_golang_x_oauth2",
     importpath = "golang.org/x/oauth2",
-    sum = "h1:6dkIjl3j3LtZ/O3sTgZTMsLKSftL/B8Zgq4huOIIUu8=",
-    version = "v0.8.0",
+    sum = "h1:6m3ZPmLEFdVxKKWnKq4VqZ60gutO35zm+zrAHVmHyDQ=",
+    version = "v0.17.0",
 )
 
 go_repository(
@@ -476,16 +515,36 @@ go_repository(
 go_repository(
     name = "org_golang_x_sys",
     importpath = "golang.org/x/sys",
-    sum = "h1:w36l2Uw3dRan1K3TyXriXvY+6T56GNmlKGcqiQUJDfM=",
-    version = "v0.0.0-20220517195934-5e4e11fc645e",
+    sum = "h1:25cE3gD+tdBA7lp7QfhuV+rJiE9YXTcS3VG1SqssI/Y=",
+    version = "v0.17.0",
 )
 
 go_repository(
     name = "org_golang_x_text",
     importpath = "golang.org/x/text",
-    sum = "h1:olpwvP2KacW1ZWvsR7uQhoyTYvKAupfQrRGBFM352Gk=",
-    version = "v0.3.7",
+    sum = "h1:ScX5w1eTa3QqT8oi6+ziP7dTV1S2+ALU0bI+0zXKWiQ=",
+    version = "v0.14.0",
 )
+
+go_repository(
+    name = "com_github_vishvananda_netlink",
+    importpath = "github.com/vishvananda/netlink",
+    sum = "h1:FI3nwt5mKUM6g5S/DFJaE9/gL7977OSdddkUX0Avymg=",
+    version = "v0.0.0-20231024175852-77df5d35f725",
+)
+
+go_repository(
+    name = "com_github_vishvananda_netns",
+    importpath = "github.com/vishvananda/netns",
+    sum = "h1:mANKB5XLbNCInEF3mXxUb14rxYWTKd8JEbSP4KDJJWo=",
+    version = "v0.0.0-20231013140742-fa017945dda9",
+)
+
+rules_jvm_external_deps()
+
+load("@rules_jvm_external//:setup.bzl", "rules_jvm_external_setup")
+
+rules_jvm_external_setup()
 
 SCIP_JAVA_VERSION = "0.0.6"
 
@@ -496,19 +555,17 @@ http_archive(
     url = "https://github.com/ciarand/scip-java/archive/refs/tags/v{}.zip".format(SCIP_JAVA_VERSION),
 )
 
-load("@io_grpc_grpc_java//:repositories.bzl", "IO_GRPC_GRPC_JAVA_ARTIFACTS", "IO_GRPC_GRPC_JAVA_OVERRIDE_TARGETS", "grpc_java_repositories")
-
 # When updating the artifacts or repositories in the maven_install, update
 # maven_install.json along with it by running
 #
 # REPIN=1 bazel run @unpinned_maven//:pin
 # Resolve and fetch grpc-java dependencies from a Maven respository.
 maven_install(
-    artifacts = 
-        IO_GRPC_GRPC_JAVA_ARTIFACTS + 
+    artifacts =
+        IO_GRPC_GRPC_JAVA_ARTIFACTS +
         ["com.google.code.gson:gson:2.10.1",
         "com.google.googlejavaformat:google-java-format:1.17.0",
-        "io.helidon.grpc:helidon-grpc-core:3.2.0",
+        "io.helidon.grpc:helidon-grpc-core:3.2.5",
         "org.bouncycastle:bcprov-jdk15on:1.70",
         "junit:junit:4.13.2",
         "org.mockito:mockito-core:4.5.1",
@@ -555,6 +612,8 @@ grpc_deps(
     python_headers = "@python3_9//:python_headers",
 )
 
+load("@build_bazel_apple_support//lib:repositories.bzl", "apple_support_dependencies")
+load("@build_bazel_rules_apple//apple:repositories.bzl", "apple_rules_dependencies")
 load("@envoy_api//bazel:repositories.bzl", "api_dependencies")
 load("@upb//bazel:workspace_deps.bzl", "upb_deps")
 
@@ -563,6 +622,10 @@ protobuf_deps()
 upb_deps()
 
 api_dependencies()
+
+apple_rules_dependencies()
+
+apple_support_dependencies()
 
 grpc_java_repositories()
 
