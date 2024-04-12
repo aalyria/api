@@ -136,7 +136,7 @@ go_rules_dependencies()
 
 # Install the Go toolchains. (https://github.com/bazelbuild/rules_go/blob/master/go/toolchains.rst#go-toolchain)
 go_register_toolchains(
-    version = "1.22.1",
+    version = "1.22.2",
 )
 
 gazelle_dependencies()
@@ -584,11 +584,11 @@ load("@maven//:compat.bzl", "compat_repositories")
 compat_repositories()
 
 python_register_toolchains(
-    name = "python3_9",
-    python_version = "3.9",
+    name = "python3_11",
+    python_version = "3.11",
 )
 
-load("@python3_9//:defs.bzl", "interpreter")
+load("@python3_11//:defs.bzl", "interpreter")
 
 pip_parse(
     name = "python_deps",
@@ -610,7 +610,7 @@ switched_rules_by_language(
 
 # Load dependencies needed to compile and test the grpc library.
 grpc_deps(
-    python_headers = "@python3_9//:python_headers",
+    python_headers = "@python3_11//:python_headers",
 )
 
 load("@build_bazel_apple_support//lib:repositories.bzl", "apple_support_dependencies")

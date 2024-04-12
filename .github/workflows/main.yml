@@ -36,6 +36,7 @@ jobs:
       matrix:
         # Only the go_binary targets support cross-compilation at the moment:
         target:
+          - //api:api.html
           - //cdpi_agent/cmd/agent
           - //tools/nbictl/cmd/nbictl
         os: [linux, windows, darwin]
@@ -68,4 +69,10 @@ jobs:
           path: |
             bazel-bin/cdpi_agent/cmd/agent/agent_/agent
             bazel-bin/cdpi_agent/cmd/agent/agent_/agent.exe
-
+      - name: Upload API docs
+        uses: actions/upload-artifact@v3
+        if: matrix.target == '//api:api.html' && matrix.os == 'linux' && matrix.arch == 'amd64'
+        with:
+          name: api.html
+          path: |
+            bazel-bin/api/api.html/api.html
