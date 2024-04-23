@@ -19,6 +19,8 @@ package(default_visibility = ["//visibility:public"])
 go_binary(
     name = "agent",
     embed = [":agent_lib"],
+    pure = "on",
+    static = "on",
 )
 
 go_library(

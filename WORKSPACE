@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive", "http_jar")
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 # Download bazel_gazelle Bazel repository.
 http_archive(
@@ -38,7 +38,6 @@ http_archive(
     strip_prefix = "grpc-1.59.1",
     urls = ["https://github.com/grpc/grpc/archive/refs/tags/v1.59.1.tar.gz"],
 )
-
 
 http_archive(
     name = "com_google_googleapis",
@@ -136,7 +135,7 @@ go_rules_dependencies()
 
 # Install the Go toolchains. (https://github.com/bazelbuild/rules_go/blob/master/go/toolchains.rst#go-toolchain)
 go_register_toolchains(
-    version = "1.22.1",
+    version = "1.22.2",
 )
 
 gazelle_dependencies()
@@ -248,8 +247,8 @@ go_repository(
 go_repository(
     name = "org_golang_google_genproto",
     importpath = "google.golang.org/genproto",
-    sum = "h1:YJ5pD9rF8o9Qtta0Cmy9rdBwkSjrTCT6XTiUQVOtIos=",
-    version = "v0.0.0-20231212172506-995d672761c0",
+    sum = "h1:wu/KJm9KJwpfHWhkkZGohVC6KRrc1oJNr4jwtQMOQXw=",
+    version = "v0.0.0-20240401170217-c3f982113cda",
 )
 
 go_repository(
@@ -386,22 +385,22 @@ go_repository(
 go_repository(
     name = "io_opentelemetry_go_contrib_instrumentation_google_golang_org_grpc_otelgrpc",
     importpath = "go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc",
-    sum = "h1:5jD3teb4Qh7mx/nfzq4jO2WFFpvXD0vYWFDrdvNWmXk=",
-    version = "v0.40.0",
+    sum = "h1:4Pp6oUg3+e/6M4C0A/3kJ2VYa++dsWVTtGgLVj5xtHg=",
+    version = "v0.49.0",
 )
 
 go_repository(
     name = "io_opentelemetry_go_contrib_instrumentation_net_http_otelhttp",
     importpath = "go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp",
-    sum = "h1:lE9EJyw3/JhrjWH/hEy9FptnalDQgj7vpbgC2KCCCxE=",
-    version = "v0.40.0",
+    sum = "h1:jq9TW8u3so/bN+JPT166wjOI6/vQPF6Xe7nMNIltagk=",
+    version = "v0.49.0",
 )
 
 go_repository(
     name = "io_opentelemetry_go_otel",
     importpath = "go.opentelemetry.io/otel",
-    sum = "h1:/79Huy8wbf5DnIPhemGB+zEPVwnN6fuQybr/SRXa6hM=",
-    version = "v1.14.0",
+    sum = "h1:0LAOdjNmQeSTzGBzduGe/rU4tZhMwL5rWgtp9Ku5Jfo=",
+    version = "v1.24.0",
 )
 
 go_repository(
@@ -414,50 +413,50 @@ go_repository(
 go_repository(
     name = "io_opentelemetry_go_otel_exporters_otlp_otlptrace",
     importpath = "go.opentelemetry.io/otel/exporters/otlp/otlptrace",
-    sum = "h1:TKf2uAs2ueguzLaxOCBXNpHxfO/aC7PAdDsSH0IbeRQ=",
-    version = "v1.14.0",
+    sum = "h1:t6wl9SPayj+c7lEIFgm4ooDBZVb01IhLB4InpomhRw8=",
+    version = "v1.24.0",
 )
 
 go_repository(
     name = "io_opentelemetry_go_otel_exporters_otlp_otlptrace_otlptracegrpc",
     importpath = "go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc",
-    sum = "h1:ap+y8RXX3Mu9apKVtOkM6WSFESLM8K3wNQyOU8sWHcc=",
-    version = "v1.14.0",
+    sum = "h1:Mw5xcxMwlqoJd97vwPxA8isEaIoxsta9/Q51+TTJLGE=",
+    version = "v1.24.0",
 )
 
 go_repository(
     name = "io_opentelemetry_go_otel_metric",
     importpath = "go.opentelemetry.io/otel/metric",
-    sum = "h1:pHDQuLQOZwYD+Km0eb657A25NaRzy0a+eLyKfDXedEs=",
-    version = "v0.37.0",
+    sum = "h1:6EhoGWWK28x1fbpA4tYTOWBkPefTDQnb8WSGXlc88kI=",
+    version = "v1.24.0",
 )
 
 go_repository(
     name = "io_opentelemetry_go_otel_sdk",
     importpath = "go.opentelemetry.io/otel/sdk",
-    sum = "h1:PDCppFRDq8A1jL9v6KMI6dYesaq+DFcDZvjsoGvxGzY=",
-    version = "v1.14.0",
+    sum = "h1:YMPPDNymmQN3ZgczicBY3B6sf9n62Dlj9pWD3ucgoDw=",
+    version = "v1.24.0",
 )
 
 go_repository(
     name = "io_opentelemetry_go_otel_sdk_metric",
     importpath = "go.opentelemetry.io/otel/sdk/metric",
-    sum = "h1:haYBBtZZxiI3ROwSmkZnI+d0+AVzBWeviuYQDeBWosU=",
-    version = "v0.37.0",
+    sum = "h1:yyMQrPzF+k88/DbH7o4FMAs80puqd+9osbiBrJrz/w8=",
+    version = "v1.24.0",
 )
 
 go_repository(
     name = "io_opentelemetry_go_otel_trace",
     importpath = "go.opentelemetry.io/otel/trace",
-    sum = "h1:ofxdnzsNrGBYXbP7t7zpUK281+go5rF7dvdIZXF8gdQ=",
-    version = "v1.11.1",
+    sum = "h1:CsKnnL4dUAr/0llH9FKuc698G04IrpWV0MQA/Y1YELI=",
+    version = "v1.24.0",
 )
 
 go_repository(
     name = "io_opentelemetry_go_proto_otlp",
     importpath = "go.opentelemetry.io/proto/otlp",
-    sum = "h1:IVN6GR+mhC4s5yfcTbmzHYODqvWAp3ZedA2SJPI1Nnw=",
-    version = "v0.19.0",
+    sum = "h1:2Di21piLrCqJ3U3eXGCTPHE9R8Nh+0uglSnOyxikMeI=",
+    version = "v1.1.0",
 )
 
 go_repository(
@@ -469,13 +468,12 @@ go_repository(
 
 go_repository(
     name = "org_golang_google_grpc",
-
     # Ignore proto files in this library, per
     # https://github.com/bazelbuild/rules_go/blob/master/go/dependencies.rst#grpc-dependencies.
     build_file_proto_mode = "disable",
     importpath = "google.golang.org/grpc",
-    sum = "h1:TOvOcuXn30kRao+gfcvsebNEa5iZIiLkisYEkf7R7o0=",
-    version = "v1.61.0",
+    sum = "h1:B4n+nfKzOICUXMgyrNd19h/I9oH0L1pizfk1d4zSgTk=",
+    version = "v1.62.1",
 )
 
 go_repository(
@@ -495,8 +493,8 @@ go_repository(
 go_repository(
     name = "org_golang_x_net",
     importpath = "golang.org/x/net",
-    sum = "h1:AQyQV4dYCvJ7vGmJyKki9+PBdyvhkSd8EIx/qb0AYv4=",
-    version = "v0.21.0",
+    sum = "h1:9sGLhx7iRIHEiX0oAJ3MRZMUCElJgy7Br1nO+AMN3Tc=",
+    version = "v0.22.0",
 )
 
 go_repository(
@@ -563,13 +561,13 @@ http_archive(
 # Resolve and fetch grpc-java dependencies from a Maven respository.
 maven_install(
     artifacts =
-        IO_GRPC_GRPC_JAVA_ARTIFACTS +
-        ["com.google.code.gson:gson:2.10.1",
-        "com.google.googlejavaformat:google-java-format:1.17.0",
-        "io.helidon.grpc:helidon-grpc-core:3.2.5",
-        "org.bouncycastle:bcprov-jdk15on:1.70",
-        "junit:junit:4.13.2",
-        "org.mockito:mockito-core:4.5.1",
+        IO_GRPC_GRPC_JAVA_ARTIFACTS + [
+            "com.google.code.gson:gson:2.10.1",
+            "com.google.googlejavaformat:google-java-format:1.17.0",
+            "io.helidon.grpc:helidon-grpc-core:3.2.5",
+            "org.bouncycastle:bcprov-jdk15on:1.70",
+            "junit:junit:4.13.2",
+            "org.mockito:mockito-core:4.5.1",
         ],
     fail_if_repin_required = True,
     generate_compat_repositories = True,
@@ -584,11 +582,11 @@ load("@maven//:compat.bzl", "compat_repositories")
 compat_repositories()
 
 python_register_toolchains(
-    name = "python3_9",
-    python_version = "3.9",
+    name = "python3_11",
+    python_version = "3.11",
 )
 
-load("@python3_9//:defs.bzl", "interpreter")
+load("@python3_11//:defs.bzl", "interpreter")
 
 pip_parse(
     name = "python_deps",
@@ -610,7 +608,7 @@ switched_rules_by_language(
 
 # Load dependencies needed to compile and test the grpc library.
 grpc_deps(
-    python_headers = "@python3_9//:python_headers",
+    python_headers = "@python3_11//:python_headers",
 )
 
 load("@build_bazel_apple_support//lib:repositories.bzl", "apple_support_dependencies")

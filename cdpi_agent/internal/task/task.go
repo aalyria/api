@@ -18,10 +18,11 @@ package task
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"math"
-	"math/rand"
+	"math/big"
 	"time"
 
 	"github.com/jonboulle/clockwork"
@@ -44,6 +45,18 @@ type RetryConfig struct {
 	ErrIsFatal      func(error) bool
 }
 
+// Float64 generates a float64 between [0, 1). It uses the technique described
+// in the comments on math/rand's Float64 implementation:
+// https://cs.opensource.google/go/go/+/refs/tags/go1.22.2:src/math/rand/rand.go;l=190;drc=c29444ef39a44ad56ddf7b3d2aa8a51df1163e04
+func Float64() float64 {
+	const maxMantissa = 1 << 53
+	nBig, err := rand.Int(rand.Reader, big.NewInt(maxMantissa))
+	if err != nil {
+		panic(err)
+	}
+	return float64(nBig.Int64() / maxMantissa)
+}
+
 // WithRetries returns a new task that will retry the inner task
 // according to the provided retryConfig.
 func (t Task) WithRetries(rc RetryConfig) Task {
@@ -64,7 +77,7 @@ func (t Task) WithRetries(rc RetryConfig) Task {
 				}
 
 				// delayDur is within [0.5 * backoff, 1.5 * backoff]
-				randFact := rand.Float64() - 0.5
+				randFact := Float64() - 0.5
 				jitterMs := time.Millisecond * time.Duration(
 					math.Round(randFact*float64(rc.BackoffDuration.Milliseconds())))
 				delayDur := rc.BackoffDuration + jitterMs
