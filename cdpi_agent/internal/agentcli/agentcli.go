@@ -40,7 +40,7 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	otelsdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 	oteltrace "go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -391,6 +391,7 @@ enactmentSwitch:
 	case *configpb.NetworkNode_EnactmentBackend_ExternalCommand:
 		enactCmd := node.GetEnactmentBackend().GetExternalCommand()
 		nodeOpts = append(nodeOpts, agent.WithEnactmentBackend(enact_extproc.New(func(ctx context.Context) *exec.Cmd {
+			// nosemgrep: dangerous-exec-command
 			return exec.CommandContext(ctx, enactCmd.GetArgs()[0], enactCmd.GetArgs()[1:]...)
 		}, getProtoFmt(enactCmd.GetProtoFormat()))))
 	case *configpb.NetworkNode_EnactmentBackend_Netlink:
@@ -420,6 +421,7 @@ telemetrySwitch:
 	case *configpb.NetworkNode_TelemetryBackend_ExternalCommand:
 		telCmd := node.GetTelemetryBackend().GetExternalCommand()
 		nodeOpts = append(nodeOpts, agent.WithTelemetryBackend(telemetry_extproc.New(func(ctx context.Context, nodeID string) *exec.Cmd {
+			// nosemgrep: dangerous-exec-command
 			return exec.CommandContext(ctx, telCmd.GetArgs()[0], telCmd.GetArgs()[1:]...)
 		}, getProtoFmt(telCmd.GetProtoFormat()))))
 	case *configpb.NetworkNode_TelemetryBackend_Netlink:
