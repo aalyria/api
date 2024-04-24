@@ -14,7 +14,10 @@
 
 name: Bazel
 
-on: [pull_request]
+on:
+  pull_request: {}
+  release:
+    types: [published]
 
 jobs:
   build-and-test:
@@ -26,7 +29,7 @@ jobs:
           path: |
             ~/.cache/bazelisk
             ~/.cache/bazel
-          key: bazel-${{ hashFiles('.bazelrc', '.bazelversion', 'WORKSPACE', 'requirements.txt') }}
+          key: bazel-${{ hashFiles('.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
           restore-keys: bazel-
       - run: bazelisk test //...
 
@@ -49,7 +52,7 @@ jobs:
           path: |
             ~/.cache/bazelisk
             ~/.cache/bazel
-          key: bazel-${{ hashFiles('.bazelrc', '.bazelversion', 'WORKSPACE', 'requirements.txt') }}
+          key: bazel-${{ hashFiles('.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
           restore-keys: bazel-
       - run: bazelisk build "--platforms=@io_bazel_rules_go//go/toolchain:${{ matrix.os }}_${{ matrix.arch }}" "${{ matrix.target }}"
       - name: Upload nbictl binary
@@ -69,3 +72,22 @@ jobs:
             bazel-bin/cdpi_agent/cmd/agent/agent_/agent
             bazel-bin/cdpi_agent/cmd/agent/agent_/agent.exe
 
+  build-and-upload-docs:
+    needs: [build-and-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/bazelisk
+            ~/.cache/bazel
+          key: bazel-${{ hashFiles('.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
+          restore-keys: bazel-
+      - run: bazelisk build "//api:api.html"
+      - name: Upload API docs
+        uses: actions/upload-artifact@v3
+        with:
+          name: api.html
+          path: |
+            bazel-bin/api/api.html/api.html

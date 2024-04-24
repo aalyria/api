@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""A set of small wrappers around the native Java rules that enable more
+cohesive uberjar builds (see _java_deployable_jar) and code intelligence (see
+_actual_javacopts)."""
+
 load("@rules_java//java:defs.bzl", native_java_binary = "java_binary", native_java_library = "java_library", native_java_test = "java_test")
 
 def _java_deployable_jar_impl(ctx):
