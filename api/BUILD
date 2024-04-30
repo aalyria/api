@@ -18,7 +18,7 @@ load("@rules_proto_grpc//doc:defs.bzl", "doc_markdown_compile", "doc_template_co
 _all_protos = [
     "//api/cdpi/v1alpha:cdpi_proto",
     "//api/common:common_proto",
-    "//api/fed/v1alpha:fed_proto",
+    "//api/federation:federation_proto",
     "//api/nbi/v1alpha:nbi_proto",
     "//api/nbi/v1alpha/resources:resources_proto",
     "//api/types:types_proto",

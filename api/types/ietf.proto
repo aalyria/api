@@ -1,0 +1,98 @@
+// Copyright 2024 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package aalyria.spacetime.api.types;
+
+option java_package = "com.aalyria.spacetime.api.types";
+option go_package = "aalyria.com/spacetime/api/types";
+
+
+// Some types derived from "ietf-inet-types" YANG module;
+// see [RFC 6991](https://www.rfc-editor.org/rfc/rfc6991.html).
+
+// An IPv4 address string representation, without a CIDR suffix
+// and without any zone/scope ID qualifier.
+//
+// This is the logical equivalent of "inet:ipv4-address-no-zone".
+message IPv4Address {
+  string value = 1;
+}
+
+// An IPv6 address string representation, without a CIDR suffix
+// and without any zone/scope ID qualifier.
+//
+// This is the logical equivalent of "inet:ipv6-address-no-zone".
+//
+// See [RFC 5952](https://www.rfc-editor.org/rfc/rfc5952.html),
+// especially section 4.3.
+message IPv6Address {
+  string value = 1;
+}
+
+// An IPv4 or IPv6 address string representation, without a CIDR
+// suffix and without any zone/scope ID qualifier.
+//
+// This is the logical equivalent of "inet:ip-address-no-zone".
+message IPAddress {
+  oneof version {
+    IPv4Address ipv4 = 1;
+    IPv6Address ipv6 = 2;
+  }
+}
+
+// An IPv4 prefix string representation, with a CIDR suffix
+// and without any zone/scope ID qualifier.
+//
+// This is the approximate equivalent of "inet:ipv4-prefix".
+message IPv4Prefix {
+  string value = 1;
+}
+
+// An IPv6 prefix string representation, with a CIDR suffix
+// and without any zone/scope ID qualifier.
+//
+// This is the approximate equivalent of "inet:ipv6-prefix".
+message IPv6Prefix {
+  string value = 1;
+}
+
+// An IPv4 or IPv6 prefix string representation, with a CIDR
+// suffix and without any zone/scope ID qualifier.
+//
+// This is the approximate equivalent of "inet:ip-prefix".
+message IPPrefix {
+  oneof version {
+    IPv4Prefix ipv4 = 1;
+    IPv6Prefix ipv6 = 2;
+  }
+}
+
+// An type representing an IPPrefix that may optionally need an
+// additional qualifier to be properly unique. This is required, for
+// example, when multiple non-public IP prefixes may be referenced
+// within an NMTS model (e.g., overlapping RFC 1918 networks, or
+// incorrectly-allocated ULAs).
+//
+// The qualifier is a string name for a "realm" that is significant
+// within the model and sufficient to differentiate one instance of
+// a non-public prefix from another.
+//
+// The name "realm" is modeled after RFC 3102/3103 Realm-specific IP,
+// though this in no way implies support for this protocol.
+message IPNetwork {
+  IPPrefix prefix = 1;
+  string realm = 2;
+}
