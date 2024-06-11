@@ -135,7 +135,7 @@ go_rules_dependencies()
 
 # Install the Go toolchains. (https://github.com/bazelbuild/rules_go/blob/master/go/toolchains.rst#go-toolchain)
 go_register_toolchains(
-    version = "1.22.2",
+    version = "1.22.3",
 )
 
 gazelle_dependencies()
@@ -472,8 +472,8 @@ go_repository(
     # https://github.com/bazelbuild/rules_go/blob/master/go/dependencies.rst#grpc-dependencies.
     build_file_proto_mode = "disable",
     importpath = "google.golang.org/grpc",
-    sum = "h1:B4n+nfKzOICUXMgyrNd19h/I9oH0L1pizfk1d4zSgTk=",
-    version = "v1.62.1",
+    sum = "h1:MUeiw1B2maTVZthpU5xvASfTh3LDbxHd6IJ6QQVU+xM=",
+    version = "v1.63.2",
 )
 
 go_repository(

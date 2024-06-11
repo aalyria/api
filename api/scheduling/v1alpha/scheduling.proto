@@ -1,0 +1,201 @@
+// Copyright 2024 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package aalyria.spacetime.scheduling.v1alpha;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "google/rpc/status.proto";
+
+option go_package = "aalyria.com/spacetime/scheduling/v1alpha";
+option java_package = "com.aalyria.spacetime.scheduling.v1alpha";
+
+service Scheduling {
+  // Establishes a bidirectional stream through which the SDN controller may
+  // send scheduling requests to the SDN agent, and the agent may respond.
+  //
+  // The use of the stream allows the SDN controller to send requests to the
+  // agent even though the SDN controller may not be able to initiate a
+  // connection to the agent (if the agent is behind a firewall, for example,
+  // or a NAT gateway).
+  //
+  // The SDN controller will leave the stream open indefinitely. In the event
+  // that the stream closes, the agent should re-establish the stream to
+  // continue receiving requests.
+  rpc ReceiveRequests(stream ReceiveRequestsMessageToController)
+      returns (stream ReceiveRequestsMessageFromController) {}
+
+
+  // Notifies the SDN controller that an agent's schedule has been reset. The
+  // agent must call this upon startup and after any event that has reset the
+  // schedule.
+  rpc Reset(ResetRequest) returns (google.protobuf.Empty) {}
+}
+
+// The message type for Scheduling.ReceiveRequests in the direction toward the
+// controller.
+message ReceiveRequestsMessageToController {
+  message Hello {
+    // Required. Identifies the SDN agent whose schedule is to be managed by
+    // this scheduling session.
+    string agent_id = 1;
+
+    // Required. When multiple sessions are opened for managing the same SDN
+    // agent's schedule, the channel priority determines the order in which the
+    // SDN controller attempts to send a message over those sessions. Sessions
+    // with the lowest priority are tried first; it is recommended to use:
+    // * priority = 0 for the default control-plane network
+    // * priority = 1 for backup/secondary control paths
+    uint32 channel_priority = 2;
+  }
+
+  message Response {
+    // Required. The ID of the request to which this response corresponds. See
+    // ReceiveRequestsMessageFromController.request_id.
+    int64 request_id = 1;
+
+    // The response status.
+    google.rpc.Status status = 2;
+  }
+
+  // Required in the initial request of the session. Identifies the SDN agent
+  // and the properties of the underlying channel.
+  Hello hello = 1;
+
+  // A response to a request received from the SDN controller.
+  //
+  // The response may originate from a proxy rather than the SDN agent itself.
+  // For example, if the proxy is unable to deliver the request to the SDN
+  // agent, the proxy may populate the response with an appropriate error.
+  Response response = 2;
+}
+
+// The message type for Scheduling.ReceiveRequests in the direction from the
+// controller.
+//
+// This is a response message in that it flows from server to client, however
+// it holds requests being sent to the SDN agent (the client) by the SDN
+// controller (the server).
+message ReceiveRequestsMessageFromController {
+  // An SDN-controller-generated value uniquely identifying the request within
+  // the scope of the scheduling session. That is, two requests received from
+  // the same session will always have different request IDs. The SDN agent
+  // must provide the ID in the response to this request (see
+  // ReceiveRequestsMessageToController.Response.request_id).
+  int64 request_id = 1;
+
+  // The contents of the request.
+  oneof request {
+    // Creates an entry in the agent's schedule. Note that entries are
+    // immutable: once created, an entry may not changed, though it may be
+    // deleted.
+    CreateEntryRequest create_entry = 2;
+
+    // Deletes an entry from the agent's schedule.
+    DeleteEntryRequest delete_entry = 3;
+
+    // Finalizes all schedule entries earlier than a specified time.
+    //
+    // Notifies the agent that all aspects of its schedule pertaining to the
+    // interval prior to a given instant will no longer be modified . This frees
+    // the agent to garbage-collect all entries scheduled for before that
+    // instant.
+    FinalizeRequest finalize = 4;
+  }
+}
+
+message CreateEntryRequest {
+  // Required. A token that must match the agent's token for the request to be
+  // accepted (see ResetRequest.schedule_manipulation_token). This ensures that
+  // the agent does not execute an operation intended for an old edition of the
+  // schedule on a newer version.
+  string schedule_manipulation_token = 1;
+
+  // Required. The request's sequence number among all requests in the
+  // Scheduling service with the same schedule manipulation token. The sequence
+  // number resets with each new schedule manipulation token.
+  uint32 sequence_number = 2;
+
+  // Required. A unique identifier of the schedule entry being created.
+  string id = 3;
+
+  // Required. The time at which the entry is scheduled to be executed.
+  google.protobuf.Timestamp time = 4;
+
+  oneof configuration_change {
+    SetBeamConfiguration set_beam_configuration = 5;
+    ClearBeamConfiguration clear_beam_configuration = 6;
+    SetForwardingConfiguration set_forwarding_configuration = 7;
+    ClearForwardingConfiguration clear_forwarding_configuration = 8;
+  }
+}
+
+message SetBeamConfiguration {
+  // TODO: populate with beam configuration parameters.
+}
+
+message ClearBeamConfiguration {
+  // TODO: populate with beam configuration parameters.
+}
+
+message SetForwardingConfiguration {
+  // TODO: populate with forwarding configuration parameters.
+}
+
+message ClearForwardingConfiguration {
+  // TODO: populate with forwarding configuration parameters.
+}
+
+message DeleteEntryRequest {
+  // Required. A token that must match the agent's token for the request to be
+  // accepted (see ResetRequest.schedule_manipulation_token). This ensures that
+  // the agent does not execute an operation intended for an old edition of the
+  // schedule on a newer version.
+  string schedule_manipulation_token = 1;
+
+  // Required. The request's sequence number among all requests in the
+  // Scheduling service with the same schedule manipulation token. The sequence
+  // number resets with each new schedule manipulation token.
+  uint32 sequence_number = 2;
+
+  // Required. The schedule entry to delete.
+  string id = 3;
+}
+
+message FinalizeRequest {
+  // Required. A token that must match the agent's token for the request to be
+  // accepted (see ResetRequest.schedule_manipulation_token). This ensures that
+  // the agent does not execute an operation intended for an old edition of the
+  // schedule on a newer version.
+  string schedule_manipulation_token = 1;
+
+  // Required. The request's sequence number among all requests in the
+  // Scheduling service with the same schedule manipulation token. The sequence
+  // number resets with each new schedule manipulation token.
+  uint32 sequence_number = 2;
+
+  // Required. The time before which the schedule will no longer be modified.
+  google.protobuf.Timestamp time = 3;
+}
+
+message ResetRequest {
+  // Required. Identifies the agent whose schedule has been reset.
+  string agent_id = 1;
+
+  // Required. The new schedule's manipulation token. Only requests annotated
+  // with a matching token should be accepted.
+  string schedule_manipulation_token = 2;
+}

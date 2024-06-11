@@ -58,12 +58,12 @@ build --features=external_include_paths
 # Enable hermetic testing and compilation of Java using a JVM downloaded from a
 # remote repository.
 ##
-build --tool_java_runtime_version=remotejdk_17 --java_runtime_version=remotejdk_17
+build --tool_java_runtime_version=remotejdk_21 --java_runtime_version=remotejdk_21
 
 ##
-# Allow Java constructs compatible with the Java 17 specification.
+# Allow Java constructs compatible with the Java 21 specification.
 ##
-build --tool_java_language_version=17 --java_language_version=17
+build --tool_java_language_version=21 --java_language_version=21
 
 ##
 # Don't automatically create __init__.py files in the runfiles of
@@ -75,3 +75,4 @@ build --tool_java_language_version=17 --java_language_version=17
 ##
 build --incompatible_default_to_explicit_init_py
 
+common --experimental_downloader_config=./bazel/bazel_downloader.cfg

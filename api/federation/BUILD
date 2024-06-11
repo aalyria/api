@@ -42,7 +42,10 @@ go_proto_library(
 
 go_proto_library(
     name = "v1alpha_go_proto",
-    compilers = ["@io_bazel_rules_go//proto:go_grpc"],
+    compilers = [
+        "@io_bazel_rules_go//proto:go_proto",
+        "@io_bazel_rules_go//proto:go_grpc_v2",
+    ],
     importpath = "aalyria.com/spacetime/api/fed/v1alpha",
     proto = ":federation_proto",
     visibility = ["//visibility:public"],
