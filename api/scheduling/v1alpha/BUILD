@@ -1,4 +1,4 @@
-# Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+# Copyright 2024 Aalyria Technologies, Inc., and its affiliates.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,11 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Protobufs for the AirFlow Control to Data-Plane Interface (CDPI) and its
-# associated Configuration & Management Interface (AF-CONFIG).  Unlike
-# contemporary SDN protocols, such as OpenFlow and OF-CONFIG, AirFlow supports
-# L1-L3 control of networks with wireless and mobile network platforms.
-
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@rules_proto_grpc//cpp:defs.bzl", "cpp_grpc_library")
@@ -26,12 +21,11 @@ load("@rules_proto_grpc//python:defs.bzl", "python_grpc_library")
 package(default_visibility = ["//visibility:public"])
 
 proto_library(
-    name = "cdpi_proto",
+    name = "scheduling_proto",
     srcs = [
-        "cdpi.proto",
+        "scheduling.proto",
     ],
     deps = [
-        "//api/common:common_proto",
         "@com_google_googleapis//google/rpc:status_proto",
         "@com_google_protobuf//:empty_proto",
         "@com_google_protobuf//:timestamp_proto",
@@ -39,41 +33,35 @@ proto_library(
 )
 
 cpp_grpc_library(
-    name = "cdpi_cpp_grpc",
-    protos = [":cdpi_proto"],
+    name = "scheduling_cpp_grpc",
+    protos = [":scheduling_proto"],
     deps = [
-        "//api/common:common_cpp_proto",
         "@com_google_googleapis//google/rpc:status_cc_proto",
     ],
 )
 
 go_proto_library(
-    name = "cdpi_go_grpc",
+    name = "scheduling_go_grpc",
     compilers = [
         "@io_bazel_rules_go//proto:go_proto",
         "@io_bazel_rules_go//proto:go_grpc_v2",
     ],
-    importpath = "aalyria.com/spacetime/api/cdpi/v1alpha",
-    proto = ":cdpi_proto",
+    importpath = "aalyria.com/spacetime/scheduling/v1alpha",
+    proto = ":scheduling_proto",
     deps = [
-        "//api/common:common_go_proto",
         "@org_golang_google_genproto_googleapis_rpc//status",
     ],
 )
 
 java_grpc_library(
-    name = "cdpi_java_grpc",
-    protos = [":cdpi_proto"],
+    name = "scehduling_java_grpc",
+    protos = [":scheduling_proto"],
     deps = [
-        "//api/common:common_java_proto",
         "@com_google_googleapis//google/rpc:rpc_java_proto",
     ],
 )
 
 python_grpc_library(
-    name = "cdpi_python_grpc",
-    protos = [":cdpi_proto"],
-    deps = [
-        "//api/common:common_python_proto",
-    ],
+    name = "scheduling_python_grpc",
+    protos = [":scheduling_proto"],
 )

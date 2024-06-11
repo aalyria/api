@@ -80,10 +80,20 @@ message PacketClassifier {
   }
   optional EthernetHeader ethernet_header = 3;
 
+  // [RFC 3032](https://rfc-editor.org/rfc/rfc3032)
   message MplsLabelStackEntry {
-    optional uint32 label = 1;
-    // When matching on additional fields in the MPLS label stack entry is
-    // needed we can add them here.
+    optional uint32 label = 1;  // restricted to unsigned 20-bit values
+
+    // TODO: Consider https://rfc-editor.org/rfc/rfc5462 field.
+    // optional uint32 traffic_class = 2; unsigned 3-bit values only
+
+    // If this MplsLabelStackEntry is last in an ordered list of entries,
+    // then it may be inferred that it is the bottom of the stack. Whether
+    // the Bottom-of-Stack bit is to be set or not may require additional
+    // context.
+    //
+    // TODO: Consider explicit Bottom of Stack indicator.
+    // optional bool s = 3;
   }
   optional MplsLabelStackEntry mpls_label_stack_entry = 4;
 
@@ -116,6 +126,56 @@ message IpFlowClassifier {
   reserved 4 to max;  // Next IDs.
 }
 
+// MEF EVC E-Line Flow Classifier
+//
+// Suitable for describing a MEF 10.4 section 8.3.1 Point-to-Point EVC,
+// specifically:
+//
+//    * "Ethernet Private Line Service (EPL)
+//       Point-to-Point EVC, all to one bundling"
+//
+//       See also: MEF 6.3 Section 9.1, MEF 7.4 Section 11.1
+//
+//    * "Ethernet Virtual Private Line (EVPL)
+//       Point-to-Point EVC, bundling and/or multiplexing"
+//
+//       See also: MEF 6.3 Section 9.2, MEF 7.4 Section 11.2
+message EvcElineFlowClassifier {
+  // A locally meaningful name for traffic described by this classifier.
+  //
+  // Possible examples include:
+  //   * the MEF 10.4 section 10.1 EVC EP ID service attribute that
+  //     corresponds to the UNI and Map service attributes below, or
+  //   * an identifier for the pseudowire that will carry this traffic.
+  //
+  // This does not appear anywhere in the data plane and the value is
+  // opaque to rest of the system.
+  optional string id = 1;
+
+  // E.g., MEF 10.4 section 10.2 EVC EP UNI service attribute.
+  optional NetworkInterfaceId uni = 2;
+
+  // MEF 10.4 section 10.4 EVC EP Map service attribute.
+  //
+  // For section 10.4.1 "EVC EP Map Service Attribute = List", add
+  // all applicable non-zero, non-4095 Customer Edge VLAN IDs.
+  //
+  // For section 10.4.2 "EVC EP Map service attribute = All", leave
+  // this list empty.
+  //
+  // For section 10.4.3 "EVC EP Map service attribute = UT/PT", use
+  // only a single VLAN ID, either 0 (zero) or the value of the UNI's
+  // Default CE-VLAN ID attribute (MEF 10.3 and earlier), whichever
+  // has local meaning.
+  repeated uint32 vlan_ids = 3;
+
+  // For use if Ethernet service frames are classified by another
+  // network element and encapsulated inside an MPLS label stack
+  // that uniquely identifies the flow.
+  //
+  repeated PacketClassifier.MplsLabelStackEntry mpls_stack = 4;
+}
+
 // Rules for matching a network flow.
 message FlowClassifier {
   optional IpFlowClassifier ip_classifier = 1;
@@ -123,5 +183,8 @@ message FlowClassifier {
   optional PacketClassifier.GenericLayer4Header l4_classifier = 2;
 
   optional PacketClassifier.EthernetHeader ethernet_classifier = 3;
-  reserved 4 to max;  // Next IDs.
+
+  optional EvcElineFlowClassifier evc_eline_classifier = 4;
+
+  reserved 5 to max;  // Next IDs.
 }

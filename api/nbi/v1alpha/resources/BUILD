@@ -36,6 +36,7 @@ proto_library(
     ],
     deps = [
         "//api/common:common_proto",
+        "//api/types:types_proto",
         "@com_google_googleapis//google/rpc:code_proto",
         "@com_google_googleapis//google/type:interval_proto",
         "@com_google_googleapis//google/type:money_proto",
@@ -51,6 +52,7 @@ cpp_grpc_library(
     protos = [":resources_proto"],
     deps = [
         "//api/common:common_cpp_proto",
+        "//api/types:types_cpp_proto",
         "@com_google_googleapis//google/api:annotations_cc_proto",
         "@com_google_googleapis//google/rpc:code_cc_proto",
         "@com_google_googleapis//google/type:interval_cc_proto",
@@ -64,6 +66,7 @@ go_proto_library(
     proto = ":resources_proto",
     deps = [
         "//api/common:common_go_proto",
+        "//api/types:types_go_proto",
         "@org_golang_google_genproto//googleapis/type/interval",
         "@org_golang_google_genproto//googleapis/type/money",
         "@org_golang_google_genproto_googleapis_rpc//code",
@@ -75,6 +78,7 @@ java_grpc_library(
     protos = [":resources_proto"],
     deps = [
         "//api/common:common_java_proto",
+        "//api/types:types_java_proto",
         "@com_google_googleapis//google/api:api_java_proto",
         "@com_google_googleapis//google/rpc:rpc_java_proto",
         "@com_google_googleapis//google/type:type_java_proto",
