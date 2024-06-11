@@ -49,7 +49,10 @@ cpp_grpc_library(
 
 go_proto_library(
     name = "cdpi_go_grpc",
-    compilers = ["@io_bazel_rules_go//proto:go_grpc"],
+    compilers = [
+        "@io_bazel_rules_go//proto:go_proto",
+        "@io_bazel_rules_go//proto:go_grpc_v2",
+    ],
     importpath = "aalyria.com/spacetime/api/cdpi/v1alpha",
     proto = ":cdpi_proto",
     deps = [

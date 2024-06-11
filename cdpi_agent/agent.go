@@ -228,7 +228,7 @@ func (a *Agent) start(ctx context.Context, agentMap *expvar.Map, errCh chan erro
 	log := zerolog.Ctx(ctx)
 
 	log.Trace().Str("endpoint", a.endpoint).Msg("contacting the CDPI endpoint")
-	conn, err := grpc.DialContext(ctx, a.endpoint, a.dialOpts...)
+	conn, err := grpc.NewClient(a.endpoint, a.dialOpts...)
 	if err != nil {
 		return fmt.Errorf("agent: failed connecting to CDPI backend: %w", err)
 	}

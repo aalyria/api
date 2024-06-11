@@ -18,6 +18,7 @@ package aalyria.spacetime.api.nbi.v1alpha.resources;
 
 import "api/common/time.proto";
 import "api/common/wireless_transceiver.proto";
+import "api/types/ietf.proto";
 import "google/protobuf/any.proto";
 import "google/protobuf/duration.proto";
 
@@ -26,7 +27,7 @@ option go_package = "aalyria.com/spacetime/api/nbi/v1alpha/resources";
 
 // Models an abstract network node (a device, or an entire network).
 message NetworkNode {
-  reserved 3, 6, 11 to max;
+  reserved 6, 11 to max;
 
   // A globally unique identifier for the network node.
   optional string node_id = 1;
@@ -34,6 +35,16 @@ message NetworkNode {
   // Optional friendly, human-readable strings for UI purposes.
   optional string name = 2;
   optional string type = 7;
+
+  message RoutingConfiguration {
+    // The router ID of this NetworkNode.
+    optional types.RouterId router_id = 1;
+
+    // The Segment Routing (RFC 8402) Node SID for this NetworkNode.
+    optional types.SegmentId node_sid = 2;
+  }
+  // Note: Only a single IP VRF at this time.
+  optional RoutingConfiguration routing_config = 3;
 
   // A node may optionally act a gateway for a set of specified IP subnets.
   repeated string subnet = 8;
@@ -118,7 +129,7 @@ message SdnAgent {
 // Models a network interface (aka network device, port, cable, or adapter).
 // Next ID: 18
 message NetworkInterface {
-  reserved 2, 5, 7, 9 to 13, 18 to max;
+  reserved 2, 5, 9 to 13, 18 to max;
 
   // A node-unique identifier for the network interface.
   optional string interface_id = 1;
@@ -159,6 +170,17 @@ message NetworkInterface {
     WiredDevice wired = 4;
     WirelessDevice wireless = 6;
   }
+
+  message RoutingConfiguration {
+    message AdjacencySidEntry {
+      // Required.
+      optional types.SegmentId sid = 1;
+      // Only required if the link is not P2P (e.g., a LAN).
+      optional string next_hop = 2;  // An IPv4 or IPv6 address.
+    }
+    repeated AdjacencySidEntry adjacency_sids = 1;
+  }
+  optional RoutingConfiguration routing_config = 7;
 
   message Impairment {
     enum Type {

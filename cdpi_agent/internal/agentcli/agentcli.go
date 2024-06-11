@@ -41,7 +41,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	otelsdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
-	oteltrace "go.opentelemetry.io/otel/trace"
+	oteltracenoop "go.opentelemetry.io/otel/trace/noop"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/backoff"
@@ -229,7 +229,7 @@ func readParams(confPath, protoFormat string) (*configpb.AgentParams, error) {
 func injectTracer(ctx context.Context, params *configpb.AgentParams) (newCtx context.Context, shutdown func(), err error) {
 	endpoint := params.GetObservabilityParams().GetOtelCollectorEndpoint()
 	if endpoint == "" {
-		return task.InjectTracerProvider(ctx, oteltrace.NewNoopTracerProvider()), func() {}, nil
+		return task.InjectTracerProvider(ctx, oteltracenoop.NewTracerProvider()), func() {}, nil
 	}
 
 	res, err := resource.Merge(

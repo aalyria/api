@@ -36,10 +36,8 @@ option go_package = "aalyria.com/spacetime/api/nbi/v1alpha/resources";
 enum IntentState {
   UNKNOWN = 0;
   INSTALL_REQ = 1;
-  PUSHING = 9;
   SCHEDULED = 10;
   SCHEDULING = 12;
-  MAYBE_INSTALLED = 11;
   INSTALLING = 3;  // In process of being deprecated.
   INSTALLED = 4;
   WITHDRAW_REQ = 5;
@@ -49,7 +47,7 @@ enum IntentState {
   WITHDRAWING = 6;
   FAILED = 8;
 
-  reserved 2, 7;
+  reserved 2, 7, 9, 11;
 }
 
 // Specifies a policy that reserves the use of a network resource.
@@ -114,13 +112,7 @@ message Intent {
   repeated aalyria.spacetime.api.common.ScheduledControlUpdate
     compiled_withdrawal_updates = 17;
 
-  // Automatically retry installation if the intent fails to install.
-  // The first try will occur at time_to_enact (or immediately, if unset). If
-  // the intent fails to install, it will retry immediately, until the intent is
-  // removed.
-  optional bool auto_retry = 12;
-
-  reserved 2, 18 to max;  // Next IDs.
+  reserved 2, 12, 18 to max;  // Next IDs.
 }
 
 // Models an intent to configure steerable beams and/or radio resources.

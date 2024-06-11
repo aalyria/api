@@ -19,6 +19,7 @@ package aalyria.spacetime.api.nbi.v1alpha.resources;
 import "api/common/control_radio.proto";
 import "api/common/coordinates.proto";
 import "api/common/network.proto";
+import "api/common/platform_antenna.proto";
 import "api/common/time.proto";
 import "api/common/wireless_transceiver.proto";
 
@@ -57,6 +58,46 @@ message Radio {
   // For optical transceivers, this may be converted to wavelength.
   optional uint64 center_frequency_hz = 1;
   optional string band_profile_id = 2;
+  optional aalyria.spacetime.api.common.Polarization polarization = 3;
+
+  message TxRadioConfiguration {
+
+    message BeamPower {
+      enum PowerType {
+        POWER_TYPE_UNSPECIFIED = 0;
+        POWER_TYPE_NADIR_EQUIVALENT_BEAM_PEAK_EIRP_PSD_DBW_PER_MHZ = 1;
+        POWER_TYPE_BEAM_PEAK_EIRP_PSD_DBW_PER_MHZ = 2;
+      }
+      optional PowerType power_type = 1;
+      optional double power_value = 2;
+    }
+    optional BeamPower transmit_power = 1;
+
+    optional string modulator_id = 2;
+
+    enum ModulatorMode {
+      MODULATOR_MODE_UNSPECIFIED = 0;
+      MODULATOR_MODE_DVB_S2X = 1;
+      MODULATOR_MODE_DIGITAL_TRANSPARENT = 2;
+    }
+    optional ModulatorMode modulator_mode = 3;
+  }
+
+  optional TxRadioConfiguration tx_radio = 4;
+
+  optional RxRadioConfiguration rx_radio = 5;
+}
+
+message RxRadioConfiguration {
+  optional string demodulator_id = 1;
+
+  enum DemodulatorMode {
+    DEMODULATOR_MODE_UNSPECIFIED = 0;
+    DEMODULATOR_MODE_DVB_S2X = 1;
+    DEMODULATOR_MODE_DVB_RCS2_TDMA = 2;
+    DEMODULATOR_MODE_DIGITAL_TRANSPARENT = 3;
+  }
+  optional DemodulatorMode demodulator_mode = 2;
 }
 
 message LinkEnd {
@@ -84,7 +125,9 @@ message BidirectionalLink {
   optional Radio b_to_a_radio = 4;
 }
 
-// Configures a directional link.
+// Configures a directional link. The link may be a point-to-multipoint link
+// between a transmitter and a list of receiving platforms, or a
+// point-to-point link between two transceivers.
 message DirectionalLink {
   // Identifies the wireless network interface.
   optional aalyria.spacetime.api.common.NetworkInterfaceId id = 1;
@@ -96,6 +139,17 @@ message DirectionalLink {
   // This field is optional and may be omitted for wireless interfaces whose
   // beams are fixed to the platform. It is required for steerable beams.
   optional BeamTarget target = 3;
+
+  // Identifies the platforms that are on the receiving end of the
+  // point-to-multipoint link.
+  repeated RxPlatform rx_platforms = 4;
+}
+
+message RxPlatform {
+  optional aalyria.spacetime.api.common.NetworkInterfaceId id = 1;
+
+  // Defines the radio configuration to apply to the receiving platform.
+  optional RxRadioConfiguration rx_radio = 2;
 }
 
 // Defines whether or not a link is usable or possible.

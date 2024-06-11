@@ -43,7 +43,7 @@ go_library(
         "@io_opentelemetry_go_otel_exporters_otlp_otlptrace_otlptracegrpc//:otlptracegrpc",
         "@io_opentelemetry_go_otel_sdk//resource",
         "@io_opentelemetry_go_otel_sdk//trace",
-        "@io_opentelemetry_go_otel_trace//:trace",
+        "@io_opentelemetry_go_otel_trace//noop",
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_google_grpc//backoff",
         "@org_golang_google_grpc//channelz/service",

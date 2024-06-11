@@ -51,7 +51,7 @@ func dial(ctx context.Context, setting *nbictlpb.Config) (*grpc.ClientConn, erro
 	if err != nil {
 		return nil, fmt.Errorf("unable to construct dial options: %w", err)
 	}
-	conn, err := grpc.DialContext(ctx, setting.GetUrl(), dialOpts...)
+	conn, err := grpc.NewClient(setting.GetUrl(), dialOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to the server: %w", err)
 	}

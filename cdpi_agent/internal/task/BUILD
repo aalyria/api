@@ -37,6 +37,6 @@ go_test(
     embed = [":task"],
     deps = [
         "@io_opentelemetry_go_otel_sdk//trace",
-        "@io_opentelemetry_go_otel_trace//:trace",
+        "@io_opentelemetry_go_otel_trace//noop",
     ],
 )

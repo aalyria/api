@@ -159,6 +159,22 @@ message RadioStats {
   reserved 1, 2;
 }
 
+// Summary interface statistics, with the time observed.
+//
+// Modeled after RFC 8343 `ietf-interfaces` module `statistics`
+// entry, slightly simplified:
+//
+//    +--ro statistics
+//       +--ro in-octets?            yang:counter64
+//       +--ro in-unicast-pkts?      yang:counter64
+//       +--ro in-discards?          yang:counter32
+//       +--ro in-errors?            yang:counter32
+//       +--ro out-octets?           yang:counter64
+//       +--ro out-unicast-pkts?     yang:counter64
+//       +--ro out-discards?         yang:counter32
+//       +--ro out-errors?           yang:counter32
+//
+// Field names inspired by Linux RT_NETLINK structures.
 message InterfaceStats {
   optional DateTime timestamp = 9;
 

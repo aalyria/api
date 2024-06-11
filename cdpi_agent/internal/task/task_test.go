@@ -21,11 +21,11 @@ import (
 	"testing"
 
 	otelsdktrace "go.opentelemetry.io/otel/sdk/trace"
-	oteltrace "go.opentelemetry.io/otel/trace"
+	oteltracenoop "go.opentelemetry.io/otel/trace/noop"
 )
 
 func TestContextGetters_Tracer(t *testing.T) {
-	want := oteltrace.NewNoopTracerProvider().Tracer("task")
+	want := oteltracenoop.NewTracerProvider().Tracer("task")
 
 	ctx := InjectTracer(context.Background(), want)
 	got, ok := ExtractTracer(ctx)
