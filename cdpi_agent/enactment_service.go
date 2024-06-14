@@ -30,6 +30,7 @@ import (
 
 	afpb "aalyria.com/spacetime/api/cdpi/v1alpha"
 	apipb "aalyria.com/spacetime/api/common"
+	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
 	"aalyria.com/spacetime/cdpi_agent/enactment"
 	"aalyria.com/spacetime/cdpi_agent/internal/channels"
 	"aalyria.com/spacetime/cdpi_agent/internal/loggable"
@@ -50,6 +51,7 @@ type enactmentService struct {
 	// maps updateIDs => scheduledUpdates
 	scheduledUpdates map[string]*scheduledUpdate
 	cc               afpb.CdpiClient
+	sc               schedpb.SchedulingClient
 	eb               enactment.Backend
 	clock            clockwork.Clock
 	initState        *apipb.ControlPlaneState
@@ -64,10 +66,11 @@ type scheduledUpdate struct {
 	Result *apipb.ControlPlaneState
 }
 
-func (nc *nodeController) newEnactmentService(cc afpb.CdpiClient, eb enactment.Backend) *enactmentService {
+func (nc *nodeController) newEnactmentService(cc afpb.CdpiClient, sc schedpb.SchedulingClient, eb enactment.Backend) *enactmentService {
 	return &enactmentService{
 		eb:               eb,
 		cc:               cc,
+		sc:               sc,
 		mu:               sync.Mutex{},
 		scheduledUpdates: map[string]*scheduledUpdate{},
 		clock:            nc.clock,

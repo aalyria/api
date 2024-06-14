@@ -21,6 +21,7 @@ import (
 
 	afpb "aalyria.com/spacetime/api/cdpi/v1alpha"
 	apipb "aalyria.com/spacetime/api/common"
+	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
 	"aalyria.com/spacetime/cdpi_agent/internal/task"
 
 	"github.com/jonboulle/clockwork"
@@ -45,7 +46,7 @@ type nodeController struct {
 	telemetryStats func() interface{}
 }
 
-func (a *Agent) newNodeController(node *node, done func(), cdpiClient afpb.CdpiClient, telemetryClient afpb.NetworkTelemetryStreamingClient) *nodeController {
+func (a *Agent) newNodeController(node *node, done func(), cdpiClient afpb.CdpiClient, schedClient schedpb.SchedulingClient, telemetryClient afpb.NetworkTelemetryStreamingClient) *nodeController {
 	nc := &nodeController{
 		id:             node.id,
 		priority:       node.priority,
@@ -82,7 +83,7 @@ func (a *Agent) newNodeController(node *node, done func(), cdpiClient afpb.CdpiC
 		nc.telemetryStats = ts.Stats
 	}
 	if node.enactmentsEnabled {
-		es := nc.newEnactmentService(cdpiClient, node.eb)
+		es := nc.newEnactmentService(cdpiClient, schedClient, node.eb)
 
 		nc.services = append(nc.services, task.Task(es.run).
 			WithNewSpan("enactment_service").

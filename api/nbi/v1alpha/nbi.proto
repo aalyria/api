@@ -43,7 +43,6 @@ enum EntityType {
   DEVICES_IN_REGION = 24;    
   STATION_SET = 21;          
   SURFACE_REGION = 22;       
-  DRAIN_PROVISION = 20;      
   INTENT = 6;                
   INTERFACE_LINK_REPORT = 5; 
   INTERFERENCE_CONSTRAINT = 23;
@@ -57,7 +56,7 @@ enum EntityType {
   // WARNING: This type is under development and not fully supported.
   COMPUTED_MOTION = 7; 
 
-  reserved 14, 15, 17, 25 to max;  // (-- Next ID --)
+  reserved 14, 15, 17, 20, 25 to max;  // (-- Next ID --)
 }
 
 message EntityGroup {
@@ -111,8 +110,6 @@ message Entity {
     aalyria.spacetime.api.nbi.v1alpha.resources.StationSet station_set = 27;
     aalyria.spacetime.api.nbi.v1alpha.resources.SurfaceRegion surface_region =
         28;
-    aalyria.spacetime.api.nbi.v1alpha.resources.DrainProvision drain_provision =
-        26;
     aalyria.spacetime.api.nbi.v1alpha.resources.Intent intent = 9;
     aalyria.spacetime.api.nbi.v1alpha.resources.InterfaceLinkReport
         interface_link_report = 8;
@@ -129,7 +126,7 @@ message Entity {
         transceiver_link_report = 25;
   }
 
-  reserved 18, 23, 35 to max;
+  reserved 18, 23, 26, 35 to max;
 }
 
 service NetOps {

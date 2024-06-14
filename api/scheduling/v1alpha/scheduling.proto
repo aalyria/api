@@ -20,7 +20,7 @@ import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 import "google/rpc/status.proto";
 
-option go_package = "aalyria.com/spacetime/scheduling/v1alpha";
+option go_package = "aalyria.com/spacetime/api/scheduling/v1alpha";
 option java_package = "com.aalyria.spacetime.scheduling.v1alpha";
 
 service Scheduling {
@@ -52,14 +52,6 @@ message ReceiveRequestsMessageToController {
     // Required. Identifies the SDN agent whose schedule is to be managed by
     // this scheduling session.
     string agent_id = 1;
-
-    // Required. When multiple sessions are opened for managing the same SDN
-    // agent's schedule, the channel priority determines the order in which the
-    // SDN controller attempts to send a message over those sessions. Sessions
-    // with the lowest priority are tried first; it is recommended to use:
-    // * priority = 0 for the default control-plane network
-    // * priority = 1 for backup/secondary control paths
-    uint32 channel_priority = 2;
   }
 
   message Response {
@@ -127,7 +119,7 @@ message CreateEntryRequest {
   // Required. The request's sequence number among all requests in the
   // Scheduling service with the same schedule manipulation token. The sequence
   // number resets with each new schedule manipulation token.
-  uint32 sequence_number = 2;
+  uint64 seqno = 2;
 
   // Required. A unique identifier of the schedule entry being created.
   string id = 3;
@@ -136,27 +128,156 @@ message CreateEntryRequest {
   google.protobuf.Timestamp time = 4;
 
   oneof configuration_change {
-    SetBeamConfiguration set_beam_configuration = 5;
-    ClearBeamConfiguration clear_beam_configuration = 6;
-    SetForwardingConfiguration set_forwarding_configuration = 7;
-    ClearForwardingConfiguration clear_forwarding_configuration = 8;
+    SetRoute set_route = 5;
+    DeleteRoute delete_route = 6;
+    SetModemConfiguration set_modem_configuration = 7;
+    DeleteModemConfiguration delete_modem_configuration = 8;
+    SetSrPolicy set_sr_policy = 9;
+    DeleteSrPolicy delete_sr_policy = 10;
   }
 }
 
-message SetBeamConfiguration {
-  // TODO: populate with beam configuration parameters.
+message SetRoute {
+  // The source prefix of the route.
+  //
+  // An IP or IPv6 address optionally followed by a slash and the prefix
+  // length.
+  string from = 1;
+
+  // The destination prefix of the route.
+  //
+  // An IP or IPv6 address optionally followed by a slash and the prefix
+  // length.
+  string to = 2;
+
+  // The output device name.
+  string dev = 3;
+
+  // The address of the nexthop router.
+  //
+  // An IP or IPv6 address.
+  string via = 4;
 }
 
-message ClearBeamConfiguration {
-  // TODO: populate with beam configuration parameters.
+message DeleteRoute {
+  // The source prefix of the route.
+  //
+  // An IP or IPv6 address optionally followed by a slash and the prefix
+  // length.
+  string from = 1;
+
+  // The destination prefix of the route.
+  //
+  // An IP or IPv6 address optionally followed by a slash and the prefix
+  // length.
+  string to = 2;
 }
 
-message SetForwardingConfiguration {
-  // TODO: populate with forwarding configuration parameters.
+message SetModemConfiguration {
+  string modem_id = 1;
+
+  // The collection of beams to be illuminated. The beams are to be illuminated
+  // one-at-a-time in a repeating sequence determined by the
+  // beam_hopping_time_slots.
+  repeated Beam beams = 2;
+
+  // A collection of beam-hopping time slots representing a beam-hopping frame.
+  // Each slot consists of a zero-based index into the collection of beams,
+  // representing the beam to be illuminated during that time slot. A value of
+  // -1 represents that no beam should be illuminated during that time slot.
+  //
+  // The frame should begin at the time at which the modem configuration is
+  // applied. (That is, the time indicated in the CreateEntryRequest message).
+  repeated int32 beam_hopping_time_slots = 3;
 }
 
-message ClearForwardingConfiguration {
-  // TODO: populate with forwarding configuration parameters.
+message DeleteModemConfiguration {
+  string modem_id = 1;
+}
+
+message Beam {
+  BeamTarget target = 1;
+
+  BeamConfiguration rx = 2;
+  BeamConfiguration tx = 3;
+
+  // The collection of endpoints served by the beam.
+  // For example, a collection of user terminals (UTs) served.
+  //
+  // Each endpoint is the ID of a network node in Spacetime's network model.
+  repeated string endpoints = 4;
+}
+
+message BeamTarget {
+  oneof target {
+    Ecef ecef = 1;
+    string ccsds_oem_file_content = 2;
+  }
+}
+
+message Ecef {
+  int64 x_m = 1;
+  int64 y_m = 2;
+  int64 z_m = 3;
+}
+
+message BeamConfiguration {
+  uint64 center_frequency_hz = 1;
+  uint64 channel_bandwidth_hz = 2;
+  Polarization polarization = 3;
+  ModemMode mode = 4;
+}
+
+enum Polarization {
+  POLARIZATION_UNSPECIFIED = 0;
+  POLARIZATION_LHCP = 1; // Left-handed circular polarization
+  POLARIZATION_RHCP = 2; // Right-handed circular polarization
+}
+
+enum ModemMode {
+  MODEM_MODE_UNSPECIFIED = 0;
+  MODEM_MODE_DVB_RCS2 = 1;
+  MODEM_MODE_DVB_S2X = 2;
+}
+
+// A Segment Routing Policy Architecture policy description.
+// Based in part upon elements from:
+//   * RFC 9256
+//   * draft-ietf-idr-sr-policy-safi
+//   * draft-ietf-idr-bgp-sr-segtypes-ext
+//   * draft-ietf-spring-sr-policy-yang
+message SetSrPolicy {
+  // The name of this SR policy, unique among all SR policies, and
+  // matching the name given in the `ServiceRequest` that caused
+  // this policy to be instantiated.
+  string name = 1;
+
+  repeated ExplicitPath paths = 2;
+
+  message ExplicitPath {
+    // Assigning meaning to color can be used to indicate alternate
+    // paths (backup paths of various types).
+    uint32 color = 1;
+
+    // Within explicit paths of the same color, the weight to be
+    // given to this specific segment list (for multipathing).
+    uint32 weight = 2;
+
+    // An ordered list of segments from ingress to egress. The first
+    // segment may be used to indicate the first hop and therefore
+    // need not be encoded in any dataplane encapsulation.
+    repeated SrSegment segments = 3;
+  }
+}
+
+message SrSegment {
+  oneof type {
+    uint32 mpls = 1;  // "Type A"; RFC 8294 mpls-label
+  }
+}
+
+message DeleteSrPolicy {
+  string name = 1;
 }
 
 message DeleteEntryRequest {
@@ -169,7 +290,7 @@ message DeleteEntryRequest {
   // Required. The request's sequence number among all requests in the
   // Scheduling service with the same schedule manipulation token. The sequence
   // number resets with each new schedule manipulation token.
-  uint32 sequence_number = 2;
+  uint64 seqno = 2;
 
   // Required. The schedule entry to delete.
   string id = 3;
@@ -185,10 +306,10 @@ message FinalizeRequest {
   // Required. The request's sequence number among all requests in the
   // Scheduling service with the same schedule manipulation token. The sequence
   // number resets with each new schedule manipulation token.
-  uint32 sequence_number = 2;
+  uint64 seqno = 2;
 
   // Required. The time before which the schedule will no longer be modified.
-  google.protobuf.Timestamp time = 3;
+  google.protobuf.Timestamp up_to = 3;
 }
 
 message ResetRequest {
