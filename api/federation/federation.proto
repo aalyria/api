@@ -47,43 +47,124 @@ option go_package = "aalyria.com/spacetime/api/fed/v1alpha";
 // fine-grained control over service selection, if desired. The RPCs that
 // facilitate this are:
 //
-//   1) `StreamInterconnections`, which allows the requestor to see a long-lived
-//      stream of the service provider's interconnection points.
+//   1) `StreamInterconnectionPoints`, which allows the requestor to see a
+//      long-lived stream of the service provider's interconnection points.
 //   2) `ListServiceOptions`, which allows the requestor to get a list of
 //      available services from the service provider's network.
 //
 // Generally, the more prescriptive the requestor is about requesting specific
 // interconnection points or service options, the less the provider needs to
-// know about the requestor network. Conversely, the requstor may prefer a more
+// know about the requestor network. Conversely, the requestor may prefer a more
 // hands-off approach to selecting and maintaining service interconnections, and
 // can let the provider handle the tasking by offering more information upfront.
 //
-// SERVICE UPDATES AND OTHER CHANGES
-//
-// Service requests, once submitted, are immutable. Desired changes to a service
-// should be requested by cancelling the original request and submitting a new
-// one. The provider may make updates to the service's attributes as its network
-// changes, but the updates should remain within the SLAs dicated by the
-// original request.
-//
 // The service ends when the last time interval has ended.
+//
+// SERVICE LIFECYCLE
+//
+// The following RPCs handle lifecycle management for Services.
+//
+// All are called by the Requestor to the Provider.
+//
+// - ScheduleService requests a Service from the Provider, returning among
+//   other things a unique `service_id` for lifecycle management.
+// - StatusService creates a long-lived stream, through which the Provider
+//   generates dynamic Service status updates for one or more `service_id`.
+//   It is also the channel through which the Provider can notify the
+//   Requestor of Service termination.
+// - CancelService enables Requestor cancellation of an existing
+//   `service_id`.
 service Federation {
-  // Request a long-lived stream of available `InterconnectionPoints`.
-  rpc StreamInterconnections(stream InterconnectionsRequest)
-      returns (stream InterconnectionPoint) {}
+  // Request a potentially long-lived stream of available
+  // `InterconnectionPoints`. The connection will stream one complete snapshot
+  // of InterconnectionPoints from the Provider. If the request specifies
+  // `snapshot_only=true`, the stream is terminated by the Provider after
+  // sending the snapshot. Otherwise, the Provider continues to stream any
+  // updates in real-time.
+  rpc StreamInterconnectionPoints(StreamInterconnectionPointsRequest)
+      returns (stream StreamInterconnectionPointsResponseChunk) {}
 
   // Request a finite stream of `ServiceOptions`.
   rpc ListServiceOptions(stream ServiceOptionsRequest)
       returns (stream ServiceOption) {}
 
-  // Schedule a service.
-  rpc ScheduleService(stream ServiceRequest) returns (stream Service) {}
+  // Request a Service.
+  rpc ScheduleService(ScheduleServiceRequest)
+    returns (ScheduleServiceResponse) {}
 
-  // Update a service.
-  rpc UpdateService(UpdateServiceRequest) returns (UpdateServiceResponse) {}
+  // Request Provider status updates for one or more Services.
+  rpc MonitorServices(stream MonitorServicesRequest)
+    returns (stream MonitorServicesResponse) {}
 
-  // Cancel a service.
+  // Request a Service cancellation.
   rpc CancelService(CancelServiceRequest) returns (CancelServiceResponse) {}
+}
+
+// Update the requested set of Service `service_id`s for status updates.
+//
+// Updates are differential (specified in adds and drops) to support
+// potentially large cardinality.
+message MonitorServicesRequest {
+  // List of Services with `service_id`s to subscribe to status updates of.
+  repeated string add_service_ids = 1;
+
+  // List of Services with `service_id`s to drop status updates of.
+  repeated string drop_service_ids = 2;
+}
+
+// Streamed updates to subscribed `service_id`s providing updates.
+message MonitorServicesResponse {
+  repeated ServiceStatus updated_services =1;
+}
+
+// A StreamInterconnectionPointsResponseChunk returns a collection of Provider
+// InterconnectionPoint updates and signals when an entire snapshot has
+// successfully been transferred (leaving only live updates remaining).
+//
+// When streaming Interconnections, one or more
+// StreamInterconnectionPointsResponseChunks with `mutations` may be transmitted
+// in order to fully transfer the initial snapshot of InterconnectionPoints.
+//
+// For the longevity of a StreamInterconnectionPoints, there will be exactly one
+// StreamInterconnectionPointsResponseChunk in which `snapshot_complete` is set,
+// indicating that the mutations up to and including this Chunk complete the
+// initial system view at the start of streaming (initial snapshot). Future
+// StreamInterconnectionPointsResponseChunk (if `snapshot_only=False` or is
+// unset) will contain further live updates. Otherwise the stream is closed by
+// the Provider.
+message StreamInterconnectionPointsResponseChunk {
+  // Notification that the initial state snapshot has been fully provided, up
+  // to and including the `mutations` in this message.
+  optional SnapshotComplete snapshot_complete = 1;
+  // A set of InterconnectionPoint advertisement changes.
+  repeated InterconnectionMutation mutations = 2;
+
+  message SnapshotComplete{
+    // Message empty but left for ease of backwards compatibility should
+    // any snapshot completion signaling need arrise (e.g. timestamp).
+  }
+}
+
+// An InterconnectionMutation specifies one change to the advertised
+// InterconnectionPoints of a Provider.  This could be new or updated
+// InterconnectionPoints (upsert), or the removal of an existing offering
+// (delete).
+message InterconnectionMutation {
+  oneof type {
+    // upsert: update an existing InterconnectionPoint if it already exists
+    // (based on UUID comparison), or insert a new InterconnectionPoint if it
+    // doesn't already exist.  The full InterconnectionPoint object is
+    // required, the service does not support diffs for this field.
+    InterconnectionPoint upsert = 1;
+    // delete an existing InterconnectionPoint if it already exists (based on
+    // UUID comparison).
+    Delete delete = 2;
+  }
+
+  message Delete {
+    // The UUID of the now-deleted InterconnectionPoint.
+    string uuid = 1;
+  }
 }
 
 // An interconnection point is an endpoint of a link between two networks.
@@ -105,8 +186,10 @@ service Federation {
 // via the Federation API, it should never be re-mapped to a different internal
 // resource, though the ID may be deprecated or deleted.
 message InterconnectionPoint {
-  // The ID of this interconnection point. Required.
-  string id = 1;
+  // The UUID of this interconnection point. Required. Unique across
+  // InterconnectionPoints advertised by this Provider. The UUID is maintained
+  // across mutations to this entity.
+  string uuid = 1;
 
   oneof type {
     // The transceiver model used by this interconnection point.
@@ -144,7 +227,7 @@ message InterconnectionPoint {
   }
   repeated LocalId local_ids = 8;
 
-  // The maximimum data-rate of the interface, in layer 2 bits per second. For
+  // The maximum data-rate of the interface, in layer 2 bits per second. For
   // wired interconnection points only.
   double max_data_rate_bps = 9;
 
@@ -183,8 +266,14 @@ enum Directionality {
 }
 
 // This request message allows filtering of requested interconnection points.
-message InterconnectionsRequest {
-  // characteristics of the associated platform
+message StreamInterconnectionPointsRequest {
+  // If set to true, the connection will be closed by the Provider after
+  // streaming one snapshot's complete set of Interconnections (the stream is
+  // not held open for additional updates).
+  optional bool snapshot_only = 1;
+
+  // Future expansion possible to support filtering characteristics for
+  // the Stream.
 }
 
 // This object is used to frame `ServiceRequests` and `ServiceOptionRequests`
@@ -202,7 +291,7 @@ message InterconnectionsRequest {
 message RequestorEdgeToIpNetwork {
   // An unordered set of `InterconnectionPoints` from the requestor's network.
   // Each point must contain enough information to enable full link budgeting
-  // and compabitility analysis.
+  // and compatibility analysis.
   repeated InterconnectionPoint x_interconnection_points = 1;
   // The IP address the requestor wishes to reach, represented as a CIDR
   // notation subnet or single IP address string.
@@ -227,11 +316,11 @@ message RequestorEdgeToIpNetwork {
 message RequestorEdgeToRequestorEdge {
   // An unordered set of `InterconnectionPoints` from the requestor's network.
   // Each point must contain enough information to enable full link budgeting
-  // and compabitility analysis.
+  // and compatibility analysis.
   repeated InterconnectionPoint x_interconnection_points = 1;
   // An unordered set of `InterconnectionPoints` from the requestor's network.
   // Each point must contain enough information to enable full link budgeting
-  // and compabitility analysis.
+  // and compatibility analysis.
   repeated InterconnectionPoint y_interconnection_points = 2;
   // Defines the directionality of this pair of endpoint sets. Assumed to be
   // bidirectional by default.
@@ -358,7 +447,7 @@ message TemporalServiceAttributes {
 message ServiceOptionsRequest {
   // Requestable endpoint set pairs. Optional.
   oneof type {
-    // All `InterconnectionPoints` must contain link compatilibilty and link
+    // All `InterconnectionPoints` must contain link compatibility and link
     // evaluation fields.
     RequestorEdgeToRequestorEdge requestor_edge_to_requestor_edge = 1;
     // Only basic ID information on `InterconnectionPoints` is required.
@@ -409,15 +498,15 @@ message ServiceOption {
 // A request for service. All fields are requirements that are ANDed together.
 // If the number of potential services is more than one, after all requirements
 // have been applied, then the provider selects one for the requestor.
-message ServiceRequest {
+message ScheduleServiceRequest {
   // Requestable endpoint set pairs.
   oneof type {
     // The service option to request.
     string service_option_id = 2;
-    // All `InterconnectionPoints` must contain link compatilibilty and link
+    // All `InterconnectionPoints` must contain link compatibility and link
     // evaluation fields.
     RequestorEdgeToRequestorEdge requestor_edge_to_requestor_edge = 3;
-    // All `InterconnectionPoints` must contain link compatilibilty and link
+    // All `InterconnectionPoints` must contain link compatibility and link
     // evaluation fields.
     RequestorEdgeToIpNetwork requestor_edge_to_ip_network = 4;
   }
@@ -428,42 +517,56 @@ message ServiceRequest {
   // A request will be treated as having a higher priority if the value of this
   // field is greater than that of another service request from the same
   // requestor.
-  double priority = 6;
+  uint32 priority = 6;
 }
 
-// A Service is created as the result of a service request. Services are keyed
-// by endpoints and time interval. Two services that differ in any of these
-// three values are considered different services.
-message Service {
+
+// The immediate result of a ScheduleService call, providing a unique
+// `service_id` for lifecycle managment of the resulting Service.
+message ScheduleServiceResponse {
+  // A unique service_id generated by the provider.
+  string service_id = 1;
+
+  // Any additional immutable Service fields can be added here.
+}
+
+// A ServiceUpdate to notify the Requestor of Service characteristics which may
+// change over time.
+message ServiceStatus {
   // The ID of the service.
   string id = 1;
 
-  // One endpoint of the service.
-  InterconnectionPoint x_service_endpoint = 2;
+  oneof type {
+    // A Provider initiated notification of Service cancellation.
+    ServiceCancelled provider_cancelled = 2;
+    // A Provider notification of Service status changes.
+    ServiceUpdate service_update = 3;
+  }
 
-  // The other endpoint of the service.
-  InterconnectionPoint y_service_endpoint = 3;
+  message ServiceCancelled {
+    // To aid proto forward compatibility, leaving a message for future
+    // cancellation characteristics.
+  }
 
-  // Service defaults to bidirectional.
-  Directionality directionality = 4;
+  message ServiceUpdate {
+    // One endpoint of the service.
+    InterconnectionPoint x_service_endpoint = 1;
 
-  TemporalServiceAttributes planned_service_attributes_x_to_y = 5;
+    // The other endpoint of the service.
+    InterconnectionPoint y_service_endpoint = 2;
 
-  TemporalServiceAttributes planned_service_attributes_y_to_x = 6;
+    // Planned service attributes, confirmed by Requestor.
+    TemporalServiceAttributes planned_service_attributes_x_to_y = 3;
+    TemporalServiceAttributes planned_service_attributes_y_to_x = 4;
 
-  TemporalServiceAttributes service_attributes_x_to_y = 7;
+    // Actual service attributes, reported by Requestor, which may differ
+    // from planned.
+    TemporalServiceAttributes reported_service_attributes_x_to_y = 5;
+    TemporalServiceAttributes reported_service_attributes_y_to_x = 6;
 
-  TemporalServiceAttributes service_attributes_y_to_x = 8;
-
-  // True if the service is currently active and provisioned by the network.
-  bool is_active = 9;
-
-  // The priority of this service. This value is being compared to all other
-  // services in place, by the provider, at a given time.
-  double priority = 10;
-
-  // The service request that spawned this service.
-  ServiceRequest request_origin = 11;
+    // True if the service is currently active and provisioned by the network.
+    bool is_active = 7;
+  }
 }
 
 message CancelServiceRequest {
@@ -472,12 +575,4 @@ message CancelServiceRequest {
 
 message CancelServiceResponse {
   bool cancelled = 1;
-}
-
-message UpdateServiceRequest {
-  Service service = 1;
-}
-
-message UpdateServiceResponse {
-  bool updated = 1;
 }

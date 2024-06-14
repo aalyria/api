@@ -24,6 +24,7 @@ import (
 
 	afpb "aalyria.com/spacetime/api/cdpi/v1alpha"
 	apipb "aalyria.com/spacetime/api/common"
+	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
 	"aalyria.com/spacetime/cdpi_agent/enactment"
 	"aalyria.com/spacetime/cdpi_agent/internal/task"
 	"aalyria.com/spacetime/cdpi_agent/telemetry"
@@ -234,12 +235,13 @@ func (a *Agent) start(ctx context.Context, agentMap *expvar.Map, errCh chan erro
 	}
 
 	cdpiClient := afpb.NewCdpiClient(conn)
+	schedClient := schedpb.NewSchedulingClient(conn)
 	telemetryClient := afpb.NewNetworkTelemetryStreamingClient(conn)
 
 	for _, n := range a.nodes {
 		ctx, done := context.WithCancel(ctx)
 
-		nc := a.newNodeController(n, done, cdpiClient, telemetryClient)
+		nc := a.newNodeController(n, done, cdpiClient, schedClient, telemetryClient)
 		agentMap.Set(n.id, expvar.Func(nc.Stats))
 
 		srv := task.Task(nc.run).

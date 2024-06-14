@@ -22,6 +22,7 @@ import "api/common/network.proto";
 import "api/common/platform_antenna.proto";
 import "api/common/time.proto";
 import "api/common/wireless_transceiver.proto";
+import "google/type/interval.proto";
 
 option java_package = "com.aalyria.spacetime.api.nbi.v1alpha.resources";
 option go_package = "aalyria.com/spacetime/api/nbi/v1alpha/resources";
@@ -299,4 +300,33 @@ message TransceiverLinkReport {
   // A set of possible wireless links that this source transceiver could
   // participate in.
   repeated WirelessLinkReport links = 2;
+}
+
+// BeamCandidate defines the modeled link evaluation of a potential
+// point-to-multipoint link. The candidate can model either the downlink
+// direction, from the beam to a set of receiving platforms,
+// or the uplink, from a set of platforms to the beam.
+
+// Note: BeamCandidate is still under development.
+message BeamCandidate {
+  optional aalyria.spacetime.api.common.TransceiverModelId transceiver_id = 1;
+
+  // The coordinates at which the beam is pointed.
+  optional aalyria.spacetime.api.common.Motion target = 2;
+
+  // AccessibilityInterval defines a link evaluation interval and the
+  // corresponding groups of platforms and their modeled data.
+  message AccessibilityInterval {
+
+    // GainGroup defines the modeled gain between the beam
+    // and a set of transceivers and/or Earth Fixed H3 cells.
+    message GainGroup {
+      optional double gain_db = 1;
+      repeated string platform_ids = 2;
+      repeated fixed64 h3_cells = 3;
+    }
+    repeated GainGroup gain_groups = 1;
+    optional google.type.Interval interval = 2;
+  }
+  repeated AccessibilityInterval accessibility_intervals = 3;
 }

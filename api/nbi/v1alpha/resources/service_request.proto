@@ -76,22 +76,6 @@ message ServiceRequest {
   // their network, such as estimated revenue, number of customers served, etc.
   optional double priority = 6;
 
-  // Classification of traffic being requested for this provision.
-  // For example, this is useful for filtering drain violations (see comments in
-  // DrainProvision proto, but note that eventually we may explore other drain
-  // filtering approaches such as explicit ServiceRequest id white-listing).
-  enum FlowType {
-    FLOW_TYPE_UNSPECIFIED = 0;
-    // Traffic generated or received by network devices for network control
-    // (e.g., network formation such as routing policies in the forwarding
-    // plane to glue the network together) or network management (e.g.,
-    // monitoring, SSH, configs, updates).
-    SDN_CONTROL_MANAGEMENT = 1;
-    // Customer-generated traffic transiting network devices.
-    SDN_FORWARDING = 2;
-  }
-  optional FlowType flow_type = 11;
-
   message FlowRequirements {
     reserved 4, 7 to max;  // NEXT_ID: 7
     // The time interval over which these requirements are applicable.
@@ -121,17 +105,6 @@ message ServiceRequest {
   }
   repeated FlowRequirements requirements = 4;
 
-  // Groups ServiceRequests that provide redundant network flows for an
-  // application service (e.g., LTE S1Flex).  The Solver may optimize to
-  // prevent correlated failures of flows in the same group.
-  // Note: currently Spacetime only supports equivalent ServiceRequests in the
-  // same redundancy group.  In future works, this message can be extended to
-  // allow active/standby flows.
-  message RedundancyGroup {
-    optional string id = 1;
-  }
-  optional RedundancyGroup redundancy_group = 12;
-
   // True while the Topology & Routing app observes routes installed that
   // satisfy the bandwidth_bps_minimum capacity of the service request.
   // Apps may watch this field to know when the provision request is satisfied.
@@ -159,106 +132,6 @@ message ServiceRequest {
   // The maximum budget allowed for this service request.
   optional google.type.Money cost_per_minute_maximum = 20;
 
-  reserved 1, 3, 7, 17;
+  reserved 1, 3, 7, 11 to 12, 17;
   reserved 21 to max;  // Next IDs.
-}
-
-// An external request to avoid using an otherwise available node to
-// satisfy ServiceRequests.
-//
-// Drains proceed through the following phases:
-// 1. opportunistic: no changes are forced on the topology, but if the drain is
-// found to be satisfied naturally, it will be maintained going forward.
-// 2. deterrence: traffic is encouraged to move away from the node (perhaps by
-// disallowing reconnection, or strongly preferring alternative routes).
-// 3. force: traffic is forcefully removed (even if there's nowhere else to send
-// it).
-//
-// It is invalid to specify a DrainProvision which utilizes none of these
-// phases, or which tries to enact them out of order.
-//
-// See below for further modifications to this general theme.
-message DrainProvision {
-  // The ID of the NetworkNode to drain. To transition to satisfied, all
-  // in-scope ServiceRequests must not involve the specified node.
-  optional string node_id = 1;
-  // Human-friendly note about why this drain is taking place.
-  optional string reason = 2;
-
-  // The most recent state of this drain.
-  enum State {
-    // The initial state for a drain at creation.
-    STATE_UNSPECIFIED = 0;
-    // Still waiting for drain start time (e.g., now time is before start_time
-    // in an opportunistic drain).
-    PENDING = 1;
-    // There are possible in-scope service requests still using the drain
-    // target (e.g., solver still waiting opportunistically before force_time).
-    UNSATISFIED = 2;
-    // Drain is already satisfied by Solver (e.g., opportuniscally or past
-    // force_time), yet waiting for CDPI enactment.
-    ENACTING = 3;
-    // Drain is active and in full effect.
-    ENACTED = 4;
-    // Drain deletion (i.e., undrain operation) is in-progress.
-    DELETING = 5;
-    // Drain deletion is done.
-    DELETED = 6;
-  }
-  optional State state = 3;
-
-  // The times below define the transitions between the drain phases. The
-  // progression must be in the order defined above, or the DrainProvision is
-  // invalid. Any phase can be omitted by not providing a time for it.
-
-  // The time to start enforcing opportunistic satisfaction of this drain.  If
-  // enabled, this DrainProvision can be satisfied by the natural evolution of
-  // the topology without forcing any transition.
-  optional google.protobuf.Timestamp opportunistic_start_time = 4;
-  // The time at which the topology will start trying to move traffic away from
-  // the drained node.
-  optional google.protobuf.Timestamp deter_start_time = 5;
-  // The time at which the topology will be forcefully changed to enact this
-  // drain.
-  optional google.protobuf.Timestamp force_time = 6;
-
-  // The following option restricts the scope of ServiceRequests affected by
-  // this drain. When no exclusions are specified, this DrainProvision requires
-  // that no ServiceRequest be satisfied using the node. Exclusions enable, for
-  // example, to still allow a node to connect *itself* to the topology without
-  // supporting routes *through it* to any other nodes.
-
-  // If true, control and management traffic are allowed while the target is
-  // drained.
-  optional bool allow_control_management_for_node = 8;
-
-  // Drain satisfaction method by solver.
-  enum Method {
-    METHOD_UNSPECIFIED = 0;
-    WAIT = 1;
-    FORCE = 2;
-  }
-  // Only set if drain reaches the ENACTED state.
-  optional Method method = 7;
-
-  // Below are output timestamps of critical drain states.
-  // Time at drain creation (initial STATE_UNSPECIFIED).
-  optional google.protobuf.Timestamp create_time = 9;
-
-  // Solver cycle that satisfies the drain.
-  optional google.protobuf.Timestamp solver_satisfaction_time = 14;
-
-  // Time at pending CDPI enactment (ENACTING state).
-  optional google.protobuf.Timestamp enacting_time = 10;
-
-  // Time at drain satisfaction (ENACTED state).
-  optional google.protobuf.Timestamp enacted_time = 11;
-
-  // Time at undrain request (DELETING state).
-  optional google.protobuf.Timestamp deleting_time = 12;
-
-  // Time at undrain completion (DELETED state).
-  optional google.protobuf.Timestamp deleted_time = 13;
-
-  reserved 15 to max;  // Next IDs.
 }

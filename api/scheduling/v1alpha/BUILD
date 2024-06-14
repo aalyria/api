@@ -46,7 +46,7 @@ go_proto_library(
         "@io_bazel_rules_go//proto:go_proto",
         "@io_bazel_rules_go//proto:go_grpc_v2",
     ],
-    importpath = "aalyria.com/spacetime/scheduling/v1alpha",
+    importpath = "aalyria.com/spacetime/api/scheduling/v1alpha",
     proto = ":scheduling_proto",
     deps = [
         "@org_golang_google_genproto_googleapis_rpc//status",
@@ -54,7 +54,7 @@ go_proto_library(
 )
 
 java_grpc_library(
-    name = "scehduling_java_grpc",
+    name = "scheduling_java_grpc",
     protos = [":scheduling_proto"],
     deps = [
         "@com_google_googleapis//google/rpc:rpc_java_proto",
