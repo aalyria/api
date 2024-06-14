@@ -175,8 +175,13 @@ message NetworkInterface {
     message AdjacencySidEntry {
       // Required.
       optional types.SegmentId sid = 1;
-      // Only required if the link is not P2P (e.g., a LAN).
-      optional string next_hop = 2;  // An IPv4 or IPv6 address.
+      // Only required if the link is not P2P (e.g., a LAN or multiple
+      // beams/channels associated with a single interface).
+      //
+      // This will typically be an IPv4 or IPv6 address, but if multiple
+      // beams or channels are associated with a single interface this
+      // might also be an identifier for  beam/subchannel/subcarrier.
+      optional string next_hop = 2;
     }
     repeated AdjacencySidEntry adjacency_sids = 1;
   }

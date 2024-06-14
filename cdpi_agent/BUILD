@@ -32,6 +32,7 @@ go_library(
     deps = [
         "//api/cdpi/v1alpha:cdpi_go_grpc",
         "//api/common:common_go_proto",
+        "//api/scheduling/v1alpha:scheduling_go_grpc",
         "//cdpi_agent/enactment",
         "//cdpi_agent/internal/channels",
         "//cdpi_agent/internal/loggable",

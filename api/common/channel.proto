@@ -57,6 +57,10 @@ message BandProfile {
   // Required.
   optional uint64 channel_width_hz = 2;
   
+  // The symbol rate (baud rate), in symbols per second, of carriers that are
+  // assigned to channels of this bandwidth.
+  optional uint64 symbol_rate_symbols_per_second = 4;
+  
   // A mapping between thresholds of various measurements of signal quality to 
   // the effective Layer 2 data rate that the link could sustain.  
   // This is Spacetime's abstraction for representing the MODCOD schemes that 

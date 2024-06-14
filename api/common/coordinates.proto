@@ -546,6 +546,7 @@ message Motion {
     STATE_VECTOR = 9;
     SELENOGRAPHIC_MLR = 8;
     STK_EPHEM_AND_ATTITUDE_FILE = 11; 
+    CCSDS_ORBIT_EPHEMERIS_MESSAGE = 13;
   }
 
   oneof type {
@@ -561,7 +562,23 @@ message Motion {
     StateVector state_vector = 9;
     SelenographicMlr selenographic_mlr = 8;
     StkEphemAndAttitudeFile stk_ephem_and_attitude_file = 11;
+    CcsdsOrbitEphemerisMessage ccsds_orbit_ephemeris_message = 13;
   }
+}
+
+// A CCSDS Orbit Ephemeris Message (OEM), per the
+// specification CCSDS 502.0-B-3 published April 2023.
+//
+// Notes:
+// - Though the OEM Metadata INTERPOLATION and INTERPOLATION_DEGREE
+//   fields are Optional in the specification, they are required by Spacetime
+// - File format can be either Key-value notation (KVN) or extensible markup
+//   language (XML)
+// - Presently supports single-segment CCSDS OEM Files (multi-segment will
+//   throw error)
+message CcsdsOrbitEphemerisMessage {
+  // CCSDS OEM File as a String
+  optional string file = 1;
 }
 
 // WARNING: This field is under development and not fully supported.

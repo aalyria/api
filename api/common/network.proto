@@ -146,14 +146,17 @@ message EvcElineFlowClassifier {
   // Possible examples include:
   //   * the MEF 10.4 section 10.1 EVC EP ID service attribute that
   //     corresponds to the UNI and Map service attributes below, or
-  //   * an identifier for the pseudowire that will carry this traffic.
+  //   * an identifier for an SR Policy or a specific pseudowire that
+  //     will carry this traffic.
   //
   // This does not appear anywhere in the data plane and the value is
   // opaque to rest of the system.
   optional string id = 1;
 
   // E.g., MEF 10.4 section 10.2 EVC EP UNI service attribute.
-  optional NetworkInterfaceId uni = 2;
+  // Node-local interface name; node MUST be inferred from additional
+  // context (e.g. ServiceRequest or ScheduledControlUpdate).
+  optional string uni = 2;
 
   // MEF 10.4 section 10.4 EVC EP Map service attribute.
   //

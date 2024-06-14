@@ -64,8 +64,8 @@ message FlowRule {
           FIELD_ETH_DST = 2;
           // Only the MPLS label, does not alter any of the other fields of
           // the Label Stack Entry (RFC 3032 section-2.1).
-          FIELD_MPLS_LABEL = 3;
-          FIELD_VLAN_ID = 4;
+          FIELD_MPLS = 3;
+          FIELD_CTAG = 4;
           FIELD_PBB_ITAG = 5;
         }
         optional Field field = 1;
@@ -97,7 +97,7 @@ message FlowRule {
         enum Field {
           FIELD_UNSPECIFIED = 0;
           FIELD_MPLS = 1;
-          FIELD_VLAN = 2;
+          FIELD_CTAG = 2;
           FIELD_PBB = 3;
         }
         optional Field field = 1;
@@ -111,7 +111,7 @@ message FlowRule {
         enum Field {
           FIELD_UNSPECIFIED = 0;
           FIELD_MPLS = 1;
-          FIELD_VLAN = 2;
+          FIELD_CTAG = 2;
           FIELD_PBB = 3;
         }
         optional Field field = 1;
