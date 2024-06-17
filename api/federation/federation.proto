@@ -85,8 +85,8 @@ service Federation {
       returns (stream StreamInterconnectionPointsResponseChunk) {}
 
   // Request a finite stream of `ServiceOptions`.
-  rpc ListServiceOptions(stream ServiceOptionsRequest)
-      returns (stream ServiceOption) {}
+  rpc ListServiceOptions(ListServiceOptionsRequest)
+      returns (stream ListServiceOptionsResponse) {}
 
   // Request a Service.
   rpc ScheduleService(ScheduleServiceRequest)
@@ -98,6 +98,13 @@ service Federation {
 
   // Request a Service cancellation.
   rpc CancelService(CancelServiceRequest) returns (CancelServiceResponse) {}
+}
+
+// Returns a collection of ServiceOptions, message may be repeated to stream
+// all ServiceOptions that resulted from the ListServiceOptions Request.
+message ListServiceOptionsResponse {
+  // A collection of ServiceOptions that satisfy the ListServiceOptionsRequest.
+  repeated ServiceOption service_options = 1;
 }
 
 // Update the requested set of Service `service_id`s for status updates.
@@ -444,7 +451,7 @@ message TemporalServiceAttributes {
 
 // A request for service options. All fields are requirements that are ANDed
 // together to constrain the resulting set of service options.
-message ServiceOptionsRequest {
+message ListServiceOptionsRequest {
   // Requestable endpoint set pairs. Optional.
   oneof type {
     // All `InterconnectionPoints` must contain link compatibility and link

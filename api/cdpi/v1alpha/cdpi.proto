@@ -144,15 +144,23 @@ service NetworkTelemetryStreaming {
 // The Spacetime CDPI can be used by an SDN agent to receive dataplane schedule
 // changes and to notify the SDN controller of state changes.
 //
-// Note: This service is still under development.
+// Note: This service has been deprecated in favor of the scheduling interface
+// defined in the aalyria.spacetime.scheduling.v1alpha package.
 service Cdpi {
   // Opens a stream with the SDN controller through which the controller may
   // issue requests of the SDN agent, and the agent may respond.
-  rpc Cdpi(stream CdpiRequest) returns (stream CdpiResponse) {}
+  rpc Cdpi(stream CdpiRequest) returns (stream CdpiResponse) {
+    option deprecated = true;
+  }
 
-  rpc UpdateNodeState(CdpiNodeStateRequest) returns (google.protobuf.Empty) {}
+  rpc UpdateNodeState(CdpiNodeStateRequest) returns (google.protobuf.Empty) {
+    option deprecated = true;
+  }
+
   rpc UpdateRequestStatus(CdpiRequestStatusRequest)
-      returns (google.protobuf.Empty) {}
+      returns (google.protobuf.Empty) {
+    option deprecated = true;
+  }
 }
 
 // An out-of-band, one-way update of an individual node's state that an SDN
