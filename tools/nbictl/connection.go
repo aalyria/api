@@ -23,13 +23,16 @@ import (
 	"os"
 	"path/filepath"
 
-	"aalyria.com/spacetime/auth"
-	"aalyria.com/spacetime/github/tools/nbictl/nbictlpb"
 	"github.com/jonboulle/clockwork"
 	"github.com/urfave/cli/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/encoding/gzip"
+	_ "google.golang.org/grpc/encoding/gzip" // Install the gzip compressor
+
+	"aalyria.com/spacetime/auth"
+	"aalyria.com/spacetime/github/tools/nbictl/nbictlpb"
 )
 
 func openConnection(appCtx *cli.Context) (*grpc.ClientConn, error) {
@@ -60,7 +63,7 @@ func dial(ctx context.Context, setting *nbictlpb.Config) (*grpc.ClientConn, erro
 
 func getDialOpts(ctx context.Context, setting *nbictlpb.Config) ([]grpc.DialOption, error) {
 	dialOpts := []grpc.DialOption{
-		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(1024 * 1024 * 256)),
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(1024*1024*256), grpc.UseCompressor(gzip.Name)),
 	}
 
 	switch t := setting.GetTransportSecurity().GetType().(type) {

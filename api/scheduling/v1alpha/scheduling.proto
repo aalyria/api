@@ -198,7 +198,12 @@ message DeleteModemConfiguration {
 message Beam {
   BeamTarget target = 1;
 
+  // Parameters specifying the configuration of the beam in the receive
+  // direction. Absent if the beam is to be used for transmit only.
   BeamConfiguration rx = 2;
+
+  // Parameters specifying the configuration of the beam in the receive
+  // direction. Absent if the beam is to be used for receiving only.
   BeamConfiguration tx = 3;
 
   // The collection of endpoints served by the beam.

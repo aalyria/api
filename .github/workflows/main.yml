@@ -41,6 +41,7 @@ jobs:
         target:
           - //cdpi_agent/cmd/agent
           - //tools/nbictl/cmd/nbictl
+          - //tools/generate_jwt
         os: [linux, windows, darwin]
         arch: [amd64, arm64]
 
@@ -71,6 +72,14 @@ jobs:
           path: |
             bazel-bin/cdpi_agent/cmd/agent/agent_/agent
             bazel-bin/cdpi_agent/cmd/agent/agent_/agent.exe
+      - name: Upload generate_jwt binary
+        uses: actions/upload-artifact@v3
+        if: matrix.target == '//tools/generate_jwt'
+        with:
+          name: cdpi_agent-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            bazel-bin/tools/generate_jwt/generate_jwt_/generate_jwt
+            bazel-bin/tools/generate_jwt/generate_jwt_/generate_jwt.exe
 
   build-and-upload-docs:
     needs: [build-and-test]

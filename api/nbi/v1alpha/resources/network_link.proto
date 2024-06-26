@@ -109,6 +109,7 @@ message LinkEnd {
 message BeamTarget {
   oneof type {
     aalyria.spacetime.api.common.TransceiverModelId transceiver_id = 1;
+    string platform_id = 3;
     aalyria.spacetime.api.common.Motion coordinates = 2;
   }
 }
