@@ -76,7 +76,7 @@ jobs:
         uses: actions/upload-artifact@v3
         if: matrix.target == '//tools/generate_jwt'
         with:
-          name: cdpi_agent-${{ matrix.os }}-${{ matrix.arch }}
+          name: generate_jwt-${{ matrix.os }}-${{ matrix.arch }}
           path: |
             bazel-bin/tools/generate_jwt/generate_jwt_/generate_jwt
             bazel-bin/tools/generate_jwt/generate_jwt_/generate_jwt.exe
