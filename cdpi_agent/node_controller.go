@@ -24,6 +24,7 @@ import (
 	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
 	"aalyria.com/spacetime/cdpi_agent/internal/task"
 
+	"github.com/google/uuid"
 	"github.com/jonboulle/clockwork"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -44,6 +45,8 @@ type nodeController struct {
 
 	enactmentStats func() interface{}
 	telemetryStats func() interface{}
+
+	newToken func() string
 }
 
 func (a *Agent) newNodeController(node *node, done func(), cdpiClient afpb.CdpiClient, schedClient schedpb.SchedulingClient, telemetryClient afpb.NetworkTelemetryStreamingClient) *nodeController {
@@ -55,6 +58,7 @@ func (a *Agent) newNodeController(node *node, done func(), cdpiClient afpb.CdpiC
 		initState:      node.initState,
 		enactmentStats: func() interface{} { return nil },
 		telemetryStats: func() interface{} { return nil },
+		newToken:       func() string { return uuid.NewString() },
 	}
 
 	rc := task.RetryConfig{
@@ -83,7 +87,7 @@ func (a *Agent) newNodeController(node *node, done func(), cdpiClient afpb.CdpiC
 		nc.telemetryStats = ts.Stats
 	}
 	if node.enactmentsEnabled {
-		es := nc.newEnactmentService(cdpiClient, schedClient, node.eb)
+		es := nc.newEnactmentService(cdpiClient, schedClient, node.eb, nc.newToken())
 
 		nc.services = append(nc.services, task.Task(es.run).
 			WithNewSpan("enactment_service").

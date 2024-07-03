@@ -20,5 +20,8 @@ go_library(
     name = "enactment",
     srcs = ["enactment.go"],
     importpath = "aalyria.com/spacetime/cdpi_agent/enactment",
-    deps = ["//api/common:common_go_proto"],
+    deps = [
+        "//api/common:common_go_proto",
+        "//api/scheduling/v1alpha:scheduling_go_grpc",
+    ],
 )

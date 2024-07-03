@@ -18,6 +18,7 @@ import (
 	"context"
 
 	apipb "aalyria.com/spacetime/api/common"
+	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
 )
 
 // Backend is the component that takes a ScheduledControlUpdate message for a
@@ -25,6 +26,7 @@ import (
 // implements the gRPCStatus interface, the appropriate status will be used.
 type Backend interface {
 	Apply(context.Context, *apipb.ScheduledControlUpdate) (*apipb.ControlPlaneState, error)
+	Dispatch(context.Context, *schedpb.CreateEntryRequest) error
 	Stats() interface{}
 	Init(context.Context) error
 	Close() error
