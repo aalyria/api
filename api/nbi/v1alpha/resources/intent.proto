@@ -205,21 +205,42 @@ message ModemIntent {
 message Beam {
   optional BeamTarget target = 1;
 
-  optional BeamConfiguration rx = 2;
-  optional BeamConfiguration tx = 3;
+  optional RxConfiguration rx = 2;
+  optional TxConfiguration tx = 3;
 
   // The collection of endpoints served by the beam.
   // For example, a collection of user terminals (UTs) served.
   //
   // Each endpoint is the ID of a network node in Spacetime's network model.
-  repeated string endpoints = 4;
+  repeated Endpoint endpoints = 4;
 }
 
-message BeamConfiguration {
+message RxConfiguration {
   optional uint64 center_frequency_hz = 1;
   optional uint64 channel_bandwidth_hz = 2;
   optional Polarization polarization = 3;
+
+  // Symbol rate in Megasymbols per second.
+  optional double symbol_rate_msps = 5;
+
   optional ModemMode mode = 4;
+}
+
+message TxConfiguration {
+  optional uint64 center_frequency_hz = 1;
+  optional uint64 channel_bandwidth_hz = 2;
+  optional Polarization polarization = 3;
+
+  // Transmit power in Watts.
+  optional double power_w = 5;
+
+  // Symbol rate in Megasymbols per second.
+  optional double symbol_rate_msps = 6;
+
+  optional ModemMode mode = 4;
+
+  // The lowest MODCOD common among all endpoints.
+  optional string lowest_common_modcod = 7;
 }
 
 enum Polarization {
@@ -232,6 +253,13 @@ enum ModemMode {
   MODEM_MODE_UNSPECIFIED = 0;
   MODEM_MODE_DVB_RCS2 = 1;
   MODEM_MODE_DVB_S2X = 2;
+}
+
+message Endpoint {
+  optional string id = 1;
+  optional string lowest_supported_rx_modcod = 2;
+  optional double rx_reference_throughput_bps = 3;
+  optional double tx_reference_throughput_bps = 4;
 }
 
 // IntentFailure provides context on the failure of an intent. It's purpose is

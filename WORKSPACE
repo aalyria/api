@@ -135,7 +135,7 @@ go_rules_dependencies()
 
 # Install the Go toolchains. (https://github.com/bazelbuild/rules_go/blob/master/go/toolchains.rst#go-toolchain)
 go_register_toolchains(
-    version = "1.22.3",
+    version = "1.22.5",
 )
 
 gazelle_dependencies()
@@ -228,6 +228,13 @@ go_repository(
     importpath = "github.com/google/go-cmp",
     sum = "h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=",
     version = "v0.6.0",
+)
+
+go_repository(
+    name = "com_github_google_uuid",
+    importpath = "github.com/google/uuid",
+    sum = "h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=",
+    version = "v1.6.0",
 )
 
 go_repository(
@@ -360,6 +367,7 @@ go_repository(
     sum = "h1:1cU2KZkvPxNyfgEmhHAz/1A9Bz+llsdYzklWFzgp0r8=",
     version = "v1.33.0",
 )
+
 go_repository(
     name = "com_google_cloud_go",
     importpath = "cloud.google.com/go",
@@ -429,18 +437,21 @@ go_repository(
     sum = "h1:hvj3vdEKyeCi4YaYfNjv2NUje8FqKqUY8IlF0FxV/ik=",
     version = "v1.27.0",
 )
+
 go_repository(
     name = "io_opentelemetry_go_otel_sdk",
     importpath = "go.opentelemetry.io/otel/sdk",
     sum = "h1:mlk+/Y1gLPLn84U4tI8d3GNJmGT/eXe3ZuOXN9kTWmI=",
     version = "v1.27.0",
 )
+
 go_repository(
     name = "io_opentelemetry_go_otel_sdk_metric",
     importpath = "go.opentelemetry.io/otel/sdk/metric",
     sum = "h1:5uGNOlpXi+Hbo/DRoI31BSb1v+OGcpv2NemcCrOL8gI=",
     version = "v1.27.0",
 )
+
 go_repository(
     name = "io_opentelemetry_go_otel_trace",
     importpath = "go.opentelemetry.io/otel/trace",
@@ -454,6 +465,7 @@ go_repository(
     sum = "h1:2Di21piLrCqJ3U3eXGCTPHE9R8Nh+0uglSnOyxikMeI=",
     version = "v1.1.0",
 )
+
 go_repository(
     name = "org_golang_google_api",
     importpath = "google.golang.org/api",
@@ -493,36 +505,42 @@ go_repository(
     sum = "h1:soB7SVo0PWrY4vPW/+ay0jKDNScG2X9wFeYlXIvJsOQ=",
     version = "v0.26.0",
 )
+
 go_repository(
     name = "org_golang_x_oauth2",
     importpath = "golang.org/x/oauth2",
     sum = "h1:09qnuIAgzdx1XplqJvW6CQqMCtGZykZWcXzPMPUusvI=",
     version = "v0.18.0",
 )
+
 go_repository(
     name = "org_golang_x_sync",
     importpath = "golang.org/x/sync",
     sum = "h1:YsImfSBoP9QPYL0xyKJPq0gcaJdG3rInoqxTWbfQu9M=",
     version = "v0.7.0",
 )
+
 go_repository(
     name = "org_golang_x_sys",
     importpath = "golang.org/x/sys",
     sum = "h1:rF+pYz3DAGSQAxAu1CbC7catZg4ebC4UIeIhKxBZvws=",
     version = "v0.21.0",
 )
+
 go_repository(
     name = "org_golang_x_text",
     importpath = "golang.org/x/text",
     sum = "h1:a94ExnEXNtEwYLGJSIUxnWoxoRz/ZcCsV63ROupILh4=",
     version = "v0.16.0",
 )
+
 go_repository(
     name = "com_github_vishvananda_netlink",
     importpath = "github.com/vishvananda/netlink",
     sum = "h1:Llsql0lnQEbHj0I1OuKyp8otXp0r3q0mPkuhwHfStVs=",
     version = "v1.2.1-beta.2",
 )
+
 go_repository(
     name = "com_github_vishvananda_netns",
     importpath = "github.com/vishvananda/netns",

@@ -25,9 +25,12 @@ import (
 	"time"
 
 	"golang.org/x/sys/unix"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 
 	apipb "aalyria.com/spacetime/api/common"
+	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
 
 	"github.com/jonboulle/clockwork"
 	"github.com/rs/zerolog"
@@ -700,4 +703,8 @@ func (b *Backend) Apply(ctx context.Context, req *apipb.ScheduledControlUpdate) 
 	log.Info().Msgf("Successfully implemented route with flowRule: %s, action: %s", flowRuleID, operation.String())
 
 	return b.buildReturnUnlocked(log, b.routeListFilteredByTableID, nil)
+}
+
+func (b *Backend) Dispatch(ctx context.Context, req *schedpb.CreateEntryRequest) error {
+	return status.Error(codes.Unimplemented, "This method is not currently implemented")
 }

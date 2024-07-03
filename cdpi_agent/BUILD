@@ -39,6 +39,7 @@ go_library(
         "//cdpi_agent/internal/task",
         "//cdpi_agent/internal/worker",
         "//cdpi_agent/telemetry",
+        "@com_github_google_uuid//:uuid",
         "@com_github_jonboulle_clockwork//:clockwork",
         "@com_github_rs_zerolog//:zerolog",
         "@io_opentelemetry_go_otel//attribute",
@@ -66,6 +67,7 @@ go_test(
     deps = [
         "//api/cdpi/v1alpha:cdpi_go_grpc",
         "//api/common:common_go_proto",
+        "//api/scheduling/v1alpha:scheduling_go_grpc",
         "//cdpi_agent/internal/channels",
         "//cdpi_agent/internal/task",
         "@com_github_google_go_cmp//cmp",

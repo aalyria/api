@@ -25,6 +25,7 @@ import (
 
 	afpb "aalyria.com/spacetime/api/cdpi/v1alpha"
 	apipb "aalyria.com/spacetime/api/common"
+	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
 	"aalyria.com/spacetime/cdpi_agent/internal/channels"
 	"aalyria.com/spacetime/cdpi_agent/internal/task"
 
@@ -1064,6 +1065,70 @@ var (
 				})
 			},
 		},
+		{
+			desc:  "check Scheduling API session begins with reset and hello",
+			nodes: []testNode{{id: "node-a"}},
+			test: func(ctx context.Context, f *testFixture) {
+				// To keep Cdpi RPC semantics happy.
+				f.expectHelloAndEmptyInitialState(ctx, "node-a")
+
+				f.expectSchedulingReset(ctx, "node-a")
+				f.expectSchedulingHello(ctx, "node-a")
+			},
+		},
+		{
+			desc:  "check basic Scheduling API CreateEntry yields backend Dispatch",
+			nodes: []testNode{{id: "node-a"}},
+			test: func(ctx context.Context, f *testFixture) {
+				// To keep Cdpi RPC semantics happy.
+				f.expectHelloAndEmptyInitialState(ctx, "node-a")
+
+				token := f.expectSchedulingReset(ctx, "node-a")
+				f.expectSchedulingHello(ctx, "node-a")
+
+				var requestId int64 = 0
+				nextRequestId := func() int64 {
+					rval := requestId
+					requestId++
+					return rval
+				}
+
+				var seqno uint64 = 1
+				nextSeqno := func() uint64 {
+					rval := seqno
+					seqno++
+					return rval
+				}
+
+				// send CreateEntry:SetRoute
+				createEntrySetRoute := &schedpb.CreateEntryRequest{
+					ScheduleManipulationToken: token,
+					Seqno:                     nextSeqno(),
+					Id:                        "create-route-1",
+					Time:                      timestamppb.New(startTime),
+					ConfigurationChange: &schedpb.CreateEntryRequest_SetRoute{
+						SetRoute: &schedpb.SetRoute{
+							To:  "2001:db8:1::/48",
+							Dev: "eth0",
+							Via: "fe80::1",
+						},
+					},
+				}
+				reqScheduleCreateEntrySetRoute := &schedpb.ReceiveRequestsMessageFromController{
+					RequestId: nextRequestId(),
+					Request: &schedpb.ReceiveRequestsMessageFromController_CreateEntry{
+						CreateEntry: createEntrySetRoute,
+					},
+				}
+				f.sendSchedulingRequest(ctx, "node-a", reqScheduleCreateEntrySetRoute)
+
+				req := f.waitForDispatchRequestFromController(ctx)
+				if diff := cmp.Diff(createEntrySetRoute, req, protocmp.Transform()); diff != "" {
+					f.t.Errorf("waitForRequestFromController(): payload proto mismatch: (-want +got):\n%s", diff)
+					return
+				}
+			},
+		},
 	}
 )
 
@@ -1117,6 +1182,7 @@ func (tc *testCase) runTest(t *testing.T) {
 type delegatingBackend struct {
 	m    map[string]backendFn
 	errs []error
+	reqs chan *schedpb.CreateEntryRequest
 }
 
 type backendFn func(context.Context, *apipb.ScheduledControlUpdate) (*apipb.ControlPlaneState, error)
@@ -1125,6 +1191,7 @@ func newDelegatingBackend() *delegatingBackend {
 	return &delegatingBackend{
 		m:    map[string]backendFn{},
 		errs: []error{},
+		reqs: make(chan *schedpb.CreateEntryRequest),
 	}
 }
 
@@ -1153,6 +1220,15 @@ func (d *delegatingBackend) checkNoUnhandledUpdates(t *testing.T) {
 	}
 }
 
+func (d *delegatingBackend) Dispatch(ctx context.Context, req *schedpb.CreateEntryRequest) error {
+	select {
+	case <-ctx.Done():
+		return context.Cause(ctx)
+	case d.reqs <- req:
+		return nil
+	}
+}
+
 type server struct {
 	afpb.UnimplementedCdpiServer
 	ctx            context.Context
@@ -1161,6 +1237,10 @@ type server struct {
 	streams        map[string]*serverStream
 	stateUpdates   map[string][]*afpb.CdpiNodeStateRequest
 	requestUpdates map[string][]*afpb.CdpiRequestStatusRequest
+
+	schedpb.UnimplementedSchedulingServer
+	agents map[string]*agentSchedulingStream
+	tokens map[string]chan string
 }
 
 type serverStream struct {
@@ -1169,13 +1249,26 @@ type serverStream struct {
 	respCh chan *afpb.CdpiResponse
 }
 
+type agentSchedulingStream struct {
+	stream         *schedpb.Scheduling_ReceiveRequestsServer
+	toController   chan *schedpb.ReceiveRequestsMessageToController
+	fromController chan *schedpb.ReceiveRequestsMessageFromController
+}
+
 func newServer(ctx context.Context, nodes []testNode) *server {
 	streams := map[string]*serverStream{}
+	agents := map[string]*agentSchedulingStream{}
+	tokens := map[string]chan string{}
 	for _, n := range nodes {
 		streams[n.id] = &serverStream{
 			reqCh:  make(chan *afpb.CdpiRequest),
 			respCh: make(chan *afpb.CdpiResponse),
 		}
+		agents[n.id] = &agentSchedulingStream{
+			toController:   make(chan *schedpb.ReceiveRequestsMessageToController),
+			fromController: make(chan *schedpb.ReceiveRequestsMessageFromController),
+		}
+		tokens[n.id] = make(chan string)
 	}
 
 	mu := &sync.Mutex{}
@@ -1186,6 +1279,8 @@ func newServer(ctx context.Context, nodes []testNode) *server {
 		streams:        streams,
 		stateUpdates:   map[string][]*afpb.CdpiNodeStateRequest{},
 		requestUpdates: map[string][]*afpb.CdpiRequestStatusRequest{},
+		agents:         agents,
+		tokens:         tokens,
 	}
 }
 
@@ -1232,6 +1327,7 @@ func (s *server) start(ctx context.Context, t *testing.T, g *errgroup.Group) str
 
 	grpcSrv := grpc.NewServer(grpc.Creds(insecure.NewCredentials()))
 	afpb.RegisterCdpiServer(grpcSrv, s)
+	schedpb.RegisterSchedulingServer(grpcSrv, s)
 
 	g.Go(task.Task(func(ctx context.Context) error {
 		return grpcSrv.Serve(nl)
@@ -1380,6 +1476,112 @@ func (s *server) checkNoUnreadUnaryUpdates(t *testing.T) {
 			}
 		}
 	}
+}
+
+func (s *server) ReceiveRequests(stream schedpb.Scheduling_ReceiveRequestsServer) error {
+	hello, err := stream.Recv()
+	if err != nil {
+		return err
+	}
+
+	nid := hello.GetHello().GetAgentId()
+
+	s.mu.Lock()
+	ss, ok := s.agents[nid]
+	s.mu.Unlock()
+	if !ok {
+		return fmt.Errorf("unknown node connecting: %q", nid)
+	}
+
+	defer close(ss.fromController)
+
+	select {
+	case <-s.ctx.Done():
+		return context.Canceled
+	case ss.toController <- hello:
+	}
+
+	return task.Group(
+		channels.NewSink(ss.toController).FillFrom(stream.Recv).
+			WithStartingStoppingLogs("server_stream", zerolog.TraceLevel).
+			WithLogField("nodeID", nid).
+			WithLogField("direction", "server.Recv"),
+		channels.NewSource(ss.fromController).ForwardTo(stream.Send).
+			WithStartingStoppingLogs("server_stream", zerolog.TraceLevel).
+			WithLogField("nodeID", nid).
+			WithLogField("direction", "server.Send"),
+	)(s.ctx)
+}
+
+func (s *server) Reset(ctx context.Context, reset *schedpb.ResetRequest) (*emptypb.Empty, error) {
+	nid := reset.GetAgentId()
+
+	s.mu.Lock()
+	ch, ok := s.tokens[nid]
+	if !ok {
+		return nil, fmt.Errorf("unknown node reseting: %q", nid)
+	}
+	s.mu.Unlock()
+	go func() {
+		select {
+		case ch <- reset.GetScheduleManipulationToken():
+		}
+	}()
+	return &emptypb.Empty{}, nil
+}
+
+func (s *server) RecvFromNode(ctx context.Context, nid string) (*schedpb.ReceiveRequestsMessageToController, error) {
+	ss, ok := s.agents[nid]
+	if !ok {
+		return nil, fmt.Errorf("RecvFromNode(%q): unknown node provided", nid)
+	}
+
+	select {
+	case rsp := <-ss.toController:
+		return rsp, nil
+	case <-ctx.Done():
+		return nil, context.Cause(ctx)
+	}
+}
+
+func (s *server) SendToNode(ctx context.Context, nid string, msg *schedpb.ReceiveRequestsMessageFromController) error {
+	ss, ok := s.agents[nid]
+	if !ok {
+		return fmt.Errorf("SendToNode(%q): unknown node provided", nid)
+	}
+
+	select {
+	case ss.fromController <- msg:
+		return nil
+	case <-ctx.Done():
+		return context.Cause(ctx)
+	}
+}
+
+func (s *server) WaitForSchedulingReset(ctx context.Context, nid string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+
+	s.mu.Lock()
+	ch, ok := s.tokens[nid]
+	if !ok {
+		return "", fmt.Errorf("unknown node reseting: %q", nid)
+	}
+	s.mu.Unlock()
+	select {
+	case token := <-ch:
+		return token, nil
+	case <-ctx.Done():
+		return "", context.Cause(ctx)
+	}
+}
+
+func (s *server) WaitForSchedulingHello(ctx context.Context, nid string) (*schedpb.ReceiveRequestsMessageToController_Hello, error) {
+	hello, err := s.RecvFromNode(ctx, nid)
+	if err != nil {
+		return nil, err
+	}
+	return hello.GetHello(), nil
 }
 
 func mustMarshal(t *testing.T, m proto.Message) []byte {
@@ -1602,4 +1804,54 @@ func (f *testFixture) prepareEnactmentFailureForUpdateID(ctx context.Context, up
 	f.prepareEnactmentBackendForUpdateID(ctx, updateID, func(_ context.Context, _ *apipb.ScheduledControlUpdate) (*apipb.ControlPlaneState, error) {
 		return nil, err
 	})
+}
+
+func (f *testFixture) expectSchedulingReset(ctx context.Context, nid string) string {
+	token, err := f.srv.WaitForSchedulingReset(ctx, nid)
+	if err != nil {
+		f.t.Errorf("WaitForSchedulingReset(%q): %s", nid, err)
+		f.t.FailNow()
+		return ""
+	}
+
+	if token == "" {
+		f.t.Errorf("WaitForSchedulingReset(%q): empty schedule manipulation token", nid)
+		f.t.FailNow()
+		return ""
+	}
+
+	zerolog.Ctx(ctx).Debug().Str("nodeID", nid).Msg("WaitForSchedulingReset() succeeded")
+	return token
+}
+
+func (f *testFixture) expectSchedulingHello(ctx context.Context, nid string) {
+	hello, err := f.srv.WaitForSchedulingHello(ctx, nid)
+	if err != nil {
+		f.t.Errorf("WaitForSchedulingHello(%q): %s", nid, err)
+		f.t.FailNow()
+	}
+
+	if hello.AgentId != nid {
+		f.t.Errorf("WaitForSchedulingHello(%q): unexpected agent ID %q", nid, hello.AgentId)
+		f.t.FailNow()
+	}
+
+	zerolog.Ctx(ctx).Debug().Str("nodeID", nid).Msg("WaitForSchedulingHello() succeeded")
+}
+
+func (f *testFixture) sendSchedulingRequest(ctx context.Context, nid string, req *schedpb.ReceiveRequestsMessageFromController) {
+	err := f.srv.SendToNode(ctx, nid, req)
+	if err != nil {
+		f.t.Errorf("sendSchedulingRequest(%q): %s", nid, err)
+		f.t.FailNow()
+	}
+}
+
+func (f *testFixture) waitForDispatchRequestFromController(ctx context.Context) *schedpb.CreateEntryRequest {
+	select {
+	case <-ctx.Done():
+		return nil
+	case req := <-f.eb.reqs:
+		return req
+	}
 }
