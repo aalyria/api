@@ -39,8 +39,6 @@ import (
 	"aalyria.com/spacetime/cdpi_agent/internal/protofmt"
 
 	"github.com/rs/zerolog"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 type backend struct {
@@ -87,6 +85,17 @@ func (eb *backend) Apply(ctx context.Context, req *apipb.ScheduledControlUpdate)
 	return stateMsg, nil
 }
 
-func (eb *backend) Dispatch(context.Context, *schedpb.CreateEntryRequest) error {
-	return status.Error(codes.Unimplemented, "This method is not currently implemented")
+func (eb *backend) Dispatch(ctx context.Context, req *schedpb.CreateEntryRequest) error {
+	js, err := eb.protoFmt.Marshal(req)
+	if err != nil {
+		return fmt.Errorf("marshalling proto as %s: %w", eb.protoFmt, err)
+	}
+
+	cmd := eb.cmdFn(ctx)
+	cmd.Stdin = bytes.NewBuffer(js)
+
+	if err := cmd.Run(); err != nil {
+		return extprocs.CommandError(err)
+	}
+	return nil
 }

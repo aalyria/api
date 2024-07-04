@@ -234,14 +234,13 @@ func (a *Agent) start(ctx context.Context, agentMap *expvar.Map, errCh chan erro
 		return fmt.Errorf("agent: failed connecting to CDPI backend: %w", err)
 	}
 
-	cdpiClient := afpb.NewCdpiClient(conn)
 	schedClient := schedpb.NewSchedulingClient(conn)
 	telemetryClient := afpb.NewNetworkTelemetryStreamingClient(conn)
 
 	for _, n := range a.nodes {
 		ctx, done := context.WithCancel(ctx)
 
-		nc := a.newNodeController(n, done, cdpiClient, schedClient, telemetryClient)
+		nc := a.newNodeController(n, done, schedClient, telemetryClient)
 		agentMap.Set(n.id, expvar.Func(nc.Stats))
 
 		srv := task.Task(nc.run).

@@ -135,7 +135,7 @@ go_rules_dependencies()
 
 # Install the Go toolchains. (https://github.com/bazelbuild/rules_go/blob/master/go/toolchains.rst#go-toolchain)
 go_register_toolchains(
-    version = "1.22.5",
+    version = "1.22.3",
 )
 
 gazelle_dependencies()

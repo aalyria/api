@@ -28,8 +28,6 @@ go_library(
         "//cdpi_agent/internal/loggable",
         "//cdpi_agent/internal/protofmt",
         "@com_github_rs_zerolog//:zerolog",
-        "@org_golang_google_grpc//codes",
-        "@org_golang_google_grpc//status",
     ],
 )
 
@@ -39,6 +37,7 @@ go_test(
     embed = [":extproc"],
     deps = [
         "//api/common:common_go_proto",
+        "//api/scheduling/v1alpha:scheduling_go_grpc",
         "//cdpi_agent/internal/protofmt",
         "@com_github_google_go_cmp//cmp",
     ],

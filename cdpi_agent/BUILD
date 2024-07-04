@@ -37,7 +37,6 @@ go_library(
         "//cdpi_agent/internal/channels",
         "//cdpi_agent/internal/loggable",
         "//cdpi_agent/internal/task",
-        "//cdpi_agent/internal/worker",
         "//cdpi_agent/telemetry",
         "@com_github_google_uuid//:uuid",
         "@com_github_jonboulle_clockwork//:clockwork",
@@ -48,7 +47,6 @@ go_library(
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
         "@org_golang_google_protobuf//proto",
-        "@org_golang_google_protobuf//types/known/timestamppb",
         "@org_golang_x_sync//errgroup",
     ],
 )
@@ -74,7 +72,6 @@ go_test(
         "@com_github_jonboulle_clockwork//:clockwork",
         "@com_github_rs_zerolog//:zerolog",
         "@org_golang_google_grpc//:go_default_library",
-        "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//credentials/insecure",
         "@org_golang_google_grpc//status",
         "@org_golang_google_protobuf//proto",

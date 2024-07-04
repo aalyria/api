@@ -49,7 +49,7 @@ type nodeController struct {
 	newToken func() string
 }
 
-func (a *Agent) newNodeController(node *node, done func(), cdpiClient afpb.CdpiClient, schedClient schedpb.SchedulingClient, telemetryClient afpb.NetworkTelemetryStreamingClient) *nodeController {
+func (a *Agent) newNodeController(node *node, done func(), schedClient schedpb.SchedulingClient, telemetryClient afpb.NetworkTelemetryStreamingClient) *nodeController {
 	nc := &nodeController{
 		id:             node.id,
 		priority:       node.priority,
@@ -87,7 +87,7 @@ func (a *Agent) newNodeController(node *node, done func(), cdpiClient afpb.CdpiC
 		nc.telemetryStats = ts.Stats
 	}
 	if node.enactmentsEnabled {
-		es := nc.newEnactmentService(cdpiClient, schedClient, node.eb, nc.newToken())
+		es := nc.newEnactmentService(schedClient, node.eb, nc.newToken())
 
 		nc.services = append(nc.services, task.Task(es.run).
 			WithNewSpan("enactment_service").

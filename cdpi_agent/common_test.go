@@ -64,5 +64,3 @@ func checkErrIsDueToCanceledContext(t *testing.T, err error) {
 		t.Error("unexpected error:", err)
 	}
 }
-
-
