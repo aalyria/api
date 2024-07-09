@@ -29,15 +29,15 @@ import (
 
 var errNoStats = errors.New("could not generate stats for any interface")
 
-type backend struct {
+type driver struct {
 	clock        clockwork.Clock
 	nlHandle     *vnl.Handle
 	nodeId       string
 	interfaceIds []string
 }
 
-func New(clock clockwork.Clock, nlHandle *vnl.Handle, nodeId string, interfaceIds []string) telemetry.Backend {
-	return &backend{
+func New(clock clockwork.Clock, nlHandle *vnl.Handle, nodeId string, interfaceIds []string) telemetry.Driver {
+	return &driver{
 		clock:        clock,
 		nlHandle:     nlHandle,
 		nodeId:       nodeId,
@@ -45,11 +45,11 @@ func New(clock clockwork.Clock, nlHandle *vnl.Handle, nodeId string, interfaceId
 	}
 }
 
-func (tb *backend) Init(context.Context) error { return nil }
-func (tb *backend) Close() error               { return nil }
-func (tb *backend) Stats() interface{}         { return nil }
+func (tb *driver) Init(context.Context) error { return nil }
+func (tb *driver) Close() error               { return nil }
+func (tb *driver) Stats() interface{}         { return nil }
 
-func (tb *backend) GenerateReport(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) {
+func (tb *driver) GenerateReport(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) {
 	log := zerolog.Ctx(ctx).With().Str("backend", "netlink").Logger()
 
 	// NOTE: This assumes the netlink stats are returned fast enough that we can use the same

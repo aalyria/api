@@ -28,7 +28,6 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
-	"os/exec"
 	"os/signal"
 	"time"
 
@@ -83,26 +82,26 @@ func (rh realHandles) Stderr() io.Writer      { return os.Stderr }
 func DefaultHandles() Handles { return realHandles{clock: clockwork.NewRealClock()} }
 
 // Provider provides a dynamic way of registering enactment or telemetry
-// backend providers. If the provided configuration isn't of the appropriate
+// driver providers. If the provided configuration isn't of the appropriate
 // type, the factory function is expected to return nil, [ErrUnknownConfigProto].
 type Provider interface {
-	EnactmentBackend(_ context.Context, _ Handles, nodeID string, conf *anypb.Any) (enactment.Backend, error)
-	TelemetryBackend(_ context.Context, _ Handles, nodeID string, conf *anypb.Any) (telemetry.Backend, error)
+	EnactmentDriver(_ context.Context, _ Handles, nodeID string, conf *anypb.Any) (enactment.Driver, error)
+	TelemetryDriver(_ context.Context, _ Handles, nodeID string, conf *anypb.Any) (telemetry.Driver, error)
 }
 
 // ErrUnknownConfigProto is the error a [Provider] should return if the
 // provided `anypb.Any` is of an unknown type.
 var ErrUnknownConfigProto = errors.New("unknown config proto")
 
-type UnsupportedEnactmentBackend struct{}
+type UnsupportedEnactmentDriver struct{}
 
-func (*UnsupportedEnactmentBackend) EnactmentBackend(_ context.Context, _ Handles, _ string, _ *anypb.Any) (enactment.Backend, error) {
+func (*UnsupportedEnactmentDriver) EnactmentDriver(_ context.Context, _ Handles, _ string, _ *anypb.Any) (enactment.Driver, error) {
 	return nil, ErrUnknownConfigProto
 }
 
-type UnsupportedTelemetryBackend struct{}
+type UnsupportedTelemetryDriver struct{}
 
-func (*UnsupportedTelemetryBackend) TelemetryBackend(_ context.Context, _ Handles, _ string, _ *anypb.Any) (telemetry.Backend, error) {
+func (*UnsupportedTelemetryDriver) TelemetryDriver(_ context.Context, _ Handles, _ string, _ *anypb.Any) (telemetry.Driver, error) {
 	return nil, ErrUnknownConfigProto
 }
 
@@ -301,7 +300,7 @@ func getProtoFmt(pfpb configpb.NetworkNode_ExternalCommand_ProtoFormat) protofmt
 	}
 }
 
-func getDialOpts(ctx context.Context, params *configpb.AgentParams, clock clockwork.Clock) ([]grpc.DialOption, error) {
+func getDialOpts(ctx context.Context, connParams *configpb.ConnectionParams, clock clockwork.Clock) ([]grpc.DialOption, error) {
 	tracerProvider, _ := task.ExtractTracerProvider(ctx)
 
 	dialOpts := []grpc.DialOption{
@@ -313,7 +312,6 @@ func getDialOpts(ctx context.Context, params *configpb.AgentParams, clock clockw
 		grpc.WithDefaultCallOptions(grpc.UseCompressor(gzip.Name)),
 	}
 
-	connParams := params.GetConnectionParams()
 	backoffParams := connParams.GetBackoffParams()
 	grpcBackoff := backoff.DefaultConfig
 
@@ -376,42 +374,46 @@ func getDialOpts(ctx context.Context, params *configpb.AgentParams, clock clockw
 }
 
 func (ac *AgentConf) getNodeOpts(ctx context.Context, node *configpb.NetworkNode, clock clockwork.Clock) (nodeOpts []agent.NodeOption, err error) {
-	switch node.GetStateBackend().GetType().(type) {
-	case *configpb.NetworkNode_StateBackend_StaticInitialState:
-		initState := node.GetStateBackend().GetStaticInitialState()
-		if initState == nil {
-			return nil, errors.New("missing required initial state")
-		}
-
-		nodeOpts = append(nodeOpts, agent.WithInitialState(initState))
-	default:
-		return nil, errors.New("missing required state backend")
-	}
-
 enactmentSwitch:
-	switch conf := node.GetEnactmentBackend().GetType().(type) {
-	case *configpb.NetworkNode_EnactmentBackend_ExternalCommand:
-		enactCmd := node.GetEnactmentBackend().GetExternalCommand()
-		nodeOpts = append(nodeOpts, agent.WithEnactmentBackend(enact_extproc.New(func(ctx context.Context) *exec.Cmd {
-			// nosemgrep: dangerous-exec-command
-			return exec.CommandContext(ctx, enactCmd.GetArgs()[0], enactCmd.GetArgs()[1:]...)
-		}, getProtoFmt(enactCmd.GetProtoFormat()))))
-	case *configpb.NetworkNode_EnactmentBackend_Netlink:
-		eb, err := newNetlinkEnactmentBackend(ctx, clock, node.GetId(), conf.Netlink)
+	switch conf := node.GetEnactmentDriver().GetType().(type) {
+	case *configpb.NetworkNode_EnactmentDriver_ExternalCommand:
+		dialOpts, err := getDialOpts(ctx, node.EnactmentDriver.GetConnectionParams(), clock)
 		if err != nil {
 			return nil, err
 		}
-		nodeOpts = append(nodeOpts, agent.WithEnactmentBackend(eb))
-	case *configpb.NetworkNode_EnactmentBackend_Dynamic:
+
+		enactCmd := node.GetEnactmentDriver().GetExternalCommand()
+		ed := enact_extproc.New(enactCmd.GetArgs(), getProtoFmt(enactCmd.GetProtoFormat()))
+
+		nodeOpts = append(nodeOpts, agent.WithEnactmentDriver(node.GetEnactmentDriver().GetConnectionParams().EndpointUri, ed, dialOpts...))
+
+	case *configpb.NetworkNode_EnactmentDriver_Netlink:
+		dialOpts, err := getDialOpts(ctx, node.EnactmentDriver.GetConnectionParams(), clock)
+		if err != nil {
+			return nil, err
+		}
+
+		ed, err := newNetlinkEnactmentDriver(ctx, clock, node.GetId(), conf.Netlink)
+		if err != nil {
+			return nil, err
+		}
+		nodeOpts = append(nodeOpts, agent.WithEnactmentDriver(node.GetEnactmentDriver().GetConnectionParams().EndpointUri, ed, dialOpts...))
+
+	case *configpb.NetworkNode_EnactmentDriver_Dynamic:
+		dialOpts, err := getDialOpts(ctx, node.EnactmentDriver.GetConnectionParams(), clock)
+		if err != nil {
+			return nil, err
+		}
+
 		for _, p := range ac.Providers {
-			eb, err := p.EnactmentBackend(ctx, ac.Handles, node.GetId(), conf.Dynamic)
+			ed, err := p.EnactmentDriver(ctx, ac.Handles, node.GetId(), conf.Dynamic)
 			if errors.Is(err, ErrUnknownConfigProto) {
 				continue
 			} else if err != nil {
 				return nil, err
 			}
 
-			nodeOpts = append(nodeOpts, agent.WithEnactmentBackend(eb))
+			nodeOpts = append(nodeOpts, agent.WithEnactmentDriver(node.GetEnactmentDriver().GetConnectionParams().EndpointUri, ed, dialOpts...))
 			break enactmentSwitch
 		}
 
@@ -419,29 +421,44 @@ enactmentSwitch:
 	}
 
 telemetrySwitch:
-	switch conf := node.GetTelemetryBackend().GetType().(type) {
-	case *configpb.NetworkNode_TelemetryBackend_ExternalCommand:
-		telCmd := node.GetTelemetryBackend().GetExternalCommand()
-		nodeOpts = append(nodeOpts, agent.WithTelemetryBackend(telemetry_extproc.New(func(ctx context.Context, nodeID string) *exec.Cmd {
-			// nosemgrep: dangerous-exec-command
-			return exec.CommandContext(ctx, telCmd.GetArgs()[0], telCmd.GetArgs()[1:]...)
-		}, getProtoFmt(telCmd.GetProtoFormat()))))
-	case *configpb.NetworkNode_TelemetryBackend_Netlink:
-		tb, err := newNetlinkTelemetryBackend(ctx, clock, node.GetId(), conf.Netlink)
+	switch conf := node.GetTelemetryDriver().GetType().(type) {
+	case *configpb.NetworkNode_TelemetryDriver_ExternalCommand:
+		dialOpts, err := getDialOpts(ctx, node.TelemetryDriver.GetConnectionParams(), clock)
 		if err != nil {
 			return nil, err
 		}
-		nodeOpts = append(nodeOpts, agent.WithTelemetryBackend(tb))
-	case *configpb.NetworkNode_TelemetryBackend_Dynamic:
+
+		telCmd := node.GetTelemetryDriver().GetExternalCommand()
+		td := telemetry_extproc.New(telCmd.GetArgs(), getProtoFmt(telCmd.GetProtoFormat()))
+		nodeOpts = append(nodeOpts, agent.WithTelemetryDriver(node.GetTelemetryDriver().GetConnectionParams().EndpointUri, td, dialOpts...))
+
+	case *configpb.NetworkNode_TelemetryDriver_Netlink:
+		dialOpts, err := getDialOpts(ctx, node.TelemetryDriver.GetConnectionParams(), clock)
+		if err != nil {
+			return nil, err
+		}
+
+		td, err := newNetlinkTelemetryDriver(ctx, clock, node.GetId(), conf.Netlink)
+		if err != nil {
+			return nil, err
+		}
+		nodeOpts = append(nodeOpts, agent.WithTelemetryDriver(node.GetTelemetryDriver().GetConnectionParams().EndpointUri, td, dialOpts...))
+
+	case *configpb.NetworkNode_TelemetryDriver_Dynamic:
+		dialOpts, err := getDialOpts(ctx, node.TelemetryDriver.GetConnectionParams(), clock)
+		if err != nil {
+			return nil, err
+		}
+
 		for _, p := range ac.Providers {
-			tb, err := p.TelemetryBackend(ctx, ac.Handles, node.GetId(), conf.Dynamic)
+			td, err := p.TelemetryDriver(ctx, ac.Handles, node.GetId(), conf.Dynamic)
 			if errors.Is(err, ErrUnknownConfigProto) {
 				continue
 			} else if err != nil {
 				return nil, err
 			}
 
-			nodeOpts = append(nodeOpts, agent.WithTelemetryBackend(tb))
+			nodeOpts = append(nodeOpts, agent.WithTelemetryDriver(node.GetTelemetryDriver().GetConnectionParams().EndpointUri, td, dialOpts...))
 			break telemetrySwitch
 		}
 		return nil, fmt.Errorf("no provider recognized proto of type %s for node %s", conf.Dynamic.GetTypeUrl(), node.GetId())
@@ -518,17 +535,7 @@ func runChannelzServer(ctx context.Context, params *configpb.AgentParams) error 
 func (ac *AgentConf) runAgent(ctx context.Context, params *configpb.AgentParams) error {
 	clock := clockwork.NewRealClock()
 
-	dialOpts, err := getDialOpts(ctx, params, clock)
-	if err != nil {
-		return err
-	}
-
-	endpoint := params.GetConnectionParams().GetCdpiEndpoint()
-	agentOpts := []agent.AgentOption{
-		agent.WithClock(clock),
-		agent.WithServerEndpoint(endpoint),
-		agent.WithDialOpts(dialOpts...),
-	}
+	agentOpts := []agent.AgentOption{agent.WithClock(clock)}
 
 	for _, node := range params.GetNetworkNodes() {
 		nodeOpts, err := ac.getNodeOpts(ctx, node, clock)
@@ -543,6 +550,6 @@ func (ac *AgentConf) runAgent(ctx context.Context, params *configpb.AgentParams)
 		return err
 	}
 
-	zerolog.Ctx(ctx).Info().Str("endpoint", endpoint).Msg("starting agent")
+	zerolog.Ctx(ctx).Info().Msg("starting agent")
 	return a.Run(ctx)
 }

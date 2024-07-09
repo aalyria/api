@@ -20,13 +20,18 @@ import (
 	apipb "aalyria.com/spacetime/api/common"
 )
 
-// Backend is the component that generates TelemetryUpdate messages for a given
+// Driver is the component that generates TelemetryUpdate messages for a given
 // node. It may be called either periodically or as a result of a one-off
-// TelemetryRequest.
-type Backend interface {
-	GenerateReport(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error)
-
+// [apipb.TelemetryRequest].
+type Driver interface {
+	// Init initializes the driver.
 	Init(context.Context) error
+	// GenerateReport generates an [apipb.NetworkStatsReport] for the given [nodeID].
+	GenerateReport(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error)
+	// Stats returns internal statistics for the driver in an unstructured
+	// form. The results are exposed as a JSON endpoint via the pprof server,
+	// if it's configured.
+	Stats() any
+	// Close closes the driver. Reusing a closed driver is a fatal error.
 	Close() error
-	Stats() interface{}
 }

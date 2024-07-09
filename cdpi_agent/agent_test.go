@@ -27,27 +27,9 @@ func TestAgentValidation_noOptions(t *testing.T) {
 	}
 }
 
-func TestAgentValidation_onlyClock(t *testing.T) {
-	t.Parallel()
-	_, err := NewAgent(WithRealClock())
-	if !errors.Is(err, errNoEndpoint) {
-		t.Errorf("expected NewAgent with no endpoint to cause %s, but got %v error instead", errNoEndpoint, err)
-	}
-}
-
-func TestAgentValidation_onlyEndpoint(t *testing.T) {
-	t.Parallel()
-	_, err := NewAgent(WithServerEndpoint("dns:///example.com:443"))
-	if !errors.Is(err, errNoClock) {
-		t.Errorf("expected NewAgent with no clock to cause %s, but got %v error instead", errNoClock, err)
-	}
-}
-
 func TestAgentValidation_noNodes(t *testing.T) {
 	t.Parallel()
-	_, err := NewAgent(
-		WithServerEndpoint("dns:///example.com:443"),
-		WithRealClock())
+	_, err := NewAgent(WithRealClock())
 
 	if !errors.Is(err, errNoNodes) {
 		t.Errorf("expected NewAgent with no nodes to cause %s, but got %v error instead", errNoNodes, err)
@@ -57,7 +39,6 @@ func TestAgentValidation_noNodes(t *testing.T) {
 func TestAgentValidation_noServices(t *testing.T) {
 	t.Parallel()
 	_, err := NewAgent(
-		WithServerEndpoint("dns:///example.com:443"),
 		WithRealClock(),
 		WithNode("a"),
 		WithNode("b"),

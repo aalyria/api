@@ -31,67 +31,45 @@ import (
 	"fmt"
 	"os/exec"
 
-	apipb "aalyria.com/spacetime/api/common"
 	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
 	"aalyria.com/spacetime/cdpi_agent/enactment"
 	"aalyria.com/spacetime/cdpi_agent/internal/extprocs"
-	"aalyria.com/spacetime/cdpi_agent/internal/loggable"
 	"aalyria.com/spacetime/cdpi_agent/internal/protofmt"
-
 	"github.com/rs/zerolog"
 )
 
-type backend struct {
-	cmdFn    func(context.Context) *exec.Cmd
+type driver struct {
+	args     []string
 	protoFmt protofmt.Format
 }
 
-func New(cmdFn func(context.Context) *exec.Cmd, format protofmt.Format) enactment.Backend {
-	return &backend{cmdFn: cmdFn, protoFmt: format}
+func New(args []string, format protofmt.Format) enactment.Driver {
+	return &driver{args: args, protoFmt: format}
 }
 
-func (eb *backend) Close() error               { return nil }
-func (eb *backend) Init(context.Context) error { return nil }
-func (eb *backend) Stats() interface{}         { return nil }
-
-func (eb *backend) Apply(ctx context.Context, req *apipb.ScheduledControlUpdate) (*apipb.ControlPlaneState, error) {
-	log := zerolog.Ctx(ctx).With().Str("backend", "extproc").Logger()
-
-	js, err := eb.protoFmt.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("marshalling proto as %s: %w", eb.protoFmt, err)
+func (ed *driver) Close() error               { return nil }
+func (ed *driver) Init(context.Context) error { return nil }
+func (ed *driver) Stats() any {
+	return struct {
+		Type   string
+		Args   []string
+		Format string
+	}{
+		Type:   fmt.Sprintf("%T", ed),
+		Args:   ed.args,
+		Format: ed.protoFmt.String(),
 	}
-
-	stdinBuf := bytes.NewBuffer(js)
-
-	cmd := eb.cmdFn(ctx)
-	cmd.Stdin = stdinBuf
-
-	reportData, err := cmd.Output()
-	if err != nil {
-		return nil, extprocs.CommandError(err)
-	}
-	if len(reportData) == 0 {
-		log.Trace().Msg("command exited with no new status")
-		return nil, nil
-	}
-
-	log.Trace().Int("bytes", len(reportData)).Msg("unmarshalling control plane state")
-	stateMsg := &apipb.ControlPlaneState{}
-	if err = eb.protoFmt.Unmarshal(reportData, stateMsg); err != nil {
-		return nil, fmt.Errorf("marshalling command output into state proto: %w", err)
-	}
-	log.Trace().Interface("state", loggable.Proto(stateMsg)).Msg("command returned new state")
-	return stateMsg, nil
 }
 
-func (eb *backend) Dispatch(ctx context.Context, req *schedpb.CreateEntryRequest) error {
-	js, err := eb.protoFmt.Marshal(req)
-	if err != nil {
-		return fmt.Errorf("marshalling proto as %s: %w", eb.protoFmt, err)
-	}
+func (ed *driver) Dispatch(ctx context.Context, req *schedpb.CreateEntryRequest) error {
+	log := zerolog.Ctx(ctx).With().Str("driver", "extproc").Logger()
 
-	cmd := eb.cmdFn(ctx)
+	js, err := ed.protoFmt.Marshal(req)
+	if err != nil {
+		return fmt.Errorf("marshalling proto as %s: %w", ed.protoFmt, err)
+	}
+	log.Trace().Strs("args", ed.args).Msg("running enactment command")
+	cmd := exec.CommandContext(ctx, ed.args[0], ed.args[1:]...)
 	cmd.Stdin = bytes.NewBuffer(js)
 
 	if err := cmd.Run(); err != nil {

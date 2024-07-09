@@ -19,7 +19,6 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"sync"
 	"time"
 
 	"github.com/jonboulle/clockwork"
@@ -44,16 +43,11 @@ const attemptedUpdateKeepAliveTimeout = 1 * time.Minute
 func OK() *status.Status { return status.New(codes.OK, "") }
 
 type enactmentService struct {
-	// protects access to the scheduledUpdates map.
-	mu sync.Mutex
-	// maps updateIDs => scheduledUpdates
-	scheduledUpdates map[string]*scheduledUpdate
-	sc               schedpb.SchedulingClient
-	eb               enactment.Backend
-	clock            clockwork.Clock
-	initState        *apipb.ControlPlaneState
-	nodeID           string
-	priority         uint32
+	sc        schedpb.SchedulingClient
+	ed        enactment.Driver
+	clock     clockwork.Clock
+	initState *apipb.ControlPlaneState
+	nodeID    string
 
 	scheduleManipulationToken string
 	schedMgr                  *scheduleManager
@@ -63,23 +57,13 @@ type enactmentService struct {
 	enactmentResults          chan *enactmentResult
 }
 
-type scheduledUpdate struct {
-	timer  clockwork.Timer
-	Update *apipb.ScheduledControlUpdate
-	Status *status.Status
-	Result *apipb.ControlPlaneState
-}
-
-func (nc *nodeController) newEnactmentService(sc schedpb.SchedulingClient, eb enactment.Backend, manipToken string) *enactmentService {
+func (nc *nodeController) newEnactmentService(sc schedpb.SchedulingClient, ed enactment.Driver, manipToken string) *enactmentService {
 	return &enactmentService{
-		eb:                        eb,
+		ed:                        ed,
 		sc:                        sc,
-		mu:                        sync.Mutex{},
-		scheduledUpdates:          map[string]*scheduledUpdate{},
 		clock:                     nc.clock,
 		nodeID:                    nc.id,
 		initState:                 nc.initState,
-		priority:                  nc.priority,
 		scheduleManipulationToken: manipToken,
 		schedMgr:                  newScheduleManager(),
 		reqsFromController:        make(chan *schedpb.ReceiveRequestsMessageFromController),
@@ -91,13 +75,13 @@ func (nc *nodeController) newEnactmentService(sc schedpb.SchedulingClient, eb en
 
 func (es *enactmentService) Stats() interface{} {
 	return struct {
-		Backend          interface{}
-		ScheduledUpdates map[string]*scheduledUpdate
-		Priority         uint32
+		Driver                    any
+		Schedule                  *scheduleManager
+		ScheduleManipulationToken string
 	}{
-		Backend:          es.eb.Stats(),
-		ScheduledUpdates: es.scheduledUpdates,
-		Priority:         es.priority,
+		Driver:                    es.ed.Stats(),
+		Schedule:                  es.schedMgr,
+		ScheduleManipulationToken: es.scheduleManipulationToken,
 	}
 }
 
@@ -108,49 +92,49 @@ type enactmentResult struct {
 }
 
 type scheduleManager struct {
-	lastFinalize time.Time
-	entries      map[string]*scheduleEvent
+	LastFinalize time.Time
+	Entries      map[string]*scheduleEvent
 }
 
 func newScheduleManager() *scheduleManager {
 	return &scheduleManager{
-		lastFinalize: time.Time{},
-		entries:      map[string]*scheduleEvent{},
+		LastFinalize: time.Time{},
+		Entries:      map[string]*scheduleEvent{},
 	}
 }
 
 type scheduleEvent struct {
-	deletePending bool
+	DeletePending bool
 	timer         clockwork.Timer
-	startTime     time.Time
-	endTime       time.Time
-	err           error
-	req           *schedpb.ReceiveRequestsMessageFromController
+	StartTime     time.Time
+	EndTime       time.Time
+	Error         error
+	Req           *schedpb.ReceiveRequestsMessageFromController
 }
 
 func (sm *scheduleManager) createEntry(timer clockwork.Timer, req *schedpb.ReceiveRequestsMessageFromController) {
-	sm.entries[req.GetCreateEntry().Id] = &scheduleEvent{
+	sm.Entries[req.GetCreateEntry().Id] = &scheduleEvent{
 		timer: timer,
-		req:   req,
+		Req:   req,
 	}
 }
 
 func (sm *scheduleManager) deleteEntry(id string) {
 	// DeleteEntry has been called; clean up on aisle five.
-	entry, ok := sm.entries[id]
+	entry, ok := sm.Entries[id]
 	if !ok {
 		// It's ok to delete entries that don't exist.
 		return
 	}
 
-	if entry.endTime.Before(entry.startTime) {
+	if entry.EndTime.Before(entry.StartTime) {
 		// The enactment backend has been called but has not yet completed.
-		entry.deletePending = true
+		entry.DeletePending = true
 		return
 	}
 
 	entry.timer.Stop()
-	delete(sm.entries, id)
+	delete(sm.Entries, id)
 }
 
 func (sm *scheduleManager) finalizeEntries(upTo time.Time) {
@@ -158,22 +142,22 @@ func (sm *scheduleManager) finalizeEntries(upTo time.Time) {
 	//   for each entry:
 	//     if entry.time.Before(upTo) and enacted [and return code captured]:
 	//       delete entry
-	sm.lastFinalize = upTo
+	sm.LastFinalize = upTo
 }
 
 func (sm *scheduleManager) recordResult(result *enactmentResult) {
-	entry, ok := sm.entries[result.id]
+	entry, ok := sm.Entries[result.id]
 	if !ok {
 		// Entry somehow deleted after being kicked off.
 		// TODO: log (will want ctx here)
 		return
 	}
 
-	entry.err = result.err
-	entry.endTime = result.tStamp
+	entry.Error = result.err
+	entry.EndTime = result.tStamp
 	// TODO: log (will want ctx here)
 
-	if entry.deletePending {
+	if entry.DeletePending {
 		// A DeleteEntryRequest arrived after the request had
 		// already been Dispatch()-ed.
 		sm.deleteEntry(result.id)
@@ -185,8 +169,8 @@ func (sm *scheduleManager) recordResult(result *enactmentResult) {
 func (es *enactmentService) run(ctx context.Context) error {
 	g, ctx := errgroup.WithContext(ctx)
 
-	if err := es.eb.Init(ctx); err != nil {
-		return fmt.Errorf("%T.Init() failed: %w", es.eb, err)
+	if err := es.ed.Init(ctx); err != nil {
+		return fmt.Errorf("%T.Init() failed: %w", es.ed, err)
 	}
 
 	schedulingRequestStream, err := es.sc.ReceiveRequests(ctx)
@@ -316,17 +300,17 @@ func (es *enactmentService) mainScheduleLoop(ctx context.Context) error {
 			}
 		// [2] Handle timer firing to launch a call to the backend.
 		case id := <-es.dispatchTimer:
-			entry, ok := es.schedMgr.entries[id]
+			entry, ok := es.schedMgr.Entries[id]
 			if !ok {
 				// Likely a DeleteEntry() racing with the Timer firing.
 				continue
 			}
-			entry.startTime = es.clock.Now()
+			entry.StartTime = es.clock.Now()
 			go func() {
 				result := &enactmentResult{
 					id: id,
 				}
-				result.err = es.eb.Dispatch(ctx, entry.req.GetCreateEntry())
+				result.err = es.ed.Dispatch(ctx, entry.Req.GetCreateEntry())
 				result.tStamp = es.clock.Now()
 
 				select {
@@ -379,12 +363,12 @@ func (es *enactmentService) handleSchedulingRequest(ctx context.Context, req *sc
 
 	case *schedpb.ReceiveRequestsMessageFromController_Finalize:
 		upTo := req.GetFinalize().UpTo.AsTime()
-		if !upTo.After(es.schedMgr.lastFinalize) {
+		if !upTo.After(es.schedMgr.LastFinalize) {
 			return status.Newf(
 				codes.FailedPrecondition,
 				"received finalize up_to %d <= latest finalize up_to (%d)",
 				upTo.UnixNano(),
-				es.schedMgr.lastFinalize.UnixNano())
+				es.schedMgr.LastFinalize.UnixNano())
 		}
 
 		es.schedMgr.finalizeEntries(upTo)

@@ -21,11 +21,9 @@ go_library(
     srcs = ["extproc.go"],
     importpath = "aalyria.com/spacetime/cdpi_agent/enactment/extproc",
     deps = [
-        "//api/common:common_go_proto",
         "//api/scheduling/v1alpha:scheduling_go_grpc",
         "//cdpi_agent/enactment",
         "//cdpi_agent/internal/extprocs",
-        "//cdpi_agent/internal/loggable",
         "//cdpi_agent/internal/protofmt",
         "@com_github_rs_zerolog//:zerolog",
     ],
@@ -36,9 +34,7 @@ go_test(
     srcs = ["extproc_test.go"],
     embed = [":extproc"],
     deps = [
-        "//api/common:common_go_proto",
         "//api/scheduling/v1alpha:scheduling_go_grpc",
         "//cdpi_agent/internal/protofmt",
-        "@com_github_google_go_cmp//cmp",
     ],
 )

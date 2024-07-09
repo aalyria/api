@@ -66,11 +66,10 @@ func TestStreamStartsWithInitialReport(t *testing.T) {
 		return servedReport, nil
 	}}
 
+	srvAddr := ts.Start(ctx, t)
 	a := newAgent(t,
 		WithClock(clockwork.NewFakeClock()),
-		WithServerEndpoint(ts.Start(ctx, t)),
-		WithDialOpts(grpc.WithTransportCredentials(insecure.NewCredentials())),
-		WithNode("mynode", WithTelemetryBackend(tb)))
+		WithNode("mynode", WithTelemetryDriver(srvAddr, tb, grpc.WithTransportCredentials(insecure.NewCredentials()))))
 	errCh := make(chan error)
 	go func() { errCh <- a.Run(ctx) }()
 
@@ -111,11 +110,10 @@ func TestBackendReceivesNodeID(t *testing.T) {
 		return servedReport, nil
 	}}
 
+	srvAddr := ts.Start(ctx, t)
 	a := newAgent(t,
 		WithClock(clockwork.NewFakeClock()),
-		WithServerEndpoint(ts.Start(ctx, t)),
-		WithDialOpts(grpc.WithTransportCredentials(insecure.NewCredentials())),
-		WithNode(wantNodeID, WithTelemetryBackend(tb)))
+		WithNode(wantNodeID, WithTelemetryDriver(srvAddr, tb, grpc.WithTransportCredentials(insecure.NewCredentials()))))
 	errCh := make(chan error)
 	go func() { errCh <- a.Run(ctx) }()
 
@@ -151,11 +149,10 @@ func TestCanRequestOneOffReport(t *testing.T) {
 		return servedReport, nil
 	}}
 
+	srvAddr := ts.Start(ctx, t)
 	a := newAgent(t,
 		WithClock(clockwork.NewFakeClock()),
-		WithServerEndpoint(ts.Start(ctx, t)),
-		WithDialOpts(grpc.WithTransportCredentials(insecure.NewCredentials())),
-		WithNode("mynode", WithTelemetryBackend(tb)))
+		WithNode("mynode", WithTelemetryDriver(srvAddr, tb, grpc.WithTransportCredentials(insecure.NewCredentials()))))
 	errCh := make(chan error)
 	go func() { errCh <- a.Run(ctx) }()
 
@@ -207,11 +204,10 @@ func TestIgnoresUnknownRequestType(t *testing.T) {
 		return servedReport, nil
 	}}
 
+	srvAddr := ts.Start(ctx, t)
 	a := newAgent(t,
 		WithClock(clockwork.NewFakeClock()),
-		WithServerEndpoint(ts.Start(ctx, t)),
-		WithDialOpts(grpc.WithTransportCredentials(insecure.NewCredentials())),
-		WithNode("mynode", WithTelemetryBackend(tb)))
+		WithNode("mynode", WithTelemetryDriver(srvAddr, tb, grpc.WithTransportCredentials(insecure.NewCredentials()))))
 	errCh := make(chan error)
 	go func() { errCh <- a.Run(ctx) }()
 
@@ -275,11 +271,10 @@ func TestPeriodicUpdates(t *testing.T) {
 	tb := &CannedReportBackend{fn: func(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) { return <-reportCh, nil }}
 
 	clock := clockwork.NewFakeClock()
+	srvAddr := ts.Start(ctx, t)
 	a := newAgent(t,
 		WithClock(clock),
-		WithServerEndpoint(ts.Start(ctx, t)),
-		WithDialOpts(grpc.WithTransportCredentials(insecure.NewCredentials())),
-		WithNode("mynode", WithTelemetryBackend(tb)))
+		WithNode("mynode", WithTelemetryDriver(srvAddr, tb, grpc.WithTransportCredentials(insecure.NewCredentials()))))
 
 	errCh := make(chan error)
 	go func() { errCh <- a.Run(ctx) }()
@@ -349,11 +344,10 @@ func TestInitialReportFailsToGenerate(t *testing.T) {
 	fatalErr := fmt.Errorf("something went wrong: %w", context.Canceled)
 	tb := &CannedReportBackend{fn: func(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) { return nil, fatalErr }}
 
+	srvAddr := ts.Start(ctx, t)
 	a := newAgent(t,
 		WithClock(clockwork.NewFakeClock()),
-		WithServerEndpoint(ts.Start(ctx, t)),
-		WithDialOpts(grpc.WithTransportCredentials(insecure.NewCredentials())),
-		WithNode("mynode", WithTelemetryBackend(tb)))
+		WithNode("mynode", WithTelemetryDriver(srvAddr, tb, grpc.WithTransportCredentials(insecure.NewCredentials()))))
 
 	errCh := make(chan error)
 	go func() { errCh <- a.Run(ctx) }()
@@ -403,11 +397,10 @@ func TestPeriodicUpdatesAreStoppedWhenHzIsZero(t *testing.T) {
 	}}
 
 	clock := clockwork.NewFakeClock()
+	srvAddr := ts.Start(ctx, t)
 	a := newAgent(t,
 		WithClock(clock),
-		WithServerEndpoint(ts.Start(ctx, t)),
-		WithDialOpts(grpc.WithTransportCredentials(insecure.NewCredentials())),
-		WithNode("mynode", WithTelemetryBackend(tb)))
+		WithNode("mynode", WithTelemetryDriver(srvAddr, tb, grpc.WithTransportCredentials(insecure.NewCredentials()))))
 
 	errCh := make(chan error)
 	go func() { errCh <- a.Run(ctx) }()
@@ -520,11 +513,10 @@ func TestRequestsForWrongNodeIDAreIgnored(t *testing.T) {
 	tb := &CannedReportBackend{fn: func(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) { return <-reportCh, nil }}
 
 	clock := clockwork.NewFakeClock()
+	srvAddr := ts.Start(ctx, t)
 	a := newAgent(t,
 		WithClock(clock),
-		WithServerEndpoint(ts.Start(ctx, t)),
-		WithDialOpts(grpc.WithTransportCredentials(insecure.NewCredentials())),
-		WithNode("mynode", WithTelemetryBackend(tb)))
+		WithNode("mynode", WithTelemetryDriver(srvAddr, tb, grpc.WithTransportCredentials(insecure.NewCredentials()))))
 
 	errCh := make(chan error)
 	go func() { errCh <- a.Run(ctx) }()
