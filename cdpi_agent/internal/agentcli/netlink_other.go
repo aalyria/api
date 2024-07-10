@@ -27,10 +27,10 @@ import (
 	"github.com/jonboulle/clockwork"
 )
 
-func newNetlinkEnactmentBackend(ctx context.Context, clock clockwork.Clock, nodeID string, conf *configpb.NetworkNode_NetlinkEnactment) (enactment.Backend, error) {
-	return nil, fmt.Errorf("netlink enactment backend is unavailable on this platform")
+func newNetlinkEnactmentDriver(ctx context.Context, clock clockwork.Clock, nodeID string, conf *configpb.NetworkNode_NetlinkEnactment) (enactment.Driver, error) {
+	return nil, fmt.Errorf("netlink enactment driver is unavailable on this platform")
 }
 
-func newNetlinkTelemetryBackend(ctx context.Context, clock clockwork.Clock, nodeID string, conf *configpb.NetworkNode_NetlinkTelemetry) (telemetry.Backend, error) {
-	return nil, fmt.Errorf("netlink telemetry backend is unavailable on this platform")
+func newNetlinkTelemetryDriver(ctx context.Context, clock clockwork.Clock, nodeID string, conf *configpb.NetworkNode_NetlinkTelemetry) (telemetry.Driver, error) {
+	return nil, fmt.Errorf("netlink telemetry driver is unavailable on this platform")
 }

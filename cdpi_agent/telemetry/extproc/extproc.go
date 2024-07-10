@@ -33,24 +33,35 @@ import (
 
 var errEmptyReport = errors.New("command generated an empty response")
 
-type backend struct {
-	cmdFn    func(ctx context.Context, nodeID string) *exec.Cmd
+type driver struct {
+	args     []string
 	protoFmt protofmt.Format
 }
 
-func New(cmdFn func(ctx context.Context, nodeID string) *exec.Cmd, format protofmt.Format) telemetry.Backend {
-	return &backend{cmdFn: cmdFn, protoFmt: format}
+func New(args []string, format protofmt.Format) telemetry.Driver {
+	return &driver{args: args, protoFmt: format}
 }
 
-func (tb *backend) Close() error               { return nil }
-func (tb *backend) Init(context.Context) error { return nil }
-func (tb *backend) Stats() interface{}         { return nil }
+func (td *driver) Close() error               { return nil }
+func (td *driver) Init(context.Context) error { return nil }
+func (td *driver) Stats() interface{} {
+	return struct {
+		Type   string
+		Args   []string
+		Format string
+	}{
+		Type:   fmt.Sprintf("%T", td),
+		Args:   td.args,
+		Format: td.protoFmt.String(),
+	}
+}
 
-func (tb *backend) GenerateReport(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) {
-	log := zerolog.Ctx(ctx).With().Str("backend", "extproc").Logger()
+func (td *driver) GenerateReport(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) {
+	log := zerolog.Ctx(ctx).With().Str("driver", "extproc").Logger()
 
-	log.Trace().Msg("running command")
-	reportData, err := tb.cmdFn(ctx, nodeID).Output()
+	log.Trace().Strs("args", td.args).Msg("running telemetry command")
+	cmd := exec.CommandContext(ctx, td.args[0], td.args[1:]...)
+	reportData, err := cmd.Output()
 	if err != nil {
 		return nil, extprocs.CommandError(err)
 	}
@@ -60,7 +71,7 @@ func (tb *backend) GenerateReport(ctx context.Context, nodeID string) (*apipb.Ne
 	}
 
 	report := &apipb.NetworkStatsReport{}
-	if err = tb.protoFmt.Unmarshal(reportData, report); err != nil {
+	if err = td.protoFmt.Unmarshal(reportData, report); err != nil {
 		return nil, fmt.Errorf("unmarshalling command output into report proto: %w", err)
 	}
 	log.Trace().Interface("state", loggable.Proto(report)).Msg("command generated report")

@@ -47,7 +47,7 @@ type routeToRuleID struct {
 	ruleIDs map[string]*apipb.FlowRule
 }
 
-type Backend struct {
+type Driver struct {
 	// mu protects the backend's map fields from concurrent mutation.
 	mu *sync.Mutex
 
@@ -180,14 +180,14 @@ func DefaultConfig(ctx context.Context, nlHandle *vnl.Handle, rtTableID int, rtT
 }
 
 // routeListFilteredByTableID is a helper function to return all routes from table <RtTableID>
-func (b *Backend) routeListFilteredByTableID() ([]vnl.Route, error) {
+func (b *Driver) routeListFilteredByTableID() ([]vnl.Route, error) {
 	ret, err := b.config.RouteListFiltered(vnl.FAMILY_V4, &vnl.Route{Table: b.config.RtTableID}, vnl.RT_FILTER_TABLE)
 	return ret, err
 }
 
 // flushExistingRoutesInSpacetimeTable deletes all routes located in the Spacetime route table
 // TODO: Should we returns errors here?
-func (b *Backend) flushExistingRoutesInSpacetimeTable() error {
+func (b *Driver) flushExistingRoutesInSpacetimeTable() error {
 	implRoutes, err := b.routeListFilteredByTableID()
 	if err != nil {
 		return err
@@ -206,8 +206,8 @@ func (b *Backend) flushExistingRoutesInSpacetimeTable() error {
 
 // New is a constructor function which allows you to supply the Config as well as a map of any already implemented FlowRules\
 // Before it starts managing routes, it flushes the route table <rtTableID> which is dedicated to Spacetime activities
-func New(config Config) *Backend {
-	return &Backend{
+func New(config Config) *Driver {
+	return &Driver{
 		mu:              &sync.Mutex{},
 		routesToRuleIDs: []*routeToRuleID{},
 		config:          config,
@@ -215,9 +215,9 @@ func New(config Config) *Backend {
 	}
 }
 
-func (b *Backend) Close() error { return nil }
+func (b *Driver) Close() error { return nil }
 
-func (b *Backend) Init(ctx context.Context) error {
+func (b *Driver) Init(ctx context.Context) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -248,7 +248,7 @@ func (b *Backend) Init(ctx context.Context) error {
 	return nil
 }
 
-func (b *Backend) Stats() interface{} {
+func (b *Driver) Stats() interface{} {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -268,7 +268,7 @@ func isFlowUpdate(req *apipb.ScheduledControlUpdate) error {
 
 // flowRuleMatchesInstalledRoute does an equality check between classification parameters for a FlowRule, and a netlink-fetched route
 // DO NOT COMMIT: What are a sufficient set of fields for equality check?
-func (b *Backend) flowRuleMatchesInstalledRoute(flowRule *apipb.FlowRule, route vnl.Route) bool {
+func (b *Driver) flowRuleMatchesInstalledRoute(flowRule *apipb.FlowRule, route vnl.Route) bool {
 	_, dstSubnet, _ := net.ParseCIDR(flowRule.GetClassifier().GetIpHeader().GetDstIpRange())
 	// src := net.ParseIP(flowRule.GetClassifier().GetIpHeader().GetSrcIpRange())
 	if dstSubnet.String() != route.Dst.String() {
@@ -309,7 +309,7 @@ outerLoop:
 // accumulated in the return value ControlPlaneState.
 //
 // This function acquires the [backend.mu], hence the "Unlocked" suffix.
-func (b *Backend) buildStateProtoUnlocked(installedRouteProvider func() ([]vnl.Route, error)) (*apipb.ControlPlaneState, error) {
+func (b *Driver) buildStateProtoUnlocked(installedRouteProvider func() ([]vnl.Route, error)) (*apipb.ControlPlaneState, error) {
 	installedRoutes, err := installedRouteProvider()
 	if err != nil {
 		return nil, err
@@ -354,7 +354,7 @@ func timeToProto(t time.Time) *apipb.DateTime {
 }
 
 // buildReturnUnlocked executes the common pattern of "collect state and return any errors" for multiple exits from handleRequest
-func (b *Backend) buildReturnUnlocked(log zerolog.Logger, installedRouteProvider func() ([]vnl.Route, error), andErr error) (*apipb.ControlPlaneState, error) {
+func (b *Driver) buildReturnUnlocked(log zerolog.Logger, installedRouteProvider func() ([]vnl.Route, error), andErr error) (*apipb.ControlPlaneState, error) {
 	errs := []error{andErr}
 	cpState, err := b.buildStateProtoUnlocked(installedRouteProvider)
 	if err != nil {
@@ -378,7 +378,7 @@ func (b *Backend) buildReturnUnlocked(log zerolog.Logger, installedRouteProvider
 
 // forwardActionFromFlowRule takes the FlowRules and retrieves the OutInterfaceId and/or NextHopIp
 // assuming that the FLowRule contains an Action of ActionType Forward
-func (b *Backend) forwardActionFromFlowRule(flowRule *apipb.FlowRule) (int, net.IP, error) {
+func (b *Driver) forwardActionFromFlowRule(flowRule *apipb.FlowRule) (int, net.IP, error) {
 	// DO NOT COMMIT - Form a plan for enforcing only one ActionBucket and one Action for now.
 	for _, actionBucket := range flowRule.GetActionBucket() {
 		for _, action := range actionBucket.GetAction() {
@@ -450,7 +450,7 @@ func classifierFromFlowRule(flowRule *apipb.FlowRule) (uint32, net.IP, *net.IPNe
 	return protocol, nil, dst, nil
 }
 
-func (b *Backend) buildNetlinkRoute(flowRule *apipb.FlowRule) (*vnl.Route, error) {
+func (b *Driver) buildNetlinkRoute(flowRule *apipb.FlowRule) (*vnl.Route, error) {
 	outIfaceIdx, nextHopIp, err := b.forwardActionFromFlowRule(flowRule)
 	if err != nil {
 		return nil, err
@@ -495,7 +495,7 @@ func (b *Backend) buildNetlinkRoute(flowRule *apipb.FlowRule) (*vnl.Route, error
 // or process other than Spacetime, this is caught here and the in-memory cache is updated to reflect it. This updated
 // representation of the underlying host is eventually returned to Spacetime, which reprovisions the missing routes if
 // neccessary
-func (b *Backend) syncCachedRoutes(log zerolog.Logger) error {
+func (b *Driver) syncCachedRoutes(log zerolog.Logger) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -525,7 +525,7 @@ func (b *Backend) syncCachedRoutes(log zerolog.Logger) error {
 	return errors.Join(errs...)
 }
 
-func (b *Backend) flowUpdateAdd(route *vnl.Route) error {
+func (b *Driver) flowUpdateAdd(route *vnl.Route) error {
 	if err := b.config.RouteAdd(route); err != nil {
 		return fmt.Errorf("RouteAdd(%v): %w", route, err)
 	}
@@ -536,14 +536,14 @@ func routeEqual(routeA, routeB *vnl.Route) bool {
 	return (routeA.Dst == routeB.Dst && routeA.Gw.Equal(routeB.Gw) && routeA.LinkIndex == routeB.LinkIndex)
 }
 
-func (b *Backend) flowUpdateDelete(route *vnl.Route) error {
+func (b *Driver) flowUpdateDelete(route *vnl.Route) error {
 	if err := b.config.RouteDel(route); err != nil {
 		return fmt.Errorf("RouteDel(%v): %w", route, err)
 	}
 	return nil
 }
 
-func (b *Backend) Apply(ctx context.Context, req *apipb.ScheduledControlUpdate) (*apipb.ControlPlaneState, error) {
+func (b *Driver) Apply(ctx context.Context, req *apipb.ScheduledControlUpdate) (*apipb.ControlPlaneState, error) {
 	// DO NOT COMMIT: Questions
 	// Do we need to validate sequence_number in any way, or is that done previous to handleRequest?
 	// log.Debug().Msgf("UPDATE,%s,%s,%s,%s,%s\n",
@@ -705,6 +705,6 @@ func (b *Backend) Apply(ctx context.Context, req *apipb.ScheduledControlUpdate) 
 	return b.buildReturnUnlocked(log, b.routeListFilteredByTableID, nil)
 }
 
-func (b *Backend) Dispatch(ctx context.Context, req *schedpb.CreateEntryRequest) error {
+func (b *Driver) Dispatch(ctx context.Context, req *schedpb.CreateEntryRequest) error {
 	return status.Error(codes.Unimplemented, "This method is not currently implemented")
 }

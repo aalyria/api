@@ -22,9 +22,6 @@ import (
 	"fmt"
 	"sync"
 
-	afpb "aalyria.com/spacetime/api/cdpi/v1alpha"
-	apipb "aalyria.com/spacetime/api/common"
-	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
 	"aalyria.com/spacetime/cdpi_agent/enactment"
 	"aalyria.com/spacetime/cdpi_agent/internal/task"
 	"aalyria.com/spacetime/cdpi_agent/telemetry"
@@ -46,7 +43,6 @@ func init() {
 
 var (
 	errNoClock          = errors.New("no clock provided (see WithClock)")
-	errNoEndpoint       = errors.New("no server endpoint provied (see WithServerEndpoint)")
 	errNoNodes          = errors.New("no nodes configured (see WithNode)")
 	errNoActiveServices = errors.New("no services configured for node (see WithEnactmentBackend and WithTelemetryBackend)")
 )
@@ -71,17 +67,14 @@ func (fn nodeOptFunc) apply(n *node) { fn(n) }
 // Agent is a CDPI agent that coordinates change requests across multiple
 // nodes.
 type Agent struct {
-	clock    clockwork.Clock
-	nodes    map[string]*node
-	endpoint string
-	dialOpts []grpc.DialOption
+	clock clockwork.Clock
+	nodes map[string]*node
 }
 
 // NewAgent creates a new Agent configured with the provided options.
 func NewAgent(opts ...AgentOption) (*Agent, error) {
 	a := &Agent{
-		nodes:    map[string]*node{},
-		dialOpts: []grpc.DialOption{grpc.WithBlock()},
+		nodes: map[string]*node{},
 	}
 
 	for _, opt := range opts {
@@ -95,9 +88,6 @@ func (a *Agent) validate() error {
 	errs := []error{}
 	if a.clock == nil {
 		errs = append(errs, errNoClock)
-	}
-	if a.endpoint == "" {
-		errs = append(errs, errNoEndpoint)
 	}
 	if len(a.nodes) == 0 {
 		errs = append(errs, errNoNodes)
@@ -122,25 +112,6 @@ func WithRealClock() AgentOption {
 	return WithClock(clockwork.NewRealClock())
 }
 
-// WithServerEndpoint configures the Agent to connect to the provided endpoint.
-func WithServerEndpoint(endpoint string) AgentOption {
-	return agentOptFunc(func(a *Agent) {
-		a.endpoint = endpoint
-	})
-}
-
-// WithDialOpts configures the Agent to use the provided DialOptions when
-// connecting to the CDPI endpoint.
-//
-// NOTE: The CDPI agent always uses the `grpc.WithBlock` option to ensure
-// initial connection errors are caught immediately, whereas logical errors are
-// often more tightly scoped to individual RPCs.
-func WithDialOpts(dialOpts ...grpc.DialOption) AgentOption {
-	return agentOptFunc(func(a *Agent) {
-		a.dialOpts = append(a.dialOpts, dialOpts...)
-	})
-}
-
 // WithNode configures a network node for the agent to represent.
 func WithNode(id string, opts ...NodeOption) AgentOption {
 	n := &node{id: id}
@@ -153,39 +124,33 @@ func WithNode(id string, opts ...NodeOption) AgentOption {
 }
 
 type node struct {
-	initState         *apipb.ControlPlaneState
-	eb                enactment.Backend
-	tb                telemetry.Backend
-	id                string
-	priority          uint32
-	enactmentsEnabled bool
-	telemetryEnabled  bool
+	ed       enactment.Driver
+	td       telemetry.Driver
+	id       string
+	priority uint32
+
+	enactmentEndpoint, telemetryEndpoint string
+	enactmentsEnabled, telemetryEnabled  bool
+	enactmentDialOpts, telemetryDialOpts []grpc.DialOption
 }
 
-func WithChannelPriority(priority uint32) NodeOption {
-	return nodeOptFunc(func(n *node) { n.priority = priority })
-}
-
-// WithEnactmentBackend configures the EnactmentBackend for the given Node.
-func WithEnactmentBackend(eb enactment.Backend) NodeOption {
+// WithEnactmentDriver configures the [enactment.Driver] for the given Node.
+func WithEnactmentDriver(endpoint string, d enactment.Driver, dialOpts ...grpc.DialOption) NodeOption {
 	return nodeOptFunc(func(n *node) {
-		n.eb = eb
+		n.ed = d
+		n.enactmentEndpoint = endpoint
+		n.enactmentDialOpts = dialOpts
 		n.enactmentsEnabled = true
 	})
 }
 
-// WithTelemetryBackend configures the telemetry.Backend for the given Node.
-func WithTelemetryBackend(tb telemetry.Backend) NodeOption {
+// WithTelemetryDriver configures the [telemetry.Driver] for the given Node.
+func WithTelemetryDriver(endpoint string, d telemetry.Driver, dialOpts ...grpc.DialOption) NodeOption {
 	return nodeOptFunc(func(n *node) {
-		n.tb = tb
+		n.td = d
+		n.telemetryEndpoint = endpoint
+		n.telemetryDialOpts = dialOpts
 		n.telemetryEnabled = true
-	})
-}
-
-// WithInitialState configures the initial state of the Node.
-func WithInitialState(initState *apipb.ControlPlaneState) NodeOption {
-	return nodeOptFunc(func(n *node) {
-		n.initState = initState
 	})
 }
 
@@ -226,21 +191,13 @@ func (a *Agent) Run(ctx context.Context) error {
 }
 
 func (a *Agent) start(ctx context.Context, agentMap *expvar.Map, errCh chan error) error {
-	log := zerolog.Ctx(ctx)
-
-	log.Trace().Str("endpoint", a.endpoint).Msg("contacting the CDPI endpoint")
-	conn, err := grpc.NewClient(a.endpoint, a.dialOpts...)
-	if err != nil {
-		return fmt.Errorf("agent: failed connecting to CDPI backend: %w", err)
-	}
-
-	schedClient := schedpb.NewSchedulingClient(conn)
-	telemetryClient := afpb.NewNetworkTelemetryStreamingClient(conn)
-
 	for _, n := range a.nodes {
 		ctx, done := context.WithCancel(ctx)
 
-		nc := a.newNodeController(n, done, schedClient, telemetryClient)
+		nc, err := a.newNodeController(n, done)
+		if err != nil {
+			return fmt.Errorf("node %q: %w", n.id, err)
+		}
 		agentMap.Set(n.id, expvar.Func(nc.Stats))
 
 		srv := task.Task(nc.run).

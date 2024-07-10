@@ -17,17 +17,22 @@ package enactment
 import (
 	"context"
 
-	apipb "aalyria.com/spacetime/api/common"
 	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
 )
 
-// Backend is the component that takes a ScheduledControlUpdate message for a
+// Driver is the component that takes a ScheduledControlUpdate message for a
 // given node and returns the new state for that node. If the error returned
 // implements the gRPCStatus interface, the appropriate status will be used.
-type Backend interface {
-	Apply(context.Context, *apipb.ScheduledControlUpdate) (*apipb.ControlPlaneState, error)
-	Dispatch(context.Context, *schedpb.CreateEntryRequest) error
-	Stats() interface{}
+type Driver interface {
+	// Init initializes the driver.
 	Init(context.Context) error
+	// Dispatch handles the provided [schedpb.CreateEntryRequest]. Drivers are
+	// expected to handle retries.
+	Dispatch(context.Context, *schedpb.CreateEntryRequest) error
+	// Stats returns internal statistics for the driver in an unstructured
+	// form. The results are exposed as a JSON endpoint via the pprof server,
+	// if it's configured.
+	Stats() any
+	// Close closes the driver. Reusing a closed driver is a fatal error.
 	Close() error
 }

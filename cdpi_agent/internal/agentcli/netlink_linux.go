@@ -30,7 +30,7 @@ import (
 	vnl "github.com/vishvananda/netlink"
 )
 
-func newNetlinkEnactmentBackend(ctx context.Context, clock clockwork.Clock, nodeID string, conf *configpb.NetworkNode_NetlinkEnactment) (enactment.Backend, error) {
+func newNetlinkEnactmentDriver(ctx context.Context, clock clockwork.Clock, nodeID string, conf *configpb.NetworkNode_NetlinkEnactment) (enactment.Driver, error) {
 	nlHandle, err := vnl.NewHandle(vnl.FAMILY_ALL)
 	if err != nil {
 		return nil, fmt.Errorf("creating new netlink handle for enactments: %w", err)
@@ -44,7 +44,7 @@ func newNetlinkEnactmentBackend(ctx context.Context, clock clockwork.Clock, node
 			int(conf.GetRouteTableLookupPriority()))), nil
 }
 
-func newNetlinkTelemetryBackend(ctx context.Context, clock clockwork.Clock, nodeID string, conf *configpb.NetworkNode_NetlinkTelemetry) (telemetry.Backend, error) {
+func newNetlinkTelemetryDriver(ctx context.Context, clock clockwork.Clock, nodeID string, conf *configpb.NetworkNode_NetlinkTelemetry) (telemetry.Driver, error) {
 	nlHandle, err := vnl.NewHandle(vnl.FAMILY_ALL)
 	if err != nil {
 		return nil, fmt.Errorf("creating new netlink handle for telemetry: %w", err)

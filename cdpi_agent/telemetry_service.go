@@ -35,25 +35,25 @@ type telemetryService struct {
 	nodeID          string
 	nc              *nodeController
 	telemetryClient afpb.NetworkTelemetryStreamingClient
-	tb              telemetry.Backend
+	td              telemetry.Driver
 }
 
-func (nc *nodeController) newTelemetryService(tc afpb.NetworkTelemetryStreamingClient, tb telemetry.Backend) *telemetryService {
+func (nc *nodeController) newTelemetryService(tc afpb.NetworkTelemetryStreamingClient, tb telemetry.Driver) *telemetryService {
 	return &telemetryService{
 		nodeID:          nc.id,
 		nc:              nc,
 		telemetryClient: tc,
-		tb:              tb,
+		td:              tb,
 	}
 }
 
-func (ts *telemetryService) Stats() interface{} { return ts.tb.Stats() }
+func (ts *telemetryService) Stats() interface{} { return ts.td.Stats() }
 
 func (ts *telemetryService) run(ctx context.Context) error {
 	g, ctx := errgroup.WithContext(ctx)
 
-	if err := ts.tb.Init(ctx); err != nil {
-		return fmt.Errorf("%T.Init() failed: %w", ts.tb, err)
+	if err := ts.td.Init(ctx); err != nil {
+		return fmt.Errorf("%T.Init() failed: %w", ts.td, err)
 	}
 
 	ti, err := ts.telemetryClient.TelemetryInterface(ctx)
@@ -129,9 +129,9 @@ func (ts *telemetryService) statLoop(triggerCh <-chan struct{}, sendCh chan<- *a
 	mapFn := func(ctx context.Context, _ struct{}) (*afpb.TelemetryUpdate, error) {
 		var report *apipb.NetworkStatsReport
 		if err := task.Task(func(ctx context.Context) (err error) {
-			report, err = ts.tb.GenerateReport(ctx, ts.nodeID)
+			report, err = ts.td.GenerateReport(ctx, ts.nodeID)
 			return err
-		}).WithNewSpan("telemetry.Backend")(ctx); err != nil {
+		}).WithNewSpan("telemetry.Driver")(ctx); err != nil {
 			return nil, err
 		}
 		zerolog.Ctx(ctx).Trace().

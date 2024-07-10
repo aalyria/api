@@ -135,16 +135,10 @@ func (tc *testCase) runTest(t *testing.T) {
 		zerolog.Ctx(ctx).With().Str("role", "test server").Logger().WithContext(ctx), tc.nodes)
 	srvAddr := srv.start(ctx, t, g)
 
-	opts := []AgentOption{
-		WithClock(clock),
-		WithDialOpts(grpc.WithTransportCredentials(insecure.NewCredentials())),
-		WithServerEndpoint(srvAddr),
-	}
+	opts := []AgentOption{WithClock(clock)}
 	for _, n := range tc.nodes {
 		opts = append(opts, WithNode(n.id,
-			WithInitialState(&apipb.ControlPlaneState{}),
-			WithChannelPriority(n.priority),
-			WithEnactmentBackend(enact)))
+			WithEnactmentDriver(srvAddr, enact, grpc.WithTransportCredentials(insecure.NewCredentials()))))
 	}
 	agent := newAgent(t, opts...)
 

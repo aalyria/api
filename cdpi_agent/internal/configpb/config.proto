@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Structured configuration for the CDPI agent binary.
+// Structured configuration for the reference SBI agent binary.
 
 syntax = "proto3";
 
@@ -86,9 +86,9 @@ message ConnectionParams {
 
   // The transport security options to use. Required.
   TransportSecurity transport_security = 1;
-  // Address of the CDPI backend, in URI format (see
+  // The gRPC URI for the relevant service (see
   // https://github.com/grpc/grpc/blob/master/doc/naming.md). Required.
-  string cdpi_endpoint = 2;
+  string endpoint_uri = 2;
   // The strategy to use for authorization. Required.
   AuthStrategy auth_strategy = 3;
   // Parameters to control the gRPC backoff behavior. Defaults to the standard
@@ -103,7 +103,7 @@ message ConnectionParams {
 // A node the agent represents.
 message NetworkNode {
   // An external command is a delegate process that handles implementing some
-  // aspect of the CDPI contract. Exit codes within the range of the canonical
+  // aspect of the SBI contract. Exit codes within the range of the canonical
   // gRPC status codes will be transformed (alongside any messages written to
   // standard error) into an appropriate gRPC status.
   //
@@ -145,21 +145,23 @@ message NetworkNode {
     int32 route_table_lookup_priority = 2;
   }
 
-  // An EnactmentBackend is responsible for processing incoming enactments for
+  // An EnactmentDriver is responsible for processing incoming enactments for
   // a given node.
-  message EnactmentBackend {
+  message EnactmentDriver {
+    ConnectionParams connection_params = 1;
+
     oneof type {
       // Use an external command to process enactments. The command will
       // receive a ScheduledControlUpdate message over standard input. The
       // command may optionally write a new ControlPlaneState message to
       // standard out.
-      ExternalCommand external_command = 1;
+      ExternalCommand external_command = 2;
 
       // Use the Linux-only netlink APIs to process enactments.
-      NetlinkEnactment netlink = 2;
+      NetlinkEnactment netlink = 3;
 
-      // Use an agent-specific backend to process enactments.
-      google.protobuf.Any dynamic = 3;
+      // Use an agent-specific driver to process enactments.
+      google.protobuf.Any dynamic = 4;
     }
   }
 
@@ -172,39 +174,30 @@ message NetworkNode {
     repeated MonitoredInterface monitored_interfaces = 1;
   }
 
-  // A TelemetryBackend is responsible for generating telemetry reports for a
+  // A TelemetryDriver is responsible for generating telemetry reports for a
   // given node.
-  message TelemetryBackend {
+  message TelemetryDriver {
+    ConnectionParams connection_params = 1;
+
     oneof type {
       // Use an external command to handle telemetry updates. The command
       // should write a NetworkStatsReport message in the appropriate format to
       // standard out when executed.
-      ExternalCommand external_command = 1;
+      ExternalCommand external_command = 2;
 
       // Use the Linux-only netlink APIs to gather telemetry.
-      NetlinkTelemetry netlink = 2;
+      NetlinkTelemetry netlink = 3;
 
-      // Use an agent-specific backend to gather telemetry.
-      google.protobuf.Any dynamic = 3;
-    }
-  }
-
-  // A StateBackend is responsible for collecting and possibly updating a
-  // node's current state.
-  message StateBackend {
-    oneof type {
-      // The node has a static initial state, read at startup. Future
-      // enactments may change this state.
-      aalyria.spacetime.api.common.ControlPlaneState static_initial_state = 1;
+      // Use an agent-specific driver to gather telemetry.
+      google.protobuf.Any dynamic = 4;
     }
   }
 
   // The node's ID.
   string id = 1;
 
-  StateBackend state_backend = 2;
-  EnactmentBackend enactment_backend = 3;
-  TelemetryBackend telemetry_backend = 4;
+  EnactmentDriver enactment_driver = 2;
+  TelemetryDriver telemetry_driver = 3;
 }
 
 message ObservabilityParams {
@@ -232,7 +225,6 @@ message ObservabilityParams {
 }
 
 message AgentParams {
-  ConnectionParams connection_params = 1;
   ObservabilityParams observability_params = 2;
   repeated NetworkNode network_nodes = 3;
 }

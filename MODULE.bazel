@@ -38,7 +38,7 @@ bazel_dep(name = "gazelle", version = "0.35.0")
 bazel_dep(name = "container_structure_test", version = "1.16.0", dev_dependency = True)
 
 go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
-go_sdk.download(version = "1.22.3")
+go_sdk.download(version = "1.22.5")
 
 oci = use_extension("@rules_oci//oci:extensions.bzl", "oci")
 oci.pull(

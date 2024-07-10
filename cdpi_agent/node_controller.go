@@ -17,6 +17,7 @@ package agent
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	afpb "aalyria.com/spacetime/api/cdpi/v1alpha"
@@ -26,6 +27,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jonboulle/clockwork"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -40,25 +42,23 @@ type nodeController struct {
 	clock     clockwork.Clock
 	initState *apipb.ControlPlaneState
 	services  []task.Task
-	// The channel priority of this controller's stream.
-	priority uint32
 
 	enactmentStats func() interface{}
 	telemetryStats func() interface{}
 
+	closers []func() error
+
 	newToken func() string
 }
 
-func (a *Agent) newNodeController(node *node, done func(), schedClient schedpb.SchedulingClient, telemetryClient afpb.NetworkTelemetryStreamingClient) *nodeController {
+func (a *Agent) newNodeController(node *node, done func()) (*nodeController, error) {
 	nc := &nodeController{
 		id:             node.id,
-		priority:       node.priority,
 		done:           done,
 		clock:          a.clock,
-		initState:      node.initState,
 		enactmentStats: func() interface{} { return nil },
 		telemetryStats: func() interface{} { return nil },
-		newToken:       func() string { return uuid.NewString() },
+		newToken:       uuid.NewString,
 	}
 
 	rc := task.RetryConfig{
@@ -76,7 +76,15 @@ func (a *Agent) newNodeController(node *node, done func(), schedClient schedpb.S
 
 	nc.services = []task.Task{}
 	if node.telemetryEnabled {
-		ts := nc.newTelemetryService(telemetryClient, node.tb)
+		telemetryConn, err := grpc.NewClient(node.telemetryEndpoint, node.telemetryDialOpts...)
+		if err != nil {
+			return nil, fmt.Errorf("failed connecting to telemetry endpoint: %w", err)
+		}
+		nc.closers = append(nc.closers, telemetryConn.Close)
+
+		telemetryClient := afpb.NewNetworkTelemetryStreamingClient(telemetryConn)
+
+		ts := nc.newTelemetryService(telemetryClient, node.td)
 
 		nc.services = append(nc.services, task.Task(ts.run).
 			WithNewSpan("telemetry_service").
@@ -86,8 +94,16 @@ func (a *Agent) newNodeController(node *node, done func(), schedClient schedpb.S
 
 		nc.telemetryStats = ts.Stats
 	}
+
 	if node.enactmentsEnabled {
-		es := nc.newEnactmentService(schedClient, node.eb, nc.newToken())
+		enactmentConn, err := grpc.NewClient(node.enactmentEndpoint, node.enactmentDialOpts...)
+		if err != nil {
+			return nil, fmt.Errorf("failed connecting to enactment endpoint: %w", err)
+		}
+		nc.closers = append(nc.closers, enactmentConn.Close)
+
+		schedClient := schedpb.NewSchedulingClient(enactmentConn)
+		es := nc.newEnactmentService(schedClient, node.ed, nc.newToken())
 
 		nc.services = append(nc.services, task.Task(es.run).
 			WithNewSpan("enactment_service").
@@ -98,11 +114,20 @@ func (a *Agent) newNodeController(node *node, done func(), schedClient schedpb.S
 		nc.enactmentStats = es.Stats
 	}
 
-	return nc
+	return nc, nil
 }
 
-func (nc *nodeController) run(ctx context.Context) error {
-	defer nc.done()
+func (nc *nodeController) run(ctx context.Context) (resErr error) {
+	defer func() {
+		nc.done()
+
+		errs := []error{resErr}
+		for _, c := range nc.closers {
+			errs = append(errs, c())
+		}
+		resErr = errors.Join(errs...)
+	}()
+
 	return task.Group(nc.services...).WithPanicCatcher()(ctx)
 }
 
