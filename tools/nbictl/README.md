@@ -119,6 +119,14 @@ Generate RSA keys to use for authentication with the Spacetime APIs.
 
 **--state**="": State of certificate.
 
+## list-configs
+
+List all configuration profiles (ignores any `--context` flag)
+
+## get-config
+
+Prints the NBI connection settings associated with the configuration profile given by the `--context` flag (defaults to "DEFAULT").
+
 ## set-config
 
 Sets or updates a configuration profile that contains NBI connection settings. You can create multiple configs by specifying the name of the configuration using the `--context` flag (defaults to "DEFAULT").

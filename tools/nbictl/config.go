@@ -43,8 +43,8 @@ func getAppConfDir(appCtx *cli.Context) (string, error) {
 	return filepath.Join(confDir, appCtx.App.Name), nil
 }
 
-func readConfig(context, confDir string) (*nbictlpb.Config, error) {
-	confs, err := readConfigs(confDir)
+func readConfig(context, confFilePath string) (*nbictlpb.Config, error) {
+	confs, err := readConfigs(confFilePath)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get config contexts: %w", err)
 	}
@@ -86,6 +86,61 @@ func readConfigs(confFilePath string) (*nbictlpb.AppConfig, error) {
 	return confProto, nil
 }
 
+func getConfFileForContext(appCtx *cli.Context) (string, error) {
+	confDir, err := getAppConfDir(appCtx)
+	if err != nil {
+		return "", fmt.Errorf("unable to obtain the default config directory: %w", err)
+	}
+
+	return filepath.Join(confDir, confFileName), nil
+}
+
+func ListConfigs(appCtx *cli.Context) error {
+	confFile, err := getConfFileForContext(appCtx)
+	if err != nil {
+		return err
+	}
+	confProto, err := readConfigs(confFile)
+	if err != nil {
+		return err
+	}
+
+	for _, profile := range confProto.GetConfigs() {
+		fmt.Fprintln(appCtx.App.Writer, profile.GetName())
+	}
+
+	return nil
+}
+
+func GetConfig(appCtx *cli.Context) error {
+	confFile, err := getConfFileForContext(appCtx)
+	if err != nil {
+		return err
+	}
+	confProto, err := readConfigs(confFile)
+	if err != nil {
+		return err
+	}
+
+	confName := "DEFAULT"
+	if appCtx.IsSet("context") {
+		confName = appCtx.String("context")
+	}
+
+	for _, profile := range confProto.GetConfigs() {
+		if profile.GetName() == confName {
+			protoMessage, err := prototext.MarshalOptions{Multiline: true}.Marshal(profile)
+			if err != nil {
+				return err
+			}
+			fmt.Fprint(appCtx.App.Writer, string(protoMessage))
+			return nil
+		}
+	}
+
+	return fmt.Errorf("unable to find config %q in file %q.", confName, confFile)
+}
+
 func SetConfig(appCtx *cli.Context) error {
 	confName := "DEFAULT"
 	if appCtx.IsSet("context") {
@@ -97,11 +152,10 @@ func SetConfig(appCtx *cli.Context) error {
 	url := appCtx.String("url")
 	transportSecurity := appCtx.String("transport_security")
 
-	confDir, err := getAppConfDir(appCtx)
+	confPath, err := getConfFileForContext(appCtx)
 	if err != nil {
-		return fmt.Errorf("unable to obtain the default config directory: %w", err)
+		return err
 	}
-	confPath := filepath.Join(confDir, confFileName)
 
 	var transportSecurityPb *nbictlpb.Config_TransportSecurity
 
@@ -193,6 +247,6 @@ func setConfig(outWriter, errWriter io.Writer, confToCreate *nbictlpb.Config, co
 		return fmt.Errorf("unable to convert the nbictl context into textproto format: %w", err)
 	}
 	fmt.Fprintf(errWriter, "configuration successfully updated; the configuration file is stored under: %s\n", confFile)
-	fmt.Println(outWriter, string(protoMessage))
+	fmt.Fprint(outWriter, string(protoMessage))
 	return nil
 }

@@ -16,7 +16,7 @@ This site contains:
 ## Repo Contents
 In this repo, you will find the following directories:
 - [api](/api): The [gRPC](https://grpc.io/) and [Protocol Buffers](https://protobuf.dev/) definitions of the API.
-- [cdpi_agent](/cdpi_agent): A Go implementation of a CDPI agent.
+- [agent](/agent): A Go implementation of an SBI agent.
 - [contrib](/contrib): An open-source directory of real hardware that has been modeled in Spacetime and used in real networks. Contributions are welcome!  
 
 ## Contributing
