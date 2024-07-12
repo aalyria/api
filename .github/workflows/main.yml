@@ -39,7 +39,7 @@ jobs:
       matrix:
         # Only the go_binary targets support cross-compilation at the moment:
         target:
-          - //cdpi_agent/cmd/agent
+          - //agent/cmd/agent
           - //tools/nbictl/cmd/nbictl
           - //tools/generate_jwt
         os: [linux, windows, darwin]
@@ -64,14 +64,14 @@ jobs:
           path: |
             bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl
             bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl.exe
-      - name: Upload cdpi_agent binary
+      - name: Upload agent binary
         uses: actions/upload-artifact@v3
-        if: matrix.target == '//cdpi_agent/cmd/agent'
+        if: matrix.target == '//agent/cmd/agent'
         with:
-          name: cdpi_agent-${{ matrix.os }}-${{ matrix.arch }}
+          name: agent-${{ matrix.os }}-${{ matrix.arch }}
           path: |
-            bazel-bin/cdpi_agent/cmd/agent/agent_/agent
-            bazel-bin/cdpi_agent/cmd/agent/agent_/agent.exe
+            bazel-bin/agent/cmd/agent/agent_/agent
+            bazel-bin/agent/cmd/agent/agent_/agent.exe
       - name: Upload generate_jwt binary
         uses: actions/upload-artifact@v3
         if: matrix.target == '//tools/generate_jwt'

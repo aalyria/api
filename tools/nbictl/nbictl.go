@@ -356,6 +356,18 @@ func App() *cli.App {
 				Action: GenerateKeys,
 			},
 			{
+				Name:     "list-configs",
+				Usage:    "List all configuration profiles (ignores any `--context` flag)",
+				Category: "configuration",
+				Action:   ListConfigs,
+			},
+			{
+				Name:     "get-config",
+				Usage:    "Prints the NBI connection settings associated with the configuration profile given by the `--context` flag (defaults to \"DEFAULT\").",
+				Category: "configuration",
+				Action:   GetConfig,
+			},
+			{
 				Name:     "set-config",
 				Usage:    "Sets or updates a configuration profile that contains NBI connection settings. You can create multiple configs by specifying the name of the configuration using the `--context` flag (defaults to \"DEFAULT\").",
 				Category: "configuration",
@@ -777,7 +789,7 @@ func GetLinkBudget(appCtx *cli.Context) error {
 	}
 
 	if !appCtx.IsSet("output_file") {
-		fmt.Println(string(spResProto))
+		fmt.Fprintln(appCtx.App.Writer, string(spResProto))
 	} else {
 		outPath := appCtx.Path("output_file")
 		// Creates the output file, if necessary, with read and write permissions.
@@ -785,7 +797,7 @@ func GetLinkBudget(appCtx *cli.Context) error {
 			return fmt.Errorf("writing to output file %s: %w", outPath, err)
 		}
 	}
-	fmt.Fprintln(os.Stderr, "successfully retrieved link budget.")
+	fmt.Fprintln(appCtx.App.ErrWriter, "successfully retrieved link budget.")
 	return nil
 }
 
