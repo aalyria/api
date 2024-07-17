@@ -228,6 +228,22 @@ message EntityFilter {
   // states are included in the given list.
   repeated aalyria.spacetime.api.nbi.v1alpha.resources.IntentState
       include_intent_states = 3;
+
+  // If one or more field paths are given, only return entities with at least
+  // one of the fields set and remove all other fields from the message except
+  // "id", "group.type", "commit_timestamp", and "next_commit_timestamp".
+  //
+  // To include all entities, even ones that don't match any fields in the field
+  // mask, explicitly add "id" which exists in all entities.
+  //
+  // Each path is a list of protobuf field names separated by periods. Every
+  // field name except the last must be a message field or a repeated message
+  // field. The last field name may be any message or scalar field, repeated or
+  // not. The first field in each path is a field in the `Entity` message.
+  // 
+  // Map items and oneof names are not supported. Instead, include the entire
+  // map or use the name of specific fields in the oneof.
+  repeated string field_masks = 4;
 }
 
 message DeleteEntityRequest {
