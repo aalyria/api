@@ -48,7 +48,10 @@ def main():
     channel = grpc.secure_channel(
         f"{HOST}:{PORT}",
         grpc.composite_channel_credentials(grpc.ssl_channel_credentials(),
-                                           credentials))
+                                           credentials),
+        [
+            ("grpc.max_receive_message_length", 1024*1024*256,),
+        ])
 
     # Sets up a stub to invoke RPCs against the NBI's NetOps service.
     stub = NetOpsGrpc.NetOpsStub(channel)
