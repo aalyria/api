@@ -19,7 +19,7 @@ import json
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives import serialization
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, timezone
 
 
 class JwtManager:
@@ -75,7 +75,7 @@ class JwtManager:
         return base64.urlsafe_b64encode(encoded_header)
 
     def generate_payload(self) -> bytes:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         issue_time = int(now.timestamp())
         expiration_time = int((now + self.lifetime).timestamp())
 

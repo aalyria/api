@@ -18,7 +18,7 @@ import grpc
 import http.client
 import json
 from urllib.parse import urlencode
-from datetime import datetime, timedelta
+from datetime import timedelta, datetime, timezone
 
 from py.authentication.jwt_manager import JwtManager
 
@@ -53,7 +53,7 @@ class SpacetimeCallCredentials(grpc.AuthMetadataPlugin):
         self.oidc_token_lifetime = oidc_token_lifetime
 
         self.oidc_token = ""
-        self.oidc_token_expiration_time = datetime.utcnow()
+        self.oidc_token_expiration_time = datetime.now(timezone.utc)
 
     @classmethod
     def create_from_private_key(cls, host: str, agent_email: str,
@@ -92,7 +92,7 @@ class SpacetimeCallCredentials(grpc.AuthMetadataPlugin):
 
     # Supplies the authorization credentials in gRPC calls.
     def __call__(self, context, callback):
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         if self.is_oidc_token_expired(now):
             proxy_auth_jwt = self.proxy_auth_jwt_manager.generate_jwt()
             self.oidc_token_expiration_time = now + self.oidc_token_lifetime
