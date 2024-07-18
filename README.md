@@ -9,7 +9,7 @@ You can find developer guides and tutorials on [this website](https://docs.space
 
 This site contains:
 - [NBI Developer Guide](https://docs.spacetime.aalyria.com/nbi-developer-guide) 
-- [CDPI Developer Guide](https://docs.spacetime.aalyria.com/cdpi-developer-guide)
+- [CDPI Developer Guide](https://docs.spacetime.aalyria.com/southbound-interface-developer-guide)
 - [Building a Scenario Tutorial](https://docs.spacetime.aalyria.com/scenario-building)
 - [Authentication](https://docs.spacetime.aalyria.com/authentication)
 
