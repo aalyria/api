@@ -142,6 +142,8 @@ service NetOps {
       returns (ListEntitiesOverTimeResponse) {}
 
   rpc DeleteEntity(DeleteEntityRequest) returns (DeleteEntityResponse) {}
+
+  rpc VersionInfo(VersionInfoRequest) returns (VersionInfoResponse) {}
 }
 
 message GetEntityRequest {
@@ -261,4 +263,13 @@ message DeleteEntityRequest {
 }
 
 message DeleteEntityResponse {
+}
+
+message VersionInfoRequest {
+}
+
+message VersionInfoResponse {
+  // Version of the Spacetime build.
+  // Uses Semantic Versioning 2.0.0 format. See: https://semver.org/
+  optional string build_version = 1;
 }

@@ -455,6 +455,7 @@ func TestEndToEnd(t *testing.T) {
 				"aalyria.spacetime.api.nbi.v1alpha.NetOps.ListEntities",
 				"aalyria.spacetime.api.nbi.v1alpha.NetOps.ListEntitiesOverTime",
 				"aalyria.spacetime.api.nbi.v1alpha.NetOps.UpdateEntity",
+				"aalyria.spacetime.api.nbi.v1alpha.NetOps.VersionInfo",
 			),
 		},
 		{
