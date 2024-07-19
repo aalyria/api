@@ -1,0 +1,384 @@
+// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// This file contains messages used to model antenna radiation patterns.
+
+syntax = "proto2";
+
+package aalyria.spacetime.api.nbi.v1alpha.resources;
+
+option java_package = "com.aalyria.spacetime.api.nbi.v1alpha.resources";
+option go_package = "aalyria.com/spacetime/api/nbi/v1alpha/resources";
+
+// Models an antenna pattern. Multiple platform definitions can
+// reference the same antenna pattern.
+message AntennaPattern {
+  reserved 8, 14 to max;
+
+  // A custom antenna pattern defined through spherical coordinates 
+  // (IEEE 149-1979). 
+  // This message can be used to define any 3D antenna pattern.
+  //
+  // For further reference on the spherical coordinate system used, 
+  // see the "physics convention" at
+  // https://en.wikipedia.org/wiki/Spherical_coordinate_system.
+  message CustomPhiThetaAntennaPattern {
+    message SphericalGainValue {
+      // Required.
+      optional double gain_db = 1;
+
+      // The phi and theta angles are evaluated within the 
+      // aalyria.spacetime.api.common.AntennaDefinition's axes.
+      // Note that if an offset is not explicitly defined on the antenna
+      // through the fixed_coordinate_offset field, the antenna inherits
+      // the axes of its parent platform.
+
+      // Phi is defined as the angle, in radians, from the positive x-axis
+      // to the orthogonal projection of the vector in the x-y plane. Positive
+      // phi is measured from the positive x-axis towards the positive y-axis.
+      // Range: [0, 2π).
+      // Required.
+      optional double phi_rad = 2;
+      
+      // Theta is the zenith angle, in radians, from the positive
+      // z-axis to the vector. Positive theta is measured from the 
+      // positive z-axis towards the negative z-axis. 
+      // Range: [0, π].
+      // Required.
+      optional double theta_rad = 3;
+
+      // For example,
+      // (phi: 0, theta: 0): aligns the vector with the positive z-axis.
+      // (phi: 0, theta: π/2): aligns the vector with the positive x-axis.
+      // (phi: π/2, theta: π/2): aligns the vector with the positive y-axis.
+    }
+    // From this message, a 2D array is created, where rows are phi cuts 
+    // through the antenna pattern, columns are theta cuts through the antenna 
+    // pattern, and the values represent the gain in decibels. 
+    //
+    // Requirements: 
+    // 1) No missing values can exist in this array. For example, suppose an
+    // antenna pattern is defined for phi = {0, π/6, π/4} and
+    // theta = {0, π/9, 2π/9, 2π/5, 3π/8}. A gain value corresponding to each 
+    // entry in this 2D array must be provided, such as in this notional 
+    // example:
+    //
+    //            Theta (θ)
+    //   Phi (φ) |    0      |    π/9    |    2π/9   |    2π/5   |    3π/8   |
+    //   ---------------------------------------------------------------------
+    //    0      |    20     |    18     |    16     |    15     |    14     |
+    //    π/6    |    18     |    16     |    14     |    12     |    11     |
+    //    π/4    |    16     |    14     |    12     |    10     |    10     |
+    //
+    // In this example, the gain_value field must contain 15 elements that
+    // correspond to each element of this array.
+    //
+    // 2) There must be strictly more than 1 phi point and strictly more than 1 
+    // theta point. The smallest array allowed is 2x2.
+    //
+    // Notes:
+    // 1) The gain in directions that fall between the defined data will
+    // be interpolated using bilinear interpolation in decibels
+    // (https://en.wikipedia.org/wiki/Bilinear_interpolation). The gain in 
+    // directions that fall outside the defined data will yield 0 (-infinity dB)
+    // gain.
+    //
+    // 2) The elements are not required to be sorted in any particular order.
+    //
+    // 3) The interval between the phi angles does not need to be consistent. 
+    // The interval between the theta angles does not need to be consistent. 
+    // 
+    // Required.
+    repeated SphericalGainValue gain_value = 1;
+  }
+
+  // An antenna pattern defined through azimuth and elevation in a rectangular 
+  // coordinate system.
+  //
+  // Because of the coordinate system used, this message is a natural choice to 
+  // model the gain patterns of fixed LEO or GEO beams. When a platform's motion
+  // is defined as a TLE, the axes of the platform orients the positive z-axis 
+  // along the negative position vector, the positive x-axis along the
+  // velocity vector, and the positive y-axis along the negative angular 
+  // momentum vector. Consider a GEO satellite in an equatorial orbit, orbiting
+  // from west to east. This axes orients the z-axis towards the Earth, the 
+  // positive x-axis towards the east, and the positive y-axis towards the 
+  // south. Based on the definitions below, azimuth is measured from nadir 
+  // towards the east, and elevation is measured from the Equator towards the 
+  // north.
+  message CustomAzElAntennaPattern {
+    message AzElGainValue {
+      // A gain value (in decibels) for the angle.
+      // Required.
+      optional double gain_db = 1;
+
+      // The azimuth and elevation angles are evaluated within the 
+      // aalyria.spacetime.api.common.AntennaDefinition's axes.
+      // Note that if an offset is not explicitly defined on the antenna
+      // through the fixed_coordinate_offset field, the antenna inherits
+      // the axes of its parent platform.
+      
+      // Azimuth is defined as the angle from the z-axis to the projection 
+      // of the direction vector onto the x-z plane. Positive azimuth is 
+      // measured from the positive z-axis towards the positive x-axis.
+      // Range: [-180, 180).
+      // Required.
+      optional double az_deg = 2;
+      
+      // *** WARNING: This definition of elevation is non-standard. ***
+      // In other coordinate systems, elevation is often measured as 
+      // the angle above a platform's local horizon, or more generally, 
+      // the angle above the 0-elevation plane.  
+      // HOWEVER, in this message, elevation is defined as the angle from the 
+      // z-axis to the *projection of the direction vector onto the y-z plane*. 
+      // In other words, this measures the angle of the *projection of the 
+      // direction vector onto the y-z plane* above the 0-elevation plane.
+      // Positive elevation is measured towards the *negative* y-axis.
+      // Range [-180, 180).
+      // Required.
+      optional double el_deg = 3;
+
+      // For example, for a GEO satellite,
+      // (azimuth: 0, elevation: 0): aligns the vector with the Equator.
+      // (azimuth: 0, elevation: 6.28°): aligns the vector with ~40°N latitude.
+    }
+    // From this message, a 2D array is created, where rows are azimuth cuts  
+    // through the antenna pattern, columns are elevation cuts through the  
+    // antenna patterns, and the values represent the gain in decibels. 
+    //
+    // To compute the gain for a given link vector, the vector is decomposed 
+    // into its x, y, and z components. The arctan(x/z) yields the azimuth angle
+    // for the link, and the arctan(-y/z) yields the elevation angle. The gain  
+    // corresponding to this azimuth and elevation is then looked up in the 2D 
+    // array.
+    //
+    // Requirements: 
+    // 1) No missing values can exist in this array. For example, suppose an 
+    // antenna pattern is defined for phi = {0°, 30°, 60°} and 
+    // theta = {0°, 2°, 4°, 6°}. A gain value corresponding to each entry in  
+    // this 2D array must be provided, such as in this notional example:
+    //
+    //            Theta (θ)
+    //   Phi (φ) |    0°     |    2°     |    4°     |    6°     |
+    //   ---------------------------------------------------------
+    //    0°     |    20     |    18     |    16     |    15     |
+    //    30°    |    18     |    16     |    14     |    12     |
+    //    60°    |    16     |    14     |    12     |    10     |
+    //
+    // In this example, the gain_value field must contain 12 elements that
+    // correspond to each element of this array.
+    //
+    // 2) The azimuth angles must have an equal interval between them. The 
+    // elevation angles must have an equal interval between them. The interval 
+    // between the azimuth angles does not have to be equal to the interval 
+    // between the elevation angles.
+    //
+    // Notes:
+    // 1) To compute the gain in directions that fall between the defined data, 
+    // the azimuth and elevation is rounded to the nearest angle for which gain
+    // values exist, and the corresponding gain is returned. The gain in 
+    // directions that fall outside the defined range is clamped to the minimum 
+    // or maximum angle for which a gain value is defined.
+    // TODO: Implement an interpolation approach. 
+    //
+    // 2) The elements are not required to be sorted in any particular order.
+    // Required.
+    repeated AzElGainValue gain_values = 1;
+  }
+
+  // An antenna pattern that represents a unique 3D gain pattern at various
+  // scan angles. 
+  //
+  // This message is a natural choice to model the antenna patterns of phased
+  // array or electronically steered antennas. The same coordinate system as
+  // CustomPhiThetaAntennaPattern is used here.
+  message CustomAntennaPatternPerAngle {
+    message ScanAngleAndCustomPattern {
+      // The phi and theta angles are evaluated within the 
+      // aalyria.spacetime.api.common.AntennaDefinition's axes.
+      // Note that if an offset is not explicitly defined on the antenna
+      // through the fixed_coordinate_offset field, the antenna inherits
+      // the axes of its parent platform.
+
+      // The phi component of the scan angle.
+      // Phi is defined as the angle, in radians, from the positive x-axis
+      // to the orthogonal projection of the vector in the x-y plane. Positive
+      // phi is measured from the positive x-axis towards the positive y-axis.
+      // Range: [-π, π).
+      // Required. 
+      optional float phi_rad = 1;
+
+      // The theta component of the scan angle.
+      // Theta is the zenith angle, in radians, from the positive
+      // z-axis to the vector. Positive theta is measured from the 
+      // positive z-axis towards the negative z-axis. 
+      // Range: [0, π].
+      // Required. 
+      optional float theta_rad = 2;
+
+      // The 3D antenna pattern for this scan angle. This pattern assigns
+      // a gain value to each look angle.
+      // The phi and theta in this pattern must also conform to the ranges
+      // above.
+      // Required. 
+      optional CustomPhiThetaAntennaPattern custom_pattern = 3;
+    }
+    // From this message, a 4D array is created, where for each scan angle, a
+    // 2D array is stored to represent the 3D antenna pattern at this scan 
+    // angle.
+    //
+    // Requirements: 
+    // 1) No missing values can exist in this array. For example, suppose an 
+    // antenna pattern is defined for scan angles of phi = {0, π/3} and  
+    // theta = {0, π/4}. For each scan angle, suppose we have the gain defined
+    // at 4 look angles, at phi = {0, π/8} and theta = {0, π/8}. 
+    // Conceptually, the array would resemble:
+    //
+    //                       Scan Angle Theta (θ)
+    //   Scan Angle Phi (φ) |            0          |          π/4          |
+    //   --------------------------------------------------------------------
+    //                      |    20     |    18     |    16     |    15     |
+    //            0         |_ _ _ _ _ _|_ _ _ _ _ _| _ _ _ _ _ |_ _ _ _ _ _|   
+    //                      |    19     |    17     |    17     |    13     |
+    //  ____________________|___________|___________|___________|___________|
+    //                      |    17     |    17     |    14     |    15     |
+    //            π/3       |_ _ _ _ _ _|_ _ _ _ _ _| _ _ _ _ _ |_ _ _ _ _ _|   
+    //                      |    16     |    15     |    12     |    11     |
+    //  ____________________|___________|___________|___________|___________|
+    //
+    // where each "inner" 2D array corresponds to the gain values at the look
+    // angles.
+    //
+    // In this example, the scan_angle_and_custom_patterns field must contain 4 
+    // elements, and each CustomPhiThetaAntennaPattern must contain 4 elements 
+    // in the gain_value field.
+    //
+    // 2) The phi angles must have an equal interval between them. The theta  
+    // angles must have an equal interval between them. The interval for the phi
+    // angles does not have to be the same as the interval for the theta angles.
+    // The intervals for the scan angles do not have to be the same as the
+    // intervals for the look angles. Within each CustomPhiThetaAntennaPattern, 
+    // unlike a standalone CustomPhiThetaAntennaPattern, the phi and theta 
+    // angles must each have an equal interval between them, and must have the 
+    // same phi and theta range across elements. 
+    //
+    // Notes:
+    // 1) To compute the gain in directions that fall between the defined data, 
+    // the phi and theta is rounded to the nearest angle for which gain values
+    // exist, and the corresponding gain is returned. The gain in directions
+    // that fall outside the defined range is clamped to the minimum or maximum 
+    // angle for which a gain value is defined.
+    // TODO: Implement an interpolation approach. 
+    //
+    // 2) The elements are not required to be sorted in any particular order.
+    // 
+    // Required.
+    repeated ScanAngleAndCustomPattern scan_angle_and_custom_patterns = 1;
+  }
+
+  message GaussianAntennaPattern {
+    optional double diameter_m = 1;
+    optional double efficiency_percent = 2;
+    optional double backlobe_gain_db = 3;
+  }
+
+  message HelicalAntennaPattern {
+    optional double diameter_m = 1;
+    optional double efficiency_percent = 2;
+    optional double backlobe_gain_db = 3;
+    optional double number_of_turns = 4;
+    optional double turn_spacing_m = 5;
+  }
+
+  message IsotropicAntennaPattern {
+  }
+
+  message ParabolicAntennaPattern {
+    optional double diameter_m = 1;
+    optional double efficiency_percent = 2;
+    optional double backlobe_gain_db = 3;
+  }
+
+  message SquareHornAntennaPattern {
+    optional double diameter_m = 1;
+    optional double efficiency_percent = 2;
+    optional double backlobe_gain_db = 3;
+  }
+
+  message GaussianOpticalAntennaPattern {
+    optional double diameter_m = 1;
+    optional double efficiency_percent = 2;
+    optional double divergence_angle_rad = 3;
+    optional double pointing_error_rad = 4;
+  }
+
+  message PhasedArrayAntennaPattern {
+    optional double design_frequency_hz = 1;
+    optional double backlobe_suppression_db = 2;
+
+    message Element {
+      // These fields determine the position of each element in the phased
+      // array. The center of the array is considered to be at (0, 0). Since
+      // this models a planar array, the z-coordinate is 0.0.
+      optional double x = 1;
+      optional double y = 2;
+    }
+    repeated Element elements = 3;
+
+    message MinimumVarianceDistortionlessResponseBeamformer {
+      optional double beam_variance = 1;
+    }
+    oneof beamformer {
+      MinimumVarianceDistortionlessResponseBeamformer
+          minimum_variance_distortionless_response_beamformer = 4;
+    }
+
+    message CosineExponentElementFactor {
+      optional double cosine_exponent = 1;
+      // The element area in meters squared.
+      optional double element_area_m2 = 2;
+    }
+    optional CosineExponentElementFactor cosine_exponent_element_factor = 5;
+  }
+
+  // Applies a separate near-field antenna radiation pattern when the other
+  // link end is within the near field range (in meters).
+  message NearAndFarFieldAntennaPattern {
+    optional AntennaPattern near_field_pattern = 1;
+    optional AntennaPattern far_field_pattern = 2;
+    optional double near_field_range_m = 3;
+  }
+
+  // Applies a different antenna radiation pattern for the transmitter
+  // and receiver.
+  message TransmitterAndReceiverAntennaPattern {
+    optional AntennaPattern transmitter_pattern = 1;
+    optional AntennaPattern receiver_pattern = 2;
+  }
+
+  oneof pattern_type {
+    CustomPhiThetaAntennaPattern custom_phi_theta_pattern = 1;
+    GaussianAntennaPattern gaussian_pattern = 2;
+    HelicalAntennaPattern helical_pattern = 3;
+    IsotropicAntennaPattern isotropic_pattern = 4;
+    ParabolicAntennaPattern parabolic_pattern = 5;
+    SquareHornAntennaPattern square_horn_pattern = 6;
+    GaussianOpticalAntennaPattern gaussian_optical_pattern = 7;
+    PhasedArrayAntennaPattern phased_array_pattern = 10;
+    NearAndFarFieldAntennaPattern near_and_far_field_pattern = 9;
+    TransmitterAndReceiverAntennaPattern transmitter_and_receiver_pattern = 11;
+    CustomAntennaPatternPerAngle custom_antenna_pattern_per_angle = 12;
+    CustomAzElAntennaPattern custom_az_el_pattern = 13;
+  }
+}
