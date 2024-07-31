@@ -68,6 +68,7 @@ message Radio {
         POWER_TYPE_UNSPECIFIED = 0;
         POWER_TYPE_NADIR_EQUIVALENT_BEAM_PEAK_EIRP_PSD_DBW_PER_MHZ = 1;
         POWER_TYPE_BEAM_PEAK_EIRP_PSD_DBW_PER_MHZ = 2;
+        POWER_TYPE_WATTS = 3;
       }
       optional PowerType power_type = 1;
       optional double power_value = 2;
