@@ -128,13 +128,17 @@ message CreateEntryRequest {
   google.protobuf.Timestamp time = 4;
 
   oneof configuration_change {
+    SetBeam set_beam = 11;
+    DeleteBeam delete_beam = 12;
+    SetBeamHoppingPlan set_beam_hopping_plan = 13;
+    DeleteBeamHoppingPlan delete_beam_hopping_plan = 14;
     SetRoute set_route = 5;
     DeleteRoute delete_route = 6;
-    SetModemConfiguration set_modem_configuration = 7;
-    DeleteModemConfiguration delete_modem_configuration = 8;
     SetSrPolicy set_sr_policy = 9;
     DeleteSrPolicy delete_sr_policy = 10;
   }
+
+  reserved 7, 8;
 }
 
 message SetRoute {
@@ -173,47 +177,65 @@ message DeleteRoute {
   string to = 2;
 }
 
-message SetModemConfiguration {
-  string modem_id = 1;
+message SetBeam {
+  string id = 1;
 
-  // The collection of beams to be illuminated. The beams are to be illuminated
-  // one-at-a-time in a repeating sequence determined by the
-  // beam_hopping_time_slots.
-  repeated Beam beams = 2;
+  // The ID of the modem associated with the beam. Present if the beam is not
+  // beam-hopped. If empty, the beam is beam-hopped, and its modem and
+  // beam-hopping configuration can be found in the associated beam-hopping
+  // plan.
+  string modem_id = 2;
 
-  // A collection of beam-hopping time slots representing a beam-hopping frame.
-  // Each slot consists of a zero-based index into the collection of beams,
-  // representing the beam to be illuminated during that time slot. A value of
-  // -1 represents that no beam should be illuminated during that time slot.
-  //
-  // The frame should begin at the time at which the modem configuration is
-  // applied. (That is, the time indicated in the CreateEntryRequest message).
-  repeated int32 beam_hopping_time_slots = 3;
-}
-
-message DeleteModemConfiguration {
-  string modem_id = 1;
-}
-
-message Beam {
-  BeamTarget target = 1;
+  BeamTarget target = 3;
 
   // Parameters specifying the configuration of the beam in the receive
   // direction. Absent if the beam is to be used for transmit only.
-  RxConfiguration rx = 2;
+  RxConfiguration rx = 4;
 
   // Parameters specifying the configuration of the beam in the transmit
   // direction. Absent if the beam is to be used for receiving only.
-  TxConfiguration tx = 3;
+  TxConfiguration tx = 5;
 
   // The collection of endpoints served by the beam.
   // For example, a collection of user terminals (UTs) served.
   //
   // Each endpoint is the ID of a network node in Spacetime's network model.
-  repeated Endpoint endpoints = 4;
+  repeated Endpoint endpoints = 6;
 
   // ID of the beam shape.
-  string shape_id = 5;
+  string shape_id = 7;
+}
+
+message DeleteBeam {
+  string id = 1;
+}
+
+message SetBeamHoppingPlan {
+  string beam_id = 1;
+
+  message Section {
+    // The length of the section, in number of time slots.
+    int32 length = 1;
+
+    // An entry in the beam-hopping plan section representing a time slot during
+    // which the associated beam is to be illuminated.
+    message Entry {
+      // The entry's time slot within the section.
+      int32 time_slot = 1;
+
+      string modem_id = 2;
+    }
+
+    // The entries in the beam-hopping plan section. The beam should not be
+    // illuminated during any time slot not represented in the collection of
+    // entries.
+    repeated Entry entries = 2;
+  }
+  repeated Section sections = 2;
+}
+
+message DeleteBeamHoppingPlan {
+  string beam_id = 1;
 }
 
 message BeamTarget {
