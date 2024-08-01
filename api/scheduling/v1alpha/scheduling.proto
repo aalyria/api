@@ -290,8 +290,7 @@ message TxConfiguration {
 
   ModemMode mode = 4;
 
-  // The lowest MODCOD common among all endpoints.
-  string lowest_common_modcod = 7;
+  string initial_modcod = 7;
 }
 
 enum Polarization {
