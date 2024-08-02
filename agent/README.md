@@ -40,7 +40,7 @@ bazel query //agent/...:all
 ### Configuration
 
 The `agent` binary accepts configuration in the form of a protobuf message, documented in
-[config.proto](agent/cmd/agent/config.proto). The message can be encoded in
+[config.proto](internal/configpb/config.proto). The message can be encoded in
 [prototext format](https://protobuf.dev/reference/protobuf/textformat-spec/) (human readable and
 writable), [json](https://protobuf.dev/programming-guides/proto3/#json), or the
 [binary proto format](https://protobuf.dev/programming-guides/encoding/). Most users will find the
