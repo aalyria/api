@@ -53,7 +53,7 @@ file might look like this:
 # each network_node is configured with a stanza like so:
 network_nodes: {
   id: "node-a"
-  enactment_backend: {
+  enactment_driver: {
     connection_params: {
       # TODO: change to point to the domain of your spacetime instance
       endpoint_uri: "dns:///scheduling.my_instance.spacetime.aalyria.com"
@@ -95,7 +95,7 @@ network_nodes: {
 
 network_nodes: {
   id: "node-b"
-  enactment_backend: {
+  enactment_driver: {
     connection_params: {
       # TODO: change to point to the domain of your spacetime instance
       endpoint_uri: "dns:///scheduling.my_instance.spacetime.aalyria.com"
