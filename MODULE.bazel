@@ -1,0 +1,51 @@
+# Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+module(name = "aalyria_api")
+
+# NOTE: keep this version aligned with the (duplicated declaration) of
+# @com_google_protobuf repo present in the WORKSPACE file. While most
+# first-level dependencies in WORKSPACE depend on @com_google_protobuf, when
+# the build executes on bazel 7 something is also referencing @protobuf, which
+# if not overridden in MODULE.bazel (like below) defaults to @protobuf~3.19
+# included in the bazel distribution itself.
+bazel_dep(
+    name = "protobuf",
+    version = "23.1",
+)
+bazel_dep(name = "abseil-cpp", version = "20230802.0.bcr.1", repo_name = "com_google_absl")
+bazel_dep(name = "aspect_bazel_lib", version = "2.1.0")
+bazel_dep(name = "bazel_skylib", version = "1.5.0")
+bazel_dep(name = "platforms", version = "0.0.8")
+bazel_dep(name = "re2", version = "2023-09-01", repo_name = "com_google_re2")
+bazel_dep(name = "rules_cc", version = "0.0.9")
+bazel_dep(name = "rules_oci", version = "1.5.1")
+bazel_dep(name = "rules_pkg", version = "0.9.1")
+bazel_dep(name = "rules_go", version = "0.46.0")
+bazel_dep(name = "gazelle", version = "0.35.0")
+
+bazel_dep(name = "container_structure_test", version = "1.16.0", dev_dependency = True)
+
+go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
+go_sdk.download(version = "1.22.5")
+
+oci = use_extension("@rules_oci//oci:extensions.bzl", "oci")
+oci.pull(
+    name = "alpine_base",
+    digest = "sha256:21a3deaa0d32a8057914f36584b5288d2e5ecc984380bc0118285c70fa8c9300",
+    image = "docker.io/library/alpine",
+    #tag = "3.15.0",
+    platforms = ["linux/amd64"],
+)
+use_repo(oci, "alpine_base")
