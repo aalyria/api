@@ -129,7 +129,7 @@ network_nodes: {
 }
 ```
 
-See the documentation in [config.proto](agent/cmd/agent/config.proto) for more details on the
+See the documentation in [config.proto](internal/configpb/config.proto) for more details on the
 available options. You can use the `--dry-run` flag to check that your configuration is valid:
 
 ```bash
