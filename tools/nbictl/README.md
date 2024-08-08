@@ -57,6 +57,8 @@ Updates, or creates if missing, one or more entities described in textproto file
 
 Lists all entities of a given type.
 
+**--field_masks**="": Comma-separated allow-list of fields to include in the response; see the aalyria.spacetime.api.nbi.v1alpha.EntityFilter.field_masks documentation for usage details.
+
 **--type, -t**="": [REQUIRED] Type of entities to query. Allowed values: [ANTENNA_PATTERN, BAND_PROFILE, COMPUTED_MOTION, DEVICES_IN_REGION, INTENT, INTERFACE_LINK_REPORT, INTERFERENCE_CONSTRAINT, MOTION_DEFINITION, NETWORK_NODE, NETWORK_STATS_REPORT, PLATFORM_DEFINITION, SERVICE_REQUEST, STATION_SET, SURFACE_REGION, TRANSCEIVER_LINK_REPORT]
 
 ## delete

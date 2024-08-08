@@ -38,6 +38,7 @@ type FakeNetOpsServer struct {
 	IncomingMetadata     []metadata.MD
 	NumCallsListEntities *atomic.Int64
 	ListEntityResponse   *nbi.ListEntitiesResponse
+	LatestRequest        proto.Message
 
 	EntityIDsModified map[string]struct{}
 	// Synchronizes access to EntityIDsModified.
@@ -47,6 +48,7 @@ type FakeNetOpsServer struct {
 func (s *FakeNetOpsServer) ListEntities(ctx context.Context, req *nbi.ListEntitiesRequest) (*nbi.ListEntitiesResponse, error) {
 	md := make(metadata.MD)
 	md, _ = metadata.FromIncomingContext(ctx)
+	s.LatestRequest = req
 	s.IncomingMetadata = append(s.IncomingMetadata, md)
 	s.NumCallsListEntities.Add(1)
 	return s.ListEntityResponse, nil
@@ -57,6 +59,7 @@ func (s *FakeNetOpsServer) ListEntities(ctx context.Context, req *nbi.ListEntiti
 func (s *FakeNetOpsServer) CreateEntity(ctx context.Context, req *nbi.CreateEntityRequest) (*nbi.Entity, error) {
 	md := make(metadata.MD)
 	md, _ = metadata.FromIncomingContext(ctx)
+	s.LatestRequest = req
 	s.IncomingMetadata = append(s.IncomingMetadata, md)
 
 	s.mu.Lock()
@@ -74,6 +77,7 @@ func (s *FakeNetOpsServer) CreateEntity(ctx context.Context, req *nbi.CreateEnti
 func (s *FakeNetOpsServer) GetEntity(ctx context.Context, req *nbi.GetEntityRequest) (*nbi.Entity, error) {
 	md := make(metadata.MD)
 	md, _ = metadata.FromIncomingContext(ctx)
+	s.LatestRequest = req
 	s.IncomingMetadata = append(s.IncomingMetadata, md)
 
 	res := &nbi.Entity{
@@ -90,6 +94,7 @@ func (s *FakeNetOpsServer) GetEntity(ctx context.Context, req *nbi.GetEntityRequ
 func (s *FakeNetOpsServer) UpdateEntity(ctx context.Context, req *nbi.UpdateEntityRequest) (*nbi.Entity, error) {
 	md := make(metadata.MD)
 	md, _ = metadata.FromIncomingContext(ctx)
+	s.LatestRequest = req
 	s.IncomingMetadata = append(s.IncomingMetadata, md)
 
 	s.mu.Lock()
@@ -105,6 +110,7 @@ func (s *FakeNetOpsServer) UpdateEntity(ctx context.Context, req *nbi.UpdateEnti
 func (s *FakeNetOpsServer) DeleteEntity(ctx context.Context, req *nbi.DeleteEntityRequest) (*nbi.DeleteEntityResponse, error) {
 	md := make(metadata.MD)
 	md, _ = metadata.FromIncomingContext(ctx)
+	s.LatestRequest = req
 	s.IncomingMetadata = append(s.IncomingMetadata, md)
 
 	s.mu.Lock()

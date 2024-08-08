@@ -215,6 +215,12 @@ func App() *cli.App {
 						Required: true,
 						Action:   validateEntityType,
 					},
+					&cli.StringFlag{
+						Name:     "field_masks",
+						Usage:    "Comma-separated allow-list of fields to include in the response; see the aalyria.spacetime.api.nbi.v1alpha.EntityFilter.field_masks documentation for usage details.",
+						Required: false,
+						Aliases:  []string{},
+					},
 				},
 				Action: List,
 			},
@@ -633,11 +639,16 @@ func Delete(appCtx *cli.Context) error {
 
 func List(appCtx *cli.Context) error {
 	entityType := appCtx.String("type")
+	fieldMasks := strings.Split(appCtx.String("field_masks"), ",")
 	entityTypeEnumValue, found := nbipb.EntityType_value[entityType]
 	if !found {
 		return fmt.Errorf("unknown entity type %q is not one of [%s]", entityType, strings.Join(entityTypeList, ", "))
 	}
 	entityTypeEnum := nbipb.EntityType(entityTypeEnumValue)
+	entityFilter := nbipb.EntityFilter{}
+	if len(fieldMasks) > 0 {
+		entityFilter = nbipb.EntityFilter{FieldMasks: fieldMasks}
+	}
 
 	conn, err := openConnection(appCtx)
 	if err != nil {
@@ -646,7 +657,7 @@ func List(appCtx *cli.Context) error {
 	defer conn.Close()
 	client := nbipb.NewNetOpsClient(conn)
 
-	res, err := client.ListEntities(appCtx.Context, &nbipb.ListEntitiesRequest{Type: &entityTypeEnum})
+	res, err := client.ListEntities(appCtx.Context, &nbipb.ListEntitiesRequest{Type: &entityTypeEnum, Filter: &entityFilter})
 	if err != nil {
 		return fmt.Errorf("unable to list entities: %w", err)
 	}

@@ -399,6 +399,16 @@ func TestEndToEnd(t *testing.T) {
 		}
 	}
 
+	// Verifies that the given message was received as the most recent request by the server.
+	expectLatestRequest := func(want proto.Message) func(*FakeNetOpsServer) error {
+		return func(testServer *FakeNetOpsServer) error {
+			if diff := cmp.Diff(want, testServer.LatestRequest, protocmp.Transform()); diff != "" {
+				return fmt.Errorf("output mismatch: (-want +got):\n%s", diff)
+			}
+			return nil
+		}
+	}
+
 	defaultTestEntities := buildTestEntities(5, 10)
 
 	listResponse := &nbipb.ListEntitiesResponse{
@@ -465,6 +475,14 @@ func TestEndToEnd(t *testing.T) {
 				srv.ListEntityResponse = listResponse
 			},
 			expectFn: expectTextProto(listOutput),
+		},
+		{
+			name: "list with field mask",
+			cmd:  []string{"list", "-t", "NETWORK_NODE", "--field_masks", "network_node.name,network_node.type"},
+			expectServerStateFn: expectLatestRequest(&nbipb.ListEntitiesRequest{
+				Type:   nbipb.EntityType_NETWORK_NODE.Enum(),
+				Filter: &nbipb.EntityFilter{FieldMasks: []string{"network_node.name", "network_node.type"}},
+			}),
 		},
 		{
 			name:                "create",
