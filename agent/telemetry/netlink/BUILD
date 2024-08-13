@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -27,5 +27,19 @@ go_library(
         "@com_github_rs_zerolog//:zerolog",
         "@com_github_vishvananda_netlink//:netlink",
         "@org_golang_google_protobuf//proto",
+    ],
+)
+
+go_test(
+    name = "netlink_test",
+    srcs = ["netlink_test.go"],
+    embed = [":netlink"],
+    deps = [
+        "//api/common:common_go_proto",
+        "@com_github_google_go_cmp//cmp",
+        "@com_github_jonboulle_clockwork//:clockwork",
+        "@com_github_vishvananda_netlink//:netlink",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//testing/protocmp",
     ],
 )

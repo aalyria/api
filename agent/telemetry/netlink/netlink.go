@@ -18,8 +18,8 @@ import (
 	"context"
 	"errors"
 
-	apipb "aalyria.com/spacetime/api/common"
 	"aalyria.com/spacetime/agent/telemetry"
+	apipb "aalyria.com/spacetime/api/common"
 
 	"github.com/jonboulle/clockwork"
 	"github.com/rs/zerolog"
@@ -31,17 +31,19 @@ var errNoStats = errors.New("could not generate stats for any interface")
 
 type driver struct {
 	clock        clockwork.Clock
-	nlHandle     *vnl.Handle
-	nodeId       string
-	interfaceIds []string
+	interfaceIDs []string
+	linkByName   func(string) (vnl.Link, error)
 }
 
-func New(clock clockwork.Clock, nlHandle *vnl.Handle, nodeId string, interfaceIds []string) telemetry.Driver {
+func New(
+	clock clockwork.Clock,
+	interfaceIDs []string,
+	linkByName func(string) (vnl.Link, error),
+) telemetry.Driver {
 	return &driver{
 		clock:        clock,
-		nlHandle:     nlHandle,
-		nodeId:       nodeId,
-		interfaceIds: interfaceIds,
+		interfaceIDs: interfaceIDs,
+		linkByName:   linkByName,
 	}
 }
 
@@ -49,7 +51,10 @@ func (tb *driver) Init(context.Context) error { return nil }
 func (tb *driver) Close() error               { return nil }
 func (tb *driver) Stats() interface{}         { return nil }
 
-func (tb *driver) GenerateReport(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) {
+func (tb *driver) GenerateReport(
+	ctx context.Context,
+	nodeID string,
+) (*apipb.NetworkStatsReport, error) {
 	log := zerolog.Ctx(ctx).With().Str("backend", "netlink").Logger()
 
 	// NOTE: This assumes the netlink stats are returned fast enough that we can use the same
@@ -58,8 +63,8 @@ func (tb *driver) GenerateReport(ctx context.Context, nodeID string) (*apipb.Net
 
 	interfaceStatsById := make(map[string]*apipb.InterfaceStats)
 
-	for _, interfaceId := range tb.interfaceIds {
-		link, err := tb.nlHandle.LinkByName(interfaceId)
+	for _, interfaceId := range tb.interfaceIDs {
+		link, err := tb.linkByName(interfaceId)
 		if err != nil {
 			log.Warn().Err(err).Msgf("error retrieving link for interface %s", interfaceId)
 			continue

@@ -45,14 +45,10 @@ func newNetlinkEnactmentDriver(ctx context.Context, clock clockwork.Clock, nodeI
 }
 
 func newNetlinkTelemetryDriver(ctx context.Context, clock clockwork.Clock, nodeID string, conf *configpb.NetworkNode_NetlinkTelemetry) (telemetry.Driver, error) {
-	nlHandle, err := vnl.NewHandle(vnl.FAMILY_ALL)
-	if err != nil {
-		return nil, fmt.Errorf("creating new netlink handle for telemetry: %w", err)
-	}
-
 	interfaceIDs := make([]string, 0, len(conf.GetMonitoredInterfaces()))
 	for _, mi := range conf.GetMonitoredInterfaces() {
 		interfaceIDs = append(interfaceIDs, mi.GetInterfaceId())
 	}
-	return telemetry_netlink.New(clock, nlHandle, nodeID, interfaceIDs), nil
+
+	return telemetry_netlink.New(clock, interfaceIDs, vnl.LinkByName), nil
 }
