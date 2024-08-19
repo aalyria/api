@@ -109,7 +109,7 @@ func TestDial_insecure(t *testing.T) {
 			Type: &nbictlpb.Config_TransportSecurity_Insecure{},
 		},
 	}
-	conn, err := dial(ctx, nbiConf)
+	conn, err := dial(ctx, nbiConf, nil)
 	checkErr(t, err)
 	defer conn.Close()
 
@@ -157,11 +157,10 @@ func TestDial_serverCertificate(t *testing.T) {
 	// Start a fake OIDCServer
 	ts := authtest.NewOIDCServer(oidcToken)
 	defer ts.Close()
-	ctx = ts.WithContextClient(ctx)
 
 	// Invoke OpenConnection
 	nbiConf := &nbictlpb.Config{
-		Url:     lis.Addr().String(),
+		Url:     "passthrough:///" + lis.Addr().String(),
 		PrivKey: userKeys.key,
 		Name:    "test",
 		KeyId:   "1",
@@ -174,7 +173,7 @@ func TestDial_serverCertificate(t *testing.T) {
 			},
 		},
 	}
-	conn, err := dial(ctx, nbiConf)
+	conn, err := dial(ctx, nbiConf, ts.Client())
 	checkErr(t, err)
 	defer conn.Close()
 

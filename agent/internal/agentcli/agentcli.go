@@ -18,6 +18,7 @@ package agentcli
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/x509"
 	"errors"
@@ -27,8 +28,10 @@ import (
 	"net"
 	"net/http"
 	_ "net/http/pprof"
+	"net/url"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	"github.com/jonboulle/clockwork"
@@ -50,7 +53,6 @@ import (
 	"google.golang.org/grpc/encoding/gzip"
 	"google.golang.org/protobuf/types/known/anypb"
 
-	"aalyria.com/spacetime/auth"
 	agent "aalyria.com/spacetime/agent"
 	"aalyria.com/spacetime/agent/enactment"
 	enact_extproc "aalyria.com/spacetime/agent/enactment/extproc"
@@ -59,6 +61,7 @@ import (
 	"aalyria.com/spacetime/agent/internal/task"
 	"aalyria.com/spacetime/agent/telemetry"
 	telemetry_extproc "aalyria.com/spacetime/agent/telemetry/extproc"
+	"aalyria.com/spacetime/auth"
 )
 
 // Handles are abstractions over impure, external resources like time and stdio
@@ -354,12 +357,17 @@ func getDialOpts(ctx context.Context, connParams *configpb.ConnectionParams, clo
 		if err != nil {
 			return nil, err
 		}
+		uri, err := url.Parse(connParams.GetEndpointUri())
+		if err != nil {
+			return nil, fmt.Errorf("parsing %q: %w", connParams.GetEndpointUri(), err)
+		}
 
 		creds, err := auth.NewCredentials(ctx, auth.Config{
 			Clock:        clock,
 			Email:        jwtSpec.GetEmail(),
 			PrivateKeyID: jwtSpec.GetPrivateKeyId(),
 			PrivateKey:   pkeySrc,
+			Host:         strings.TrimPrefix(cmp.Or(uri.Host, uri.Path), "/"),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("generating authorization JWT: %w", err)

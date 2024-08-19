@@ -26,8 +26,6 @@ go_library(
         "@com_github_golang_jwt_jwt_v5//:jwt",
         "@com_github_jonboulle_clockwork//:clockwork",
         "@org_golang_google_grpc//credentials",
-        "@org_golang_x_oauth2//:oauth2",
-        "@org_golang_x_oauth2//jwt",
     ],
 )
 

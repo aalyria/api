@@ -16,12 +16,16 @@ package nbictl
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/jonboulle/clockwork"
 	"github.com/urfave/cli/v2"
@@ -46,11 +50,11 @@ func openConnection(appCtx *cli.Context) (*grpc.ClientConn, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to obtain context information: %w", err)
 	}
-	return dial(appCtx.Context, setting)
+	return dial(appCtx.Context, setting, nil)
 }
 
-func dial(ctx context.Context, setting *nbictlpb.Config) (*grpc.ClientConn, error) {
-	dialOpts, err := getDialOpts(ctx, setting)
+func dial(ctx context.Context, setting *nbictlpb.Config, httpClient *http.Client) (*grpc.ClientConn, error) {
+	dialOpts, err := getDialOpts(ctx, setting, httpClient)
 	if err != nil {
 		return nil, fmt.Errorf("unable to construct dial options: %w", err)
 	}
@@ -61,7 +65,7 @@ func dial(ctx context.Context, setting *nbictlpb.Config) (*grpc.ClientConn, erro
 	return conn, nil
 }
 
-func getDialOpts(ctx context.Context, setting *nbictlpb.Config) ([]grpc.DialOption, error) {
+func getDialOpts(ctx context.Context, setting *nbictlpb.Config, httpClient *http.Client) ([]grpc.DialOption, error) {
 	dialOpts := []grpc.DialOption{
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(1024*1024*256), grpc.UseCompressor(gzip.Name)),
 	}
@@ -91,23 +95,27 @@ func getDialOpts(ctx context.Context, setting *nbictlpb.Config) ([]grpc.DialOpti
 
 	// Unless transport-security is set to Insecure, add Spacetime PerRPCCredentials.
 	if _, insecure := setting.GetTransportSecurity().GetType().(*nbictlpb.Config_TransportSecurity_Insecure); !insecure {
+		uri, err := url.Parse(setting.GetUrl())
+		if err != nil {
+			return nil, fmt.Errorf("parsing %q: %w", setting.GetUrl(), err)
+		}
 		if setting.GetPrivKey() == "" {
 			return nil, errors.New("no private key set for chosen context")
 		}
-
 		pkeyBytes, err := os.ReadFile(setting.GetPrivKey())
 		if err != nil {
 			return nil, fmt.Errorf("unable to read the file: %w", err)
 		}
 		privateKey := bytes.NewBuffer(pkeyBytes)
-
 		clock := clockwork.NewRealClock()
 
 		config := auth.Config{
+			Client:       httpClient,
 			Clock:        clock,
 			PrivateKey:   privateKey,
 			PrivateKeyID: setting.GetKeyId(),
 			Email:        setting.GetEmail(),
+			Host:         strings.TrimPrefix(cmp.Or(uri.Host, uri.Path), "/"),
 		}
 
 		creds, err := auth.NewCredentials(ctx, config)

@@ -16,6 +16,7 @@ package auth
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
@@ -38,6 +39,8 @@ type badReader struct{ err error }
 func (b badReader) Read(_ []byte) (int, error) { return 0, b.err }
 
 func TestNewCredentials_validation(t *testing.T) {
+	t.Parallel()
+
 	for _, tc := range []struct {
 		name string
 		want string
@@ -51,6 +54,7 @@ func TestNewCredentials_validation(t *testing.T) {
 				PrivateKey:   bytes.NewBuffer(testKey.privatePEM),
 				PrivateKeyID: "1",
 				Clock:        clockwork.NewRealClock(),
+				Host:         "example.com",
 			},
 		},
 		{
@@ -61,6 +65,7 @@ func TestNewCredentials_validation(t *testing.T) {
 				PrivateKey:   bytes.NewBuffer(testKey.privatePEM),
 				PrivateKeyID: "",
 				Clock:        clockwork.NewRealClock(),
+				Host:         "example.com",
 			},
 		},
 		{
@@ -71,6 +76,7 @@ func TestNewCredentials_validation(t *testing.T) {
 				PrivateKey:   bytes.NewBuffer(testKey.privatePEM),
 				PrivateKeyID: "1",
 				Clock:        nil,
+				Host:         "example.com",
 			},
 		},
 		{
@@ -81,6 +87,7 @@ func TestNewCredentials_validation(t *testing.T) {
 				PrivateKey:   badReader{errors.New("read went wrong!")},
 				PrivateKeyID: "1",
 				Clock:        clockwork.NewRealClock(),
+				Host:         "example.com",
 			},
 		},
 		{
@@ -91,33 +98,50 @@ func TestNewCredentials_validation(t *testing.T) {
 				PrivateKey:   bytes.NewBuffer([]byte{}),
 				PrivateKeyID: "1",
 				Clock:        clockwork.NewRealClock(),
+				Host:         "example.com",
+			},
+		},
+		{
+			name: "empty host",
+			want: `missing required field 'Host'`,
+			c: Config{
+				Email:        "some@example.com",
+				PrivateKey:   bytes.NewBuffer(testKey.privatePEM),
+				PrivateKeyID: "1",
+				Clock:        clockwork.NewRealClock(),
+				Host:         "",
 			},
 		},
 	} {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			ctx := context.Background()
 			_, err := NewCredentials(ctx, tc.c)
-			if err.Error() != tc.want {
-				t.Errorf("unexpected validation error: got %v, but expected %s", err, tc.want)
+			if got := cmp.Or(err, errors.New("")).Error(); got != tc.want {
+				t.Errorf("unexpected validation error: got %q, but expected %q", got, tc.want)
 			}
 		})
 	}
 }
 
 func TestNewCredentials(t *testing.T) {
+	t.Parallel()
+
 	srv := authtest.NewOIDCServer(validToken)
 	defer srv.Close()
 
-	ctx := srv.WithContextClient(context.Background())
 	conf := Config{
+		Client:       srv.Client(),
 		Email:        "some@example.com",
 		PrivateKey:   bytes.NewBuffer(testKey.privatePEM),
 		PrivateKeyID: "1",
 		Clock:        clockwork.NewFakeClockAt(time.Date(2011, time.February, 16, 0, 0, 0, 0, time.UTC)),
+		Host:         "example.com",
 	}
 
-	creds, err := NewCredentials(ctx, conf)
+	creds, err := NewCredentials(context.Background(), conf)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

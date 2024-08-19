@@ -24,8 +24,6 @@ import (
 	"net/http/httptest"
 	"sync/atomic"
 	"time"
-
-	"golang.org/x/oauth2"
 )
 
 type OIDCServer struct {
@@ -70,8 +68,4 @@ func (s *OIDCServer) Client() *http.Client {
 			ExpectContinueTimeout: time.Second,
 		},
 	}
-}
-
-func (s *OIDCServer) WithContextClient(ctx context.Context) context.Context {
-	return context.WithValue(ctx, oauth2.HTTPClient, s.Client())
 }

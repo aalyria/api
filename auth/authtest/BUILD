@@ -20,5 +20,4 @@ go_library(
     srcs = ["authtest.go"],
     importpath = "aalyria.com/spacetime/auth/authtest",
     visibility = ["//visibility:public"],
-    deps = ["@org_golang_x_oauth2//:oauth2"],
 )
