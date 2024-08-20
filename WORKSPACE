@@ -114,6 +114,13 @@ http_archive(
     url = "https://github.com/bazelbuild/rules_python/releases/download/0.22.0/rules_python-0.22.0.tar.gz",
 )
 
+http_archive(
+    name = "org_outernetcouncil_nmts",
+    sha256 = "9c419593fedd9e36f26b7a21f53d8145b07ffccd4925b692793e968af6377375",
+    strip_prefix = "nmts-0.0.0",
+    url = "https://github.com/outernetcouncil/nmts/archive/refs/tags/v0.0.0.tar.gz",
+)
+
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
 load("@com_google_googleapis//:repository_rules.bzl", "switched_rules_by_language")
