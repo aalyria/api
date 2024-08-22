@@ -27,7 +27,7 @@ option go_package = "aalyria.com/spacetime/api/nbi/v1alpha/resources";
 
 // Models an abstract network node (a device, or an entire network).
 message NetworkNode {
-  reserved 6, 11 to max;
+  reserved 11 to max;
 
   // A globally unique identifier for the network node.
   optional string node_id = 1;
@@ -35,6 +35,10 @@ message NetworkNode {
   // Optional friendly, human-readable strings for UI purposes.
   optional string name = 2;
   optional string type = 7;
+
+  // A freeform string, used as a key in other contexts to lookup
+  // context-relevant attributes (UI visual configuration, etc).
+  optional string category_tag = 6;
 
   message RoutingConfiguration {
     // The router ID of this NetworkNode.

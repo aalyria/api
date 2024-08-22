@@ -30,11 +30,15 @@ option go_package = "aalyria.com/spacetime/api/common";
 
 // Models a physical platform with optional communications assets.
 message PlatformDefinition {
-  reserved 1, 5 to 7, 8, 9, 10, 11, 19 to max;
+  reserved 1, 6 to 7, 8, 9, 10, 11, 19 to max;
 
   // Optional friendly, human-readable strings for UI purposes.
   optional string name = 2;
   optional string type = 12;
+
+  // A freeform string, used as a key in other contexts to lookup
+  // context-relevant attributes (UI visual configuration, etc).
+  optional string category_tag = 5;
 
   // Root platforms have location translations relative to the center of the
   // Earth and orientation rotations relative to the Earth-Centered-Earth-Fixed
