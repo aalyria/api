@@ -15,7 +15,7 @@
 # @com_github_vishvananda_netlink//:netlink
 
 load("@container_structure_test//:defs.bzl", "container_structure_test")
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
 load("@rules_oci//oci:defs.bzl", "oci_image")
 load("@rules_pkg//:pkg.bzl", "pkg_tar")
 

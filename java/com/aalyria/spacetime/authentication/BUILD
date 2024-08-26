@@ -29,9 +29,9 @@ java_library(
         "SpacetimeCallCredentials.java",
     ],
     deps = [
-        "@io_grpc_grpc_java//api",
         "@maven//:com_google_code_gson_gson",
         "@maven//:com_google_guava_guava",
+        "@maven//:io_grpc_grpc_api",
         "@maven//:org_bouncycastle_bcprov_jdk15on",
     ],
 )

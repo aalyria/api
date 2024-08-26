@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_proto_grpc//doc:defs.bzl", "doc_markdown_compile", "doc_template_compile")
+load("@rules_proto_grpc_doc//:defs.bzl", "doc_markdown_compile", "doc_template_compile")
 
 # bazel query 'kind("^proto_library", //api/...)'
 _all_protos = [

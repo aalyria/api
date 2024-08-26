@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+load("@rules_go//proto:def.bzl", "go_proto_library")
 load("@rules_proto//proto:defs.bzl", "proto_library")
 
 proto_library(
@@ -21,15 +21,15 @@ proto_library(
     visibility = ["//visibility:public"],
     deps = [
         "//api/nbi/v1alpha/resources:resources_proto",
-        "@com_google_googleapis//google/type:interval_proto",
+        "@googleapis//google/type:interval_proto",
     ],
 )
 
 go_proto_library(
     name = "solver_go_proto",
     compilers = [
-        "@io_bazel_rules_go//proto:go_proto",
-        "@io_bazel_rules_go//proto:go_grpc_v2",
+        "@rules_go//proto:go_proto",
+        "@rules_go//proto:go_grpc_v2",
     ],
     importpath = "aalyria.com/spacetime/api/solver/v1alpha",
     proto = ":solver_proto",

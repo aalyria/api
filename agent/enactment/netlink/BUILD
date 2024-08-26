@@ -14,7 +14,7 @@
 
 # @com_github_vishvananda_netlink//:netlink
 
-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 package(default_visibility = ["//visibility:public"])
 

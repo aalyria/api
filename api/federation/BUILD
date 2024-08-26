@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+load("@rules_go//proto:def.bzl", "go_proto_library")
 load("@rules_proto//proto:defs.bzl", "proto_library")
 
 proto_library(
@@ -22,14 +22,14 @@ proto_library(
     deps = [
         "//api/common:common_proto",
         "//api/types:types_proto",
-        "@com_google_googleapis//google/type:interval_proto",
-        "@com_google_protobuf//:duration_proto",
+        "@googleapis//google/type:interval_proto",
+        "@protobuf//:duration_proto",
     ],
 )
 
 go_proto_library(
     name = "federation_go_proto",
-    compilers = ["@io_bazel_rules_go//proto:go_grpc"],
+    compilers = ["@rules_go//proto:go_grpc"],
     importpath = "aalyria.com/spacetime/api/federation",
     proto = ":federation_proto",
     visibility = ["//visibility:public"],
@@ -43,8 +43,8 @@ go_proto_library(
 go_proto_library(
     name = "v1alpha_go_proto",
     compilers = [
-        "@io_bazel_rules_go//proto:go_proto",
-        "@io_bazel_rules_go//proto:go_grpc_v2",
+        "@rules_go//proto:go_proto",
+        "@rules_go//proto:go_grpc_v2",
     ],
     importpath = "aalyria.com/spacetime/api/fed/v1alpha",
     proto = ":federation_proto",

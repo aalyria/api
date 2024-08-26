@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+load("@rules_go//proto:def.bzl", "go_proto_library")
 load("@rules_proto//proto:defs.bzl", "proto_library")
-load("@rules_proto_grpc//cpp:defs.bzl", "cpp_grpc_library")
-load("@rules_proto_grpc//java:defs.bzl", "java_grpc_library")
-load("@rules_proto_grpc//python:defs.bzl", "python_grpc_library")
+load("@rules_proto_grpc_cpp//:defs.bzl", "cpp_grpc_library")
+load("@rules_proto_grpc_java//:defs.bzl", "java_grpc_library")
+load("@rules_proto_grpc_python//:defs.bzl", "python_grpc_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -37,12 +37,12 @@ proto_library(
     deps = [
         "//api/common:common_proto",
         "//api/types:types_proto",
-        "@com_google_googleapis//google/rpc:code_proto",
-        "@com_google_googleapis//google/type:interval_proto",
-        "@com_google_googleapis//google/type:money_proto",
-        "@com_google_protobuf//:any_proto",
-        "@com_google_protobuf//:duration_proto",
-        "@com_google_protobuf//:timestamp_proto",
+        "@googleapis//google/rpc:code_proto",
+        "@googleapis//google/type:interval_proto",
+        "@googleapis//google/type:money_proto",
+        "@protobuf//:any_proto",
+        "@protobuf//:duration_proto",
+        "@protobuf//:timestamp_proto",
     ],
 )
 
@@ -53,10 +53,10 @@ cpp_grpc_library(
     deps = [
         "//api/common:common_cpp_proto",
         "//api/types:types_cpp_proto",
-        "@com_google_googleapis//google/api:annotations_cc_proto",
-        "@com_google_googleapis//google/rpc:code_cc_proto",
-        "@com_google_googleapis//google/type:interval_cc_proto",
-        "@com_google_googleapis//google/type:money_cc_proto",
+        "@googleapis//google/api:annotations_cc_proto",
+        "@googleapis//google/rpc:code_cc_proto",
+        "@googleapis//google/type:interval_cc_proto",
+        "@googleapis//google/type:money_cc_proto",
     ],
 )
 
@@ -79,9 +79,9 @@ java_grpc_library(
     deps = [
         "//api/common:common_java_proto",
         "//api/types:types_java_proto",
-        "@com_google_googleapis//google/api:api_java_proto",
-        "@com_google_googleapis//google/rpc:rpc_java_proto",
-        "@com_google_googleapis//google/type:type_java_proto",
+        "@googleapis//google/api:api_java_proto",
+        "@googleapis//google/rpc:rpc_java_proto",
+        "@googleapis//google/type:type_java_proto",
     ],
 )
 
@@ -90,7 +90,7 @@ python_grpc_library(
     protos = [":resources_proto"],
     deps = [
         "//api/common:common_python_proto",
-        "@com_google_googleapis//google/rpc:code_py_proto",
-        "@com_google_googleapis//google/type:money_py_proto",
+        "@googleapis//google/rpc:code_py_proto",
+        "@googleapis//google/type:money_py_proto",
     ],
 )

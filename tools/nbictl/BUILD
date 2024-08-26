@@ -15,7 +15,7 @@
 # Build rules for the Go CDPI agent. These shouldn't depend on any other
 # internal packages apart from those found in //api.
 
-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "nbictl",
@@ -40,7 +40,7 @@ go_library(
         "@com_github_jonboulle_clockwork//:clockwork",
         "@com_github_urfave_cli_v2//:cli",
         "@org_golang_google_genproto//googleapis/type/interval",
-        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//:grpc",
         "@org_golang_google_grpc//credentials",
         "@org_golang_google_grpc//credentials/insecure",
         "@org_golang_google_grpc//encoding/gzip",
@@ -72,14 +72,14 @@ go_test(
         "//tools/nbictl/proto:nbictl_go_proto",
         "@com_github_google_go_cmp//cmp",
         "@com_github_urfave_cli_v2//:cli",
-        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
-        "@org_golang_google_grpc//:go_default_library",
+        "@org_golang_google_grpc//:grpc",
         "@org_golang_google_grpc//metadata",
         "@org_golang_google_grpc//reflection",
         "@org_golang_google_protobuf//encoding/prototext",
         "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//testing/protocmp",
         "@org_golang_x_sync//errgroup",
+        "@rules_go//go/tools/bazel:go_default_library",
     ],
 )
 

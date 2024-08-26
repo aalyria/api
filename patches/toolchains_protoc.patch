@@ -1,0 +1,36 @@
+diff --git a/protoc/private/prebuilt_protoc_toolchain.bzl b/protoc/private/prebuilt_protoc_toolchain.bzl
+index 738af0b..7fde444 100644
+--- a/protoc/private/prebuilt_protoc_toolchain.bzl
++++ b/protoc/private/prebuilt_protoc_toolchain.bzl
+@@ -29,7 +29,7 @@ def _prebuilt_protoc_repo_impl(rctx):
+ 
+     filename = "{}-{}-{}.zip".format(
+         "protoc",
+-        release_version.removeprefix("v"),
++        release_version.removeprefix("v").replace("rc", "rc-"),
+         rctx.attr.platform,
+     )
+     url = "https://github.com/protocolbuffers/protobuf/releases/download/{}/{}".format(
+diff --git a/protoc/private/versions.bzl b/protoc/private/versions.bzl
+index 6184baf..f7d8369 100644
+--- a/protoc/private/versions.bzl
++++ b/protoc/private/versions.bzl
+@@ -51,6 +51,18 @@ PROTOC_PLATFORMS = {
+ }
+ 
+ PROTOC_VERSIONS = {
++    "v28.0-rc3": {
++        "protoc-28.0-rc-3-linux-aarch_64.zip": "sha384-f73H2zEfm211cNxkKdwoFLiVczkpW2vjayZaWjU1EUQAJxG0gdPuSikc6zLTbmSy",
++        "protoc-28.0-rc-3-linux-ppcle_64.zip": "sha384-xCtcFMpYAsICe1Mx82cb914j7BDMgPB7bMFQ+vf1pu5mnFnSYuJ53+ctmpa683Ld",
++        "protoc-28.0-rc-3-linux-s390_64.zip": "sha384-xtJnFuNKuI2ETJmQ1eKA0xAjqwb9gLpCOQcRxApvgjV7PCvkKYEw0ZDclYGwnuru",
++        "protoc-28.0-rc-3-linux-x86_32.zip": "sha384-xn9Kg++xWE+xXiB+PkKpbsNPQGRLZOtH84zqlbfgSM5yPze38AEtU1Bx4RqilUXa",
++        "protoc-28.0-rc-3-linux-x86_64.zip": "sha384-EmOd1tvcuGsXFgFMl8zfSLo9ALYjzDZNJkxDxeScwwBKMvFif0PLnSxN1AqbY8Im",
++        "protoc-28.0-rc-3-osx-aarch_64.zip": "sha384-xXtxeJiBamTorBL9cZiCdlAui+ZYEmNRriNADMRjvZ53lCVc4uQBqRbSvq4FtaGV",
++        "protoc-28.0-rc-3-osx-universal_binary.zip": "sha384-xui0zob6p+hchnatV18Jr3iX9rdBCQNu0r9wA0PT8q/0whlj7y0/iQ1IZzdX7u4q",
++        "protoc-28.0-rc-3-osx-x86_64.zip": "sha384-xYB3mQFd6K8Kc7+rNOoW0AzrD7beSuvVBnB8HecewqL2M7eL+t72UMHxwPenc6Bb",
++        "protoc-28.0-rc-3-win32.zip": "sha384-xTMhesS6R1Z1LdWiuS/K1c+nznUwvX5j7JCm3ga4MtFMKciScopj9nbOlM+gr3d9",
++        "protoc-28.0-rc-3-win64.zip": "sha384-xJs+22/8ZzHBoDsc4eJ19LTKpeGf9riMvKMk6X8HHgJH3xMYnDfRuovvTQLQ9zW9",
++    },
+     "v27.1": {
+         "protoc-27.1-linux-aarch_64.zip": "sha384-t73H2zEfm211cNxkKdwoFLiVczkpW2vjayZaWjU1EUQAJxG0gdPuSikc6zLTbmSy",
+         "protoc-27.1-linux-ppcle_64.zip": "sha384-CCtcFMpYAsICe1Mx82cb914j7BDMgPB7bMFQ+vf1pu5mnFnSYuJ53+ctmpa683Ld",

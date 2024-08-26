@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+load("@rules_go//proto:def.bzl", "go_proto_library")
 load("@rules_proto//proto:defs.bzl", "proto_library")
-load("@rules_proto_grpc//cpp:defs.bzl", "cpp_grpc_library")
-load("@rules_proto_grpc//java:defs.bzl", "java_grpc_library")
-load("@rules_proto_grpc//python:defs.bzl", "python_grpc_library")
+load("@rules_proto_grpc_cpp//:defs.bzl", "cpp_grpc_library")
+load("@rules_proto_grpc_java//:defs.bzl", "java_grpc_library")
+load("@rules_proto_grpc_python//:defs.bzl", "python_grpc_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -26,9 +26,9 @@ proto_library(
         "scheduling.proto",
     ],
     deps = [
-        "@com_google_googleapis//google/rpc:status_proto",
-        "@com_google_protobuf//:empty_proto",
-        "@com_google_protobuf//:timestamp_proto",
+        "@googleapis//google/rpc:status_proto",
+        "@protobuf//:empty_proto",
+        "@protobuf//:timestamp_proto",
     ],
 )
 
@@ -36,15 +36,15 @@ cpp_grpc_library(
     name = "scheduling_cpp_grpc",
     protos = [":scheduling_proto"],
     deps = [
-        "@com_google_googleapis//google/rpc:status_cc_proto",
+        "@googleapis//google/rpc:status_cc_proto",
     ],
 )
 
 go_proto_library(
     name = "scheduling_go_grpc",
     compilers = [
-        "@io_bazel_rules_go//proto:go_proto",
-        "@io_bazel_rules_go//proto:go_grpc_v2",
+        "@rules_go//proto:go_proto",
+        "@rules_go//proto:go_grpc_v2",
     ],
     importpath = "aalyria.com/spacetime/api/scheduling/v1alpha",
     proto = ":scheduling_proto",
@@ -57,7 +57,7 @@ java_grpc_library(
     name = "scheduling_java_grpc",
     protos = [":scheduling_proto"],
     deps = [
-        "@com_google_googleapis//google/rpc:rpc_java_proto",
+        "@googleapis//google/rpc:rpc_java_proto",
     ],
 )
 

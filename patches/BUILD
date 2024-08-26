@@ -13,6 +13,7 @@
 # limitations under the License.
 
 exports_files([
-    "com_github_grpc_grpc-hermetic-python.patch",
-    "com_google_protobuf-rename-exec_tools-to-tools.patch",
+    "protobuf.patch",
+    "rules_proto_grpc_python.patch",
+    "toolchains_protoc.patch",
 ])

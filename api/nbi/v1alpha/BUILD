@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+load("@rules_go//proto:def.bzl", "go_proto_library")
 load("@rules_proto//proto:defs.bzl", "proto_library")
-load("@rules_proto_grpc//cpp:defs.bzl", "cpp_grpc_library")
-load("@rules_proto_grpc//java:defs.bzl", "java_grpc_library")
-load("@rules_proto_grpc//python:defs.bzl", "python_grpc_library")
+load("@rules_proto_grpc_cpp//:defs.bzl", "cpp_grpc_library")
+load("@rules_proto_grpc_java//:defs.bzl", "java_grpc_library")
+load("@rules_proto_grpc_python//:defs.bzl", "python_grpc_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -30,9 +30,9 @@ proto_library(
     deps = [
         "//api/common:common_proto",
         "//api/nbi/v1alpha/resources:resources_proto",
-        "@com_google_googleapis//google/type:interval_proto",
-        "@com_google_protobuf//:duration_proto",
-        "@com_google_protobuf//:timestamp_proto",
+        "@googleapis//google/type:interval_proto",
+        "@protobuf//:duration_proto",
+        "@protobuf//:timestamp_proto",
     ],
 )
 
@@ -43,8 +43,8 @@ cpp_grpc_library(
     deps = [
         "//api/common:common_cpp_proto",
         "//api/nbi/v1alpha/resources:nbi_resources_cpp_grpc",
-        "@com_google_googleapis//google/rpc:code_cc_proto",
-        "@com_google_googleapis//google/type:interval_cc_proto",
+        "@googleapis//google/rpc:code_cc_proto",
+        "@googleapis//google/type:interval_cc_proto",
     ],
 )
 
@@ -54,9 +54,9 @@ java_grpc_library(
     deps = [
         "//api/common:common_java_proto",
         "//api/nbi/v1alpha/resources:nbi_resources_java_grpc",
-        "@com_google_googleapis//google/api:api_java_proto",
-        "@com_google_googleapis//google/rpc:rpc_java_proto",
-        "@com_google_googleapis//google/type:type_java_proto",
+        "@googleapis//google/api:api_java_proto",
+        "@googleapis//google/rpc:rpc_java_proto",
+        "@googleapis//google/type:type_java_proto",
     ],
 )
 
@@ -72,8 +72,8 @@ python_grpc_library(
 go_proto_library(
     name = "v1alpha_go_proto",
     compilers = [
-        "@io_bazel_rules_go//proto:go_proto",
-        "@io_bazel_rules_go//proto:go_grpc_v2",
+        "@rules_go//proto:go_proto",
+        "@rules_go//proto:go_grpc_v2",
     ],
     importpath = "aalyria.com/spacetime/api/nbi/v1alpha",
     proto = ":nbi_proto",

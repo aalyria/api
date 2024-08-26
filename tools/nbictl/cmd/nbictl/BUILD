@@ -15,7 +15,7 @@
 # Build rules for the Go CDPI agent. These shouldn't depend on any other
 # internal packages apart from those found in //api.
 
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
 
 go_library(
     name = "nbictl_lib",

@@ -31,10 +31,10 @@ java_test(
     deps = [
         "//api/nbi/v1alpha:nbi_java_grpc",
         "//java/com/aalyria/spacetime/authentication:Authentication",
-        "@io_grpc_grpc_java//api",
-        "@io_grpc_grpc_java//core:inprocess",
-        "@io_grpc_grpc_java//testing",
         "@maven//:com_google_code_gson_gson",
+        "@maven//:io_grpc_grpc_api",
+        "@maven//:io_grpc_grpc_inprocess",
+        "@maven//:io_grpc_grpc_testing",
         "@maven//:io_helidon_grpc_helidon_grpc_core",
         "@maven//:junit_junit",
         "@maven//:org_mockito_mockito_core",
