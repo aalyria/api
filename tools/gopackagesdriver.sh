@@ -14,4 +14,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-exec bazel run -- @io_bazel_rules_go//go/tools/gopackagesdriver "${@}"
+exec bazel run -- @rules_go//go/tools/gopackagesdriver "${@}"
