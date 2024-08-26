@@ -17,8 +17,8 @@
 # contemporary SDN protocols, such as OpenFlow and OF-CONFIG, AirFlow supports
 # L1-L3 control of networks with wireless and mobile network platforms.
 
+load("@protobuf//bazel:proto_library.bzl", "proto_library")
 load("@rules_go//proto:def.bzl", "go_proto_library")
-load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@rules_proto_grpc_cpp//:defs.bzl", "cpp_grpc_library")
 load("@rules_proto_grpc_java//:defs.bzl", "java_grpc_library")
 load("@rules_proto_grpc_python//:defs.bzl", "python_grpc_library")
