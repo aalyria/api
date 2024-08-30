@@ -165,12 +165,22 @@ message NetworkNode {
     }
   }
 
+  message ExternalCommandTelemetry {
+    // How often the metrics will be gathered and reported.
+    google.protobuf.Duration collection_period = 1;
+
+    ExternalCommand command = 2;
+  }
+
   message MonitoredInterface {
     // The interface_id as specified by the NetworkNode's NetworkInterface.
     string interface_id = 1;
   }
 
   message NetlinkTelemetry {
+    // How often the metrics will be gathered and reported.
+    google.protobuf.Duration collection_period = 2;
+
     repeated MonitoredInterface monitored_interfaces = 1;
   }
 
@@ -183,7 +193,7 @@ message NetworkNode {
       // Use an external command to handle telemetry updates. The command
       // should write a NetworkStatsReport message in the appropriate format to
       // standard out when executed.
-      ExternalCommand external_command = 2;
+      ExternalCommandTelemetry external_command = 2;
 
       // Use the Linux-only netlink APIs to gather telemetry.
       NetlinkTelemetry netlink = 3;

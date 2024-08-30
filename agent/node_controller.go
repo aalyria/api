@@ -20,10 +20,10 @@ import (
 	"fmt"
 	"time"
 
-	afpb "aalyria.com/spacetime/api/cdpi/v1alpha"
+	"aalyria.com/spacetime/agent/internal/task"
 	apipb "aalyria.com/spacetime/api/common"
 	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
-	"aalyria.com/spacetime/agent/internal/task"
+	telemetrypb "aalyria.com/spacetime/telemetry/v1alpha"
 
 	"github.com/google/uuid"
 	"github.com/jonboulle/clockwork"
@@ -82,7 +82,7 @@ func (a *Agent) newNodeController(node *node, done func()) (*nodeController, err
 		}
 		nc.closers = append(nc.closers, telemetryConn.Close)
 
-		telemetryClient := afpb.NewNetworkTelemetryStreamingClient(telemetryConn)
+		telemetryClient := telemetrypb.NewTelemetryClient(telemetryConn)
 
 		ts := nc.newTelemetryService(telemetryClient, node.td)
 

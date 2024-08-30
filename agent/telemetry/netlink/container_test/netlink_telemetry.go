@@ -36,6 +36,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"aalyria.com/spacetime/agent/telemetry/netlink"
+	telemetrypb "aalyria.com/spacetime/telemetry/v1alpha"
 )
 
 type echoServer struct {
@@ -139,43 +140,43 @@ func main() {
 			log.Fatalf("echo server not ready in time")
 		}
 
+		clock := clockwork.NewFakeClock()
 		interfaceIDs := []string{"lo"}
-		driver := netlink.New(clockwork.NewRealClock(), interfaceIDs, vnl.LinkByName)
+		collectionPeriod := 1 * time.Second
+		driver := netlink.NewDriver(clock, interfaceIDs, vnl.LinkByName, collectionPeriod)
 
-		firstReport, err := driver.GenerateReport(ctx, "node_id")
-		if err != nil {
-			log.Fatalf("tb.GenerateReport failed with: %s", err)
-		}
+		reportedMetrics := make(chan *telemetrypb.ExportMetricsRequest)
+		g.Go(func() error {
+			return driver.Run(ctx, "node_id", func(report *telemetrypb.ExportMetricsRequest) error {
+				reportedMetrics <- report
+				return nil
+			})
+		})
+
+		firstReport := <-reportedMetrics
 		log.Printf("first report: %v", firstReport)
 
 		if err := genTraffic(echoAddr); err != nil {
 			log.Fatalf("genTraffic: %s", err)
 		}
-
-		secondReport, err := driver.GenerateReport(ctx, "node_id")
-		if err != nil {
-			log.Fatalf("tb.GenerateReport failed with: %s", err)
-		}
+		clock.BlockUntil(1)
+		clock.Advance(collectionPeriod)
+		secondReport := <-reportedMetrics
 		log.Printf("second report: %v", secondReport)
 
-		firstStats, ok := firstReport.InterfaceStatsById["lo"]
-		if !ok {
-			log.Fatalf("firstReport missing 'lo' interface stats")
-		}
-		secondStats, ok := secondReport.InterfaceStatsById["lo"]
-		if !ok {
-			log.Fatalf("secondReport missing 'lo' interface stats")
-		}
+		firstStats := firstReport.GetInterfaceMetrics()[0].GetStandardInterfaceStatisticsDataPoints()[0]
+		secondStats := secondReport.GetInterfaceMetrics()[0].GetStandardInterfaceStatisticsDataPoints()[0]
 
-		if *secondStats.TxPackets > *firstStats.TxPackets &&
-			*secondStats.RxPackets > *firstStats.RxPackets &&
-			*secondStats.TxBytes > *firstStats.TxBytes &&
-			*secondStats.RxBytes > *firstStats.RxBytes {
+		if secondStats.TxPackets > firstStats.TxPackets &&
+			secondStats.RxPackets > firstStats.RxPackets &&
+			secondStats.TxBytes > firstStats.TxBytes &&
+			secondStats.RxBytes > firstStats.RxBytes {
 			fmt.Printf("PASS: Byte and packet counters all went up")
 		} else {
 			fmt.Printf("FAIL: Byte and packet counters did not all go up")
 		}
 	}()
 
+	cancel()
 	g.Wait()
 }

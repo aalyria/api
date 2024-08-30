@@ -437,7 +437,7 @@ telemetrySwitch:
 		}
 
 		telCmd := node.GetTelemetryDriver().GetExternalCommand()
-		td := telemetry_extproc.New(telCmd.GetArgs(), getProtoFmt(telCmd.GetProtoFormat()))
+		td := telemetry_extproc.NewDriver(telCmd.GetCommand().GetArgs(), getProtoFmt(telCmd.GetCommand().GetProtoFormat()), telCmd.GetCollectionPeriod().AsDuration())
 		nodeOpts = append(nodeOpts, agent.WithTelemetryDriver(node.GetTelemetryDriver().GetConnectionParams().EndpointUri, td, dialOpts...))
 
 	case *configpb.NetworkNode_TelemetryDriver_Netlink:

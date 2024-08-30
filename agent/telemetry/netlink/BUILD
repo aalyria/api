@@ -23,10 +23,13 @@ go_library(
     deps = [
         "//agent/telemetry",
         "//api/common:common_go_proto",
+        "//api/telemetry:telemetry_go_grpc",
         "@com_github_jonboulle_clockwork//:clockwork",
         "@com_github_rs_zerolog//:zerolog",
         "@com_github_vishvananda_netlink//:netlink",
+        "@org_golang_google_protobuf//encoding/prototext",
         "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//types/known/timestamppb",
     ],
 )
 
@@ -36,10 +39,13 @@ go_test(
     embed = [":netlink"],
     deps = [
         "//api/common:common_go_proto",
+        "//api/telemetry:telemetry_go_grpc",
         "@com_github_google_go_cmp//cmp",
         "@com_github_jonboulle_clockwork//:clockwork",
         "@com_github_vishvananda_netlink//:netlink",
+        "@org_golang_google_protobuf//encoding/prototext",
         "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//testing/protocmp",
+        "@org_golang_google_protobuf//types/known/timestamppb",
     ],
 )

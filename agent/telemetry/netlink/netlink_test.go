@@ -21,14 +21,22 @@ import (
 	"testing"
 	"time"
 
-	apipb "aalyria.com/spacetime/api/common"
 	"github.com/google/go-cmp/cmp"
-	vnl "github.com/vishvananda/netlink"
-	"google.golang.org/protobuf/testing/protocmp"
-
 	"github.com/jonboulle/clockwork"
+	vnl "github.com/vishvananda/netlink"
+	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
+	commonpb "aalyria.com/spacetime/api/common"
+	telemetrypb "aalyria.com/spacetime/telemetry/v1alpha"
 )
+
+func textNetworkIfaceID(id *commonpb.NetworkInterfaceId) string {
+	text, _ := prototext.Marshal(id)
+	return string(text)
+}
 
 func linkByNameFromMap(links map[string]vnl.Link) func(string) (vnl.Link, error) {
 	return func(name string) (vnl.Link, error) {
@@ -50,7 +58,7 @@ func TestNetlink(t *testing.T) {
 		interfaceIDs []string
 		linkByName   func(string) (vnl.Link, error)
 		nodeID       string
-		wantStats    *apipb.NetworkStatsReport
+		wantMetrics  *telemetrypb.ExportMetricsRequest
 		wantErr      error
 	}
 
@@ -75,28 +83,25 @@ func TestNetlink(t *testing.T) {
 				},
 			}),
 			nodeID: "serenity",
-			wantStats: &apipb.NetworkStatsReport{
-				NodeId: proto.String("serenity"),
-				Timestamp: &apipb.DateTime{
-					UnixTimeUsec: proto.Int64(clock.Now().UnixMicro()),
-				},
-				InterfaceStatsById: map[string]*apipb.InterfaceStats{
-					"cargo-bay-door": {
-						Timestamp: &apipb.DateTime{
-							UnixTimeUsec: proto.Int64(clock.Now().UnixMicro()),
-						},
-						TxPackets: proto.Int64(1),
-						RxPackets: proto.Int64(2),
-						TxBytes:   proto.Int64(3),
-						RxBytes:   proto.Int64(4),
-						TxDropped: proto.Int64(5),
-						RxDropped: proto.Int64(6),
-						TxErrors:  proto.Int64(7),
-						RxErrors:  proto.Int64(8),
-					},
-				},
+			wantMetrics: &telemetrypb.ExportMetricsRequest{
+				InterfaceMetrics: []*telemetrypb.InterfaceMetrics{{
+					InterfaceId: textNetworkIfaceID(&commonpb.NetworkInterfaceId{
+						NodeId:      proto.String("serenity"),
+						InterfaceId: proto.String("cargo-bay-door"),
+					}),
+					StandardInterfaceStatisticsDataPoints: []*telemetrypb.StandardInterfaceStatisticsDataPoint{{
+						Time:      timestamppb.New(clock.Now()),
+						TxPackets: 1,
+						RxPackets: 2,
+						TxBytes:   3,
+						RxBytes:   4,
+						TxDropped: 5,
+						RxDropped: 6,
+						TxErrors:  7,
+						RxErrors:  8,
+					}},
+				}},
 			},
-			wantErr: nil,
 		},
 		{
 			name:         "stats for multiple links",
@@ -146,54 +151,61 @@ func TestNetlink(t *testing.T) {
 				},
 			}),
 			nodeID: "ISS",
-			wantStats: &apipb.NetworkStatsReport{
-				NodeId: proto.String("ISS"),
-				Timestamp: &apipb.DateTime{
-					UnixTimeUsec: proto.Int64(clock.Now().UnixMicro()),
-				},
-				InterfaceStatsById: map[string]*apipb.InterfaceStats{
-					"gemini": {
-						Timestamp: &apipb.DateTime{
-							UnixTimeUsec: proto.Int64(clock.Now().UnixMicro()),
+			wantMetrics: &telemetrypb.ExportMetricsRequest{
+				InterfaceMetrics: []*telemetrypb.InterfaceMetrics{{
+					InterfaceId: textNetworkIfaceID(&commonpb.NetworkInterfaceId{
+						NodeId:      proto.String("ISS"),
+						InterfaceId: proto.String("gemini"),
+					}),
+					StandardInterfaceStatisticsDataPoints: []*telemetrypb.StandardInterfaceStatisticsDataPoint{{
+						Time:      timestamppb.New(clock.Now()),
+						TxPackets: 1,
+						RxPackets: 2,
+						TxBytes:   3,
+						RxBytes:   4,
+						TxDropped: 5,
+						RxDropped: 6,
+						TxErrors:  7,
+						RxErrors:  8,
+					}},
+				}, {
+					InterfaceId: textNetworkIfaceID(&commonpb.NetworkInterfaceId{
+						NodeId:      proto.String("ISS"),
+						InterfaceId: proto.String("apollo"),
+					}),
+					StandardInterfaceStatisticsDataPoints: []*telemetrypb.StandardInterfaceStatisticsDataPoint{
+						{
+							Time:      timestamppb.New(clock.Now()),
+							TxPackets: 10,
+							RxPackets: 20,
+							TxBytes:   30,
+							RxBytes:   40,
+							TxDropped: 50,
+							RxDropped: 60,
+							TxErrors:  70,
+							RxErrors:  80,
 						},
-						TxPackets: proto.Int64(1),
-						RxPackets: proto.Int64(2),
-						TxBytes:   proto.Int64(3),
-						RxBytes:   proto.Int64(4),
-						TxDropped: proto.Int64(5),
-						RxDropped: proto.Int64(6),
-						TxErrors:  proto.Int64(7),
-						RxErrors:  proto.Int64(8),
 					},
-					"apollo": {
-						Timestamp: &apipb.DateTime{
-							UnixTimeUsec: proto.Int64(clock.Now().UnixMicro()),
+				}, {
+					InterfaceId: textNetworkIfaceID(&commonpb.NetworkInterfaceId{
+						NodeId:      proto.String("ISS"),
+						InterfaceId: proto.String("IDSS"),
+					}),
+					StandardInterfaceStatisticsDataPoints: []*telemetrypb.StandardInterfaceStatisticsDataPoint{
+						{
+							Time:      timestamppb.New(clock.Now()),
+							TxPackets: 100,
+							RxPackets: 200,
+							TxBytes:   300,
+							RxBytes:   400,
+							TxDropped: 500,
+							RxDropped: 600,
+							TxErrors:  700,
+							RxErrors:  800,
 						},
-						TxPackets: proto.Int64(10),
-						RxPackets: proto.Int64(20),
-						TxBytes:   proto.Int64(30),
-						RxBytes:   proto.Int64(40),
-						TxDropped: proto.Int64(50),
-						RxDropped: proto.Int64(60),
-						TxErrors:  proto.Int64(70),
-						RxErrors:  proto.Int64(80),
 					},
-					"IDSS": {
-						Timestamp: &apipb.DateTime{
-							UnixTimeUsec: proto.Int64(clock.Now().UnixMicro()),
-						},
-						TxPackets: proto.Int64(100),
-						RxPackets: proto.Int64(200),
-						TxBytes:   proto.Int64(300),
-						RxBytes:   proto.Int64(400),
-						TxDropped: proto.Int64(500),
-						RxDropped: proto.Int64(600),
-						TxErrors:  proto.Int64(700),
-						RxErrors:  proto.Int64(800),
-					},
-				},
+				}},
 			},
-			wantErr: nil,
 		},
 		{
 			name:         "one link missing",
@@ -215,28 +227,25 @@ func TestNetlink(t *testing.T) {
 				},
 			}),
 			nodeID: "enterprise",
-			wantStats: &apipb.NetworkStatsReport{
-				NodeId: proto.String("enterprise"),
-				Timestamp: &apipb.DateTime{
-					UnixTimeUsec: proto.Int64(clock.Now().UnixMicro()),
-				},
-				InterfaceStatsById: map[string]*apipb.InterfaceStats{
-					"dry-dock": {
-						Timestamp: &apipb.DateTime{
-							UnixTimeUsec: proto.Int64(clock.Now().UnixMicro()),
-						},
-						TxPackets: proto.Int64(1),
-						RxPackets: proto.Int64(2),
-						TxBytes:   proto.Int64(3),
-						RxBytes:   proto.Int64(4),
-						TxDropped: proto.Int64(5),
-						RxDropped: proto.Int64(6),
-						TxErrors:  proto.Int64(7),
-						RxErrors:  proto.Int64(8),
-					},
-				},
+			wantMetrics: &telemetrypb.ExportMetricsRequest{
+				InterfaceMetrics: []*telemetrypb.InterfaceMetrics{{
+					InterfaceId: textNetworkIfaceID(&commonpb.NetworkInterfaceId{
+						NodeId:      proto.String("enterprise"),
+						InterfaceId: proto.String("dry-dock"),
+					}),
+					StandardInterfaceStatisticsDataPoints: []*telemetrypb.StandardInterfaceStatisticsDataPoint{{
+						Time:      timestamppb.New(clock.Now()),
+						TxPackets: 1,
+						RxPackets: 2,
+						TxBytes:   3,
+						RxBytes:   4,
+						TxDropped: 5,
+						RxDropped: 6,
+						TxErrors:  7,
+						RxErrors:  8,
+					}},
+				}},
 			},
-			wantErr: nil,
 		},
 		{
 			name:         "one link missing attrs",
@@ -259,28 +268,25 @@ func TestNetlink(t *testing.T) {
 				"transporter-room": &vnl.Dummy{},
 			}),
 			nodeID: "enterprise",
-			wantStats: &apipb.NetworkStatsReport{
-				NodeId: proto.String("enterprise"),
-				Timestamp: &apipb.DateTime{
-					UnixTimeUsec: proto.Int64(clock.Now().UnixMicro()),
-				},
-				InterfaceStatsById: map[string]*apipb.InterfaceStats{
-					"dry-dock": {
-						Timestamp: &apipb.DateTime{
-							UnixTimeUsec: proto.Int64(clock.Now().UnixMicro()),
-						},
-						TxPackets: proto.Int64(1),
-						RxPackets: proto.Int64(2),
-						TxBytes:   proto.Int64(3),
-						RxBytes:   proto.Int64(4),
-						TxDropped: proto.Int64(5),
-						RxDropped: proto.Int64(6),
-						TxErrors:  proto.Int64(7),
-						RxErrors:  proto.Int64(8),
-					},
-				},
+			wantMetrics: &telemetrypb.ExportMetricsRequest{
+				InterfaceMetrics: []*telemetrypb.InterfaceMetrics{{
+					InterfaceId: textNetworkIfaceID(&commonpb.NetworkInterfaceId{
+						NodeId:      proto.String("enterprise"),
+						InterfaceId: proto.String("dry-dock"),
+					}),
+					StandardInterfaceStatisticsDataPoints: []*telemetrypb.StandardInterfaceStatisticsDataPoint{{
+						Time:      timestamppb.New(clock.Now()),
+						TxPackets: 1,
+						RxPackets: 2,
+						TxBytes:   3,
+						RxBytes:   4,
+						TxDropped: 5,
+						RxDropped: 6,
+						TxErrors:  7,
+						RxErrors:  8,
+					}},
+				}},
 			},
-			wantErr: nil,
 		},
 		{
 			name:         "one link missing stats",
@@ -305,28 +311,25 @@ func TestNetlink(t *testing.T) {
 				},
 			}),
 			nodeID: "enterprise",
-			wantStats: &apipb.NetworkStatsReport{
-				NodeId: proto.String("enterprise"),
-				Timestamp: &apipb.DateTime{
-					UnixTimeUsec: proto.Int64(clock.Now().UnixMicro()),
-				},
-				InterfaceStatsById: map[string]*apipb.InterfaceStats{
-					"dry-dock": {
-						Timestamp: &apipb.DateTime{
-							UnixTimeUsec: proto.Int64(clock.Now().UnixMicro()),
-						},
-						TxPackets: proto.Int64(1),
-						RxPackets: proto.Int64(2),
-						TxBytes:   proto.Int64(3),
-						RxBytes:   proto.Int64(4),
-						TxDropped: proto.Int64(5),
-						RxDropped: proto.Int64(6),
-						TxErrors:  proto.Int64(7),
-						RxErrors:  proto.Int64(8),
-					},
-				},
+			wantMetrics: &telemetrypb.ExportMetricsRequest{
+				InterfaceMetrics: []*telemetrypb.InterfaceMetrics{{
+					InterfaceId: textNetworkIfaceID(&commonpb.NetworkInterfaceId{
+						NodeId:      proto.String("enterprise"),
+						InterfaceId: proto.String("dry-dock"),
+					}),
+					StandardInterfaceStatisticsDataPoints: []*telemetrypb.StandardInterfaceStatisticsDataPoint{{
+						Time:      timestamppb.New(clock.Now()),
+						TxPackets: 1,
+						RxPackets: 2,
+						TxBytes:   3,
+						RxBytes:   4,
+						TxDropped: 5,
+						RxDropped: 6,
+						TxErrors:  7,
+						RxErrors:  8,
+					}},
+				}},
 			},
-			wantErr: nil,
 		},
 		{
 			name:         "all links missing stats",
@@ -335,20 +338,23 @@ func TestNetlink(t *testing.T) {
 				"dry-dock":         &vnl.Dummy{LinkAttrs: vnl.LinkAttrs{}},
 				"transporter-room": &vnl.Dummy{LinkAttrs: vnl.LinkAttrs{}},
 			}),
-			nodeID:    "enterprise",
-			wantStats: nil,
-			wantErr:   errNoStats,
+			nodeID:  "enterprise",
+			wantErr: errNoStats,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			driver := New(clock, tc.interfaceIDs, tc.linkByName)
+			generator := reportGenerator{
+				clock:        clock,
+				interfaceIDs: tc.interfaceIDs,
+				linkByName:   tc.linkByName,
+			}
 
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 
-			gotStats, gotErr := driver.GenerateReport(ctx, tc.nodeID)
+			gotStats, gotErr := generator.GenerateReport(ctx, tc.nodeID)
 
 			if gotErr != nil && !errors.Is(gotErr, tc.wantErr) {
 				t.Fatalf(
@@ -359,7 +365,7 @@ func TestNetlink(t *testing.T) {
 				)
 			}
 
-			if diff := cmp.Diff(tc.wantStats, gotStats, protocmp.Transform()); diff != "" {
+			if diff := cmp.Diff(tc.wantMetrics, gotStats, protocmp.Transform()); diff != "" {
 				t.Fatalf("test %q unexpected stats (-want +got):\n%s", tc.name, diff)
 			}
 		})

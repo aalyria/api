@@ -25,7 +25,8 @@ go_library(
         "//agent/internal/loggable",
         "//agent/internal/protofmt",
         "//agent/telemetry",
-        "//api/common:common_go_proto",
+        "//api/telemetry:telemetry_go_grpc",
+        "@com_github_jonboulle_clockwork//:clockwork",
         "@com_github_rs_zerolog//:zerolog",
     ],
 )

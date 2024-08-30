@@ -17,21 +17,20 @@ package telemetry
 import (
 	"context"
 
-	apipb "aalyria.com/spacetime/api/common"
+	telemetrypb "aalyria.com/spacetime/telemetry/v1alpha"
 )
 
-// Driver is the component that generates TelemetryUpdate messages for a given
-// node. It may be called either periodically or as a result of a one-off
-// [apipb.TelemetryRequest].
+// Driver is the component that gathers and reports metrics for a given
+// node.
 type Driver interface {
-	// Init initializes the driver.
-	Init(context.Context) error
-	// GenerateReport generates an [apipb.NetworkStatsReport] for the given [nodeID].
-	GenerateReport(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error)
+	// Run will periodically report metrics by calling the provided `reportMetrics` callback.
+	Run(
+		ctx context.Context,
+		nodeID string,
+		reportMetrics func(*telemetrypb.ExportMetricsRequest) error,
+	) error
 	// Stats returns internal statistics for the driver in an unstructured
 	// form. The results are exposed as a JSON endpoint via the pprof server,
 	// if it's configured.
 	Stats() any
-	// Close closes the driver. Reusing a closed driver is a fatal error.
-	Close() error
 }

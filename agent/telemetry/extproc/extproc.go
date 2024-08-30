@@ -21,46 +21,50 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"time"
 
-	apipb "aalyria.com/spacetime/api/common"
 	"aalyria.com/spacetime/agent/internal/extprocs"
 	"aalyria.com/spacetime/agent/internal/loggable"
 	"aalyria.com/spacetime/agent/internal/protofmt"
 	"aalyria.com/spacetime/agent/telemetry"
+	telemetrypb "aalyria.com/spacetime/telemetry/v1alpha"
 
+	"github.com/jonboulle/clockwork"
 	"github.com/rs/zerolog"
 )
 
 var errEmptyReport = errors.New("command generated an empty response")
 
-type driver struct {
+type reportGenerator struct {
 	args     []string
 	protoFmt protofmt.Format
 }
 
-func New(args []string, format protofmt.Format) telemetry.Driver {
-	return &driver{args: args, protoFmt: format}
+func NewDriver(args []string, format protofmt.Format, collectionPeriod time.Duration) telemetry.Driver {
+	return telemetry.NewPeriodicDriver(&reportGenerator{
+		args:     args,
+		protoFmt: format,
+	}, clockwork.NewRealClock(), collectionPeriod)
 }
 
-func (td *driver) Close() error               { return nil }
-func (td *driver) Init(context.Context) error { return nil }
-func (td *driver) Stats() interface{} {
+func (rg *reportGenerator) Stats() interface{} {
 	return struct {
 		Type   string
 		Args   []string
 		Format string
 	}{
-		Type:   fmt.Sprintf("%T", td),
-		Args:   td.args,
-		Format: td.protoFmt.String(),
+		Type:   fmt.Sprintf("%T", rg),
+		Args:   rg.args,
+		Format: rg.protoFmt.String(),
 	}
 }
 
-func (td *driver) GenerateReport(ctx context.Context, nodeID string) (*apipb.NetworkStatsReport, error) {
+func (rg *reportGenerator) GenerateReport(ctx context.Context, nodeID string) (*telemetrypb.ExportMetricsRequest, error) {
 	log := zerolog.Ctx(ctx).With().Str("driver", "extproc").Logger()
 
-	log.Trace().Strs("args", td.args).Msg("running telemetry command")
-	cmd := exec.CommandContext(ctx, td.args[0], td.args[1:]...)
+	log.Trace().Strs("args", rg.args).Msg("running telemetry command")
+	// nosemgrep: dangerous-exec-command
+	cmd := exec.CommandContext(ctx, rg.args[0], rg.args[1:]...)
 	reportData, err := cmd.Output()
 	if err != nil {
 		return nil, extprocs.CommandError(err)
@@ -70,8 +74,8 @@ func (td *driver) GenerateReport(ctx context.Context, nodeID string) (*apipb.Net
 		return nil, errEmptyReport
 	}
 
-	report := &apipb.NetworkStatsReport{}
-	if err = td.protoFmt.Unmarshal(reportData, report); err != nil {
+	report := &telemetrypb.ExportMetricsRequest{}
+	if err = rg.protoFmt.Unmarshal(reportData, report); err != nil {
 		return nil, fmt.Errorf("unmarshalling command output into report proto: %w", err)
 	}
 	log.Trace().Interface("state", loggable.Proto(report)).Msg("command generated report")
