@@ -17,7 +17,7 @@ syntax = "proto3";
 package aalyria.spacetime.api.model.v1alpha;
 
 import "google/protobuf/empty.proto";
-import "proto/nmts.proto";
+import "nmts/proto/nmts.proto";
 
 option java_package = "com.aalyria.spacetime.api.model.v1alpha";
 option go_package = "aalyria.com/spacetime/api/model/v1alpha";
