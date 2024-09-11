@@ -646,8 +646,10 @@ func List(appCtx *cli.Context) error {
 	}
 	entityTypeEnum := nbipb.EntityType(entityTypeEnumValue)
 	entityFilter := nbipb.EntityFilter{}
-	if len(fieldMasks) > 0 {
-		entityFilter = nbipb.EntityFilter{FieldMasks: fieldMasks}
+	for _, value := range fieldMasks {
+		if trimmedValue := strings.TrimSpace(value); trimmedValue != "" {
+			entityFilter.FieldMasks = append(entityFilter.FieldMasks, trimmedValue)
+		}
 	}
 
 	conn, err := openConnection(appCtx)
