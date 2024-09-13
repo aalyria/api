@@ -49,7 +49,10 @@ func TestPeriodicDriver(t *testing.T) {
 
 	clock := clockwork.NewFakeClock()
 	collectionPeriod := 1 * time.Second
-	driver := NewPeriodicDriver(&constantGenerator{clock: clock}, clock, collectionPeriod)
+	driver, err := NewPeriodicDriver(&constantGenerator{clock: clock}, clock, collectionPeriod)
+	if err != nil {
+		t.Fatalf("NewPeriodicDriver: %v", err)
+	}
 
 	reportedStats := make(chan *telemetrypb.ExportMetricsRequest)
 	g, ctx := errgroup.WithContext(ctx)

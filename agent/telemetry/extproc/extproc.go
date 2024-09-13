@@ -40,7 +40,7 @@ type reportGenerator struct {
 	protoFmt protofmt.Format
 }
 
-func NewDriver(args []string, format protofmt.Format, collectionPeriod time.Duration) telemetry.Driver {
+func NewDriver(args []string, format protofmt.Format, collectionPeriod time.Duration) (telemetry.Driver, error) {
 	return telemetry.NewPeriodicDriver(&reportGenerator{
 		args:     args,
 		protoFmt: format,

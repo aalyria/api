@@ -44,7 +44,7 @@ func NewDriver(
 	interfaceIDs []string,
 	linkByName func(string) (vnl.Link, error),
 	collectionPeriod time.Duration,
-) telemetry.Driver {
+) (telemetry.Driver, error) {
 	return telemetry.NewPeriodicDriver(&reportGenerator{
 		clock:        clock,
 		interfaceIDs: interfaceIDs,

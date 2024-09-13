@@ -50,5 +50,5 @@ func newNetlinkTelemetryDriver(ctx context.Context, clock clockwork.Clock, nodeI
 		interfaceIDs = append(interfaceIDs, mi.GetInterfaceId())
 	}
 
-	return telemetry_netlink.NewDriver(clock, interfaceIDs, vnl.LinkByName, conf.GetCollectionPeriod().AsDuration()), nil
+	return telemetry_netlink.NewDriver(clock, interfaceIDs, vnl.LinkByName, conf.GetCollectionPeriod().AsDuration())
 }

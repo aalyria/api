@@ -16,6 +16,7 @@ package telemetry
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	telemetrypb "aalyria.com/spacetime/telemetry/v1alpha"
@@ -37,12 +38,16 @@ type PeriodicDriver struct {
 	collectionPeriod time.Duration
 }
 
-func NewPeriodicDriver(generator ReportGenerator, clock clockwork.Clock, collectionPeriod time.Duration) *PeriodicDriver {
+func NewPeriodicDriver(generator ReportGenerator, clock clockwork.Clock, collectionPeriod time.Duration) (*PeriodicDriver, error) {
+	if collectionPeriod <= 0 {
+		return nil, fmt.Errorf("collectionPeriod must be greater than zero")
+	}
+
 	return &PeriodicDriver{
 		ReportGenerator:  generator,
 		clock:            clock,
 		collectionPeriod: collectionPeriod,
-	}
+	}, nil
 }
 
 func (pd *PeriodicDriver) Run(

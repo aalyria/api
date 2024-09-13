@@ -143,7 +143,10 @@ func main() {
 		clock := clockwork.NewFakeClock()
 		interfaceIDs := []string{"lo"}
 		collectionPeriod := 1 * time.Second
-		driver := netlink.NewDriver(clock, interfaceIDs, vnl.LinkByName, collectionPeriod)
+		driver, err := netlink.NewDriver(clock, interfaceIDs, vnl.LinkByName, collectionPeriod)
+		if err != nil {
+			log.Fatalf("NewDriver: %v", err)
+		}
 
 		reportedMetrics := make(chan *telemetrypb.ExportMetricsRequest)
 		g.Go(func() error {
