@@ -8,10 +8,10 @@ Spacetime has 2 APIs:
 You can find developer guides and tutorials on [this website](https://docs.spacetime.aalyria.com).
 
 This site contains:
-- [NBI Developer Guide](https://docs.spacetime.aalyria.com/api/nbi/) 
-- [SBI Developer Guide](https://docs.spacetime.aalyria.com/api/sbi/)
-- [Building a Scenario Tutorial](https://docs.spacetime.aalyria.com/api/nbi/build-your-first-scenario/index.html)
-- [Authentication](https://docs.spacetime.aalyria.com/api/authentication/)
+- [NBI Developer Guide](https://docs.spacetime.aalyria.com/nbi-developer-guide) 
+- [CDPI Developer Guide](https://docs.spacetime.aalyria.com/southbound-interface-developer-guide)
+- [Building a Scenario Tutorial](https://docs.spacetime.aalyria.com/scenario-building)
+- [Authentication](https://docs.spacetime.aalyria.com/authentication)
 
 ## Repo Contents
 In this repo, you will find the following directories:
