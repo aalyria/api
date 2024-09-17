@@ -20,6 +20,7 @@ entity {
   network_node {
     name: "user-terminal"
     type: "UserTerminal"
+    category_tag: "User Terminal"
     subnet: "107.89.175.219/32"
     node_interface: {
       interface_id: "wireless"

@@ -20,6 +20,7 @@ entity {
   platform {
     name: "user-terminal"
     type: "UserTerminal"
+    category_tag: "User Terminal"
     coordinates: {
       geodetic_wgs84: {
         longitude_deg: -121.7
