@@ -32,8 +32,7 @@ class JwtManager:
         subject="",
         target_audience="",
         private_key_id="",
-        private_key="",
-        jwt_value="",
+        private_key_pem="",
     ):
         self.lifetime = lifetime
         self.audience = audience
@@ -41,31 +40,26 @@ class JwtManager:
         self.subject = subject if subject else issuer
         self.target_audience = target_audience
         self.private_key_id = private_key_id
-        self.private_key = private_key
-        self.jwt_value = jwt_value if jwt_value else self.generate_jwt()
+        self.private_key = self.__decode_private_key(private_key_pem)
 
     def generate_jwt(self) -> str:
-        private_key = self.decode_private_key()
-        header = self.generate_header()
-        payload = self.generate_payload()
-        signature = self.generate_signature(header, payload, private_key)
+        header = self.__generate_header()
+        payload = self.__generate_payload()
+        signature = self.__generate_signature(header, payload, self.private_key)
 
         jwt = b".".join([header, payload, signature])
-        jwt_value = jwt.decode()
-        self.jwt_value = jwt_value
-        return jwt_value
+        return jwt.decode()
 
-    def decode_private_key(self) -> rsa.RSAPrivateKey:
-        private_key_pem = self.private_key.encode("utf-8")
+    def __decode_private_key(self, private_key_pem: str) -> rsa.RSAPrivateKey:
         try:
             private_key = serialization.load_pem_private_key(
-                private_key_pem, None)
+                private_key_pem.encode("utf-8"), None)
         except (ValueError, TypeError) as e:
             raise ValueError("Invalid private key.") from e
 
         return private_key
 
-    def generate_header(self) -> bytes:
+    def __generate_header(self) -> bytes:
         header = {
             "alg": "RS256",
             "typ": "JWT",
@@ -74,7 +68,7 @@ class JwtManager:
         encoded_header = json.dumps(header).encode()
         return base64.urlsafe_b64encode(encoded_header)
 
-    def generate_payload(self) -> bytes:
+    def __generate_payload(self) -> bytes:
         now = datetime.now(timezone.utc)
         issue_time = int(now.timestamp())
         expiration_time = int((now + self.lifetime).timestamp())
@@ -92,7 +86,7 @@ class JwtManager:
         encoded_payload = json.dumps(payload).encode()
         return base64.urlsafe_b64encode(encoded_payload)
 
-    def generate_signature(
+    def __generate_signature(
         self,
         header: bytes,
         payload: bytes,
@@ -105,6 +99,3 @@ class JwtManager:
             hashes.SHA256(),
         )
         return base64.urlsafe_b64encode(signature)
-
-    def get_jwt(self) -> str:
-        return self.jwt_value

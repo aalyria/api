@@ -63,7 +63,7 @@ class SpacetimeCallCredentials(grpc.AuthMetadataPlugin):
                                                 subject=agent_email,
                                                 audience=host,
                                                 private_key_id=private_key_id,
-                                                private_key=private_key)
+                                                private_key_pem=private_key)
         proxy_auth_jwt_manager = JwtManager(
             lifetime=timedelta(hours=1),
             issuer=agent_email,
@@ -73,7 +73,7 @@ class SpacetimeCallCredentials(grpc.AuthMetadataPlugin):
                 cls.DEFAULT_GCP_OIDC_TOKEN_CREATION_PATH),
             target_audience=cls.PROXY_TARGET_AUDIENCE,
             private_key_id=private_key_id,
-            private_key=private_key)
+            private_key_pem=private_key)
         return cls(spacetime_auth_jwt_manager, proxy_auth_jwt_manager,
                    cls.DEFAULT_GCP_OIDC_TOKEN_CREATION_HOST,
                    cls.DEFAULT_GCP_OIDC_TOKEN_CREATION_PATH,
