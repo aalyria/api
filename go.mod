@@ -5,7 +5,7 @@ go 1.23.0
 require (
 	github.com/fullstorydev/grpcurl v1.8.7
 	github.com/google/go-cmp v0.6.0
-	github.com/jhump/protoreflect v1.12.0
+	github.com/jhump/protoreflect v1.15.2
 	github.com/jonboulle/clockwork v0.4.0
 	github.com/rs/zerolog v1.33.0
 	github.com/urfave/cli/v2 v2.25.7
@@ -17,6 +17,7 @@ require (
 )
 
 require (
+	github.com/bufbuild/protocompile v0.6.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
