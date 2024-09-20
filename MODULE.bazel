@@ -129,16 +129,27 @@ go_deps.from_file(go_mod = "//:go.mod")
 use_repo(
     go_deps,
     "com_github_fullstorydev_grpcurl",
+    "com_github_golang_jwt_jwt_v5",
     "com_github_google_go_cmp",
+    "com_github_google_uuid",
     "com_github_jhump_protoreflect",
     "com_github_jonboulle_clockwork",
+    "com_github_prometheus_client_model",
+    "com_github_prometheus_prom2json",
     "com_github_rs_zerolog",
     "com_github_urfave_cli_v2",
+    "com_github_vishvananda_netlink",
+    "io_opentelemetry_go_contrib_instrumentation_google_golang_org_grpc_otelgrpc",
+    "io_opentelemetry_go_otel",
+    "io_opentelemetry_go_otel_exporters_otlp_otlptrace_otlptracegrpc",
+    "io_opentelemetry_go_otel_sdk",
+    "io_opentelemetry_go_otel_trace",
     "org_golang_google_genproto",
     "org_golang_google_genproto_googleapis_rpc",
     "org_golang_google_grpc",
     "org_golang_google_protobuf",
     "org_golang_x_sync",
+    "org_golang_x_sys",
 )
 
 switched_rules = use_extension("@googleapis//:extensions.bzl", "switched_rules")
