@@ -24,8 +24,8 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/cache@v3
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cache/bazelisk
@@ -48,17 +48,17 @@ jobs:
 
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/cache@v3
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cache/bazelisk
             ~/.cache/bazel
           key: bazel-${{ hashFiles('.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
           restore-keys: bazel-
-      - run: bazelisk build "--platforms=@io_bazel_rules_go//go/toolchain:${{ matrix.os }}_${{ matrix.arch }}" "${{ matrix.target }}"
+      - run: bazelisk build "--platforms=@rules_go//go/toolchain:${{ matrix.os }}_${{ matrix.arch }}" "${{ matrix.target }}"
       - name: Upload nbictl binary
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: matrix.target == '//tools/nbictl/cmd/nbictl'
         with:
           name: nbictl-${{ matrix.os }}-${{ matrix.arch }}
@@ -66,7 +66,7 @@ jobs:
             bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl
             bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl.exe
       - name: Upload agent binary
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: matrix.target == '//agent/cmd/agent'
         with:
           name: agent-${{ matrix.os }}-${{ matrix.arch }}
@@ -74,7 +74,7 @@ jobs:
             bazel-bin/agent/cmd/agent/agent_/agent
             bazel-bin/agent/cmd/agent/agent_/agent.exe
       - name: Upload generate_jwt binary
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: matrix.target == '//tools/generate_jwt'
         with:
           name: generate_jwt-${{ matrix.os }}-${{ matrix.arch }}
@@ -86,8 +86,8 @@ jobs:
     needs: [build-and-test]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/cache@v3
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cache/bazelisk
@@ -96,7 +96,7 @@ jobs:
           restore-keys: bazel-
       - run: bazelisk build "//api:api.html"
       - name: Upload API docs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: api.html
           path: |
