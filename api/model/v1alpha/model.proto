@@ -24,23 +24,44 @@ option go_package = "aalyria.com/spacetime/api/model/v1alpha";
 
 service Model {
   // Insert or overwrite an nmts.Entity.
+  //
+  // Returns a gRPC error whenver:
+  //   - the supplied nmts.Entity's Id is ill-formed
+  //   - the supplied nmts.Entity's Kind is missing
+  //   - the supplied nmts.Entity would change the Kind of an existing
+  //     entity (with the same Id), because doing so could circumvent
+  //     restrictions on permitted Relationships
   rpc UpsertEntity(UpsertEntityRequest) returns (UpsertEntityResponse) {}
+
   // Change a portion of an nmts.Entity.
   rpc UpdateEntity(UpdateEntityRequest) returns (UpdateEntityResponse) {}
+
   // Delete an nmts.Entity.
+  //
+  // Returns a gRPC NotFound error if an Entity with the supplied Id
+  // is not in the model.
   rpc DeleteEntity(DeleteEntityRequest) returns (google.protobuf.Empty) {}
 
   // Insert an nmts.Relationship.
+  //
+  // Returns a gRPC error if any of the preconditions for a valid
+  // Relationship are not met (see NMTS's //lib/validation).
   rpc InsertRelationship(InsertRelationshipRequest)
       returns (InsertRelationshipResponse) {}
+
   // Delete an nmts.Relationship.
+  //
+  // Returns a gRPC NotFound error if the Relationship is not in the model.
   rpc DeleteRelationship(DeleteRelationshipRequest)
       returns (google.protobuf.Empty) {}
 
-  // Retrience an nmts.Entity and all the associated ntms.Relationships.
+  // Retrieve an nmts.Entity and any associated ntms.Relationships.
+  //
+  // Returns a gRPC NotFound error if an Entity with the supplied Id
+  // is not in the model.
   rpc GetEntity(GetEntityRequest) returns (GetEntityResponse) {}
 
-  // List nmts.Entity and nmts.Relatioship instances present in the model.
+  // Return all nmts.Entity and nmts.Relatioship instances in the model.
   rpc ListElements(ListElementsRequest) returns (ListElementsResponse) {}
 }
 
