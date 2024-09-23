@@ -79,7 +79,7 @@ go_test(
         "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//testing/protocmp",
         "@org_golang_x_sync//errgroup",
-        "@rules_go//go/tools/bazel:go_default_library",
+        "@rules_go//go/tools/bazel",
     ],
 )
 
