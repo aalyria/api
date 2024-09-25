@@ -14,6 +14,7 @@
 
 load("@protobuf//bazel:proto_library.bzl", "proto_library")
 load("@rules_go//proto:def.bzl", "go_proto_library")
+load("@rules_proto_grpc_cpp//:defs.bzl", "cpp_grpc_library", "cpp_proto_library")
 
 proto_library(
     name = "solver_proto",
@@ -37,5 +38,55 @@ go_proto_library(
     deps = [
         "//api/nbi/v1alpha/resources:nbi_resources_go_grpc",
         "@org_golang_google_genproto//googleapis/type/interval",
+    ],
+)
+
+proto_library(
+    name = "beam_hopping_proto",
+    srcs = ["beam_hopping.proto"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//api/common:common_proto",
+        "//api/scheduling/v1alpha:scheduling_proto",
+        "//api/telemetry:telemetry_proto",
+        "@protobuf//:timestamp_proto",
+    ],
+)
+
+cpp_grpc_library(
+    name = "beam_hopping_cpp_grpc",
+    protos = [":beam_hopping_proto"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//api/common:common_cpp_proto",
+        "//api/scheduling/v1alpha:scheduling_cpp_grpc",
+        "//api/telemetry:telemetry_cpp_grpc",
+        "@googleapis//google/rpc:status_cc_proto",
+    ],
+)
+
+cpp_proto_library(
+    name = "beam_hopping_cpp_proto",
+    protos = ["beam_hopping_proto"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//api/common:common_cpp_proto",
+        "//api/solver/v1alpha:beam_hopping_cpp_grpc",
+    ],
+)
+
+go_proto_library(
+    name = "beam_hopping_go_grpc",
+    compilers = [
+        "@rules_go//proto:go_proto",
+        "@rules_go//proto:go_grpc_v2",
+    ],
+    importpath = "aalyria.com/spacetime/api/beam_hopping/v1alpha",
+    proto = ":beam_hopping_proto",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//api/common:common_go_proto",
+        "//api/scheduling/v1alpha:scheduling_go_grpc",
+        "//api/telemetry:telemetry_go_grpc",
     ],
 )
