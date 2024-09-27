@@ -98,6 +98,10 @@ message ConnectionParams {
   // The minimum amount of time to wait for a connection to complete. Defaults
   // to 20 seconds.
   google.protobuf.Duration min_connect_timeout = 5;
+  // The amount of time between keepalive pings on an open connection. Can't be
+  // lower than 10s. See
+  // https://github.com/grpc/proposal/blob/master/A8-client-side-keepalive.md
+  google.protobuf.Duration keepalive_period = 6;
 }
 
 // A node the agent represents.

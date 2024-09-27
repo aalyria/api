@@ -50,6 +50,7 @@ go_library(
         "@org_golang_google_grpc//credentials",
         "@org_golang_google_grpc//credentials/insecure",
         "@org_golang_google_grpc//encoding/gzip",
+        "@org_golang_google_grpc//keepalive",
         "@org_golang_google_protobuf//types/known/anypb",
         "@org_golang_x_sync//errgroup",
     ] + select({

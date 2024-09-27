@@ -51,6 +51,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/encoding/gzip"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/protobuf/types/known/anypb"
 
 	agent "aalyria.com/spacetime/agent"
@@ -313,6 +314,10 @@ func getDialOpts(ctx context.Context, connParams *configpb.ConnectionParams, clo
 				otelgrpc.WithPropagators(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{})),
 			)),
 		grpc.WithDefaultCallOptions(grpc.UseCompressor(gzip.Name)),
+		grpc.WithKeepaliveParams(keepalive.ClientParameters{
+			Time:                cmp.Or(connParams.GetKeepalivePeriod().AsDuration(), 30*time.Second),
+			PermitWithoutStream: true,
+		}),
 	}
 
 	backoffParams := connParams.GetBackoffParams()
