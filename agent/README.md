@@ -212,3 +212,28 @@ sample programs that demonstrate basic error handling and message parsing in dif
 - examples/enact_flow_forward_updates.py: A python script that reads the input messages as ad-hoc
   JSON, implements some basic error handling, and demonstrates how one might go about enacting flow
   updates (the actual logic for forwarding packets is left as an exercise for the reader).
+
+## Operational notes
+
+### Time synchronization
+
+All agent implementations and instantiations MUST have some means to maintain time synchronization.
+Ideally an agent's time would be synchronzied to the same ultimate source(s) used by Spacetime itself, though this is not a strict requirement.
+
+RECOMMENDED time synchronization mechanisms include:
+* GPS or another Global Navigation Satellite System (GNSS) PNT service
+* Network Time Protocol v4 ([NTPv4](https://www.rfc-editor.org/rfc/rfc5905.html)), ideally with Network Time Security ([NTS](https://www.rfc-editor.org/rfc/rfc8915.html))
+* IEEE Precision Time Protocol ([IEEE 1588-2019](https://ieeexplore.ieee.org/document/9120376))
+
+Some experimental time synchronization mechanisms include:
+* Network Time Protocol v5 ([draft](https://datatracker.ietf.org/doc/draft-ietf-ntp-ntpv5/))
+* roughtime ([draft](https://datatracker.ietf.org/doc/draft-ietf-ntp-roughtime/))
+
+An agent SHOULD maintain a sub-second difference from its chosen time source(s), and all RECOMMENDED time synchronizations can in principle achieve much better accuracies.
+The exact requirements and realistically achievable accuracies, however, are specific to a given deployment scenario.
+
+If an agent instance or its underlying platform cannot maintain adequate time synchronization, for a mission-specific definition of "adequate", then it MUST do one of the following:
+* include notification of the loss of adequate time synchronization with any reported telemetry, or
+* not report telemetry (information is too untrustworthy to be useful).
+
+An agent MAY continue to enact Scheduling API commands, especially if doing so might lead to restoring adequate time synchronization (e.g. restoration of a data plane connection over which a networked time protocol's messages are forwarded).
