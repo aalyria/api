@@ -228,7 +228,7 @@ func setConfig(outWriter, errWriter io.Writer, confToCreate *nbictlpb.Config, co
 		confProto.Configs = append(confProto.Configs, confToCreate)
 	}
 
-	nbiConfigTextProto, err := prototext.Marshal(confProto)
+	nbiConfigTextProto, err := prototext.MarshalOptions{Multiline: true}.Marshal(confProto)
 	if err != nil {
 		return fmt.Errorf("unable to convert proto into textproto format: %w", err)
 	}

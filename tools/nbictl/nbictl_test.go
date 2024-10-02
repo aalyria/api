@@ -41,16 +41,18 @@ import (
 type testApp struct {
 	*cli.App
 
+	stdin  *bytes.Buffer
 	stdout *bytes.Buffer
 	stderr *bytes.Buffer
 }
 
 func newTestApp() testApp {
-	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+	stdin, stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}, &bytes.Buffer{}
 	app := App()
+	app.Reader = stdin
 	app.Writer = stdout
 	app.ErrWriter = stderr
-	return testApp{stdout: stdout, stderr: stderr, App: app}
+	return testApp{stdin: stdin, stdout: stdout, stderr: stderr, App: app}
 }
 
 func TestList_rejectsUnknownEntities(t *testing.T) {

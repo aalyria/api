@@ -21,6 +21,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -40,6 +41,10 @@ import (
 )
 
 func openConnection(appCtx *cli.Context) (*grpc.ClientConn, error) {
+	return openAPIConnection(appCtx, "")
+}
+
+func openAPIConnection(appCtx *cli.Context, apiSubDomain string) (*grpc.ClientConn, error) {
 	ctxName := appCtx.String("context")
 
 	appConfDir, err := getAppConfDir(appCtx)
@@ -50,7 +55,27 @@ func openConnection(appCtx *cli.Context) (*grpc.ClientConn, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to obtain context information: %w", err)
 	}
+	setting.Url = adjustURLForAPISubDomain(setting.GetUrl(), apiSubDomain)
 	return dial(appCtx.Context, setting, nil)
+}
+
+func adjustURLForAPISubDomain(url string, apiSubDomain string) string {
+	// Unexpectedly empty arguments or already the subdomain sought.
+	if url == "" || apiSubDomain == "" || strings.HasPrefix(url, apiSubDomain+".") {
+		return url
+	}
+
+	// If the |url| is an ip:port then best to leave it alone.
+	if host, _, err := net.SplitHostPort(url); err == nil {
+		if net.ParseIP(host) != nil {
+			return url
+		}
+	}
+
+	// Earlier uses recommended setting the URL to "nbi.<instance_hostname>".
+	url = strings.TrimPrefix(url, "nbi.")
+
+	return apiSubDomain + "." + url
 }
 
 func dial(ctx context.Context, setting *nbictlpb.Config, httpClient *http.Client) (*grpc.ClientConn, error) {

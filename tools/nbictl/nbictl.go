@@ -402,6 +402,55 @@ func App() *cli.App {
 				Action: SetConfig,
 			},
 			{
+				Name:     "model",
+				Usage:    "Provides subcommands for accessing and managing the model elements comprising the digital twin.",
+				Category: "model",
+				Subcommands: []*cli.Command{
+					{
+						Name:     "upsert-entity",
+						Usage:    "Upsert the model NMTS Entity contained within the file provided on the command line ('-' reads from stdin).",
+						Category: "model entities",
+						Action:   ModelUpsertEntity,
+					},
+					{
+						Name:     "update-entity",
+						Usage:    "Update the model using NMTS PartialEntity contained within the file provided on the command line ('-' reads from stdin).",
+						Category: "model entities",
+						Action:   ModelUpdateEntity,
+					},
+					{
+						Name:     "delete-entity",
+						Usage:    "Delete the model NMTS Entity associated with the entity ID provided on the command line.",
+						Category: "model entities",
+						Action:   ModelDeleteEntity,
+					},
+					{
+						Name:     "get-entity",
+						Usage:    "Get the model NMTS Entity associated with the entity ID given on the command line.",
+						Category: "model entities",
+						Action:   ModelGetEntity,
+					},
+					{
+						Name:     "insert-relationship",
+						Usage:    "Insert the model NMTS Relationship contained within the file provided on the command line ('-' reads from stdin).",
+						Category: "model relationships",
+						Action:   ModelInsertRelationship,
+					},
+					{
+						Name:     "delete-relationship",
+						Usage:    "Delete the model NMTS Relationship contained within the file provided on the command line ('-' reads from stdin).",
+						Category: "model relationships",
+						Action:   ModelDeleteRelationship,
+					},
+					{
+						Name:     "list-elements",
+						Usage:    "List all model elements (NMTS Entities and Relationships).",
+						Category: "model entities and relationships",
+						Action:   ModelListElements,
+					},
+				},
+			},
+			{
 				Name:     "grpcurl",
 				Usage:    "Provides curl-like equivalents for interacting with the NBI.",
 				Category: "grpc",

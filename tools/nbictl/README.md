@@ -143,6 +143,38 @@ Sets or updates a configuration profile that contains NBI connection settings. Y
 
 **--user_id**="": User ID associated with the private key provided by Aalyria.
 
+## model
+
+Provides subcommands for accessing and managing the model elements comprising the digital twin.
+
+### upsert-entity
+
+Upsert the model NMTS Entity contained within the file provided on the command line ('-' reads from stdin).
+
+### update-entity
+
+Update the model using NMTS PartialEntity contained within the file provided on the command line ('-' reads from stdin).
+
+### delete-entity
+
+Delete the model NMTS Entity associated with the entity ID provided on the command line.
+
+### get-entity
+
+Get the model NMTS Entity associated with the entity ID given on the command line.
+
+### insert-relationship
+
+Insert the model NMTS Relationship contained within the file provided on the command line ('-' reads from stdin).
+
+### delete-relationship
+
+Delete the model NMTS Relationship contained within the file provided on the command line ('-' reads from stdin).
+
+### list-elements
+
+List all model elements (NMTS Entities and Relationships).
+
 ## grpcurl
 
 Provides curl-like equivalents for interacting with the NBI.

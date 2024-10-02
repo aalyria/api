@@ -24,12 +24,14 @@ go_library(
         "connection.go",
         "generate_rsa_key.go",
         "grpcurl.go",
+        "model.go",
         "nbictl.go",
     ],
     importpath = "aalyria.com/spacetime/github/tools/nbictl",
     visibility = ["//visibility:public"],
     deps = [
         "//api/common:common_go_proto",
+        "//api/model/v1alpha:v1alpha_go_proto",
         "//api/nbi/v1alpha:v1alpha_go_proto",
         "//api/nbi/v1alpha/resources:nbi_resources_go_grpc",
         "//auth",
@@ -51,6 +53,7 @@ go_library(
         "@org_golang_google_protobuf//types/known/durationpb",
         "@org_golang_google_protobuf//types/known/timestamppb",
         "@org_golang_x_sync//errgroup",
+        "@org_outernetcouncil_nmts//proto:nmts_go_proto",
     ],
 )
 
@@ -59,13 +62,16 @@ go_test(
     srcs = [
         "config_test.go",
         "connection_test.go",
+        "fake_modelapi_server_test.go",
         "fake_nbi_server_test.go",
         "generate_rsa_key_test.go",
+        "model_test.go",
         "nbictl_test.go",
     ],
     embed = [":nbictl"],
     deps = [
         "//api/common:common_go_proto",
+        "//api/model/v1alpha:v1alpha_go_proto",
         "//api/nbi/v1alpha:v1alpha_go_proto",
         "//api/nbi/v1alpha/resources:nbi_resources_go_grpc",
         "//auth/authtest",
@@ -78,7 +84,11 @@ go_test(
         "@org_golang_google_protobuf//encoding/prototext",
         "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//testing/protocmp",
+        "@org_golang_google_protobuf//types/known/emptypb",
+        "@org_golang_google_protobuf//types/known/fieldmaskpb",
         "@org_golang_x_sync//errgroup",
+        "@org_outernetcouncil_nmts//proto:nmts_go_proto",
+        "@org_outernetcouncil_nmts//proto/ek/physical:physical_go_proto",
         "@rules_go//go/tools/bazel",
     ],
 )
