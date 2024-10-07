@@ -41,7 +41,7 @@ archive_override(
     urls = "https://github.com/protocolbuffers/protobuf/archive/refs/tags/v28.0-rc3.zip",
 )
 
-bazel_dep(name = "gazelle", version = "0.38.0")
+bazel_dep(name = "gazelle", version = "0.39.1")
 bazel_dep(name = "googleapis", version = "0.0.0-20240326-1c8d509c5")
 
 # This override is necessary to prevent bzlmod from resolving grpc-java to a
