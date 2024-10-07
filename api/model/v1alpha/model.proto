@@ -95,19 +95,12 @@ message GetEntityRequest {
   string entity_id = 1;
 }
 message GetEntityResponse {
-  nmts.Entity entity = 1;
-
-  // The set of nmts.Relationships this entity originates, if any.
-  repeated nmts.Relationship a_relationships = 2;
-
-  // The set of nmts.Relationships this entity terminates, if any.
-  repeated nmts.Relationship z_relationships = 3;
+  nmts.EntityEdges entity_edges = 1;
 }
 
 message ListElementsRequest {
   // TODO: Support expressing some filtering/querying.
 }
 message ListElementsResponse {
-  repeated nmts.Entity entities = 1;
-  repeated nmts.Relationship relationships = 2;
+  nmts.Fragment elements = 1;
 }
