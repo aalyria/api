@@ -23,8 +23,8 @@ import (
 	"os"
 	"time"
 
-	apipb "aalyria.com/spacetime/api/common"
 	"aalyria.com/spacetime/agent/telemetry/prometheus"
+	apipb "aalyria.com/spacetime/api/common"
 
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/encoding/prototext"
@@ -38,7 +38,7 @@ func writeProtoAsText(w io.Writer, m proto.Message) error {
 }
 
 func writeProtoAsJSON(w io.Writer, m proto.Message) error {
-	_, err := w.Write(append([]byte(protojson.MarshalOptions{Indent: "  "}.Format(m)), []byte{'\r', '\n'}...))
+	_, err := w.Write(append([]byte(protojson.MarshalOptions{Indent: "  ", EmitDefaultValues: true}.Format(m)), []byte{'\r', '\n'}...))
 	return err
 }
 
