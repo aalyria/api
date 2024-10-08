@@ -17,6 +17,7 @@ syntax = "proto3";
 package aalyria.spacetime.scheduling.v1alpha;
 
 import "google/protobuf/empty.proto";
+import "google/protobuf/field_mask.proto";
 import "google/protobuf/timestamp.proto";
 import "google/rpc/status.proto";
 
@@ -128,17 +129,15 @@ message CreateEntryRequest {
   google.protobuf.Timestamp time = 4;
 
   oneof configuration_change {
-    SetBeam set_beam = 11;
+    UpdateBeam update_beam = 15;
     DeleteBeam delete_beam = 12;
-    SetBeamHoppingPlan set_beam_hopping_plan = 13;
-    DeleteBeamHoppingPlan delete_beam_hopping_plan = 14;
     SetRoute set_route = 5;
     DeleteRoute delete_route = 6;
     SetSrPolicy set_sr_policy = 9;
     DeleteSrPolicy delete_sr_policy = 10;
   }
 
-  reserved 7, 8;
+  reserved 7, 8, 11, 13, 14;
 }
 
 message SetRoute {
@@ -177,42 +176,39 @@ message DeleteRoute {
   string to = 2;
 }
 
-message SetBeam {
+message Beam {
   string id = 1;
 
-  // The ID of the modem associated with the beam. Present if the beam is not
-  // beam-hopped. If empty, the beam is beam-hopped, and its modem and
-  // beam-hopping configuration can be found in the associated beam-hopping
-  // plan.
-  string modem_id = 2;
-
-  BeamTarget target = 3;
+  BeamTarget target = 2;
 
   // Parameters specifying the configuration of the beam in the receive
-  // direction. Absent if the beam is to be used for transmit only.
-  RxConfiguration rx = 4;
+  // direction. Empty if the beam is to be used for transmit only.
+  map<string, RxConfiguration> rxs = 3;
 
   // Parameters specifying the configuration of the beam in the transmit
-  // direction. Absent if the beam is to be used for receiving only.
-  TxConfiguration tx = 5;
+  // direction. Empty if the beam is to be used for receiving only.
+  map<string, TxConfiguration> txs = 4;
 
   // The collection of endpoints served by the beam.
   // For example, a collection of user terminals (UTs) served.
   //
-  // Each endpoint is the ID of a network node in Spacetime's network model.
-  repeated Endpoint endpoints = 6;
+  // Each key is the ID of the endpoint's network node in Spacetime's network
+  // model.
+  map<string, Endpoint> endpoints = 5;
 
   // ID of the beam shape.
-  string shape_id = 7;
+  string shape_id = 6;
+
+  oneof modem {
+    // The ID of the modem associated with the beam. Present if the beam is not
+    // beam-hopped. If empty, the beam is beam-hopped, and its modem and
+    // beam-hopping configuration can be found in the beam-hopping plan.
+    string modem_id = 7;
+    BeamHoppingPlan beam_hopping_plan = 8;
+  }
 }
 
-message DeleteBeam {
-  string id = 1;
-}
-
-message SetBeamHoppingPlan {
-  string beam_id = 1;
-
+message BeamHoppingPlan {
   message Section {
     // The length of the section, in number of time slots.
     int32 length = 1;
@@ -231,11 +227,18 @@ message SetBeamHoppingPlan {
     // entries.
     repeated Entry entries = 2;
   }
-  repeated Section sections = 2;
+
+  repeated Section sections = 1;
 }
 
-message DeleteBeamHoppingPlan {
-  string beam_id = 1;
+message UpdateBeam {
+  Beam beam = 1;
+
+  google.protobuf.FieldMask update_mask = 2;
+}
+
+message DeleteBeam {
+  string id = 1;
 }
 
 message BeamTarget {
@@ -306,10 +309,11 @@ enum ModemMode {
 }
 
 message Endpoint {
-  string id = 1;
   string lowest_supported_rx_modcod = 2;
   double rx_reference_throughput_bps = 3;
   double tx_reference_throughput_bps = 4;
+
+  reserved 1;
 }
 
 // A Segment Routing Policy Architecture policy description.

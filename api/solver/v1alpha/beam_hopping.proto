@@ -138,10 +138,16 @@ message GetBeamHoppingPlansRequest {
 
 }
 
+message BeamIdAndHoppingPlan {
+  string beam_id = 1;
+  aalyria.spacetime.scheduling.v1alpha.BeamHoppingPlan beam_hopping_plan = 2;
+}
+
 // The response for aalyria.spacetime.api.beam_hopping.v1alpha
 // .BeamHoppingSolver.GetBeamHoppingPlans
 message GetBeamHoppingPlansResponse {
   // A list of the computed beam hopping plans.
-  repeated aalyria.spacetime.scheduling.v1alpha.SetBeamHoppingPlan 
-    beam_hopping_plans = 1;
+  repeated BeamIdAndHoppingPlan beam_hopping_plans = 2;
+
+  reserved 1;
 }
