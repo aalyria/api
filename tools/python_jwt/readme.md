@@ -10,6 +10,10 @@ Then, install the requirements:
 ```bash
 pip install -r requirements.txt
 ```
+You also need to install the library `grpcio` like so:
+```bash
+pip install grpcio
+```
 
 You have to fill in the following data:
 
