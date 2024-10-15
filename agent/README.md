@@ -56,7 +56,7 @@ network_nodes: {
   enactment_driver: {
     connection_params: {
       # TODO: change to point to the domain of your spacetime instance
-      endpoint_uri: "dns:///scheduling.my_instance.spacetime.aalyria.com"
+      endpoint_uri: "scheduling.my_instance.spacetime.aalyria.com"
 
       transport_security: {
         system_cert_pool: {}
@@ -98,7 +98,7 @@ network_nodes: {
   enactment_driver: {
     connection_params: {
       # TODO: change to point to the domain of your spacetime instance
-      endpoint_uri: "dns:///scheduling.my_instance.spacetime.aalyria.com"
+      endpoint_uri: "scheduling.my_instance.spacetime.aalyria.com"
 
       transport_security: {
         system_cert_pool: {}

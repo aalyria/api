@@ -392,7 +392,7 @@ func App() *cli.App {
 					},
 					&cli.StringFlag{
 						Name:  "url",
-						Usage: "URL of the NBI endpoint.",
+						Usage: "NBI endpoint specified as `host[:port]` (port is optional and defaults to 443).",
 					},
 					&cli.StringFlag{
 						Name:  "transport_security",

@@ -160,7 +160,7 @@ func TestDial_serverCertificate(t *testing.T) {
 
 	// Invoke OpenConnection
 	nbiConf := &nbictlpb.Config{
-		Url:     "passthrough:///" + lis.Addr().String(),
+		Url:     lis.Addr().String(),
 		PrivKey: userKeys.key,
 		Name:    "test",
 		KeyId:   "1",

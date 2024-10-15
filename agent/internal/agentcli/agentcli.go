@@ -28,7 +28,6 @@ import (
 	"net"
 	"net/http"
 	_ "net/http/pprof"
-	"net/url"
 	"os"
 	"os/signal"
 	"strings"
@@ -362,7 +361,7 @@ func getDialOpts(ctx context.Context, connParams *configpb.ConnectionParams, clo
 		if err != nil {
 			return nil, err
 		}
-		uri, err := url.Parse(connParams.GetEndpointUri())
+		host, _, err := net.SplitHostPort(connParams.GetEndpointUri())
 		if err != nil {
 			return nil, fmt.Errorf("parsing %q: %w", connParams.GetEndpointUri(), err)
 		}
@@ -372,7 +371,7 @@ func getDialOpts(ctx context.Context, connParams *configpb.ConnectionParams, clo
 			Email:        jwtSpec.GetEmail(),
 			PrivateKeyID: jwtSpec.GetPrivateKeyId(),
 			PrivateKey:   pkeySrc,
-			Host:         strings.TrimPrefix(cmp.Or(uri.Host, uri.Path), "/"),
+			Host:         host,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("generating authorization JWT: %w", err)
@@ -387,6 +386,11 @@ func getDialOpts(ctx context.Context, connParams *configpb.ConnectionParams, clo
 }
 
 func (ac *AgentConf) getNodeOpts(ctx context.Context, node *configpb.NetworkNode, clock clockwork.Clock) (nodeOpts []agent.NodeOption, err error) {
+	// EndpointUri should be in the format `hostname[:port]`, but we want to backward support configs that used the dns:/// prefix.
+	const dnsSchema = "dns:///"
+	node.GetEnactmentDriver().GetConnectionParams().EndpointUri = strings.TrimPrefix(node.GetEnactmentDriver().GetConnectionParams().EndpointUri, dnsSchema)
+	node.GetTelemetryDriver().GetConnectionParams().EndpointUri = strings.TrimPrefix(node.GetTelemetryDriver().GetConnectionParams().EndpointUri, dnsSchema)
+
 enactmentSwitch:
 	switch conf := node.GetEnactmentDriver().GetType().(type) {
 	case *configpb.NetworkNode_EnactmentDriver_ExternalCommand:

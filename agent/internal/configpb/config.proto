@@ -86,8 +86,7 @@ message ConnectionParams {
 
   // The transport security options to use. Required.
   TransportSecurity transport_security = 1;
-  // The gRPC URI for the relevant service (see
-  // https://github.com/grpc/grpc/blob/master/doc/naming.md). Required.
+  // The "host[:port]" network endpoint the relevant service. Required.
   string endpoint_uri = 2;
   // The strategy to use for authorization. Required.
   AuthStrategy auth_strategy = 3;

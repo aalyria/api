@@ -16,14 +16,12 @@ package nbictl
 
 import (
 	"bytes"
-	"cmp"
 	"context"
 	"crypto/x509"
 	"errors"
 	"fmt"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -54,6 +52,11 @@ func openAPIConnection(appCtx *cli.Context, apiSubDomain string) (*grpc.ClientCo
 	setting, err := readConfig(ctxName, filepath.Join(appConfDir, confFileName))
 	if err != nil {
 		return nil, fmt.Errorf("unable to obtain context information: %w", err)
+	}
+	var containsDnsSchema bool
+	setting.Url, containsDnsSchema = strings.CutPrefix(setting.GetUrl(), "dns://")
+	if containsDnsSchema {
+		fmt.Fprintf(appCtx.App.ErrWriter, "Warning: the URL setting should not contain the dns:// prefix, please provide only host[:port]\n")
 	}
 	setting.Url = adjustURLForAPISubDomain(setting.GetUrl(), apiSubDomain)
 	return dial(appCtx.Context, setting, nil)
@@ -120,7 +123,7 @@ func getDialOpts(ctx context.Context, setting *nbictlpb.Config, httpClient *http
 
 	// Unless transport-security is set to Insecure, add Spacetime PerRPCCredentials.
 	if _, insecure := setting.GetTransportSecurity().GetType().(*nbictlpb.Config_TransportSecurity_Insecure); !insecure {
-		uri, err := url.Parse(setting.GetUrl())
+		host, _, err := net.SplitHostPort(setting.GetUrl())
 		if err != nil {
 			return nil, fmt.Errorf("parsing %q: %w", setting.GetUrl(), err)
 		}
@@ -140,7 +143,7 @@ func getDialOpts(ctx context.Context, setting *nbictlpb.Config, httpClient *http
 			PrivateKey:   privateKey,
 			PrivateKeyID: setting.GetKeyId(),
 			Email:        setting.GetEmail(),
-			Host:         strings.TrimPrefix(cmp.Or(uri.Host, uri.Path), "/"),
+			Host:         host,
 		}
 
 		creds, err := auth.NewCredentials(ctx, config)

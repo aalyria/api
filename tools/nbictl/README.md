@@ -139,7 +139,7 @@ Sets or updates a configuration profile that contains NBI connection settings. Y
 
 **--transport_security**="": Transport security to use when connecting to the NBI service. Allowed values: [insecure, system_cert_pool]
 
-**--url**="": URL of the NBI endpoint.
+**--url**="": NBI endpoint specified as `host[:port]` (port is optional and defaults to 443).
 
 **--user_id**="": User ID associated with the private key provided by Aalyria.
 
