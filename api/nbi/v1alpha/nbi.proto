@@ -47,7 +47,6 @@ enum EntityType {
   INTERFACE_LINK_REPORT = 5; 
   INTERFERENCE_CONSTRAINT = 23;
   // WARNING: This type is under development and not fully supported.
-  MOTION_DEFINITION = 4;    
   NETWORK_NODE = 3;         
   NETWORK_STATS_REPORT = 8; 
   PLATFORM_DEFINITION = 1;  
@@ -56,7 +55,7 @@ enum EntityType {
   // WARNING: This type is under development and not fully supported.
   COMPUTED_MOTION = 7; 
 
-  reserved 14, 15, 17, 20, 25 to max;  // (-- Next ID --)
+  reserved 4, 14, 15, 17, 20, 25 to max;  // (-- Next ID --)
 }
 
 message EntityGroup {
@@ -116,7 +115,6 @@ message Entity {
     aalyria.spacetime.api.nbi.v1alpha.resources.InterferenceConstraint
         interference_constraint = 29;
     // WARNING: This message is under development and not fully supported.
-    aalyria.spacetime.api.common.MotionDefinition motion_definition = 7;
     aalyria.spacetime.api.nbi.v1alpha.resources.NetworkNode network_node = 6;
     aalyria.spacetime.api.common.NetworkStatsReport network_stats_report = 11;
     aalyria.spacetime.api.common.PlatformDefinition platform = 4;
@@ -126,7 +124,7 @@ message Entity {
         transceiver_link_report = 25;
   }
 
-  reserved 18, 23, 26, 35 to max;
+  reserved 7, 18, 23, 26, 35 to max;
 }
 
 service NetOps {

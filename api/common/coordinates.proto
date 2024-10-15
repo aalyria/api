@@ -580,10 +580,3 @@ message CcsdsOrbitEphemerisMessage {
   // CCSDS OEM File as a String
   optional string file = 1;
 }
-
-// WARNING: This field is under development and not fully supported.
-message MotionDefinition {
-  // A list of `Motion` descriptions over time, sorted by the `interval` of
-  // applicability defined within each message.
-  repeated Motion motions = 1;
-}
