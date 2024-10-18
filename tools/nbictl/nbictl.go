@@ -420,7 +420,7 @@ func App() *cli.App {
 					},
 					{
 						Name:     "delete-entity",
-						Usage:    "Delete the model NMTS Entity associated with the entity ID provided on the command line.",
+						Usage:    "Delete the model NMTS Entity associated with the entity ID provided on the command line, along with any relationships in which it participates.",
 						Category: "model entities",
 						Action:   ModelDeleteEntity,
 					},

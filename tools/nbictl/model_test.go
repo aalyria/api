@@ -270,7 +270,7 @@ var testCases = []testCase{
 		desc:            "'model delete-entity' with one argument calls API as expected",
 		fileContents:    nil,
 		responseError:   nil,
-		responseMessage: &emptypb.Empty{},
+		responseMessage: &modelpb.DeleteEntityResponse{},
 		cmdLineArgs:     []string{"model", "delete-entity", "uuid-1234"},
 		wantAppError:    false,
 		wantRequest: &modelpb.DeleteEntityRequest{

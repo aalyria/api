@@ -73,8 +73,8 @@ func (s *FakeModelServer) UpdateEntity(ctx context.Context, req *modelpb.UpdateE
 	return handleCall[*modelpb.UpdateEntityResponse](s, ctx, req)
 }
 
-func (s *FakeModelServer) DeleteEntity(ctx context.Context, req *modelpb.DeleteEntityRequest) (*emptypb.Empty, error) {
-	return handleCall[*emptypb.Empty](s, ctx, req)
+func (s *FakeModelServer) DeleteEntity(ctx context.Context, req *modelpb.DeleteEntityRequest) (*modelpb.DeleteEntityResponse, error) {
+	return handleCall[*modelpb.DeleteEntityResponse](s, ctx, req)
 }
 
 func (s *FakeModelServer) InsertRelationship(ctx context.Context, req *modelpb.InsertRelationshipRequest) (*modelpb.InsertRelationshipResponse, error) {

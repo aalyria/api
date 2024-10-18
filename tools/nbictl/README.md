@@ -157,7 +157,7 @@ Update the model using NMTS PartialEntity contained within the file provided on 
 
 ### delete-entity
 
-Delete the model NMTS Entity associated with the entity ID provided on the command line.
+Delete the model NMTS Entity associated with the entity ID provided on the command line, along with any relationships in which it participates.
 
 ### get-entity
 

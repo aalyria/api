@@ -118,11 +118,14 @@ func ModelDeleteEntity(appCtx *cli.Context) error {
 	defer conn.Close()
 	modelClient := modelpb.NewModelClient(conn)
 
-	_, err = modelClient.DeleteEntity(
+	resp, err := modelClient.DeleteEntity(
 		appCtx.Context,
 		&modelpb.DeleteEntityRequest{
 			EntityId: appCtx.Args().First(),
 		})
+	if err == nil {
+		fmt.Fprintf(appCtx.App.ErrWriter, "# also deleted %d relationship/s\n", len(resp.DeletedRelationships))
+	}
 	return err
 }
 
