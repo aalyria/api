@@ -59,28 +59,40 @@ jobs:
       - run: bazelisk build "--platforms=@rules_go//go/toolchain:${{ matrix.os }}_${{ matrix.arch }}" "${{ matrix.target }}"
       - name: Upload nbictl binary
         uses: actions/upload-artifact@v4
-        if: matrix.target == '//tools/nbictl/cmd/nbictl'
+        if: ${{ matrix.target == '//tools/nbictl/cmd/nbictl' && matrix.os != 'windows' }}
         with:
           name: nbictl-${{ matrix.os }}-${{ matrix.arch }}
-          path: |
-            bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl
-            bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl.exe
+          path: bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl
+      - name: Upload nbictl binary - Windows
+        uses: actions/upload-artifact@v4
+        if: ${{ matrix.target == '//tools/nbictl/cmd/nbictl' && matrix.os == 'windows' }}
+        with:
+          name: nbictl-${{ matrix.os }}-${{ matrix.arch }}
+          path: bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl.exe
       - name: Upload agent binary
         uses: actions/upload-artifact@v4
-        if: matrix.target == '//agent/cmd/agent'
+        if: ${{ matrix.target == '//agent/cmd/agent' && matrix.os != 'windows' }}
         with:
           name: agent-${{ matrix.os }}-${{ matrix.arch }}
-          path: |
-            bazel-bin/agent/cmd/agent/agent_/agent
-            bazel-bin/agent/cmd/agent/agent_/agent.exe
+          path: bazel-bin/agent/cmd/agent/agent_/agent
+      - name: Upload agent binary - Windows
+        uses: actions/upload-artifact@v4
+        if: ${{ matrix.target == '//agent/cmd/agent' && matrix.os == 'windows' }}
+        with:
+          name: agent-${{ matrix.os }}-${{ matrix.arch }}
+          path: bazel-bin/agent/cmd/agent/agent_/agent.exe
       - name: Upload generate_jwt binary
         uses: actions/upload-artifact@v4
-        if: matrix.target == '//tools/generate_jwt'
+        if: ${{ matrix.target == '//tools/generate_jwt' && matrix.os != 'windows' }}
         with:
           name: generate_jwt-${{ matrix.os }}-${{ matrix.arch }}
-          path: |
-            bazel-bin/tools/generate_jwt/generate_jwt_/generate_jwt
-            bazel-bin/tools/generate_jwt/generate_jwt_/generate_jwt.exe
+          path: bazel-bin/tools/generate_jwt/generate_jwt_/generate_jwt
+      - name: Upload generate_jwt binary - Windows
+        uses: actions/upload-artifact@v4
+        if: ${{ matrix.target == '//tools/generate_jwt' && matrix.os == 'windows' }}
+        with:
+          name: generate_jwt-${{ matrix.os }}-${{ matrix.arch }}
+          path: bazel-bin/tools/generate_jwt/generate_jwt_/generate_jwt.exe
 
   build-and-upload-docs:
     needs: [build-and-test]
