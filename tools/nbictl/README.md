@@ -171,6 +171,10 @@ Insert the model NMTS Relationship contained within the file provided on the com
 
 Delete the model NMTS Relationship contained within the file provided on the command line ('-' reads from stdin).
 
+### upsert-fragment
+
+Upsert the model NMTS Fragment contained within the file provided on the command line ('-' reads from stdin).
+
 ### list-elements
 
 List all model elements (NMTS Entities and Relationships).

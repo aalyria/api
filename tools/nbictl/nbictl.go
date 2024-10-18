@@ -443,6 +443,12 @@ func App() *cli.App {
 						Action:   ModelDeleteRelationship,
 					},
 					{
+						Name:     "upsert-fragment",
+						Usage:    "Upsert the model NMTS Fragment contained within the file provided on the command line ('-' reads from stdin).",
+						Category: "model relationships",
+						Action:   ModelUpsertFragment,
+					},
+					{
 						Name:     "list-elements",
 						Usage:    "List all model elements (NMTS Entities and Relationships).",
 						Category: "model entities and relationships",

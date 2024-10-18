@@ -177,6 +177,46 @@ func ModelDeleteRelationship(appCtx *cli.Context) error {
 	return err
 }
 
+// TODO: turn these into one atomic RPC call in the modelfe.
+func ModelUpsertFragment(appCtx *cli.Context) error {
+	nmtsFragment := &nmtspb.Fragment{}
+	if err := readProtoFromCommandLineFilenameArgument(appCtx, nmtsFragment); err != nil {
+		return err
+	}
+
+	conn, err := openAPIConnection(appCtx, modelAPISubDomain)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	modelClient := modelpb.NewModelClient(conn)
+
+	for _, nmtsEntity := range nmtsFragment.GetEntity() {
+		_, err = modelClient.UpsertEntity(
+			appCtx.Context,
+			&modelpb.UpsertEntityRequest{
+				Entity: nmtsEntity,
+			})
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, nmtsRelationship := range nmtsFragment.GetRelationship() {
+		_, err = modelClient.InsertRelationship(
+			appCtx.Context,
+			&modelpb.InsertRelationshipRequest{
+				Relationship: nmtsRelationship,
+			})
+		if err != nil {
+			return err
+		}
+	}
+
+	fmt.Fprintln(appCtx.App.ErrWriter, "# OK")
+	return nil
+}
+
 func ModelGetEntity(appCtx *cli.Context) error {
 	if appCtx.Args().Len() != 1 {
 		return fmt.Errorf("need one and only one Entity ID argument")
