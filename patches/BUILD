@@ -15,5 +15,4 @@
 exports_files([
     "protobuf.patch",
     "rules_proto_grpc_python.patch",
-    "toolchains_protoc.patch",
 ])

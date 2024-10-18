@@ -17,28 +17,16 @@ module(name = "aalyria_api")
 bazel_dep(name = "protobuf")
 
 # Patch protobuf to backport
-# https://github.com/protocolbuffers/protobuf/pull/17402 to protobuf 28.0-rc3.
-#
-# Version 28.0-rc3 is chosen because it contains a fix to restore compatability
-# with libraries developed against older versions of protobuf.
-# Specifically, grpc-java is the particular dependency we have that is developed
-# against an old protobuf version, and so until this fix could not be used with
-# newer protobuf versions.
-#
-# For the issue tracking grpc-java using an old version of protobuf, see:
-# https://github.com/grpc/grpc-java/issues/11015
-#
-# For the change to protobuf that restores backwards compatability, see:
-# https://github.com/protocolbuffers/protobuf/commit/72b0b7afbabce7494c2605aa240b0f0ca98aa6e5
+# https://github.com/protocolbuffers/protobuf/pull/17402 to protobuf 28.2.
 archive_override(
     module_name = "protobuf",
-    integrity = "sha256-9bcrhX/F2Ofy/ZyneHqEumMffGQeFSzVA/7/mXv4gBI=",
+    integrity = "sha256-C37zUG/ECthArdE4031EPEqfWwswfCXVFtu+9NwLxco=",
     patch_strip = 1,
     patches = [
         "//patches:protobuf.patch",
     ],
-    strip_prefix = "protobuf-28.0-rc3",
-    urls = "https://github.com/protocolbuffers/protobuf/archive/refs/tags/v28.0-rc3.zip",
+    strip_prefix = "protobuf-28.2",
+    urls = "https://github.com/protocolbuffers/protobuf/archive/refs/tags/v28.2.zip",
 )
 
 bazel_dep(name = "gazelle", version = "0.39.1")
@@ -61,7 +49,7 @@ bazel_dep(name = "rules_proto_grpc_doc", version = "5.0.0")
 bazel_dep(name = "rules_proto_grpc_java", version = "5.0.0")
 bazel_dep(name = "rules_proto_grpc_python", version = "5.0.0")
 
-# Patch rules_proto_gprc_python to use protobuf python v28.0-rc3.
+# Patch rules_proto_gprc_python to use python protobuf v28.2
 archive_override(
     module_name = "rules_proto_grpc_python",
     integrity = "sha256-b9r/nAMUoakRmZn2IlVYhaNYgNUXeWHGV4wgd2cCmV8=",
@@ -76,27 +64,22 @@ archive_override(
 bazel_dep(name = "rules_python", version = "0.35.0")
 bazel_dep(name = "toolchains_protoc")
 
-# Patch toolchains_protoc to make protoc v28.0-rc3 available.
-archive_override(
+# Override toolchains_protoc to obtain a version with protoc v28.2 available.
+git_override(
     module_name = "toolchains_protoc",
-    integrity = "sha256-0e/PjCIJqHKk5IQoPW8hBmuKRFyWdVdXZSebhrkmiQ4=",
-    patch_strip = 1,
-    patches = [
-        "//patches:toolchains_protoc.patch",
-    ],
-    strip_prefix = "toolchains_protoc-0.3.1",
-    urls = "https://github.com/aspect-build/toolchains_protoc/archive/refs/tags/v0.3.1.zip",
+    commit = "0ffd305814e08a4d835efbd106d609001f0d354c",
+    remote = "https://github.com/aspect-build/toolchains_protoc.git",
 )
 
-# Configure the protoc toolchain used by rules_proto_grpc to use protoc
-# v28.0-rc3. This ensures that the version agrees with the protobuf dependency
-# version, which is necessary because Protobuf C++ requires an exact match
-# between its generated code version and its runtime version.
+# Configure the protoc toolchain used by rules_proto_grpc to use protoc v28.2.
+# This ensures that the version agrees with the protobuf dependency version,
+# which is necessary because Protobuf C++ requires an exact match between its
+# generated code version and its runtime version.
 # (https://protobuf.dev/support/cross-version-runtime-guarantee/#cpp)
 protoc = use_extension("@toolchains_protoc//protoc:extensions.bzl", "protoc")
 protoc.toolchain(
     google_protobuf = "com_google_protobuf",
-    version = "v28.0-rc3",
+    version = "v28.2",
 )
 
 bazel_dep(name = "container_structure_test", version = "1.16.0", dev_dependency = True)
