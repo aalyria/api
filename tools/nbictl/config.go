@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -75,7 +76,7 @@ func readConfigs(confFilePath string) (*nbictlpb.AppConfig, error) {
 	confBytes, err := os.ReadFile(confFilePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return confProto, nil
+			return nil, fmt.Errorf("unable to read file: %w.\nSee `%s help set-config` to learn how to configure the tool.", err, appName)
 		}
 		return nil, fmt.Errorf("unable to read file: %w", err)
 	}
@@ -196,7 +197,11 @@ func setConfig(outWriter, errWriter io.Writer, confToCreate *nbictlpb.Config, co
 
 	confProto, err := readConfigs(confFile)
 	if err != nil {
-		return fmt.Errorf("unable to get configs from file %s: %w", confFile, err)
+		if errors.Is(err, fs.ErrNotExist) {
+			confProto = &nbictlpb.AppConfig{}
+		} else {
+			return fmt.Errorf("unable to get configs from file %s: %w", confFile, err)
+		}
 	}
 
 	found := false

@@ -494,6 +494,26 @@ func App() *cli.App {
 					},
 				},
 			},
+			{
+				Name:     "generate-auth-token",
+				Category: "auth",
+				Usage:    "Generate a self-signed JWT token for API authentication.",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "audience",
+						Usage:   "The audience (aud) to set in the JWT token.",
+						Aliases: []string{"aud"},
+					},
+					&cli.DurationFlag{
+						Name:        "expiration",
+						Usage:       "The validity duration of token, from the time of creation.",
+						Aliases:     []string{"exp"},
+						DefaultText: "1h",
+						Value:       1 * time.Hour,
+					},
+				},
+				Action: GenerateAuthToken,
+			},
 		},
 	}
 }

@@ -42,7 +42,6 @@ jobs:
         target:
           - //agent/cmd/agent
           - //tools/nbictl/cmd/nbictl
-          - //tools/generate_jwt
         os: [linux, windows, darwin]
         arch: [amd64, arm64]
 
@@ -81,18 +80,6 @@ jobs:
         with:
           name: agent-${{ matrix.os }}-${{ matrix.arch }}
           path: bazel-bin/agent/cmd/agent/agent_/agent.exe
-      - name: Upload generate_jwt binary
-        uses: actions/upload-artifact@v4
-        if: ${{ matrix.target == '//tools/generate_jwt' && matrix.os != 'windows' }}
-        with:
-          name: generate_jwt-${{ matrix.os }}-${{ matrix.arch }}
-          path: bazel-bin/tools/generate_jwt/generate_jwt_/generate_jwt
-      - name: Upload generate_jwt binary - Windows
-        uses: actions/upload-artifact@v4
-        if: ${{ matrix.target == '//tools/generate_jwt' && matrix.os == 'windows' }}
-        with:
-          name: generate_jwt-${{ matrix.os }}-${{ matrix.arch }}
-          path: bazel-bin/tools/generate_jwt/generate_jwt_/generate_jwt.exe
 
   build-and-upload-docs:
     needs: [build-and-test]

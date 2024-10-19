@@ -199,6 +199,14 @@ Takes a fully-qualified method name in 'service.method' or 'service/method' form
 
 **--request, -r**="": File containing the request to make encoded in the selected --format. Defaults to -, which uses stdin. (default: -)
 
+## generate-auth-token
+
+Generate a self-signed JWT token for API authentication.
+
+**--audience, --aud**="": The audience (aud) to set in the JWT token.
+
+**--expiration, --exp**="": The validity duration of token, from the time of creation. (default: 1h)
+
 ## help, h
 
 Shows a list of commands or help for one command
