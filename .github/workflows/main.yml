@@ -1,0 +1,102 @@
+# Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Bazel
+
+on:
+  pull_request: {}
+  push: {}
+  release:
+    types: [published]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/bazelisk
+            ~/.cache/bazel
+          key: bazel-${{ hashFiles('.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
+          restore-keys: bazel-
+      - run: bazelisk test //...
+
+  build-and-upload-tools:
+    needs: [build-and-test]
+    strategy:
+      matrix:
+        # Only the go_binary targets support cross-compilation at the moment:
+        target:
+          - //agent/cmd/agent
+          - //tools/nbictl/cmd/nbictl
+        os: [linux, windows, darwin]
+        arch: [amd64, arm64]
+
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/bazelisk
+            ~/.cache/bazel
+          key: bazel-${{ hashFiles('.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
+          restore-keys: bazel-
+      - run: bazelisk build "--platforms=@rules_go//go/toolchain:${{ matrix.os }}_${{ matrix.arch }}" "${{ matrix.target }}"
+      - name: Upload nbictl binary
+        uses: actions/upload-artifact@v4
+        if: ${{ matrix.target == '//tools/nbictl/cmd/nbictl' && matrix.os != 'windows' }}
+        with:
+          name: nbictl-${{ matrix.os }}-${{ matrix.arch }}
+          path: bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl
+      - name: Upload nbictl binary - Windows
+        uses: actions/upload-artifact@v4
+        if: ${{ matrix.target == '//tools/nbictl/cmd/nbictl' && matrix.os == 'windows' }}
+        with:
+          name: nbictl-${{ matrix.os }}-${{ matrix.arch }}
+          path: bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl.exe
+      - name: Upload agent binary
+        uses: actions/upload-artifact@v4
+        if: ${{ matrix.target == '//agent/cmd/agent' && matrix.os != 'windows' }}
+        with:
+          name: agent-${{ matrix.os }}-${{ matrix.arch }}
+          path: bazel-bin/agent/cmd/agent/agent_/agent
+      - name: Upload agent binary - Windows
+        uses: actions/upload-artifact@v4
+        if: ${{ matrix.target == '//agent/cmd/agent' && matrix.os == 'windows' }}
+        with:
+          name: agent-${{ matrix.os }}-${{ matrix.arch }}
+          path: bazel-bin/agent/cmd/agent/agent_/agent.exe
+
+  build-and-upload-docs:
+    needs: [build-and-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/bazelisk
+            ~/.cache/bazel
+          key: bazel-${{ hashFiles('.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
+          restore-keys: bazel-
+      - run: bazelisk build "//api:api.html"
+      - name: Upload API docs
+        uses: actions/upload-artifact@v4
+        with:
+          name: api.html
+          path: |
+            bazel-bin/api/api.html/api.html
