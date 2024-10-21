@@ -77,7 +77,8 @@ func (tc *testCase) Run(t *testing.T) {
 
 	keys := generateKeysForTesting(t, tmpDir, "--org", "example org")
 	checkErr(t, newTestApp().Run(append(argsPrefix, []string{
-		"set-config",
+		"config",
+		"set",
 		"--transport_security", "insecure",
 		"--user_id", "usr1",
 		"--key_id", "key1",

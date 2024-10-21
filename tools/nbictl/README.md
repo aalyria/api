@@ -10,16 +10,16 @@ nbictl - Interact with the Spacetime NBI service from the command line.
 # SYNOPSIS
 
 ```
-nbictl [--context=value] [--config_dir=value] [--help] [-h] <command> [COMMAND OPTIONS] [ARGUMENTS...]
+nbictl [--profile=value] [--context=value] [--config_dir=value] [--help] [-h] <command> [COMMAND OPTIONS] [ARGUMENTS...]
 ```
 
 # GLOBAL OPTIONS
 
 **--config_dir**="": Directory to use for configuration. (default: $XDG_CONFIG_HOME/nbictl)
 
-**--context**="": Context (configuration profile) to reference for connection settings.
-
 **--help, -h**: show help
+
+**--profile, --context**="": Configuration profile to use.
 
 # COMMANDS
 
@@ -121,17 +121,21 @@ Generate RSA keys to use for authentication with the Spacetime APIs.
 
 **--state**="": State of certificate.
 
-## list-configs
+## config
 
-List all configuration profiles (ignores any `--context` flag)
+Provides subcommands for managing nbictl configuration.
 
-## get-config
+### list-profiles
 
-Prints the NBI connection settings associated with the configuration profile given by the `--context` flag (defaults to "DEFAULT").
+List all configuration profiles (ignores any `--profile` flag)
 
-## set-config
+### describe
 
-Sets or updates a configuration profile that contains NBI connection settings. You can create multiple configs by specifying the name of the configuration using the `--context` flag (defaults to "DEFAULT").
+Prints the NBI connection settings associated with the configuration profile given by the `--profile` flag (defaults to "DEFAULT").
+
+### set
+
+Sets or updates a configuration profile settings. You can create multiple profiles by specifying the `--profile` flag (defaults to "DEFAULT").
 
 **--key_id**="": Key ID associated with the private key provided by Aalyria.
 

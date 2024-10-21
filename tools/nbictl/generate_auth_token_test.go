@@ -34,7 +34,7 @@ func TestGenerateAuthToken_requiresUserId(t *testing.T) {
 
 	// Set key_id so that the config file is created.
 	checkErr(t, newTestApp().Run([]string{
-		"nbictl", "--config_dir", tmpDir, "set-config", "--key_id", "key1",
+		"nbictl", "--config_dir", tmpDir, "config", "set", "--key_id", "key1",
 	}))
 
 	switch want, err := `no user_id set for chosen context`, newTestApp().Run([]string{
@@ -55,7 +55,7 @@ func TestGenerateAuthToken_requiresKeyId(t *testing.T) {
 
 	// Set user_id, but not key_id
 	checkErr(t, newTestApp().Run([]string{
-		"nbictl", "--config_dir", tmpDir, "set-config", "--user_id", "user1",
+		"nbictl", "--config_dir", tmpDir, "config", "set", "--user_id", "user1",
 	}))
 
 	switch want, err := `no key_id set for chosen context`, newTestApp().Run([]string{
@@ -76,10 +76,10 @@ func TestGenerateAuthToken_requiresPrivKey(t *testing.T) {
 
 	// Set user_id, and key_id but no priv_key
 	checkErr(t, newTestApp().Run([]string{
-		"nbictl", "--config_dir", tmpDir, "set-config", "--user_id", "user1",
+		"nbictl", "--config_dir", tmpDir, "config", "set", "--user_id", "user1",
 	}))
 	checkErr(t, newTestApp().Run([]string{
-		"nbictl", "--config_dir", tmpDir, "set-config", "--key_id", "key1",
+		"nbictl", "--config_dir", tmpDir, "config", "set", "--key_id", "key1",
 	}))
 
 	switch want, err := `no priv_key set for chosen context`, newTestApp().Run([]string{
@@ -106,13 +106,13 @@ func TestGenerateAuthToken_happyPath(t *testing.T) {
 	checkErr(t, err)
 
 	checkErr(t, newTestApp().Run([]string{
-		"nbictl", "--config_dir", tmpDir, "set-config", "--user_id", "user1",
+		"nbictl", "--config_dir", tmpDir, "config", "set", "--user_id", "user1",
 	}))
 	checkErr(t, newTestApp().Run([]string{
-		"nbictl", "--config_dir", tmpDir, "set-config", "--key_id", "key1",
+		"nbictl", "--config_dir", tmpDir, "config", "set", "--key_id", "key1",
 	}))
 	checkErr(t, newTestApp().Run([]string{
-		"nbictl", "--config_dir", tmpDir, "set-config", "--priv_key", keys.key,
+		"nbictl", "--config_dir", tmpDir, "config", "set", "--priv_key", keys.key,
 	}))
 
 	app := newTestApp()

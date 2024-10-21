@@ -84,8 +84,9 @@ func App() *cli.App {
 		ErrWriter:            os.Stderr,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:  "context",
-				Usage: "Context (configuration profile) to reference for connection settings.",
+				Name:    "profile",
+				Usage:   "Configuration profile to use.",
+				Aliases: []string{"context"},
 			},
 			&cli.StringFlag{
 				Name:        "config_dir",
@@ -262,7 +263,6 @@ func App() *cli.App {
 			{
 				Name:        "get-link-budget",
 				Usage:       "Gets link budget details",
-				Category:    "entities",
 				Description: "Gets link budget details for a given signal propagation request between a transmitter and a target platform.",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -330,7 +330,6 @@ func App() *cli.App {
 			},
 			{
 				Name:      "generate-keys",
-				Category:  "configuration",
 				Usage:     "Generate RSA keys to use for authentication with the Spacetime APIs.",
 				UsageText: "After creating the Private-Public keypair, you will need to request API access by sharing the `.crt` file (a self-signed x509 certificate containing the public key) with Aalyria to receive the `USER_ID` and a `KEY_ID` needed to complete the nbictl configuration. Only share the public certificate (`.crt`) with Aalyria or third-parties. The private key (`.key`) must be protected and should never be sent by email or communicated to others.",
 				Flags: []cli.Flag{
@@ -362,49 +361,51 @@ func App() *cli.App {
 				Action: GenerateKeys,
 			},
 			{
-				Name:     "list-configs",
-				Usage:    "List all configuration profiles (ignores any `--context` flag)",
-				Category: "configuration",
-				Action:   ListConfigs,
-			},
-			{
-				Name:     "get-config",
-				Usage:    "Prints the NBI connection settings associated with the configuration profile given by the `--context` flag (defaults to \"DEFAULT\").",
-				Category: "configuration",
-				Action:   GetConfig,
-			},
-			{
-				Name:     "set-config",
-				Usage:    "Sets or updates a configuration profile that contains NBI connection settings. You can create multiple configs by specifying the name of the configuration using the `--context` flag (defaults to \"DEFAULT\").",
-				Category: "configuration",
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:  "priv_key",
-						Usage: "Path to the private key to use for authentication.",
+				Name:  "config",
+				Usage: fmt.Sprintf("Provides subcommands for managing %s configuration.", appName),
+				Subcommands: []*cli.Command{
+					{
+						Name:   "list-profiles",
+						Usage:  "List all configuration profiles (ignores any `--profile` flag)",
+						Action: ListConfigs,
 					},
-					&cli.StringFlag{
-						Name:  "key_id",
-						Usage: "Key ID associated with the private key provided by Aalyria.",
+					{
+						Name:   "describe",
+						Usage:  "Prints the NBI connection settings associated with the configuration profile given by the `--profile` flag (defaults to \"DEFAULT\").",
+						Action: GetConfig,
 					},
-					&cli.StringFlag{
-						Name:  "user_id",
-						Usage: "User ID associated with the private key provided by Aalyria.",
-					},
-					&cli.StringFlag{
-						Name:  "url",
-						Usage: "NBI endpoint specified as `host[:port]` (port is optional and defaults to 443).",
-					},
-					&cli.StringFlag{
-						Name:  "transport_security",
-						Usage: "Transport security to use when connecting to the NBI service. Allowed values: [insecure, system_cert_pool]",
+					{
+						Name:  "set",
+						Usage: "Sets or updates a configuration profile settings. You can create multiple profiles by specifying the `--profile` flag (defaults to \"DEFAULT\").",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:  "priv_key",
+								Usage: "Path to the private key to use for authentication.",
+							},
+							&cli.StringFlag{
+								Name:  "key_id",
+								Usage: "Key ID associated with the private key provided by Aalyria.",
+							},
+							&cli.StringFlag{
+								Name:  "user_id",
+								Usage: "User ID associated with the private key provided by Aalyria.",
+							},
+							&cli.StringFlag{
+								Name:  "url",
+								Usage: "NBI endpoint specified as `host[:port]` (port is optional and defaults to 443).",
+							},
+							&cli.StringFlag{
+								Name:  "transport_security",
+								Usage: "Transport security to use when connecting to the NBI service. Allowed values: [insecure, system_cert_pool]",
+							},
+						},
+						Action: SetConfig,
 					},
 				},
-				Action: SetConfig,
 			},
 			{
-				Name:     "model",
-				Usage:    "Provides subcommands for accessing and managing the model elements comprising the digital twin.",
-				Category: "model",
+				Name:  "model",
+				Usage: "Provides subcommands for accessing and managing the model elements comprising the digital twin.",
 				Subcommands: []*cli.Command{
 					{
 						Name:     "upsert-entity",
@@ -457,9 +458,8 @@ func App() *cli.App {
 				},
 			},
 			{
-				Name:     "grpcurl",
-				Usage:    "Provides curl-like equivalents for interacting with the NBI.",
-				Category: "grpc",
+				Name:  "grpcurl",
+				Usage: "Provides curl-like equivalents for interacting with the NBI.",
 				Subcommands: []*cli.Command{
 					{
 						Name:   "describe",
@@ -495,9 +495,8 @@ func App() *cli.App {
 				},
 			},
 			{
-				Name:     "generate-auth-token",
-				Category: "auth",
-				Usage:    "Generate a self-signed JWT token for API authentication.",
+				Name:  "generate-auth-token",
+				Usage: "Generate a self-signed JWT token for API authentication.",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:    "audience",

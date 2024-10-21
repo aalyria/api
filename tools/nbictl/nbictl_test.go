@@ -135,7 +135,8 @@ func TestDelete_requiresID(t *testing.T) {
 	keys := generateKeysForTesting(t, tmpDir, "--org", "example org")
 	checkErr(t, newTestApp().Run([]string{
 		"nbictl", "--config_dir", tmpDir,
-		"set-config",
+		"config",
+		"set",
 		"--transport_security", "insecure",
 		"--user_id", "usr1",
 		"--key_id", "key1",
@@ -167,7 +168,8 @@ func TestDelete_requiresLastCommitTimestampOrIgnoreConsistencyCheck(t *testing.T
 	keys := generateKeysForTesting(t, tmpDir, "--org", "example org")
 	checkErr(t, newTestApp().Run([]string{
 		"nbictl", "--config_dir", tmpDir,
-		"set-config",
+		"config",
+		"set",
 		"--transport_security", "insecure",
 		"--user_id", "usr1",
 		"--key_id", "key1",
@@ -541,7 +543,8 @@ func TestEndToEnd(t *testing.T) {
 			keys := generateKeysForTesting(t, tmpDir, "--org", "example org")
 			checkErr(t, newTestApp().Run([]string{
 				"nbictl", "--config_dir", tmpDir,
-				"set-config",
+				"config",
+				"set",
 				"--transport_security", "insecure",
 				"--user_id", "usr1",
 				"--key_id", "key1",

@@ -76,7 +76,7 @@ func readConfigs(confFilePath string) (*nbictlpb.AppConfig, error) {
 	confBytes, err := os.ReadFile(confFilePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("unable to read file: %w.\nSee `%s help set-config` to learn how to configure the tool.", err, appName)
+			return nil, fmt.Errorf("unable to read file: %w.\nSee `%s config -h` to learn how to configure the tool.", err, appName)
 		}
 		return nil, fmt.Errorf("unable to read file: %w", err)
 	}
