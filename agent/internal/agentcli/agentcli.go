@@ -388,8 +388,12 @@ func getDialOpts(ctx context.Context, connParams *configpb.ConnectionParams, clo
 func (ac *AgentConf) getNodeOpts(ctx context.Context, node *configpb.NetworkNode, clock clockwork.Clock) (nodeOpts []agent.NodeOption, err error) {
 	// EndpointUri should be in the format `hostname[:port]`, but we want to backward support configs that used the dns:/// prefix.
 	const dnsSchema = "dns:///"
-	node.GetEnactmentDriver().GetConnectionParams().EndpointUri = strings.TrimPrefix(node.GetEnactmentDriver().GetConnectionParams().EndpointUri, dnsSchema)
-	node.GetTelemetryDriver().GetConnectionParams().EndpointUri = strings.TrimPrefix(node.GetTelemetryDriver().GetConnectionParams().EndpointUri, dnsSchema)
+	if cp := node.GetEnactmentDriver().GetConnectionParams(); cp != nil {
+		cp.EndpointUri = strings.TrimPrefix(cp.EndpointUri, dnsSchema)
+	}
+	if cp := node.GetTelemetryDriver().GetConnectionParams(); cp != nil {
+		cp.EndpointUri = strings.TrimPrefix(cp.EndpointUri, dnsSchema)
+	}
 
 enactmentSwitch:
 	switch conf := node.GetEnactmentDriver().GetType().(type) {
