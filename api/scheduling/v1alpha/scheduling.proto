@@ -177,16 +177,20 @@ message DeleteRoute {
 }
 
 message Beam {
+  reserved 7;
+
   string id = 1;
 
   BeamTarget target = 2;
 
   // Parameters specifying the configuration of the beam in the receive
-  // direction. Empty if the beam is to be used for transmit only.
+  // direction, keyed by arbitrary IDs.
+  // Empty if the beam is to be used for transmit only.
   map<string, RxConfiguration> rxs = 3;
 
   // Parameters specifying the configuration of the beam in the transmit
-  // direction. Empty if the beam is to be used for receiving only.
+  // direction, keyed by arbitrary IDs.
+  // Empty if the beam is to be used for receiving only.
   map<string, TxConfiguration> txs = 4;
 
   // The collection of endpoints served by the beam.
@@ -199,13 +203,8 @@ message Beam {
   // ID of the beam shape.
   string shape_id = 6;
 
-  oneof modem {
-    // The ID of the modem associated with the beam. Present if the beam is not
-    // beam-hopped. If empty, the beam is beam-hopped, and its modem and
-    // beam-hopping configuration can be found in the beam-hopping plan.
-    string modem_id = 7;
-    BeamHoppingPlan beam_hopping_plan = 8;
-  }
+  // Only present if beam-hopping is to be used.
+  BeamHoppingPlan beam_hopping_plan = 8;
 }
 
 message BeamHoppingPlan {
@@ -277,6 +276,11 @@ message RxConfiguration {
   // Symbol rate in Megasymbols per second.
   double symbol_rate_msps = 5;
 
+  // Identifies the receive modem associated with the carrier on this beam.
+  // Must be present if beam-hopping is not used, otherwise it should be
+  // empty and the modem IDs are found via the beam hopping plan.
+  string modem_id = 6;
+
   ModemMode mode = 4;
 }
 
@@ -290,6 +294,11 @@ message TxConfiguration {
 
   // Symbol rate in Megasymbols per second.
   double symbol_rate_msps = 6;
+
+  // Identifies the transmit modem associated with the carrier on this beam.
+  // Must be present if beam-hopping is not used, otherwise it should be
+  // empty and the modem IDs are found via the beam hopping plan.
+  string modem_id = 8;
 
   ModemMode mode = 4;
 
