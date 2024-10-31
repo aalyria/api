@@ -92,4 +92,5 @@ python_proto_library(
         "@googleapis//google/rpc:status_py_proto",
         "@googleapis//google/type:interval_py_proto",
     ],
+    extra_protoc_args = ["--pyi_out=."], 
 )
