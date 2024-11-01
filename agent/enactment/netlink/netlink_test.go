@@ -16,18 +16,17 @@ package netlink
 
 import (
 	"context"
-	"errors"
-	"fmt"
+	"maps"
 	"net"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/jonboulle/clockwork"
 	vnl "github.com/vishvananda/netlink"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 
 	apipb "aalyria.com/spacetime/api/common"
+	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
 )
 
 func TestNetlink(t *testing.T) {
@@ -44,15 +43,15 @@ func TestNetlink(t *testing.T) {
 	}
 
 	type testCase struct {
-		name                    string
-		preInstalledFlowRules   map[string]*apipb.FlowRule
-		routeList               []routesError
-		routeAdd                []error
-		routeDel                []error
-		getLinkIDByName         []linkIdxError
-		scheduledControlUpdates []*apipb.ScheduledControlUpdate
-		wantStates              []*apipb.ControlPlaneState
-		wantErrors              []error
+		name                  string
+		preInstalledFlowRules map[string]*apipb.FlowRule
+		routeList             []routesError
+		routeAdd              []error
+		routeDel              []error
+		getLinkIDByName       []linkIdxError
+		configChanges         []*schedpb.CreateEntryRequest
+		wantIDs               []map[string]*schedpb.SetRoute
+		wantErrors            []error
 	}
 
 	_, dst, err := net.ParseCIDR("192.168.1.0/24")
@@ -60,66 +59,42 @@ func TestNetlink(t *testing.T) {
 		t.Fatalf("failed net.ParseIP(dstString=%s)", "192.168.1.0/24")
 	}
 
-	updateId := "64988bc4-d401-428a-b7be-926bebb5f832"
-
 	testCases := []testCase{
 		{
 			name: "add route",
-			routeList: []routesError{
-				{
-					routes: []vnl.Route{
-						{
-							Src:       net.ParseIP("192.168.2.2"),
-							Dst:       dst,
-							Gw:        net.ParseIP("192.168.1.1"),
-							LinkIndex: 7,
-						},
-					},
-					err: nil,
-				},
-			},
+			routeList: []routesError{{
+				routes: []vnl.Route{{
+					Src:       net.ParseIP("192.168.2.2"),
+					Dst:       dst,
+					Gw:        net.ParseIP("192.168.1.1"),
+					LinkIndex: 7,
+				}},
+				err: nil,
+			}},
 			routeAdd:        []error{nil},
 			routeDel:        []error{nil},
 			getLinkIDByName: []linkIdxError{{idx: 7, err: nil}},
-			scheduledControlUpdates: []*apipb.ScheduledControlUpdate{
+			configChanges: []*schedpb.CreateEntryRequest{
 				{
-					Change: &apipb.ControlPlaneUpdate{
-						UpdateType: &apipb.ControlPlaneUpdate_FlowUpdate{
-							FlowUpdate: &apipb.FlowUpdate{
-								FlowRuleId: proto.String("rule1"),
-								Operation:  apipb.FlowUpdate_ADD.Enum(),
-								Rule: &apipb.FlowRule{
-									Classifier: &apipb.PacketClassifier{
-										IpHeader: &apipb.PacketClassifier_IpHeader{
-											SrcIpRange: proto.String("192.168.2.2"),
-											DstIpRange: proto.String("192.168.1.0/24"),
-										},
-									},
-									ActionBucket: []*apipb.FlowRule_ActionBucket{
-										{
-											Action: []*apipb.FlowRule_ActionBucket_Action{
-												{
-													ActionType: &apipb.FlowRule_ActionBucket_Action_Forward_{
-														Forward: &apipb.FlowRule_ActionBucket_Action_Forward{
-															OutInterfaceId: proto.String("foo"),
-															NextHopIp:      proto.String("192.168.1.1/32"),
-														},
-													},
-												},
-											},
-										},
-									},
-								},
-								SequenceNumber: proto.Int64(1),
-							},
+					Id:    "rule1",
+					Seqno: 1,
+					ConfigurationChange: &schedpb.CreateEntryRequest_SetRoute{
+						SetRoute: &schedpb.SetRoute{
+							From: "192.168.2.2",
+							To:   "192.168.1.0/24",
+							Via:  "192.168.1.1",
+							Dev:  "foo",
 						},
 					},
 				},
 			},
-			wantStates: []*apipb.ControlPlaneState{
+			wantIDs: []map[string]*schedpb.SetRoute{
 				{
-					ForwardingState: &apipb.FlowState{
-						FlowRuleIds: []string{"rule1"},
+					"rule1": &schedpb.SetRoute{
+						From: "192.168.2.2",
+						To:   "192.168.1.0/24",
+						Via:  "192.168.1.1",
+						Dev:  "foo",
 					},
 				},
 			},
@@ -129,14 +104,12 @@ func TestNetlink(t *testing.T) {
 			name: "add and remove route",
 			routeList: []routesError{
 				{
-					routes: []vnl.Route{
-						{
-							Src:       net.ParseIP("192.168.2.2"),
-							Dst:       dst,
-							Gw:        net.ParseIP("192.168.1.1"),
-							LinkIndex: 7,
-						},
-					},
+					routes: []vnl.Route{{
+						Src:       net.ParseIP("192.168.2.2"),
+						Dst:       dst,
+						Gw:        net.ParseIP("192.168.1.1"),
+						LinkIndex: 7,
+					}},
 					err: nil,
 				},
 				{
@@ -147,61 +120,40 @@ func TestNetlink(t *testing.T) {
 			routeAdd:        []error{nil},
 			routeDel:        []error{nil},
 			getLinkIDByName: []linkIdxError{{idx: 7, err: nil}, {idx: 7, err: nil}},
-			scheduledControlUpdates: []*apipb.ScheduledControlUpdate{
+			configChanges: []*schedpb.CreateEntryRequest{
 				{
-					Change: &apipb.ControlPlaneUpdate{
-						UpdateType: &apipb.ControlPlaneUpdate_FlowUpdate{
-							FlowUpdate: &apipb.FlowUpdate{
-								FlowRuleId: proto.String("rule1"),
-								Operation:  apipb.FlowUpdate_ADD.Enum(),
-								Rule: &apipb.FlowRule{
-									Classifier: &apipb.PacketClassifier{
-										IpHeader: &apipb.PacketClassifier_IpHeader{
-											SrcIpRange: proto.String("192.168.2.2"),
-											DstIpRange: proto.String("192.168.1.0/24"),
-										},
-									},
-									ActionBucket: []*apipb.FlowRule_ActionBucket{
-										{
-											Action: []*apipb.FlowRule_ActionBucket_Action{
-												{
-													ActionType: &apipb.FlowRule_ActionBucket_Action_Forward_{
-														Forward: &apipb.FlowRule_ActionBucket_Action_Forward{
-															OutInterfaceId: proto.String("foo"),
-															NextHopIp:      proto.String("192.168.1.1/32"),
-														},
-													},
-												},
-											},
-										},
-									},
-								},
-								SequenceNumber: proto.Int64(1),
-							},
+					Id:    "rule1",
+					Seqno: 1,
+					ConfigurationChange: &schedpb.CreateEntryRequest_SetRoute{
+						SetRoute: &schedpb.SetRoute{
+							From: "192.168.2.2",
+							To:   "192.168.1.0/24",
+							Dev:  "foo",
+							Via:  "192.168.1.1",
 						},
 					},
 				},
 				{
-					Change: &apipb.ControlPlaneUpdate{
-						UpdateType: &apipb.ControlPlaneUpdate_FlowUpdate{
-							FlowUpdate: &apipb.FlowUpdate{
-								FlowRuleId:     proto.String("rule1"),
-								Operation:      apipb.FlowUpdate_DELETE.Enum(),
-								SequenceNumber: proto.Int64(2),
-							},
+					Id:    "rule1",
+					Seqno: 2,
+					ConfigurationChange: &schedpb.CreateEntryRequest_DeleteRoute{
+						DeleteRoute: &schedpb.DeleteRoute{
+							From: "192.168.2.2",
+							To:   "192.168.1.0/24",
 						},
 					},
 				},
 			},
-			wantStates: []*apipb.ControlPlaneState{
+			wantIDs: []map[string]*schedpb.SetRoute{
 				{
-					ForwardingState: &apipb.FlowState{
-						FlowRuleIds: []string{"rule1"},
+					"rule1": &schedpb.SetRoute{
+						From: "192.168.2.2",
+						To:   "192.168.1.0/24",
+						Dev:  "foo",
+						Via:  "192.168.1.1",
 					},
 				},
-				{
-					ForwardingState: &apipb.FlowState{},
-				},
+				{},
 			},
 			wantErrors: []error{nil, nil},
 		},
@@ -226,59 +178,40 @@ func TestNetlink(t *testing.T) {
 			routeAdd:        []error{nil},
 			routeDel:        []error{nil},
 			getLinkIDByName: []linkIdxError{{idx: 7, err: nil}, {idx: 7, err: nil}},
-			scheduledControlUpdates: []*apipb.ScheduledControlUpdate{
+			configChanges: []*schedpb.CreateEntryRequest{
 				{
-					Change: &apipb.ControlPlaneUpdate{
-						UpdateType: &apipb.ControlPlaneUpdate_FlowUpdate{
-							FlowUpdate: &apipb.FlowUpdate{
-								FlowRuleId: proto.String("rule1"),
-								Operation:  apipb.FlowUpdate_ADD.Enum(),
-								Rule: &apipb.FlowRule{
-									Classifier: &apipb.PacketClassifier{
-										IpHeader: &apipb.PacketClassifier_IpHeader{
-											SrcIpRange: proto.String("192.168.2.2"),
-											DstIpRange: proto.String("192.168.1.0/24"),
-										},
-									},
-									ActionBucket: []*apipb.FlowRule_ActionBucket{
-										{
-											Action: []*apipb.FlowRule_ActionBucket_Action{
-												{
-													ActionType: &apipb.FlowRule_ActionBucket_Action_Forward_{
-														Forward: &apipb.FlowRule_ActionBucket_Action_Forward{
-															OutInterfaceId: proto.String("foo"),
-															NextHopIp:      proto.String("192.168.1.1/32"),
-														},
-													},
-												},
-											},
-										},
-									},
-								},
-								SequenceNumber: proto.Int64(1),
-							},
+					Id:    "rule1",
+					Seqno: 1,
+					ConfigurationChange: &schedpb.CreateEntryRequest_SetRoute{
+						SetRoute: &schedpb.SetRoute{
+							From: "192.168.2.2",
+							To:   "192.168.1.0/24",
+							Dev:  "foo",
+							Via:  "192.168.1.1",
 						},
 					},
 				},
 				{
-					Change: &apipb.ControlPlaneUpdate{
-						UpdateType: &apipb.ControlPlaneUpdate_FlowUpdate{
-							FlowUpdate: &apipb.FlowUpdate{
-								FlowRuleId:     proto.String("rule1"),
-								Operation:      apipb.FlowUpdate_DELETE.Enum(),
-								SequenceNumber: proto.Int64(1),
-							},
+					Id:    "rule1",
+					Seqno: 2,
+					ConfigurationChange: &schedpb.CreateEntryRequest_DeleteRoute{
+						DeleteRoute: &schedpb.DeleteRoute{
+							From: "192.168.2.2",
+							To:   "192.168.1.0/24",
 						},
 					},
 				},
 			},
-			wantStates: []*apipb.ControlPlaneState{
+			wantIDs: []map[string]*schedpb.SetRoute{
 				{
-					ForwardingState: &apipb.FlowState{FlowRuleIds: []string{"rule1"}},
+					"rule1": &schedpb.SetRoute{
+						From: "192.168.2.2",
+						To:   "192.168.1.0/24",
+						Dev:  "foo",
+						Via:  "192.168.1.1",
+					},
 				},
-				{
-					ForwardingState: &apipb.FlowState{},
-				},
+				{},
 			},
 			wantErrors: []error{nil, nil},
 		},
@@ -300,25 +233,20 @@ func TestNetlink(t *testing.T) {
 			routeAdd:        []error{nil},
 			routeDel:        []error{nil},
 			getLinkIDByName: []linkIdxError{{idx: 7, err: nil}},
-			scheduledControlUpdates: []*apipb.ScheduledControlUpdate{
+			configChanges: []*schedpb.CreateEntryRequest{
 				{
-					Change: &apipb.ControlPlaneUpdate{
-						UpdateType: &apipb.ControlPlaneUpdate_FlowUpdate{
-							FlowUpdate: &apipb.FlowUpdate{
-								FlowRuleId:     proto.String("rule1"),
-								Operation:      apipb.FlowUpdate_DELETE.Enum(),
-								SequenceNumber: proto.Int64(2),
-							},
+					Id:    "rule1",
+					Seqno: 2,
+					ConfigurationChange: &schedpb.CreateEntryRequest_DeleteRoute{
+						DeleteRoute: &schedpb.DeleteRoute{
+							From: "192.168.2.2",
+							To:   "192.168.1.0/24",
 						},
 					},
 				},
 			},
-			wantStates: []*apipb.ControlPlaneState{
-				{
-					ForwardingState: &apipb.FlowState{},
-				},
-			},
-			wantErrors: []error{&UnknownFlowRuleDeleteError{"rule1"}},
+			wantIDs:    []map[string]*schedpb.SetRoute{{}},
+			wantErrors: []error{&UnknownRouteDeleteError{"rule1"}},
 		},
 		{
 			name: "attempt to perform ScheduledControlUpdate with no Change",
@@ -338,21 +266,18 @@ func TestNetlink(t *testing.T) {
 			routeAdd:        []error{nil},
 			routeDel:        []error{nil},
 			getLinkIDByName: []linkIdxError{{idx: 7, err: nil}},
-			scheduledControlUpdates: []*apipb.ScheduledControlUpdate{
+			configChanges: []*schedpb.CreateEntryRequest{
 				{
-					UpdateId: &updateId,
-					Change:   nil, // test break
+					Id:                  "rule1",
+					Seqno:               1,
+					ConfigurationChange: nil,
 				},
 			},
-			wantStates: []*apipb.ControlPlaneState{
-				{
-					ForwardingState: &apipb.FlowState{},
-				},
-			},
-			wantErrors: []error{&NoChangeSpecifiedError{}},
+			wantIDs:    []map[string]*schedpb.SetRoute{{}},
+			wantErrors: []error{&NoChangeSpecifiedError{&schedpb.CreateEntryRequest{Id: "rule1", Seqno: 1}}},
 		},
 		{
-			name: "attempt to perform BeamUpdate",
+			name: "attempt to perform unsupported UpdateBeam",
 			routeList: []routesError{
 				{
 					routes: []vnl.Route{
@@ -369,36 +294,30 @@ func TestNetlink(t *testing.T) {
 			routeAdd:        []error{nil},
 			routeDel:        []error{nil},
 			getLinkIDByName: []linkIdxError{{idx: 7, err: nil}},
-			scheduledControlUpdates: []*apipb.ScheduledControlUpdate{
+			configChanges: []*schedpb.CreateEntryRequest{
 				{
-					UpdateId: &updateId,
-					Change: &apipb.ControlPlaneUpdate{
-						UpdateType: &apipb.ControlPlaneUpdate_BeamUpdate{ // test break
-							BeamUpdate: &apipb.BeamUpdate{},
-						},
+					Id:    "beam_update_1",
+					Seqno: 1,
+					ConfigurationChange: &schedpb.CreateEntryRequest_UpdateBeam{
+						UpdateBeam: &schedpb.UpdateBeam{},
 					},
 				},
 			},
-			wantStates: []*apipb.ControlPlaneState{
-				{
-					ForwardingState: &apipb.FlowState{},
-				},
-			},
+			wantIDs: []map[string]*schedpb.SetRoute{{}},
 			wantErrors: []error{
 				&UnsupportedUpdateError{
-					req: &apipb.ScheduledControlUpdate{
-						UpdateId: &updateId,
-						Change: &apipb.ControlPlaneUpdate{
-							UpdateType: &apipb.ControlPlaneUpdate_BeamUpdate{ // test break
-								BeamUpdate: &apipb.BeamUpdate{},
-							},
+					req: &schedpb.CreateEntryRequest{
+						Id:    "beam_update_1",
+						Seqno: 1,
+						ConfigurationChange: &schedpb.CreateEntryRequest_UpdateBeam{
+							UpdateBeam: &schedpb.UpdateBeam{},
 						},
 					},
 				},
 			},
 		},
 		{
-			name: "attempt unsupported FlowUpdate operation",
+			name: "attempt to perform unsupported DeleteBeam",
 			routeList: []routesError{
 				{
 					routes: []vnl.Route{
@@ -415,523 +334,26 @@ func TestNetlink(t *testing.T) {
 			routeAdd:        []error{nil},
 			routeDel:        []error{nil},
 			getLinkIDByName: []linkIdxError{{idx: 7, err: nil}},
-			scheduledControlUpdates: []*apipb.ScheduledControlUpdate{
+			configChanges: []*schedpb.CreateEntryRequest{
 				{
-					Change: &apipb.ControlPlaneUpdate{
-						UpdateType: &apipb.ControlPlaneUpdate_FlowUpdate{
-							FlowUpdate: &apipb.FlowUpdate{
-								FlowRuleId: proto.String("rule1"),
-								Operation:  apipb.FlowUpdate_UNKNOWN.Enum(), // test break
-							},
-						},
+					Id:    "beam_update_1",
+					Seqno: 1,
+					ConfigurationChange: &schedpb.CreateEntryRequest_DeleteBeam{
+						DeleteBeam: &schedpb.DeleteBeam{},
 					},
 				},
 			},
-			wantStates: []*apipb.ControlPlaneState{
-				{
-					ForwardingState: &apipb.FlowState{},
-				},
-			},
-			wantErrors: []error{fmt.Errorf("FlowUpdate with flowRuleID (%s) failed with error: %w", "rule1", &UnrecognizedFlowUpdateOperationError{apipb.FlowUpdate_UNKNOWN})},
-		},
-		{
-			name: "attempt unsupported ActionType",
-			routeList: []routesError{
-				{
-					routes: []vnl.Route{
-						{
-							Src:       net.ParseIP("192.168.2.2"),
-							Dst:       dst,
-							Gw:        net.ParseIP("192.168.1.1"),
-							LinkIndex: 7,
-						},
-					},
-					err: nil,
-				},
-			},
-			routeAdd:        []error{nil},
-			routeDel:        []error{nil},
-			getLinkIDByName: []linkIdxError{{idx: 7, err: nil}},
-			scheduledControlUpdates: []*apipb.ScheduledControlUpdate{
-				{
-					Change: &apipb.ControlPlaneUpdate{
-						UpdateType: &apipb.ControlPlaneUpdate_FlowUpdate{
-							FlowUpdate: &apipb.FlowUpdate{
-								FlowRuleId: proto.String("rule1"),
-								Operation:  apipb.FlowUpdate_ADD.Enum(),
-								Rule: &apipb.FlowRule{
-									Classifier: &apipb.PacketClassifier{
-										IpHeader: &apipb.PacketClassifier_IpHeader{
-											SrcIpRange: proto.String("192.168.2.2"),
-											DstIpRange: proto.String("192.168.1.0/24"),
-										},
-									},
-									ActionBucket: []*apipb.FlowRule_ActionBucket{
-										{
-											Action: []*apipb.FlowRule_ActionBucket_Action{
-												{
-													ActionType: &apipb.FlowRule_ActionBucket_Action_PopHeader_{ // test break
-														PopHeader: &apipb.FlowRule_ActionBucket_Action_PopHeader{},
-													},
-												},
-											},
-										},
-									},
-								},
-								SequenceNumber: proto.Int64(1),
-							},
-						},
-					},
-				},
-			},
-			wantStates: []*apipb.ControlPlaneState{
-				{
-					ForwardingState: &apipb.FlowState{},
-				},
-			},
-			wantErrors: []error{fmt.Errorf("FlowUpdate with flowRuleID (%s) failed with error: %w", "rule1", &UnsupportedActionTypeError{})},
-		},
-		{
-			name: "attempt supported ActionType with wrong nextHopIp IPv4 formatting",
-			routeList: []routesError{
-				{
-					routes: []vnl.Route{
-						{
-							Src:       net.ParseIP("192.168.2.2"),
-							Dst:       dst,
-							Gw:        net.ParseIP("192.168.1.1"),
-							LinkIndex: 7,
-						},
-					},
-					err: nil,
-				},
-			},
-			routeAdd:        []error{nil},
-			routeDel:        []error{nil},
-			getLinkIDByName: []linkIdxError{{idx: 7, err: nil}},
-			scheduledControlUpdates: []*apipb.ScheduledControlUpdate{
-				{
-					Change: &apipb.ControlPlaneUpdate{
-						UpdateType: &apipb.ControlPlaneUpdate_FlowUpdate{
-							FlowUpdate: &apipb.FlowUpdate{
-								FlowRuleId: proto.String("rule1"),
-								Operation:  apipb.FlowUpdate_ADD.Enum(),
-								Rule: &apipb.FlowRule{
-									Classifier: &apipb.PacketClassifier{
-										IpHeader: &apipb.PacketClassifier_IpHeader{
-											SrcIpRange: proto.String("192.168.2.2"),
-											DstIpRange: proto.String("192.168.1.0/24"),
-										},
-									},
-									ActionBucket: []*apipb.FlowRule_ActionBucket{
-										{
-											Action: []*apipb.FlowRule_ActionBucket_Action{
-												{
-													ActionType: &apipb.FlowRule_ActionBucket_Action_Forward_{
-														Forward: &apipb.FlowRule_ActionBucket_Action_Forward{
-															OutInterfaceId: proto.String("foo"),
-															NextHopIp:      proto.String("192.168.11."), // test break
-														},
-													},
-												},
-											},
-										},
-									},
-								},
-								SequenceNumber: proto.Int64(1),
-							},
-						},
-					},
-				},
-			},
-			wantStates: []*apipb.ControlPlaneState{
-				{
-					ForwardingState: &apipb.FlowState{
-						FlowRuleIds: []string{},
-					},
-				},
-			},
-			wantErrors: []error{fmt.Errorf("FlowUpdate with flowRuleID (%v) failed with error: %w", "rule1", &net.ParseError{Type: "CIDR address", Text: "192.168.11."})},
-		},
-		{
-			name: "attempt supported ActionType with wrong OutInterfaceId",
-			routeList: []routesError{
-				{
-					routes: []vnl.Route{
-						{
-							Src:       net.ParseIP("192.168.2.2"),
-							Dst:       dst,
-							Gw:        net.ParseIP("192.168.1.1"),
-							LinkIndex: 7,
-						},
-					},
-					err: nil,
-				},
-			},
-			routeAdd:        []error{nil},
-			routeDel:        []error{nil},
-			getLinkIDByName: []linkIdxError{{idx: 7, err: errors.New("failed GetLinkIDByName(dumb_foo): network is unreachable")}},
-			scheduledControlUpdates: []*apipb.ScheduledControlUpdate{
-				{
-					Change: &apipb.ControlPlaneUpdate{
-						UpdateType: &apipb.ControlPlaneUpdate_FlowUpdate{
-							FlowUpdate: &apipb.FlowUpdate{
-								FlowRuleId: proto.String("rule1"),
-								Operation:  apipb.FlowUpdate_ADD.Enum(),
-								Rule: &apipb.FlowRule{
-									Classifier: &apipb.PacketClassifier{
-										IpHeader: &apipb.PacketClassifier_IpHeader{
-											SrcIpRange: proto.String("192.168.2.2"),
-											DstIpRange: proto.String("192.168.1.0/24"),
-										},
-									},
-									ActionBucket: []*apipb.FlowRule_ActionBucket{
-										{
-											Action: []*apipb.FlowRule_ActionBucket_Action{
-												{
-													ActionType: &apipb.FlowRule_ActionBucket_Action_Forward_{
-														Forward: &apipb.FlowRule_ActionBucket_Action_Forward{
-															OutInterfaceId: proto.String("dumb_foo"), // test break
-															NextHopIp:      proto.String("192.168.1.1/32"),
-														},
-													},
-												},
-											},
-										},
-									},
-								},
-								SequenceNumber: proto.Int64(1),
-							},
-						},
-					},
-				},
-			},
-			wantStates: []*apipb.ControlPlaneState{
-				{
-					ForwardingState: &apipb.FlowState{},
-				},
-			},
-			wantErrors: []error{fmt.Errorf("FlowUpdate with flowRuleID (%s) failed with error: %w", "rule1",
-				&OutInterfaceIdxError{
-					wrongIface:  "dumb_foo",
-					sourceError: errors.New("failed GetLinkIDByName(dumb_foo): network is unreachable"),
-				})},
-		},
-		{
-			name: "attempt without supplied Classifier.IpHeader",
-			routeList: []routesError{
-				{
-					routes: []vnl.Route{
-						{
-							Src:       net.ParseIP("192.168.2.2"),
-							Dst:       dst,
-							Gw:        net.ParseIP("192.168.1.1"),
-							LinkIndex: 7,
-						},
-					},
-					err: nil,
-				},
-			},
-			routeAdd:        []error{nil},
-			routeDel:        []error{nil},
-			getLinkIDByName: []linkIdxError{{idx: 7, err: nil}},
-			scheduledControlUpdates: []*apipb.ScheduledControlUpdate{
-				{
-					Change: &apipb.ControlPlaneUpdate{
-						UpdateType: &apipb.ControlPlaneUpdate_FlowUpdate{
-							FlowUpdate: &apipb.FlowUpdate{
-								FlowRuleId: proto.String("rule1"),
-								Operation:  apipb.FlowUpdate_ADD.Enum(),
-								Rule: &apipb.FlowRule{
-									Classifier: &apipb.PacketClassifier{
-										IpHeader: nil, // test break
-									},
-									ActionBucket: []*apipb.FlowRule_ActionBucket{
-										{
-											Action: []*apipb.FlowRule_ActionBucket_Action{
-												{
-													ActionType: &apipb.FlowRule_ActionBucket_Action_Forward_{
-														Forward: &apipb.FlowRule_ActionBucket_Action_Forward{
-															OutInterfaceId: proto.String("foo"),
-															NextHopIp:      proto.String("192.168.1.1/32"),
-														},
-													},
-												},
-											},
-										},
-									},
-								},
-								SequenceNumber: proto.Int64(1),
-							},
-						},
-					},
-				},
-			},
-			wantStates: []*apipb.ControlPlaneState{
-				{
-					ForwardingState: &apipb.FlowState{},
-				},
-			},
+			wantIDs: []map[string]*schedpb.SetRoute{{}},
 			wantErrors: []error{
-				fmt.Errorf("FlowUpdate with flowRuleID (%s) failed with error: %w", "rule1",
-					&ClassifierError{
-						missingField: IpHeader_Field,
-					}),
-			},
-		},
-		{
-			name: "attempt without supplied Classifier.IpHeader.SrcIpRange",
-			routeList: []routesError{
-				{
-					routes: []vnl.Route{
-						{
-							Src:       net.ParseIP("192.168.2.2"),
-							Dst:       dst,
-							Gw:        net.ParseIP("192.168.1.1"),
-							LinkIndex: 7,
-						},
-					},
-					err: nil,
-				},
-			},
-			routeAdd:        []error{nil},
-			routeDel:        []error{nil},
-			getLinkIDByName: []linkIdxError{{idx: 7, err: nil}},
-			scheduledControlUpdates: []*apipb.ScheduledControlUpdate{
-				{
-					Change: &apipb.ControlPlaneUpdate{
-						UpdateType: &apipb.ControlPlaneUpdate_FlowUpdate{
-							FlowUpdate: &apipb.FlowUpdate{
-								FlowRuleId: proto.String("rule1"),
-								Operation:  apipb.FlowUpdate_ADD.Enum(),
-								Rule: &apipb.FlowRule{
-									Classifier: &apipb.PacketClassifier{
-										IpHeader: &apipb.PacketClassifier_IpHeader{
-											// SrcIpRange: proto.String("192.168.2.2"), // test break
-											DstIpRange: proto.String("192.168.1.0/24"),
-										},
-									},
-									ActionBucket: []*apipb.FlowRule_ActionBucket{
-										{
-											Action: []*apipb.FlowRule_ActionBucket_Action{
-												{
-													ActionType: &apipb.FlowRule_ActionBucket_Action_Forward_{
-														Forward: &apipb.FlowRule_ActionBucket_Action_Forward{
-															OutInterfaceId: proto.String("foo"),
-															NextHopIp:      proto.String("192.168.1.1/32"),
-														},
-													},
-												},
-											},
-										},
-									},
-								},
-								SequenceNumber: proto.Int64(1),
-							},
+				&UnsupportedUpdateError{
+					req: &schedpb.CreateEntryRequest{
+						Id:    "beam_update_1",
+						Seqno: 1,
+						ConfigurationChange: &schedpb.CreateEntryRequest_DeleteBeam{
+							DeleteBeam: &schedpb.DeleteBeam{},
 						},
 					},
 				},
-			},
-			wantStates: []*apipb.ControlPlaneState{
-				{
-					ForwardingState: &apipb.FlowState{
-						FlowRuleIds: []string{"rule1"},
-					},
-				},
-			},
-			wantErrors: []error{nil},
-		},
-		{
-			name: "attempt without supplied Classifier.IpHeader.DstIpRange",
-			routeList: []routesError{
-				{
-					routes: []vnl.Route{
-						{
-							Src:       net.ParseIP("192.168.2.2"),
-							Dst:       dst,
-							Gw:        net.ParseIP("192.168.1.1"),
-							LinkIndex: 7,
-						},
-					},
-					err: nil,
-				},
-			},
-			routeAdd:        []error{nil},
-			routeDel:        []error{nil},
-			getLinkIDByName: []linkIdxError{{idx: 7, err: nil}},
-			scheduledControlUpdates: []*apipb.ScheduledControlUpdate{
-				{
-					Change: &apipb.ControlPlaneUpdate{
-						UpdateType: &apipb.ControlPlaneUpdate_FlowUpdate{
-							FlowUpdate: &apipb.FlowUpdate{
-								FlowRuleId: proto.String("rule1"),
-								Operation:  apipb.FlowUpdate_ADD.Enum(),
-								Rule: &apipb.FlowRule{
-									Classifier: &apipb.PacketClassifier{
-										IpHeader: &apipb.PacketClassifier_IpHeader{
-											SrcIpRange: proto.String("192.168.2.2"),
-											// DstIpRange: proto.String("192.168.1.0/24"), // test break
-										},
-									},
-									ActionBucket: []*apipb.FlowRule_ActionBucket{
-										{
-											Action: []*apipb.FlowRule_ActionBucket_Action{
-												{
-													ActionType: &apipb.FlowRule_ActionBucket_Action_Forward_{
-														Forward: &apipb.FlowRule_ActionBucket_Action_Forward{
-															OutInterfaceId: proto.String("foo"),
-															NextHopIp:      proto.String("192.168.1.1/32"),
-														},
-													},
-												},
-											},
-										},
-									},
-								},
-								SequenceNumber: proto.Int64(1),
-							},
-						},
-					},
-				},
-			},
-			wantStates: []*apipb.ControlPlaneState{
-				{
-					ForwardingState: &apipb.FlowState{},
-				},
-			},
-			wantErrors: []error{
-				fmt.Errorf("FlowUpdate with flowRuleID (%s) failed with error: %w", "rule1",
-					&ClassifierError{
-						missingField: DstIpRange_Field,
-					}),
-			},
-		},
-		{
-			name: "attempt with wrongly formatted Classifier.IpHeader.SrcIpRange",
-			routeList: []routesError{
-				{
-					routes: []vnl.Route{
-						{
-							Src:       net.ParseIP("192.168.2.2"),
-							Dst:       dst,
-							Gw:        net.ParseIP("192.168.1.1"),
-							LinkIndex: 7,
-						},
-					},
-					err: nil,
-				},
-			},
-			routeAdd:        []error{nil},
-			routeDel:        []error{nil},
-			getLinkIDByName: []linkIdxError{{idx: 7, err: nil}},
-			scheduledControlUpdates: []*apipb.ScheduledControlUpdate{
-				{
-					Change: &apipb.ControlPlaneUpdate{
-						UpdateType: &apipb.ControlPlaneUpdate_FlowUpdate{
-							FlowUpdate: &apipb.FlowUpdate{
-								FlowRuleId: proto.String("rule1"),
-								Operation:  apipb.FlowUpdate_ADD.Enum(),
-								Rule: &apipb.FlowRule{
-									Classifier: &apipb.PacketClassifier{
-										IpHeader: &apipb.PacketClassifier_IpHeader{
-											SrcIpRange: proto.String("192.168.2.222222"),
-											DstIpRange: proto.String("192.168.1.0/24"),
-										},
-									},
-									ActionBucket: []*apipb.FlowRule_ActionBucket{
-										{
-											Action: []*apipb.FlowRule_ActionBucket_Action{
-												{
-													ActionType: &apipb.FlowRule_ActionBucket_Action_Forward_{
-														Forward: &apipb.FlowRule_ActionBucket_Action_Forward{
-															OutInterfaceId: proto.String("foo"),
-															NextHopIp:      proto.String("192.168.1.1/32"),
-														},
-													},
-												},
-											},
-										},
-									},
-								},
-								SequenceNumber: proto.Int64(1),
-							},
-						},
-					},
-				},
-			},
-			wantStates: []*apipb.ControlPlaneState{
-				{
-					ForwardingState: &apipb.FlowState{
-						FlowRuleIds: []string{"rule1"},
-					},
-				},
-			},
-			wantErrors: []error{nil},
-		},
-		{
-			name: "attempt with wrongly formatted Classifier.IpHeader.DstIpRange",
-			routeList: []routesError{
-				{
-					routes: []vnl.Route{
-						{
-							Src:       net.ParseIP("192.168.2.2"),
-							Dst:       dst,
-							Gw:        net.ParseIP("192.168.1.1"),
-							LinkIndex: 7,
-						},
-					},
-					err: nil,
-				},
-			},
-			routeAdd:        []error{nil},
-			routeDel:        []error{nil},
-			getLinkIDByName: []linkIdxError{{idx: 7, err: nil}},
-			scheduledControlUpdates: []*apipb.ScheduledControlUpdate{
-				{
-					Change: &apipb.ControlPlaneUpdate{
-						UpdateType: &apipb.ControlPlaneUpdate_FlowUpdate{
-							FlowUpdate: &apipb.FlowUpdate{
-								FlowRuleId: proto.String("rule1"),
-								Operation:  apipb.FlowUpdate_ADD.Enum(),
-								Rule: &apipb.FlowRule{
-									Classifier: &apipb.PacketClassifier{
-										IpHeader: &apipb.PacketClassifier_IpHeader{
-											SrcIpRange: proto.String("192.168.2.2"),
-											DstIpRange: proto.String("192.168.1112.0/24"), // test break
-										},
-									},
-									ActionBucket: []*apipb.FlowRule_ActionBucket{
-										{
-											Action: []*apipb.FlowRule_ActionBucket_Action{
-												{
-													ActionType: &apipb.FlowRule_ActionBucket_Action_Forward_{
-														Forward: &apipb.FlowRule_ActionBucket_Action_Forward{
-															OutInterfaceId: proto.String("foo"),
-															NextHopIp:      proto.String("192.168.1.1/32"),
-														},
-													},
-												},
-											},
-										},
-									},
-								},
-								SequenceNumber: proto.Int64(1),
-							},
-						},
-					},
-				},
-			},
-			wantStates: []*apipb.ControlPlaneState{
-				{
-					ForwardingState: &apipb.FlowState{},
-				},
-			},
-			wantErrors: []error{
-				fmt.Errorf("FlowUpdate with flowRuleID (%s) failed with error: %w", "rule1",
-					&IPv4FormattingError{
-						ipv4:        "192.168.1112.0/24",
-						sourceField: DstIpRange_Ip,
-					}),
 			},
 		},
 	}
@@ -987,8 +409,8 @@ func TestNetlink(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			for i, cpu := range tc.scheduledControlUpdates {
-				got, err := backend.Apply(ctx, cpu)
+			for i, cc := range tc.configChanges {
+				err := backend.Dispatch(ctx, cc)
 				switch wantErr := tc.wantErrors[i]; {
 				case err == nil && wantErr != nil:
 					t.Fatalf("test %q update #%d expected error (%v), got nil", tc.name, i, wantErr)
@@ -996,10 +418,14 @@ func TestNetlink(t *testing.T) {
 					t.Fatalf("test %q update #%d error mismatch; wanted %v, got %v", tc.name, i, wantErr, err)
 				}
 
-				if diff := cmp.Diff(tc.wantStates[i], got,
-					protocmp.Transform(),
-					protocmp.IgnoreFields(&apipb.FlowState{}, "timestamp"),
-				); diff != "" {
+				gotIDs := map[string]*schedpb.SetRoute{}
+				backend.mu.Lock()
+				for _, rtr := range backend.routesToRuleIDs {
+					maps.Insert(gotIDs, maps.All(rtr.ruleIDs))
+				}
+				backend.mu.Unlock()
+
+				if diff := cmp.Diff(tc.wantIDs[i], gotIDs, protocmp.Transform()); diff != "" {
 					t.Fatalf("test %q update %d unexpected message (-want +got):\n%s", tc.name, i, diff)
 				}
 

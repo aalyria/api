@@ -26,13 +26,10 @@ go_library(
     ],
     importpath = "aalyria.com/spacetime/agent/enactment/netlink",
     deps = [
-        "//api/common:common_go_proto",
         "//api/scheduling/v1alpha:scheduling_go_grpc",
         "@com_github_jonboulle_clockwork//:clockwork",
         "@com_github_rs_zerolog//:zerolog",
         "@com_github_vishvananda_netlink//:netlink",
-        "@org_golang_google_grpc//codes",
-        "@org_golang_google_grpc//status",
         "@org_golang_google_protobuf//proto",
         "@org_golang_x_sys//unix",
     ],
@@ -44,10 +41,10 @@ go_test(
     embed = [":netlink"],
     deps = [
         "//api/common:common_go_proto",
+        "//api/scheduling/v1alpha:scheduling_go_grpc",
         "@com_github_google_go_cmp//cmp",
         "@com_github_jonboulle_clockwork//:clockwork",
         "@com_github_vishvananda_netlink//:netlink",
-        "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//testing/protocmp",
     ],
 )

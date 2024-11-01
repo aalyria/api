@@ -17,17 +17,17 @@ package netlink
 import (
 	"fmt"
 
-	apipb "aalyria.com/spacetime/api/common"
+	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
 	"google.golang.org/protobuf/proto"
 )
 
 // NoChangeSpecifiedError indicates that there is no Change supplied in the apipb.SCU
 type NoChangeSpecifiedError struct {
-	req *apipb.ScheduledControlUpdate
+	req *schedpb.CreateEntryRequest
 }
 
 func (e *NoChangeSpecifiedError) Error() string {
-	return fmt.Sprintf("ScheduledControlUpdate received with no Change specified: %v", e.req)
+	return fmt.Sprintf("CreateEntryRequest received with no ConfigurationChange specified: %v", e.req)
 }
 
 func (e *NoChangeSpecifiedError) Is(err error) bool {
@@ -40,13 +40,14 @@ func (e *NoChangeSpecifiedError) Is(err error) bool {
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 // UnsupportedUpdateError indicates the UpdateType specified in the apipb.SCU is unsupported
-// Dec7: apipb.ControlPlaneUpdate_FlowUpdate is supported
 type UnsupportedUpdateError struct {
-	req *apipb.ScheduledControlUpdate
+	req *schedpb.CreateEntryRequest
 }
 
 func (e *UnsupportedUpdateError) Error() string {
-	return fmt.Sprintf("Attempted to implement unsupported update type: %v on update id: %s", e.req.Change.UpdateType, *e.req.UpdateId)
+	return fmt.Sprintf(
+		"unsupported update type %T on update id %s",
+		e.req.GetConfigurationChange(), e.req.GetId())
 }
 
 func (e *UnsupportedUpdateError) Is(err error) bool {
@@ -58,57 +59,38 @@ func (e *UnsupportedUpdateError) Is(err error) bool {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
-// UnknownFlowRuleDeleteError indicates an unknown FlowRule is attempted to be deleted
-type UnknownFlowRuleDeleteError struct {
-	flowRuleId string
+// UnknownRouteDeleteError indicates an unknown FlowRule is attempted to be deleted
+type UnknownRouteDeleteError struct {
+	changeID string
 }
 
-func (e *UnknownFlowRuleDeleteError) Error() string {
-	return fmt.Sprintf("Attempted to DELETE unknown flowRuleID: %s", e.flowRuleId)
+func (e *UnknownRouteDeleteError) Error() string {
+	return fmt.Sprintf("attempted to DELETE unknown route: %s", e.changeID)
 }
 
-func (e *UnknownFlowRuleDeleteError) Is(err error) bool {
-	if typedErr, ok := err.(*UnknownFlowRuleDeleteError); ok {
-		return typedErr.flowRuleId == e.flowRuleId
+func (e *UnknownRouteDeleteError) Is(err error) bool {
+	if typedErr, ok := err.(*UnknownRouteDeleteError); ok {
+		return typedErr.changeID == e.changeID
 	}
 	return false
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
-// UnrecognizedFlowUpdateOperationError indicates an unrecognized FlowUpdate Operation is attempted to be applied
-// Dec7: apipb.FlowUpdate_ADD and apipb.FlowUpdate_DELETE are supported
-type UnrecognizedFlowUpdateOperationError struct {
-	operation apipb.FlowUpdate_Operation
+// UnrecognizedRouteUpdateOperationError indicates an unrecognized FlowUpdate Operation is attempted to be applied
+type UnrecognizedRouteUpdateOperationError struct {
+	operation *schedpb.CreateEntryRequest
 }
 
-func (e *UnrecognizedFlowUpdateOperationError) Error() string {
-	return fmt.Sprintf("Attempted unrecognized FlowUpdate operation (%s)", e.operation)
+func (e *UnrecognizedRouteUpdateOperationError) Error() string {
+	return fmt.Sprintf("attempted unrecognized CreateEntryRequest operation (%s)", e.operation)
 }
 
-func (e *UnrecognizedFlowUpdateOperationError) Is(err error) bool {
-	if typedErr, ok := err.(*UnrecognizedFlowUpdateOperationError); ok {
+func (e *UnrecognizedRouteUpdateOperationError) Is(err error) bool {
+	if typedErr, ok := err.(*UnrecognizedRouteUpdateOperationError); ok {
 		return e.operation == typedErr.operation
 	}
 	return false
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////
-
-// UnsupportedActionTypeError indicates an unsupported ActionType is attempted to be applied
-// Dec7: FlowRule_ActionBucket_Action_Forward_ is supported
-//
-// TO DO: Expand error and code in netlink.go to return errors if unsupported Action Types
-// such as PopHeader are passed
-type UnsupportedActionTypeError struct{}
-
-func (e *UnsupportedActionTypeError) Error() string {
-	return fmt.Sprintf("Supplied no supported Actions of Forward Action Types")
-}
-
-func (e *UnsupportedActionTypeError) Is(err error) bool {
-	_, ok := err.(*UnsupportedActionTypeError)
-	return ok
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -128,30 +110,11 @@ type IPv4FormattingError struct {
 }
 
 func (e IPv4FormattingError) Error() string {
-	return fmt.Sprintf("Attempted using wrongly formatted IPv4 address/range (%s) for %s field", e.ipv4, e.sourceField)
+	return fmt.Sprintf("attempted using wrongly formatted IPv4 address/range (%s) for %s field", e.ipv4, e.sourceField)
 }
 
 func (e IPv4FormattingError) Is(err error) bool {
 	if typedErr, ok := err.(IPv4FormattingError); ok {
-		return typedErr.sourceField == e.sourceField && typedErr.ipv4 == e.ipv4
-	}
-	return false
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////
-
-// FlowRuleMatchError indicates a case where the supplied FlowRule src/dstIpRange and those implemented by Netlink don't match
-type FlowRuleMatchError struct {
-	ipv4        string
-	sourceField IPv4Entry
-}
-
-func (e FlowRuleMatchError) Error() string {
-	return fmt.Sprintf("Error occurred when attempting to match FLowRule and installed %v, with IP %v", e.sourceField, e.ipv4)
-}
-
-func (e FlowRuleMatchError) Is(err error) bool {
-	if typedErr, ok := err.(FlowRuleMatchError); ok {
 		return typedErr.sourceField == e.sourceField && typedErr.ipv4 == e.ipv4
 	}
 	return false
@@ -166,7 +129,7 @@ type OutInterfaceIdxError struct {
 }
 
 func (e OutInterfaceIdxError) Error() string {
-	return fmt.Sprintf("Attempted using erroneous OutInterfaceId (%s) field with error (%v)", e.wrongIface, e.sourceError)
+	return fmt.Sprintf("attempted using erroneous interface (%s): %v", e.wrongIface, e.sourceError)
 }
 
 func (e OutInterfaceIdxError) Unwrap() error {
@@ -176,33 +139,6 @@ func (e OutInterfaceIdxError) Unwrap() error {
 func (e OutInterfaceIdxError) Is(err error) bool {
 	if typedErr, ok := err.(OutInterfaceIdxError); ok {
 		return typedErr.wrongIface == e.wrongIface
-	}
-	return false
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////
-
-// ClassifierError indicates an erroneously supplied outbound network interface
-type ClassifierField string
-
-const (
-	IpHeader_Field   ClassifierField = "IpHeader"
-	Protocol_Field   ClassifierField = "Protocol"
-	SrcIpRange_Field ClassifierField = "SrcIpRange"
-	DstIpRange_Field ClassifierField = "DstIpRange"
-)
-
-type ClassifierError struct {
-	missingField ClassifierField
-}
-
-func (e ClassifierError) Error() string {
-	return fmt.Sprintf("Attempted using PacketClassifier with missing field (%v)", e.missingField)
-}
-
-func (e ClassifierError) Is(err error) bool {
-	if typedErr, ok := err.(ClassifierError); ok {
-		return typedErr.missingField == e.missingField
 	}
 	return false
 }

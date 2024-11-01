@@ -27,5 +27,5 @@ go_library(
     name = "agent_lib",
     srcs = ["agent.go"],
     importpath = "aalyria.com/spacetime/agent/cmd/agent",
-    deps = ["//agent/internal/agentcli:agentcli_lib"],
+    deps = ["//agent/internal/agentcli"],
 )
