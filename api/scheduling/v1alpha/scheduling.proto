@@ -181,7 +181,11 @@ message Beam {
 
   string id = 1;
 
+  // Identifies the pointing target for the beam to be aimed at & track.
   BeamTarget target = 2;
+
+  // Identifies the antenna that is used to transmit and/or receive the beam.
+  string antenna_id = 9;
 
   // Parameters specifying the configuration of the beam in the receive
   // direction, keyed by arbitrary IDs.
