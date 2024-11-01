@@ -16,21 +16,19 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os/exec"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
 
-	"google.golang.org/protobuf/proto"
-
-	apipb "aalyria.com/spacetime/api/common"
-	"aalyria.com/spacetime/agent/enactment/netlink"
-
 	"github.com/jonboulle/clockwork"
 	vnl "github.com/vishvananda/netlink"
+
+	"aalyria.com/spacetime/agent/enactment/netlink"
+	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
 )
 
 const (
@@ -42,7 +40,7 @@ const (
 // which can be used to simulate the behaviour of real Linux network interfaces
 func setupInterface(nlHandle *vnl.Handle, ifaceIndex int, ifaceName string, ifaceIP string) {
 	// Generate synthetic link environment for test
-	link := vnl.Dummy{vnl.LinkAttrs{Index: ifaceIndex, Name: ifaceName}}
+	link := vnl.Dummy{LinkAttrs: vnl.LinkAttrs{Index: ifaceIndex, Name: ifaceName}}
 	err := nlHandle.LinkAdd(&link)
 	if err != nil {
 		log.Fatalf("nlHandle.LinkAdd(Dummy(%s)) failed with: %s", ifaceName, err)
@@ -111,25 +109,18 @@ func checkNetlinkIpRulePriorityJumpsToTable(priority int) {
 
 // formatFlowState implements a consistent string format for
 // ControlPlaneState messages contain only a FlowState field.
-func formatFlowState(flowState *apipb.ControlPlaneState) string {
-	fwdState := flowState.GetForwardingState()
-
-	var b strings.Builder
-	fmt.Fprintf(&b, "forwarding_state:{timestamp:{%v}", fwdState.GetTimestamp())
-	flowRuleIDs := fwdState.GetFlowRuleIds()
-	sort.Sort(sort.Reverse(sort.StringSlice(flowRuleIDs)))
-	for _, flow_rule_id := range flowRuleIDs {
-		fmt.Fprintf(&b, " flow_rule_ids:\"%v\"", flow_rule_id)
+func formatDriverState(d *netlink.Driver) string {
+	data, err := json.Marshal(d.Stats())
+	if err != nil {
+		panic(fmt.Errorf("failed to marshal driver state as JSON: %w", err))
 	}
-	fmt.Fprintf(&b, "}")
-
-	return b.String()
+	return string(data)
 }
 
 // printTestState outputs a string in format to be consumed by the test runner
 // and compared against expected output in the YAML test definition file.
-func printTestState(testName string, newState *apipb.ControlPlaneState, err error) {
-	fmt.Printf("%v %v, err: %v\n", testName, formatFlowState(newState), err)
+func printTestState(testName string, eb *netlink.Driver, err error) {
+	fmt.Printf("%v %v, err: %v\n", testName, formatDriverState(eb), err)
 }
 
 func main() {
@@ -162,85 +153,39 @@ func main() {
 
 	testName := "TST1"
 	fmt.Printf("\nImplement zulu1 FlowRuleID for destination 104.198.75.23\n")
-	updateId := "64988bc4-d401-428a-b7be-926bebb5f832"
 
-	newState, err := eb.Apply(ctx, &apipb.ScheduledControlUpdate{
-		UpdateId: &updateId,
-		Change: &apipb.ControlPlaneUpdate{
-			UpdateType: &apipb.ControlPlaneUpdate_FlowUpdate{
-				FlowUpdate: &apipb.FlowUpdate{
-					FlowRuleId: proto.String("zulu1"),
-					Operation:  apipb.FlowUpdate_ADD.Enum(),
-					Rule: &apipb.FlowRule{
-						Classifier: &apipb.PacketClassifier{
-							IpHeader: &apipb.PacketClassifier_IpHeader{
-								SrcIpRange: proto.String("216.58.201.110"),   // might be deprecated
-								DstIpRange: proto.String("104.198.75.23/32"), // IP of the GCP ingress
-							},
-						},
-						ActionBucket: []*apipb.FlowRule_ActionBucket{
-							{
-								Action: []*apipb.FlowRule_ActionBucket_Action{
-									{
-										ActionType: &apipb.FlowRule_ActionBucket_Action_Forward_{
-											Forward: &apipb.FlowRule_ActionBucket_Action_Forward{
-												OutInterfaceId: proto.String("ens224"),           // local OneWeb data plane VLAN iface
-												NextHopIp:      proto.String("192.168.200.1/32"), // dummy IP of OneWeb UT
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-					SequenceNumber: proto.Int64(1),
-				},
+	err = eb.Dispatch(ctx, &schedpb.CreateEntryRequest{
+		Id:    "zulu1",
+		Seqno: 1,
+		ConfigurationChange: &schedpb.CreateEntryRequest_SetRoute{
+			SetRoute: &schedpb.SetRoute{
+				From: "216.58.201.110",
+				To:   "104.198.75.23/32",
+				Dev:  "ens224",
+				Via:  "192.168.200.1",
 			},
 		},
 	})
 
-	printTestState(testName, newState, err)
+	printTestState(testName, eb, err)
 
 	testName = "TST2"
 	fmt.Printf("\nImplement zulu2 FlowRuleID for destination 104.198.75.23. Zulu1 already implements the route so zulu2 FlowRuleID is just cached\n")
-	updateId = "64288bc3-d401-428a-b7be-926bebb5f832"
 
-	newState, err = eb.Apply(ctx, &apipb.ScheduledControlUpdate{
-		UpdateId: &updateId,
-		Change: &apipb.ControlPlaneUpdate{
-			UpdateType: &apipb.ControlPlaneUpdate_FlowUpdate{
-				FlowUpdate: &apipb.FlowUpdate{
-					FlowRuleId: proto.String("zulu2"),
-					Operation:  apipb.FlowUpdate_ADD.Enum(),
-					Rule: &apipb.FlowRule{
-						Classifier: &apipb.PacketClassifier{
-							IpHeader: &apipb.PacketClassifier_IpHeader{
-								SrcIpRange: proto.String("216.58.201.110"),   // might be deprecated
-								DstIpRange: proto.String("104.198.75.23/32"), // IP of the GCP ingress
-							},
-						},
-						ActionBucket: []*apipb.FlowRule_ActionBucket{
-							{
-								Action: []*apipb.FlowRule_ActionBucket_Action{
-									{
-										ActionType: &apipb.FlowRule_ActionBucket_Action_Forward_{
-											Forward: &apipb.FlowRule_ActionBucket_Action_Forward{
-												OutInterfaceId: proto.String("ens224"),           // local OneWeb data plane VLAN iface
-												NextHopIp:      proto.String("192.168.200.1/32"), // dummy IP of OneWeb UT
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-					SequenceNumber: proto.Int64(1),
-				},
+	err = eb.Dispatch(ctx, &schedpb.CreateEntryRequest{
+		Id:    "zulu2",
+		Seqno: 2,
+		ConfigurationChange: &schedpb.CreateEntryRequest_SetRoute{
+			SetRoute: &schedpb.SetRoute{
+				From: "216.58.201.110",
+				To:   "104.198.75.23/32",
+				Dev:  "ens224",
+				Via:  "192.168.200.1",
 			},
 		},
 	})
 
-	printTestState(testName, newState, err)
+	printTestState(testName, eb, err)
 
 	testName = "TST3"
 	fmt.Printf("\nManually delete the route to 104.198.75.23 designated by zulu1 and zulu2\n\n")
@@ -253,243 +198,139 @@ func main() {
 	}
 
 	fmt.Printf("\nImplement zulu3 FlowRuleID for destination 104.198.75.23. Without syncing, agent would think this is already implemented, and the route ADD would be skipped, leaving us without a route\n")
-	updateId = "64288bc4-d401-428a-b7be-926bebb5f832"
 
-	newState, err = eb.Apply(ctx, &apipb.ScheduledControlUpdate{
-		UpdateId: &updateId,
-		Change: &apipb.ControlPlaneUpdate{
-			UpdateType: &apipb.ControlPlaneUpdate_FlowUpdate{
-				FlowUpdate: &apipb.FlowUpdate{
-					FlowRuleId: proto.String("zulu3"),
-					Operation:  apipb.FlowUpdate_ADD.Enum(),
-					Rule: &apipb.FlowRule{
-						Classifier: &apipb.PacketClassifier{
-							IpHeader: &apipb.PacketClassifier_IpHeader{
-								SrcIpRange: proto.String("216.58.201.110"),   // might be deprecated
-								DstIpRange: proto.String("104.198.75.23/32"), // IP of the GCP ingress
-							},
-						},
-						ActionBucket: []*apipb.FlowRule_ActionBucket{
-							{
-								Action: []*apipb.FlowRule_ActionBucket_Action{
-									{
-										ActionType: &apipb.FlowRule_ActionBucket_Action_Forward_{
-											Forward: &apipb.FlowRule_ActionBucket_Action_Forward{
-												OutInterfaceId: proto.String("ens224"),           // local OneWeb data plane VLAN iface
-												NextHopIp:      proto.String("192.168.200.1/32"), // dummy IP of OneWeb UT
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-					SequenceNumber: proto.Int64(1),
-				},
+	err = eb.Dispatch(ctx, &schedpb.CreateEntryRequest{
+		Id:    "zulu3",
+		Seqno: 3,
+		ConfigurationChange: &schedpb.CreateEntryRequest_SetRoute{
+			SetRoute: &schedpb.SetRoute{
+				From: "216.58.201.110",
+				To:   "104.198.75.23/32",
+				Dev:  "ens224",
+				Via:  "192.168.200.1",
 			},
 		},
 	})
 
-	printTestState(testName, newState, err)
+	printTestState(testName, eb, err)
 
 	testName = "TST4"
 	fmt.Printf("\nImplement dbvr2 FlowRuleID to destination 34.135.90.47 (different route to zuluX)\n")
-	updateId = "9bac075f-9560-494e-b925-56f6c88a9d23"
 
-	newState, err = eb.Apply(ctx, &apipb.ScheduledControlUpdate{
-		UpdateId: &updateId,
-		Change: &apipb.ControlPlaneUpdate{
-			UpdateType: &apipb.ControlPlaneUpdate_FlowUpdate{
-				FlowUpdate: &apipb.FlowUpdate{
-					FlowRuleId: proto.String("dbvr2"),
-					Operation:  apipb.FlowUpdate_ADD.Enum(),
-					Rule: &apipb.FlowRule{
-						Classifier: &apipb.PacketClassifier{
-							IpHeader: &apipb.PacketClassifier_IpHeader{
-								SrcIpRange: proto.String("216.58.201.110"),  // might be deprecated
-								DstIpRange: proto.String("34.135.90.47/32"), // IP of the GCP ingress
-							},
-						},
-						ActionBucket: []*apipb.FlowRule_ActionBucket{
-							{
-								Action: []*apipb.FlowRule_ActionBucket_Action{
-									{
-										ActionType: &apipb.FlowRule_ActionBucket_Action_Forward_{
-											Forward: &apipb.FlowRule_ActionBucket_Action_Forward{
-												OutInterfaceId: proto.String("ens224"),           // local ViaSat VLAN iface
-												NextHopIp:      proto.String("192.168.200.1/32"), // dummy IP of ViaSat UT/router
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-					SequenceNumber: proto.Int64(3),
-				},
+	err = eb.Dispatch(ctx, &schedpb.CreateEntryRequest{
+		Id:    "dvbr2",
+		Seqno: 4,
+		ConfigurationChange: &schedpb.CreateEntryRequest_SetRoute{
+			SetRoute: &schedpb.SetRoute{
+				From: "216.58.201.110",
+				To:   "34.135.90.47/32",
+				Dev:  "ens224",
+				Via:  "192.168.200.1",
 			},
 		},
 	})
 
-	printTestState(testName, newState, err)
+	printTestState(testName, eb, err)
 
 	testName = "TST5"
-	fmt.Printf("\nAttempt to delete FlowRuleID zulu1 (non-existant currently)\n")
-	updateId = "a97b4dac-d216-45a5-9ed7-129c39ab0438"
+	fmt.Printf("\nAttempt to delete FlowRuleID zulu1 (non-existent currently)\n")
 
-	newState, err = eb.Apply(ctx, &apipb.ScheduledControlUpdate{
-		UpdateId: &updateId,
-		Change: &apipb.ControlPlaneUpdate{
-			UpdateType: &apipb.ControlPlaneUpdate_FlowUpdate{
-				FlowUpdate: &apipb.FlowUpdate{
-					FlowRuleId:     proto.String("zulu1"),
-					Operation:      apipb.FlowUpdate_DELETE.Enum(),
-					SequenceNumber: proto.Int64(2),
-				},
+	err = eb.Dispatch(ctx, &schedpb.CreateEntryRequest{
+		Id:    "zulu1",
+		Seqno: 5,
+		ConfigurationChange: &schedpb.CreateEntryRequest_DeleteRoute{
+			DeleteRoute: &schedpb.DeleteRoute{
+				From: "216.58.201.110",
+				To:   "34.135.90.47/32",
 			},
 		},
 	})
 
-	printTestState(testName, newState, err)
+	printTestState(testName, eb, err)
 
 	testName = "TST6"
 	fmt.Printf("\nSpacetime reprovisions zulu1. Because zulu3 already implemented the route, zulu1's ADD is skipped but the FlowRuleID is cached")
-	updateId = "a97s4dac-d216-45a5-9ed7-129c39ab0438"
 
-	newState, err = eb.Apply(ctx, &apipb.ScheduledControlUpdate{
-		UpdateId: &updateId,
-		Change: &apipb.ControlPlaneUpdate{
-			UpdateType: &apipb.ControlPlaneUpdate_FlowUpdate{
-				FlowUpdate: &apipb.FlowUpdate{
-					FlowRuleId: proto.String("zulu1"),
-					Operation:  apipb.FlowUpdate_ADD.Enum(),
-					Rule: &apipb.FlowRule{
-						Classifier: &apipb.PacketClassifier{
-							IpHeader: &apipb.PacketClassifier_IpHeader{
-								SrcIpRange: proto.String("216.58.201.110"),   // might be deprecated
-								DstIpRange: proto.String("104.198.75.23/32"), // IP of the GCP ingress
-							},
-						},
-						ActionBucket: []*apipb.FlowRule_ActionBucket{
-							{
-								Action: []*apipb.FlowRule_ActionBucket_Action{
-									{
-										ActionType: &apipb.FlowRule_ActionBucket_Action_Forward_{
-											Forward: &apipb.FlowRule_ActionBucket_Action_Forward{
-												OutInterfaceId: proto.String("ens224"),           // local OneWeb data plane VLAN iface
-												NextHopIp:      proto.String("192.168.200.1/32"), // dummy IP of OneWeb UT
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-					SequenceNumber: proto.Int64(1),
-				},
+	err = eb.Dispatch(ctx, &schedpb.CreateEntryRequest{
+		Id:    "zulu1",
+		Seqno: 6,
+		ConfigurationChange: &schedpb.CreateEntryRequest_SetRoute{
+			SetRoute: &schedpb.SetRoute{
+				From: "216.58.201.110",
+				To:   "104.198.75.23/32",
+				Dev:  "ens224",
+				Via:  "192.168.200.1",
 			},
 		},
 	})
 
-	printTestState(testName, newState, err)
+	printTestState(testName, eb, err)
 
 	testName = "TST7"
 	fmt.Printf("\nSpacetime reprovisions zulu2. Because zulu1 and zulu3 already implement the route, zulu2's ADD is skipped but the FlowRuleID is cached")
-	updateId = "64288bc3-d401-428a-b7be-926bebb5f832"
 
-	newState, err = eb.Apply(ctx, &apipb.ScheduledControlUpdate{
-		UpdateId: &updateId,
-		Change: &apipb.ControlPlaneUpdate{
-			UpdateType: &apipb.ControlPlaneUpdate_FlowUpdate{
-				FlowUpdate: &apipb.FlowUpdate{
-					FlowRuleId: proto.String("zulu2"),
-					Operation:  apipb.FlowUpdate_ADD.Enum(),
-					Rule: &apipb.FlowRule{
-						Classifier: &apipb.PacketClassifier{
-							IpHeader: &apipb.PacketClassifier_IpHeader{
-								SrcIpRange: proto.String("216.58.201.110"),   // might be deprecated
-								DstIpRange: proto.String("104.198.75.23/32"), // IP of the GCP ingress
-							},
-						},
-						ActionBucket: []*apipb.FlowRule_ActionBucket{
-							{
-								Action: []*apipb.FlowRule_ActionBucket_Action{
-									{
-										ActionType: &apipb.FlowRule_ActionBucket_Action_Forward_{
-											Forward: &apipb.FlowRule_ActionBucket_Action_Forward{
-												OutInterfaceId: proto.String("ens224"),           // local OneWeb data plane VLAN iface
-												NextHopIp:      proto.String("192.168.200.1/32"), // dummy IP of OneWeb UT
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-					SequenceNumber: proto.Int64(1),
-				},
+	err = eb.Dispatch(ctx, &schedpb.CreateEntryRequest{
+		Id:    "zulu2",
+		Seqno: 7,
+		ConfigurationChange: &schedpb.CreateEntryRequest_SetRoute{
+			SetRoute: &schedpb.SetRoute{
+				From: "216.58.201.110",
+				To:   "104.198.75.23/32",
+				Dev:  "ens224",
+				Via:  "192.168.200.1",
 			},
 		},
 	})
 
-	printTestState(testName, newState, err)
+	printTestState(testName, eb, err)
 
 	testName = "TST8"
 	fmt.Printf("\nSpacetime provisions DELETE for zulu1. Because zulu2 and zulu3 still represent the route, the actual route is kept\n")
-	updateId = "a97bsdac-d216-45a5-9ed7-129c39ab0438"
 
-	newState, err = eb.Apply(ctx, &apipb.ScheduledControlUpdate{
-		UpdateId: &updateId,
-		Change: &apipb.ControlPlaneUpdate{
-			UpdateType: &apipb.ControlPlaneUpdate_FlowUpdate{
-				FlowUpdate: &apipb.FlowUpdate{
-					FlowRuleId:     proto.String("zulu1"),
-					Operation:      apipb.FlowUpdate_DELETE.Enum(),
-					SequenceNumber: proto.Int64(2),
-				},
+	err = eb.Dispatch(ctx, &schedpb.CreateEntryRequest{
+		Id:    "zulu1",
+		Seqno: 8,
+		ConfigurationChange: &schedpb.CreateEntryRequest_DeleteRoute{
+			DeleteRoute: &schedpb.DeleteRoute{
+				From: "216.58.201.110",
+				To:   "104.198.75.23/32",
 			},
 		},
 	})
 
-	printTestState(testName, newState, err)
+	printTestState(testName, eb, err)
 
 	testName = "TST9"
 	fmt.Printf("\nSpacetime provisions DELETE for zulu2. Because zulu3 still represents the route, the actual route is kept\n")
-	updateId = "a97b4dac-d216-45a5-9ed7-129c39ab0438"
 
-	newState, err = eb.Apply(ctx, &apipb.ScheduledControlUpdate{
-		UpdateId: &updateId,
-		Change: &apipb.ControlPlaneUpdate{
-			UpdateType: &apipb.ControlPlaneUpdate_FlowUpdate{
-				FlowUpdate: &apipb.FlowUpdate{
-					FlowRuleId:     proto.String("zulu2"),
-					Operation:      apipb.FlowUpdate_DELETE.Enum(),
-					SequenceNumber: proto.Int64(2),
-				},
+	err = eb.Dispatch(ctx, &schedpb.CreateEntryRequest{
+		Id:    "zulu2",
+		Seqno: 9,
+		ConfigurationChange: &schedpb.CreateEntryRequest_DeleteRoute{
+			DeleteRoute: &schedpb.DeleteRoute{
+				From: "216.58.201.110",
+				To:   "104.198.75.23/32",
 			},
 		},
 	})
 
-	printTestState(testName, newState, err)
+	printTestState(testName, eb, err)
 
 	testName = "TST10"
 	fmt.Printf("\nSpacetime provisions DELETE for zulu3. Since this is the last FlowRuleID representing the route to destination 104.198.75.23, the route too is deleted\n")
-	updateId = "a97b4dac-d216-45a5-9ed7-129c39ab0438"
 
-	newState, err = eb.Apply(ctx, &apipb.ScheduledControlUpdate{
-		UpdateId: &updateId,
-		Change: &apipb.ControlPlaneUpdate{
-			UpdateType: &apipb.ControlPlaneUpdate_FlowUpdate{
-				FlowUpdate: &apipb.FlowUpdate{
-					FlowRuleId:     proto.String("zulu3"),
-					Operation:      apipb.FlowUpdate_DELETE.Enum(),
-					SequenceNumber: proto.Int64(2),
-				},
+	err = eb.Dispatch(ctx, &schedpb.CreateEntryRequest{
+		Id:    "zulu3",
+		Seqno: 10,
+		ConfigurationChange: &schedpb.CreateEntryRequest_DeleteRoute{
+			DeleteRoute: &schedpb.DeleteRoute{
+				From: "216.58.201.110",
+				To:   "104.198.75.23/32",
 			},
 		},
 	})
 
-	printTestState(testName, newState, err)
+	printTestState(testName, eb, err)
 
 	cmd = exec.Command("ip", "route", "show", "table", strconv.Itoa(rtTableID))
 

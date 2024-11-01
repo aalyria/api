@@ -52,7 +52,7 @@ func NewDriver(
 	}, clock, collectionPeriod)
 }
 
-func (rg *reportGenerator) Stats() interface{} { return nil }
+func (rg *reportGenerator) Stats() any { return nil }
 
 func (rg *reportGenerator) GenerateReport(ctx context.Context, nodeID string) (*telemetrypb.ExportMetricsRequest, error) {
 	log := zerolog.Ctx(ctx).With().Str("backend", "netlink").Logger()
