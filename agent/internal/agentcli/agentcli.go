@@ -362,8 +362,10 @@ func getDialOpts(ctx context.Context, connParams *configpb.ConnectionParams, clo
 			return nil, err
 		}
 		host, _, err := net.SplitHostPort(connParams.GetEndpointUri())
+		// If parsing host:port fails, let's use the whole param as host
+		// and let downstream libraries fail if the host is actually invalid.
 		if err != nil {
-			return nil, fmt.Errorf("parsing %q: %w", connParams.GetEndpointUri(), err)
+			host = connParams.GetEndpointUri()
 		}
 
 		creds, err := auth.NewCredentials(ctx, auth.Config{

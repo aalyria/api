@@ -54,9 +54,9 @@ func openAPIConnection(appCtx *cli.Context, apiSubDomain string) (*grpc.ClientCo
 		return nil, fmt.Errorf("unable to obtain context information: %w", err)
 	}
 	var containsDnsSchema bool
-	setting.Url, containsDnsSchema = strings.CutPrefix(setting.GetUrl(), "dns://")
+	setting.Url, containsDnsSchema = strings.CutPrefix(setting.GetUrl(), "dns:///")
 	if containsDnsSchema {
-		fmt.Fprintf(appCtx.App.ErrWriter, "Warning: the URL setting should not contain the dns:// prefix, please provide only host[:port]\n")
+		fmt.Fprintf(appCtx.App.ErrWriter, "Warning: the URL setting should not contain the dns:/// prefix, please provide only host[:port]\n")
 	}
 	setting.Url = adjustURLForAPISubDomain(setting.GetUrl(), apiSubDomain)
 	return dial(appCtx.Context, setting, nil)
@@ -124,8 +124,10 @@ func getDialOpts(ctx context.Context, setting *nbictlpb.Config, httpClient *http
 	// Unless transport-security is set to Insecure, add Spacetime PerRPCCredentials.
 	if _, insecure := setting.GetTransportSecurity().GetType().(*nbictlpb.Config_TransportSecurity_Insecure); !insecure {
 		host, _, err := net.SplitHostPort(setting.GetUrl())
+		// If parsing host:port fails, let's use the whole param as host
+		// and let downstream libraries fail if the host is actually invalid.
 		if err != nil {
-			return nil, fmt.Errorf("parsing %q: %w", setting.GetUrl(), err)
+			host = setting.GetUrl()
 		}
 		if setting.GetPrivKey() == "" {
 			return nil, errors.New("no private key set for chosen context")
