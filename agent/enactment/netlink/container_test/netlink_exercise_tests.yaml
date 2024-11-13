@@ -1,0 +1,50 @@
+# Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http:#www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+schemaVersion: "2.0.0"
+
+containerRunOptions:
+  user: "root"                  # set the --user/-u flag
+  privileged: true              # set the --privileged flag (default: false)
+  # capabilities:                 # Add list of Linux capabilities (--cap-add)
+  #   - NET_BIND_SERVICE
+
+globalEnvVars:
+  - key: "VIRTUAL_ENV"
+    value: "/env"
+  - key: "PATH"
+    value: "/env/bin:$PATH"
+
+commandTests:
+  - name: "netlink exercise"
+    setup: [
+      ["apk", "add", "gcompat"],
+      ["ln", "-sf", "/lib/libgcompat.so.0", "/lib/libresolv.so.2"],
+    ]
+    command: "/netlink_exercise"
+    #args: ["add", "libcap"]
+    expectedOutput:
+      - "\\bip -4 rule: 25200:\\s*from all lookup 252\\b"
+      - "\\bip -6 rule: 25200:\\s*from all lookup 252\\b"
+      - "TST1 {\"InitCount\":1,\"LastError\":\"\",\"InstalledRoutes\":\\[\"zulu1\"\\],\"EnactmentFailureCount\":0,\"RoutesSetCount\":1,\"RoutesDeletedCount\":0}, err: <nil>\n"
+      - "TST2 {\"InitCount\":1,\"LastError\":\"\",\"InstalledRoutes\":\\[\"zulu1\",\"zulu2\"\\],\"EnactmentFailureCount\":0,\"RoutesSetCount\":2,\"RoutesDeletedCount\":0}, err: <nil>\n"
+      - "TST3 {\"InitCount\":1,\"LastError\":\"\",\"InstalledRoutes\":\\[\"zulu1\",\"zulu2\",\"zulu3\"\\],\"EnactmentFailureCount\":0,\"RoutesSetCount\":3,\"RoutesDeletedCount\":0}, err: <nil>\n"
+      - "TST4 {\"InitCount\":1,\"LastError\":\"\",\"InstalledRoutes\":\\[\"dvbr2\",\"zulu1\",\"zulu2\",\"zulu3\"\\],\"EnactmentFailureCount\":0,\"RoutesSetCount\":4,\"RoutesDeletedCount\":0}, err: <nil>\n"
+      - "TST5 {\"InitCount\":1,\"LastError\":\"\",\"InstalledRoutes\":\\[\"dvbr2\",\"zulu1\",\"zulu2\",\"zulu3\"\\],\"EnactmentFailureCount\":0,\"RoutesSetCount\":4,\"RoutesDeletedCount\":1}, err: attempted to DELETE unknown route: zulu1\n"
+      - "TST6 {\"InitCount\":1,\"LastError\":\"\",\"InstalledRoutes\":\\[\"dvbr2\",\"zulu1\",\"zulu2\",\"zulu3\"\\],\"EnactmentFailureCount\":0,\"RoutesSetCount\":5,\"RoutesDeletedCount\":1}, err: <nil>\n"
+      - "TST7 {\"InitCount\":1,\"LastError\":\"\",\"InstalledRoutes\":\\[\"dvbr2\",\"zulu1\",\"zulu2\",\"zulu3\"\\],\"EnactmentFailureCount\":0,\"RoutesSetCount\":6,\"RoutesDeletedCount\":1}, err: <nil>\n"
+      - "TST8 {\"InitCount\":1,\"LastError\":\"\",\"InstalledRoutes\":\\[\"dvbr2\",\"zulu2\",\"zulu3\"\\],\"EnactmentFailureCount\":0,\"RoutesSetCount\":6,\"RoutesDeletedCount\":2}, err: <nil>\n"
+      - "TST9 {\"InitCount\":1,\"LastError\":\"\",\"InstalledRoutes\":\\[\"dvbr2\",\"zulu3\"\\],\"EnactmentFailureCount\":0,\"RoutesSetCount\":6,\"RoutesDeletedCount\":3}, err: <nil>\n"
+      - "TST10 {\"InitCount\":1,\"LastError\":\"\",\"InstalledRoutes\":\\[\"dvbr2\"\\],\"EnactmentFailureCount\":0,\"RoutesSetCount\":6,\"RoutesDeletedCount\":4}, err: <nil>\n"
+      - "\\b34.135.90.47 via 192.168.200.1 dev ens224  metric -373334401\\b"
