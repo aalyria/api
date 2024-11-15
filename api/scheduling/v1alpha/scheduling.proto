@@ -286,6 +286,12 @@ message RxConfiguration {
   string modem_id = 6;
 
   ModemMode mode = 4;
+
+  // Includes technology-specific parameters needed for particular link and
+  // physical layer technology standards, such as DVB-S2X, etc.
+  oneof other_parameters {
+    DvbS2Params dvbs2_params = 7;
+  }
 }
 
 message TxConfiguration {
@@ -307,6 +313,12 @@ message TxConfiguration {
   ModemMode mode = 4;
 
   string initial_modcod = 7;
+
+  // Includes technology-specific parameters needed for particular link and
+  // physical layer technology standards, such as DVB-S2X, etc.
+  oneof other_parameters {
+    DvbS2Params dvbs2_params = 9;
+  }
 }
 
 enum Polarization {
@@ -319,6 +331,14 @@ enum ModemMode {
   MODEM_MODE_UNSPECIFIED = 0;
   MODEM_MODE_DVB_RCS2 = 1;
   MODEM_MODE_DVB_S2X = 2;
+}
+
+// Groups configurable attributes specific to DVB-S2 / S2X links.
+message DvbS2Params {
+  // Identifies the physical layer scrambling codes used for payload data and
+  // pilot symbols.  Mapping to particular sequences may be user-defined.
+  uint32 payload_pl_scrambling_code = 1;
+  uint32 pilot_pl_scrambling_code = 2; 
 }
 
 message Endpoint {
