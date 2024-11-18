@@ -346,7 +346,32 @@ message Endpoint {
   double rx_reference_throughput_bps = 3;
   double tx_reference_throughput_bps = 4;
 
+  // Indicates the CIR and EIR used in plan generation, as guidance for
+  // realtime demand-based management systems.
+  double commited_information_rate_bps = 5;
+  double excess_information_rate_bps = 6;
+
+  EndpointSecurity security = 7;
+  EndpointRouting routing = 8;
+
   reserved 1;
+}
+
+message EndpointSecurity {
+  // Identifies or provides key information for reception from and transmission
+  // to the endpoint.
+  string rx_key = 1;
+  string tx_key = 2;
+}
+
+message EndpointRouting {
+  // Indicates incoming MPLS SIDs pertaining to the endpoint.
+  repeated uint32 rx_segment_ids = 1;
+
+  // Provides a GSE label to be used for the endpoint.  This should either be
+  // a three-byte or a six-byte value (if it is used at all), as other lengths
+  // are not valid GSE labels.
+  bytes gse_label = 2;
 }
 
 // A Segment Routing Policy Architecture policy description.
