@@ -404,10 +404,31 @@ message SetSrPolicy {
   }
 }
 
+// Identifiers for an SR segment (a SID).
+//
+// It is an error if multiple dataplane SIDs are present in this message
+// and do not all identify the same logical segment.
 message SrSegment {
-  oneof type {
-    uint32 mpls = 1;  // "Type A"; RFC 8294 mpls-label
-  }
+  // An RFC 8294 mpls-label
+  //
+  // Typically an RFC 9256 SR-DB Type A segment, but may be any
+  // segment with an MPLS dataplane identifier (label).
+  //
+  // The proto3-default value of zero (0) here is only valid iff:
+  //   - this is the last SR segment in a sequence, AND
+  //   - the SRv6 SID field is empty OR it contains an SRv6 SID that
+  //     identifies behavior equivalent to the RFC 3032 IPv4 Explicit
+  //     NULL Label behavior (e.g. RFC 8986 Section 4.16 variant SIDs).
+  uint32 mpls = 1;
+
+  // An RFC 6991 ipv6-address-no-zone
+  //
+  // Typically an RFC 9256 SR-DB Type B segment, but may be any
+  // segment with an SRv6 dataplane identifier (IPv6 address).
+  //
+  // For more on the relationship between SRv6 SIDs and the IPv6
+  // addressing architecture see RFC 9602.
+  string srv6 = 2;
 }
 
 message DeleteSrPolicy {
