@@ -331,6 +331,7 @@ enum ModemMode {
   MODEM_MODE_UNSPECIFIED = 0;
   MODEM_MODE_DVB_RCS2 = 1;
   MODEM_MODE_DVB_S2X = 2;
+  MODEM_MODE_TRANSPARENT = 3; // No modulation/demodulation is performed.
 }
 
 // Groups configurable attributes specific to DVB-S2 / S2X links.
