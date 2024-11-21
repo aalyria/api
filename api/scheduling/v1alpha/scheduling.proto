@@ -376,33 +376,40 @@ message EndpointRouting {
 }
 
 // A Segment Routing Policy Architecture policy description.
-// Based in part upon elements from:
+// Based largely upon elements from:
 //   * RFC 9256
-//   * draft-ietf-idr-sr-policy-safi
-//   * draft-ietf-idr-bgp-sr-segtypes-ext
 //   * draft-ietf-spring-sr-policy-yang
 message SetSrPolicy {
-  // The name of this SR policy, unique among all SR policies, and
-  // matching the name given in the `ServiceRequest` that caused
-  // this policy to be instantiated.
-  string name = 1;
+  // The ID of the request for this SR policy, unique among all service
+  // requests, that caused this policy to be instantiated.
+  //
+  // Per RFC 9256 S2.1, "[a]n SR Policy MUST be identified through the
+  // tuple <Headend, Color, Endpoint>." That information is not copied
+  // here; rather it is assumed that this ID suffices to locate that
+  // information, should it be required.
+  string id = 1;
 
-  repeated ExplicitPath paths = 2;
-
+  // RFC 9256 S2.2 "Candidate Path and Segment List"; only explicit
+  // candidate paths are supported.
   message ExplicitPath {
-    // Assigning meaning to color can be used to indicate alternate
-    // paths (backup paths of various types).
-    uint32 color = 1;
-
-    // Within explicit paths of the same color, the weight to be
-    // given to this specific segment list (for multipathing).
-    uint32 weight = 2;
+    // RFC 9256 S2.5 Discriminator.
+    uint32 discriminator = 1;
+    // RFC 9256 S2.6 optional symbolic name.
+    string name = 4;
+    // RFC 9256 S2.7 Preference.
+    uint32 preference = 2;
 
     // An ordered list of segments from ingress to egress. The first
     // segment may be used to indicate the first hop and therefore
     // need not be encoded in any dataplane encapsulation.
+    //
+    // As there is presently only one Segment List per candidate path
+    // there is no additional weight attribute.
     repeated SrSegment segments = 3;
+
+    reserved 5 to max;
   }
+  repeated ExplicitPath paths = 2;
 }
 
 // Identifiers for an SR segment (a SID).
@@ -433,7 +440,7 @@ message SrSegment {
 }
 
 message DeleteSrPolicy {
-  string name = 1;
+  string id = 1;
 }
 
 message DeleteEntryRequest {
