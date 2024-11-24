@@ -389,6 +389,10 @@ message SetSrPolicy {
   // information, should it be required.
   string id = 1;
 
+  // For convenience, the optional symbolic name for this SR Policy.
+  // See also: RFC 9256 S2.1.
+  string name = 3;
+
   // RFC 9256 S2.2 "Candidate Path and Segment List"; only explicit
   // candidate paths are supported.
   message ExplicitPath {
