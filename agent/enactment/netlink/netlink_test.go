@@ -16,8 +16,8 @@ package netlink
 
 import (
 	"context"
-	"maps"
 	"net"
+	"slices"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -50,13 +50,17 @@ func TestNetlink(t *testing.T) {
 		routeDel              []error
 		getLinkIDByName       []linkIdxError
 		configChanges         []*schedpb.CreateEntryRequest
-		wantIDs               []map[string]*schedpb.SetRoute
+		wantRoutes            [][]*installedRoute
 		wantErrors            []error
 	}
 
 	_, dst, err := net.ParseCIDR("192.168.1.0/24")
 	if err != nil {
-		t.Fatalf("failed net.ParseIP(dstString=%s)", "192.168.1.0/24")
+		t.Fatalf("failed net.ParseCIDR(dstString=%s): %v", "192.168.1.0/24", err)
+	}
+	gw, _, err := net.ParseCIDR("192.168.1.1/32")
+	if err != nil {
+		t.Fatalf("failed net.ParseCIDR(gwString=%s): %v", "192.168.1.1/32", err)
 	}
 
 	testCases := []testCase{
@@ -71,7 +75,7 @@ func TestNetlink(t *testing.T) {
 				}},
 				err: nil,
 			}},
-			routeAdd:        []error{nil},
+			routeAdd:        []error{nil, nil},
 			routeDel:        []error{nil},
 			getLinkIDByName: []linkIdxError{{idx: 7, err: nil}},
 			configChanges: []*schedpb.CreateEntryRequest{
@@ -88,16 +92,15 @@ func TestNetlink(t *testing.T) {
 					},
 				},
 			},
-			wantIDs: []map[string]*schedpb.SetRoute{
+			wantRoutes: [][]*installedRoute{{
 				{
-					"rule1": &schedpb.SetRoute{
-						From: "192.168.2.2",
-						To:   "192.168.1.0/24",
-						Via:  "192.168.1.1",
-						Dev:  "foo",
-					},
+					ID:      "rule1",
+					DevName: "foo",
+					DevID:   7,
+					To:      dst,
+					Via:     gw,
 				},
-			},
+			}},
 			wantErrors: []error{nil},
 		},
 		{
@@ -117,8 +120,8 @@ func TestNetlink(t *testing.T) {
 					err:    nil,
 				},
 			},
-			routeAdd:        []error{nil},
-			routeDel:        []error{nil},
+			routeAdd:        []error{nil, nil},
+			routeDel:        []error{nil, nil},
 			getLinkIDByName: []linkIdxError{{idx: 7, err: nil}, {idx: 7, err: nil}},
 			configChanges: []*schedpb.CreateEntryRequest{
 				{
@@ -144,13 +147,14 @@ func TestNetlink(t *testing.T) {
 					},
 				},
 			},
-			wantIDs: []map[string]*schedpb.SetRoute{
+			wantRoutes: [][]*installedRoute{
 				{
-					"rule1": &schedpb.SetRoute{
-						From: "192.168.2.2",
-						To:   "192.168.1.0/24",
-						Dev:  "foo",
-						Via:  "192.168.1.1",
+					{
+						ID:      "rule1",
+						DevName: "foo",
+						DevID:   7,
+						To:      dst,
+						Via:     gw,
 					},
 				},
 				{},
@@ -175,8 +179,8 @@ func TestNetlink(t *testing.T) {
 					err: nil,
 				},
 			},
-			routeAdd:        []error{nil},
-			routeDel:        []error{nil},
+			routeAdd:        []error{nil, nil},
+			routeDel:        []error{nil, nil},
 			getLinkIDByName: []linkIdxError{{idx: 7, err: nil}, {idx: 7, err: nil}},
 			configChanges: []*schedpb.CreateEntryRequest{
 				{
@@ -202,13 +206,14 @@ func TestNetlink(t *testing.T) {
 					},
 				},
 			},
-			wantIDs: []map[string]*schedpb.SetRoute{
+			wantRoutes: [][]*installedRoute{
 				{
-					"rule1": &schedpb.SetRoute{
-						From: "192.168.2.2",
-						To:   "192.168.1.0/24",
-						Dev:  "foo",
-						Via:  "192.168.1.1",
+					{
+						ID:      "rule1",
+						DevName: "foo",
+						DevID:   7,
+						To:      dst,
+						Via:     gw,
 					},
 				},
 				{},
@@ -230,7 +235,7 @@ func TestNetlink(t *testing.T) {
 					err: nil,
 				},
 			},
-			routeAdd:        []error{nil},
+			routeAdd:        []error{nil, nil},
 			routeDel:        []error{nil},
 			getLinkIDByName: []linkIdxError{{idx: 7, err: nil}},
 			configChanges: []*schedpb.CreateEntryRequest{
@@ -245,11 +250,13 @@ func TestNetlink(t *testing.T) {
 					},
 				},
 			},
-			wantIDs:    []map[string]*schedpb.SetRoute{{}},
-			wantErrors: []error{&UnknownRouteDeleteError{"rule1"}},
+			wantRoutes: [][]*installedRoute{
+				{},
+			},
+			wantErrors: []error{&UnknownRouteDeleteError{changeID: "rule1"}},
 		},
 		{
-			name: "attempt to perform ScheduledControlUpdate with no Change",
+			name: "attempt to perform CreateEntryRequest with no Change",
 			routeList: []routesError{
 				{
 					routes: []vnl.Route{
@@ -273,7 +280,9 @@ func TestNetlink(t *testing.T) {
 					ConfigurationChange: nil,
 				},
 			},
-			wantIDs:    []map[string]*schedpb.SetRoute{{}},
+			wantRoutes: [][]*installedRoute{
+				{},
+			},
 			wantErrors: []error{&NoChangeSpecifiedError{&schedpb.CreateEntryRequest{Id: "rule1", Seqno: 1}}},
 		},
 		{
@@ -291,8 +300,6 @@ func TestNetlink(t *testing.T) {
 					err: nil,
 				},
 			},
-			routeAdd:        []error{nil},
-			routeDel:        []error{nil},
 			getLinkIDByName: []linkIdxError{{idx: 7, err: nil}},
 			configChanges: []*schedpb.CreateEntryRequest{
 				{
@@ -303,7 +310,9 @@ func TestNetlink(t *testing.T) {
 					},
 				},
 			},
-			wantIDs: []map[string]*schedpb.SetRoute{{}},
+			wantRoutes: [][]*installedRoute{
+				{},
+			},
 			wantErrors: []error{
 				&UnsupportedUpdateError{
 					req: &schedpb.CreateEntryRequest{
@@ -331,8 +340,6 @@ func TestNetlink(t *testing.T) {
 					err: nil,
 				},
 			},
-			routeAdd:        []error{nil},
-			routeDel:        []error{nil},
 			getLinkIDByName: []linkIdxError{{idx: 7, err: nil}},
 			configChanges: []*schedpb.CreateEntryRequest{
 				{
@@ -343,7 +350,9 @@ func TestNetlink(t *testing.T) {
 					},
 				},
 			},
-			wantIDs: []map[string]*schedpb.SetRoute{{}},
+			wantRoutes: [][]*installedRoute{
+				{},
+			},
 			wantErrors: []error{
 				&UnsupportedUpdateError{
 					req: &schedpb.CreateEntryRequest{
@@ -358,7 +367,6 @@ func TestNetlink(t *testing.T) {
 		},
 	}
 
-	// Execute table driven test cases
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
@@ -413,20 +421,19 @@ func TestNetlink(t *testing.T) {
 				err := backend.Dispatch(ctx, cc)
 				switch wantErr := tc.wantErrors[i]; {
 				case err == nil && wantErr != nil:
-					t.Fatalf("test %q update #%d expected error (%v), got nil", tc.name, i, wantErr)
+					t.Fatalf("update #%d expected error (%v), got nil", i, wantErr)
+				case err != nil && wantErr == nil:
+					t.Fatalf("update #%d had unexpected error: %v", i, err)
 				case err != nil && err.Error() != wantErr.Error():
-					t.Fatalf("test %q update #%d error mismatch; wanted %v, got %v", tc.name, i, wantErr, err)
+					t.Fatalf("update #%d error mismatch; wanted %v, got %v", i, wantErr, err)
 				}
 
-				gotIDs := map[string]*schedpb.SetRoute{}
 				backend.mu.Lock()
-				for _, rtr := range backend.routesToRuleIDs {
-					maps.Insert(gotIDs, maps.All(rtr.ruleIDs))
-				}
+				gotRoutes := slices.Clone(backend.routes)
 				backend.mu.Unlock()
 
-				if diff := cmp.Diff(tc.wantIDs[i], gotIDs, protocmp.Transform()); diff != "" {
-					t.Fatalf("test %q update %d unexpected message (-want +got):\n%s", tc.name, i, diff)
+				if diff := cmp.Diff(tc.wantRoutes[i], gotRoutes, protocmp.Transform()); diff != "" {
+					t.Fatalf("update %d unexpected message (-want +got):\n%s", i, diff)
 				}
 
 			}

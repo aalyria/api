@@ -21,7 +21,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// NoChangeSpecifiedError indicates that there is no Change supplied in the apipb.SCU
+// NoChangeSpecifiedError indicates that there is no Change supplied in the
+// [schedpb.CreateEntryRequest].
 type NoChangeSpecifiedError struct {
 	req *schedpb.CreateEntryRequest
 }
@@ -39,7 +40,8 @@ func (e *NoChangeSpecifiedError) Is(err error) bool {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
-// UnsupportedUpdateError indicates the UpdateType specified in the apipb.SCU is unsupported
+// UnsupportedUpdateError indicates the UpdateType specified in the
+// [schedpb.CreateEntryRequest] is unsupported.
 type UnsupportedUpdateError struct {
 	req *schedpb.CreateEntryRequest
 }
@@ -77,36 +79,17 @@ func (e *UnknownRouteDeleteError) Is(err error) bool {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
-// UnrecognizedRouteUpdateOperationError indicates an unrecognized FlowUpdate Operation is attempted to be applied
-type UnrecognizedRouteUpdateOperationError struct {
-	operation *schedpb.CreateEntryRequest
-}
-
-func (e *UnrecognizedRouteUpdateOperationError) Error() string {
-	return fmt.Sprintf("attempted unrecognized CreateEntryRequest operation (%s)", e.operation)
-}
-
-func (e *UnrecognizedRouteUpdateOperationError) Is(err error) bool {
-	if typedErr, ok := err.(*UnrecognizedRouteUpdateOperationError); ok {
-		return e.operation == typedErr.operation
-	}
-	return false
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////
-
 // IPv4FormattingError indicates an erroneously formatted IPv4 address was passed
-type IPv4Entry string
+type IPv4Field string
 
 const (
-	SrcIpRange_Ip IPv4Entry = "SrcIpRange"
-	DstIpRange_Ip IPv4Entry = "DstIpRange"
-	NextHopIp_Ip  IPv4Entry = "NextHopIp"
+	Dst_IPv4Field IPv4Field = "Dst"
+	Via_IPv4Field IPv4Field = "Via"
 )
 
 type IPv4FormattingError struct {
 	ipv4        string
-	sourceField IPv4Entry
+	sourceField IPv4Field
 }
 
 func (e IPv4FormattingError) Error() string {

@@ -23,6 +23,7 @@ go_library(
     srcs = [
         "errors.go",
         "netlink.go",
+        "routes.go",
     ],
     importpath = "aalyria.com/spacetime/agent/enactment/netlink",
     deps = [

@@ -188,16 +188,16 @@ func main() {
 	printTestState(testName, eb, err)
 
 	testName = "TST3"
-	fmt.Printf("\nManually delete the route to 104.198.75.23 designated by zulu1 and zulu2\n\n")
+	fmt.Printf("\nManually delete the route to 104.198.75.23 designated by zulu1 and zulu2.\n\n")
 	cmd := exec.Command("ip", "route", "del", "104.198.75.23", "table", strconv.Itoa(rtTableID))
 
-	output, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Println("Error:", err)
+		fmt.Println("Error:", err, "output", string(output))
 		return
 	}
 
-	fmt.Printf("\nImplement zulu3 FlowRuleID for destination 104.198.75.23. Without syncing, agent would think this is already implemented, and the route ADD would be skipped, leaving us without a route\n")
+	fmt.Printf("\nImplement zulu3 FlowRuleID for destination 104.198.75.23. This should cause the driver to re-establish the zulu1 / zulu2 route.")
 
 	err = eb.Dispatch(ctx, &schedpb.CreateEntryRequest{
 		Id:    "zulu3",
@@ -249,7 +249,7 @@ func main() {
 	printTestState(testName, eb, err)
 
 	testName = "TST6"
-	fmt.Printf("\nSpacetime reprovisions zulu1. Because zulu3 already implemented the route, zulu1's ADD is skipped but the FlowRuleID is cached")
+	fmt.Printf("\nSpacetime reprovisions zulu1. Because zulu3 already implemented the route, zulu1's ADD is skipped but the FlowRuleID is cached\n")
 
 	err = eb.Dispatch(ctx, &schedpb.CreateEntryRequest{
 		Id:    "zulu1",
@@ -267,7 +267,7 @@ func main() {
 	printTestState(testName, eb, err)
 
 	testName = "TST7"
-	fmt.Printf("\nSpacetime reprovisions zulu2. Because zulu1 and zulu3 already implement the route, zulu2's ADD is skipped but the FlowRuleID is cached")
+	fmt.Printf("\nSpacetime reprovisions zulu2. Because zulu1 and zulu3 already implement the route, zulu2's ADD is skipped but the FlowRuleID is cached\n")
 
 	err = eb.Dispatch(ctx, &schedpb.CreateEntryRequest{
 		Id:    "zulu2",
