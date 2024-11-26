@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"math"
 	"slices"
 	"sync"
@@ -107,7 +106,9 @@ func DefaultConfig(ctx context.Context, nlHandle *vnl.Handle, rtTableID int, rtT
 		RtTableLookupPriority: rtTableLookupPriority,
 
 		GetLinkIDByName: func(interfaceID string) (n int, err error) {
-			defer func() { log.Debug().Msgf("GetLinkIDByName(%s) returned (%d, %v)", interfaceID, n, err) }()
+			defer func() {
+				log.Debug().Str("interfaceID", interfaceID).Int("linkID", n).Err(err).Msgf("GetLinkIDByName() returned")
+			}()
 
 			link, err := nlHandle.LinkByName(interfaceID)
 			if err != nil {
@@ -118,7 +119,7 @@ func DefaultConfig(ctx context.Context, nlHandle *vnl.Handle, rtTableID int, rtT
 
 		// TODO: Evaluate whether this is still needed
 		RouteList: func() (routes []vnl.Route, err error) {
-			defer func() { slog.Info("RouteList() returned", "routes", routes, "err", err) }()
+			defer func() { log.Debug().Any("routes", routes).Err(err).Msgf("RouteList() returned") }()
 
 			// TODO: FAMILY_ALL.
 			routes, err = nlHandle.RouteList(nil, vnl.FAMILY_V4)
@@ -129,7 +130,7 @@ func DefaultConfig(ctx context.Context, nlHandle *vnl.Handle, rtTableID int, rtT
 		},
 
 		RouteListFiltered: func(family int, filter *vnl.Route, filterMask uint64) (routes []vnl.Route, err error) {
-			defer func() { log.Debug().Msgf("RouteListFiltered() returned (%v, %v)", routes, err) }()
+			defer func() { log.Debug().Any("routes", routes).Err(err).Msgf("RouteListFiltered() returned") }()
 
 			// TODO: FAMILY_ALL.
 			routes, err = nlHandle.RouteListFiltered(family, filter, filterMask)
@@ -140,20 +141,21 @@ func DefaultConfig(ctx context.Context, nlHandle *vnl.Handle, rtTableID int, rtT
 		},
 
 		RouteAdd: func(route *vnl.Route) (err error) {
-			defer func() { log.Debug().Msgf("RouteAdd(%+v) returned %v", route, err) }()
+			defer func() { log.Debug().Stringer("route", route).Err(err).Msgf("RouteAdd() returned") }()
 
 			return nlHandle.RouteAdd(route)
 		},
 
 		RouteDel: func(route *vnl.Route) (err error) {
-			defer func() { log.Debug().Msgf("RouteDel(%+v) returned %v", route, err) }()
+			defer func() { log.Debug().Stringer("route", route).Err(err).Msgf("RouteDel() returned") }()
 
 			return nlHandle.RouteDel(route)
 		},
 
-		RuleAdd: func(rule *vnl.Rule) error {
-			err := nlHandle.RuleAdd(rule)
-			if err != nil {
+		RuleAdd: func(rule *vnl.Rule) (err error) {
+			defer func() { log.Debug().Stringer("rule", rule).Err(err).Msgf("RuleAdd() returned") }()
+
+			if err = nlHandle.RuleAdd(rule); err != nil {
 				return fmt.Errorf("failed RuleAdd(%v): %w)", rule.String(), err)
 			}
 			return nil
@@ -163,8 +165,7 @@ func DefaultConfig(ctx context.Context, nlHandle *vnl.Handle, rtTableID int, rtT
 
 // routeListFilteredByTableID is a helper function to return all routes from table <RtTableID>
 func (b *Driver) routeListFilteredByTableID() ([]vnl.Route, error) {
-	ret, err := b.config.RouteListFiltered(vnl.FAMILY_V4, &vnl.Route{Table: b.config.RtTableID}, vnl.RT_FILTER_TABLE)
-	return ret, err
+	return b.config.RouteListFiltered(vnl.FAMILY_V4, &vnl.Route{Table: b.config.RtTableID}, vnl.RT_FILTER_TABLE)
 }
 
 // flushExistingRoutesInSpacetimeTable deletes all routes located in the Spacetime route table
@@ -221,7 +222,7 @@ func (b *Driver) Init(ctx context.Context) error {
 		rule.Table = b.config.RtTableID
 		// TODO: EEXISTS is okay, if the existing rule is the same.
 		if err := b.config.RuleAdd(rule); err != nil {
-			zerolog.Ctx(ctx).Warn().Err(err).Msgf("RuleAdd failed (do not be [too] alarmed by EEXIST)")
+			log.Warn().Err(err).Msgf("RuleAdd failed (do not be [too] alarmed by EEXIST)")
 		}
 	}
 
@@ -350,10 +351,7 @@ func (b *Driver) Dispatch(ctx context.Context, req *schedpb.CreateEntryRequest) 
 	case *schedpb.CreateEntryRequest_DeleteRoute:
 		b.mu.Lock()
 		oldLen := len(b.routes)
-		b.routes = slices.DeleteFunc(b.routes, func(r *installedRoute) bool {
-			slog.Info("DeleteRoute.deleteFunc called", "id", r.ID, "changeID", changeID, "result", r.ID == changeID)
-			return r.ID == changeID
-		})
+		b.routes = slices.DeleteFunc(b.routes, func(r *installedRoute) bool { return r.ID == changeID })
 		newLen := len(b.routes)
 		wantedRoutes := b.wantedRoutes()
 		b.mu.Unlock()
