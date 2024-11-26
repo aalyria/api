@@ -55,7 +55,8 @@ jobs:
             ~/.cache/bazel
           key: bazel-${{ hashFiles('.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
           restore-keys: bazel-
-      - run: bazelisk build "--platforms=@rules_go//go/toolchain:${{ matrix.os }}_${{ matrix.arch }}" "${{ matrix.target }}"
+      - run: bazel/tools/update_version_bzl.sh version.bzl
+      - run: bazelisk build --stamp "--platforms=@rules_go//go/toolchain:${{ matrix.os }}_${{ matrix.arch }}" "${{ matrix.target }}"
       - name: Upload nbictl binary
         uses: actions/upload-artifact@v4
         if: ${{ matrix.target == '//tools/nbictl/cmd/nbictl' && matrix.os != 'windows' }}

@@ -16,6 +16,7 @@
 # internal packages apart from those found in //api.
 
 load("@rules_go//go:def.bzl", "go_library", "go_test")
+load("//:version.bzl", "VERSION")
 
 go_library(
     name = "nbictl",
@@ -30,6 +31,9 @@ go_library(
     ],
     importpath = "aalyria.com/spacetime/github/tools/nbictl",
     visibility = ["//visibility:public"],
+    x_defs = {
+        "Version": VERSION,
+    },
     deps = [
         "//api/common:common_go_proto",
         "//api/model/v1alpha:v1alpha_go_proto",

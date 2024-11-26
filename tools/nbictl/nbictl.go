@@ -38,6 +38,8 @@ import (
 	resourcespb "aalyria.com/spacetime/api/nbi/v1alpha/resources"
 )
 
+var Version = "0.0.0+development"
+
 const (
 	confFileName = "config.textproto"
 
@@ -74,6 +76,7 @@ func init() {
 func App() *cli.App {
 	return &cli.App{
 		Name:                 appName,
+		Version:              Version,
 		Usage:                "Interact with the Spacetime NBI service from the command line.",
 		Description:          fmt.Sprintf("`%s` is a tool that allows you to interact with the Spacetime NBI APIs from the command-line.", appName),
 		BashComplete:         cli.DefaultAppComplete,

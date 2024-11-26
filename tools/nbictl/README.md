@@ -10,7 +10,7 @@ nbictl - Interact with the Spacetime NBI service from the command line.
 # SYNOPSIS
 
 ```
-nbictl [--profile=value] [--context=value] [--config_dir=value] [--help] [-h] <command> [COMMAND OPTIONS] [ARGUMENTS...]
+nbictl [--profile=value] [--context=value] [--config_dir=value] [--help] [-h] [--version] [-v] <command> [COMMAND OPTIONS] [ARGUMENTS...]
 ```
 
 # GLOBAL OPTIONS
@@ -20,6 +20,8 @@ nbictl [--profile=value] [--context=value] [--config_dir=value] [--help] [-h] <c
 **--help, -h**: show help
 
 **--profile, --context**="": Configuration profile to use.
+
+**--version, -v**: print the version
 
 # COMMANDS
 
