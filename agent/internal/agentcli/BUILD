@@ -13,6 +13,7 @@
 # limitations under the License.
 
 load("@rules_go//go:def.bzl", "go_library")
+load("//:version.bzl", "VERSION")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -24,6 +25,9 @@ go_library(
         "netlink_other.go",
     ],
     importpath = "aalyria.com/spacetime/agent/internal/agentcli",
+    x_defs = {
+        "Version": VERSION,
+    },
     deps = [
         "//agent",
         "//agent/enactment",

@@ -29,7 +29,7 @@ func main() {
 		AppName:   "agent",
 		Handles:   agentcli.DefaultHandles(),
 		Providers: []agentcli.Provider{},
-	}).Run(context.Background(), os.Args[0], os.Args[1:]); err != nil {
+	}).Run(context.Background(), os.Args[1:]); err != nil {
 		fmt.Fprintf(os.Stderr, "fatal error: %v\n", err)
 		os.Exit(2)
 	}

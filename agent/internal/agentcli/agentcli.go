@@ -64,6 +64,8 @@ import (
 	"aalyria.com/spacetime/auth"
 )
 
+var Version = "0.0.0+development"
+
 // Handles are abstractions over impure, external resources like time and stdio
 // streams.
 type Handles interface {
@@ -114,7 +116,7 @@ type AgentConf struct {
 	Providers []Provider
 }
 
-func (ac AgentConf) Run(ctx context.Context, appName string, args []string) (err error) {
+func (ac AgentConf) Run(ctx context.Context, args []string) (err error) {
 	var log zerolog.Logger
 	if os.Getenv("TERM") != "" {
 		log = zerolog.New(zerolog.ConsoleWriter{Out: ac.Handles.Stderr(), TimeFormat: "2006-01-02 03:04:05PM"})
@@ -123,15 +125,16 @@ func (ac AgentConf) Run(ctx context.Context, appName string, args []string) (err
 	}
 	ctx = log.With().Timestamp().Logger().WithContext(ctx)
 
-	fs := flag.NewFlagSet(appName, flag.ContinueOnError)
+	fs := flag.NewFlagSet(ac.AppName, flag.ContinueOnError)
 	fs.SetOutput(ac.Handles.Stderr())
 	fs.Usage = func() {
 		w := fs.Output()
-		fmt.Fprintf(w, "Usage: %s [options]\n", appName)
+		fmt.Fprintf(w, "Usage: %s [options]\n", ac.AppName)
 		fmt.Fprint(w, "\nOptions:\n")
 		fs.PrintDefaults()
 	}
 
+	versionFlag := fs.Bool("version", false, "Print the version")
 	confPath := fs.String("config", "", "The path to a protobuf representation of the agent's configuration (an AgentParams message).")
 	protoFormat := fs.String("format", "text", "The format (one of text, wire, or json) to read the configuration as.")
 	dryRunOnly := fs.Bool("dry-run", false, "Just validate the config, don't start the agent. Exits with a non-zero return code if the config is invalid.")
@@ -142,6 +145,12 @@ func (ac AgentConf) Run(ctx context.Context, appName string, args []string) (err
 		return nil
 	} else if err != nil {
 		return err
+	}
+
+	if *versionFlag {
+		w := fs.Output()
+		fmt.Fprintf(w, "%s version %s\n", ac.AppName, Version)
+		return nil
 	}
 
 	params, err := readParams(*confPath, *protoFormat)
