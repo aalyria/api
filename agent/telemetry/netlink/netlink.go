@@ -71,22 +71,23 @@ func (rg *reportGenerator) GenerateReport(ctx context.Context, nodeID string) (*
 			log.Err(err).Msgf("marshalling textproto interface ID")
 			continue
 		}
+		log := log.With().Str("interfaceID", interfaceID).Logger()
 
 		link, err := rg.linkByName(interfaceID)
 		if err != nil {
-			log.Warn().Err(err).Msgf("error retrieving link for interface %s", interfaceID)
+			log.Warn().Err(err).Msgf("retrieving link for interface")
 			continue
 		}
 
 		attrs := link.Attrs()
 		if attrs == nil {
-			log.Warn().Msgf("link has not attrs for interface %s", interfaceID)
+			log.Warn().Msgf("link has no attrs")
 			continue
 		}
 
 		stats := attrs.Statistics
 		if stats == nil {
-			log.Warn().Msgf("link attrs have no stats for interface %s", interfaceID)
+			log.Warn().Msgf("link attrs have no stats")
 			continue
 		}
 
