@@ -55,7 +55,7 @@ func (pd *PeriodicDriver) Run(
 	nodeID string,
 	reportMetrics func(*telemetrypb.ExportMetricsRequest) error,
 ) error {
-	log := zerolog.Ctx(ctx).With().Str("driver", "extproc").Logger()
+	log := zerolog.Ctx(ctx)
 
 	generateAndReport := func() {
 		report, err := pd.GenerateReport(ctx, nodeID)

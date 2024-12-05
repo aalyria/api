@@ -63,36 +63,41 @@ func (rg *reportGenerator) GenerateReport(ctx context.Context, nodeID string) (*
 	interfaceMetrics := []*telemetrypb.InterfaceMetrics{}
 
 	for _, interfaceID := range rg.interfaceIDs {
+		log := log.With().Str("interfaceID", interfaceID).Logger()
+
 		textNetIfaceID, err := prototext.Marshal(&apipb.NetworkInterfaceId{
 			NodeId:      proto.String(nodeID),
 			InterfaceId: proto.String(interfaceID),
 		})
 		if err != nil {
-			log.Err(err).Msgf("marshalling textproto interface ID")
+			log.Err(err).Msg("marshalling textproto interface ID")
 			continue
 		}
-		log := log.With().Str("interfaceID", interfaceID).Logger()
 
 		link, err := rg.linkByName(interfaceID)
 		if err != nil {
-			log.Warn().Err(err).Msgf("retrieving link for interface")
+			log.Warn().Err(err).Msg("retrieving link for interface")
 			continue
 		}
 
 		attrs := link.Attrs()
 		if attrs == nil {
-			log.Warn().Msgf("link has no attrs")
+			log.Warn().Msg("link has no attrs")
 			continue
 		}
 
 		stats := attrs.Statistics
 		if stats == nil {
-			log.Warn().Msgf("link attrs have no stats")
+			log.Warn().Msg("link attrs have no stats")
 			continue
 		}
 
 		interfaceMetrics = append(interfaceMetrics, &telemetrypb.InterfaceMetrics{
 			InterfaceId: string(textNetIfaceID),
+			OperationalStateDataPoints: []*telemetrypb.IfOperStatusDataPoint{{
+				Time:  timestamppb.New(ts),
+				Value: netlinkOperStateToTelemetryOperState(attrs.OperState),
+			}},
 			StandardInterfaceStatisticsDataPoints: []*telemetrypb.StandardInterfaceStatisticsDataPoint{{
 				Time:      timestamppb.New(ts),
 				RxPackets: int64(stats.RxPackets),
@@ -114,4 +119,25 @@ func (rg *reportGenerator) GenerateReport(ctx context.Context, nodeID string) (*
 	return &telemetrypb.ExportMetricsRequest{
 		InterfaceMetrics: interfaceMetrics,
 	}, nil
+}
+
+func netlinkOperStateToTelemetryOperState(s vnl.LinkOperState) telemetrypb.IfOperStatus {
+	switch s {
+	case vnl.OperUnknown:
+		return telemetrypb.IfOperStatus_IF_OPER_STATUS_UNKNOWN
+	case vnl.OperNotPresent:
+		return telemetrypb.IfOperStatus_IF_OPER_STATUS_NOT_PRESENT
+	case vnl.OperDown:
+		return telemetrypb.IfOperStatus_IF_OPER_STATUS_DOWN
+	case vnl.OperLowerLayerDown:
+		return telemetrypb.IfOperStatus_IF_OPER_STATUS_LOWER_LAYER_DOWN
+	case vnl.OperTesting:
+		return telemetrypb.IfOperStatus_IF_OPER_STATUS_TESTING
+	case vnl.OperDormant:
+		return telemetrypb.IfOperStatus_IF_OPER_STATUS_DORMANT
+	case vnl.OperUp:
+		return telemetrypb.IfOperStatus_IF_OPER_STATUS_UP
+	default:
+		return telemetrypb.IfOperStatus_IF_OPER_STATUS_UNSPECIFIED
+	}
 }

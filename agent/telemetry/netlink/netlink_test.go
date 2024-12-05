@@ -79,6 +79,7 @@ func TestNetlink(t *testing.T) {
 							TxErrors:  7,
 							RxErrors:  8,
 						},
+						OperState: vnl.OperUp,
 					},
 				},
 			}),
@@ -89,6 +90,10 @@ func TestNetlink(t *testing.T) {
 						NodeId:      proto.String("serenity"),
 						InterfaceId: proto.String("cargo-bay-door"),
 					}),
+					OperationalStateDataPoints: []*telemetrypb.IfOperStatusDataPoint{{
+						Time:  timestamppb.New(clock.Now()),
+						Value: telemetrypb.IfOperStatus_IF_OPER_STATUS_UP,
+					}},
 					StandardInterfaceStatisticsDataPoints: []*telemetrypb.StandardInterfaceStatisticsDataPoint{{
 						Time:      timestamppb.New(clock.Now()),
 						TxPackets: 1,
@@ -109,6 +114,7 @@ func TestNetlink(t *testing.T) {
 			linkByName: linkByNameFromMap(map[string]vnl.Link{
 				"gemini": &vnl.Dummy{
 					LinkAttrs: vnl.LinkAttrs{
+						OperState: vnl.OperDown,
 						Statistics: &vnl.LinkStatistics{
 							TxPackets: 1,
 							RxPackets: 2,
@@ -123,6 +129,7 @@ func TestNetlink(t *testing.T) {
 				},
 				"apollo": &vnl.Dummy{
 					LinkAttrs: vnl.LinkAttrs{
+						OperState: vnl.OperLowerLayerDown,
 						Statistics: &vnl.LinkStatistics{
 							TxPackets: 10,
 							RxPackets: 20,
@@ -137,6 +144,7 @@ func TestNetlink(t *testing.T) {
 				},
 				"IDSS": &vnl.Dummy{
 					LinkAttrs: vnl.LinkAttrs{
+						OperState: vnl.OperDormant,
 						Statistics: &vnl.LinkStatistics{
 							TxPackets: 100,
 							RxPackets: 200,
@@ -157,6 +165,10 @@ func TestNetlink(t *testing.T) {
 						NodeId:      proto.String("ISS"),
 						InterfaceId: proto.String("gemini"),
 					}),
+					OperationalStateDataPoints: []*telemetrypb.IfOperStatusDataPoint{{
+						Time:  timestamppb.New(clock.Now()),
+						Value: telemetrypb.IfOperStatus_IF_OPER_STATUS_DOWN,
+					}},
 					StandardInterfaceStatisticsDataPoints: []*telemetrypb.StandardInterfaceStatisticsDataPoint{{
 						Time:      timestamppb.New(clock.Now()),
 						TxPackets: 1,
@@ -173,6 +185,10 @@ func TestNetlink(t *testing.T) {
 						NodeId:      proto.String("ISS"),
 						InterfaceId: proto.String("apollo"),
 					}),
+					OperationalStateDataPoints: []*telemetrypb.IfOperStatusDataPoint{{
+						Time:  timestamppb.New(clock.Now()),
+						Value: telemetrypb.IfOperStatus_IF_OPER_STATUS_LOWER_LAYER_DOWN,
+					}},
 					StandardInterfaceStatisticsDataPoints: []*telemetrypb.StandardInterfaceStatisticsDataPoint{
 						{
 							Time:      timestamppb.New(clock.Now()),
@@ -191,6 +207,10 @@ func TestNetlink(t *testing.T) {
 						NodeId:      proto.String("ISS"),
 						InterfaceId: proto.String("IDSS"),
 					}),
+					OperationalStateDataPoints: []*telemetrypb.IfOperStatusDataPoint{{
+						Time:  timestamppb.New(clock.Now()),
+						Value: telemetrypb.IfOperStatus_IF_OPER_STATUS_DORMANT,
+					}},
 					StandardInterfaceStatisticsDataPoints: []*telemetrypb.StandardInterfaceStatisticsDataPoint{
 						{
 							Time:      timestamppb.New(clock.Now()),
@@ -213,6 +233,7 @@ func TestNetlink(t *testing.T) {
 			linkByName: linkByNameFromMap(map[string]vnl.Link{
 				"dry-dock": &vnl.Dummy{
 					LinkAttrs: vnl.LinkAttrs{
+						OperState: vnl.OperTesting,
 						Statistics: &vnl.LinkStatistics{
 							TxPackets: 1,
 							RxPackets: 2,
@@ -233,6 +254,10 @@ func TestNetlink(t *testing.T) {
 						NodeId:      proto.String("enterprise"),
 						InterfaceId: proto.String("dry-dock"),
 					}),
+					OperationalStateDataPoints: []*telemetrypb.IfOperStatusDataPoint{{
+						Time:  timestamppb.New(clock.Now()),
+						Value: telemetrypb.IfOperStatus_IF_OPER_STATUS_TESTING,
+					}},
 					StandardInterfaceStatisticsDataPoints: []*telemetrypb.StandardInterfaceStatisticsDataPoint{{
 						Time:      timestamppb.New(clock.Now()),
 						TxPackets: 1,
@@ -253,6 +278,7 @@ func TestNetlink(t *testing.T) {
 			linkByName: linkByNameFromMap(map[string]vnl.Link{
 				"dry-dock": &vnl.Dummy{
 					LinkAttrs: vnl.LinkAttrs{
+						OperState: vnl.OperUnknown,
 						Statistics: &vnl.LinkStatistics{
 							TxPackets: 1,
 							RxPackets: 2,
@@ -274,6 +300,10 @@ func TestNetlink(t *testing.T) {
 						NodeId:      proto.String("enterprise"),
 						InterfaceId: proto.String("dry-dock"),
 					}),
+					OperationalStateDataPoints: []*telemetrypb.IfOperStatusDataPoint{{
+						Time:  timestamppb.New(clock.Now()),
+						Value: telemetrypb.IfOperStatus_IF_OPER_STATUS_UNKNOWN,
+					}},
 					StandardInterfaceStatisticsDataPoints: []*telemetrypb.StandardInterfaceStatisticsDataPoint{{
 						Time:      timestamppb.New(clock.Now()),
 						TxPackets: 1,
@@ -294,6 +324,7 @@ func TestNetlink(t *testing.T) {
 			linkByName: linkByNameFromMap(map[string]vnl.Link{
 				"dry-dock": &vnl.Dummy{
 					LinkAttrs: vnl.LinkAttrs{
+						OperState: vnl.OperNotPresent,
 						Statistics: &vnl.LinkStatistics{
 							TxPackets: 1,
 							RxPackets: 2,
@@ -317,6 +348,10 @@ func TestNetlink(t *testing.T) {
 						NodeId:      proto.String("enterprise"),
 						InterfaceId: proto.String("dry-dock"),
 					}),
+					OperationalStateDataPoints: []*telemetrypb.IfOperStatusDataPoint{{
+						Time:  timestamppb.New(clock.Now()),
+						Value: telemetrypb.IfOperStatus_IF_OPER_STATUS_NOT_PRESENT,
+					}},
 					StandardInterfaceStatisticsDataPoints: []*telemetrypb.StandardInterfaceStatisticsDataPoint{{
 						Time:      timestamppb.New(clock.Now()),
 						TxPackets: 1,
