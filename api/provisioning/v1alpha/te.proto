@@ -1,0 +1,45 @@
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package aalyria.spacetime.api.provisioning.v1alpha;
+
+import "google/protobuf/duration.proto";
+
+// Traffic Engineering (TE) attributes, intended to be aligned with
+// Path Computation Element Procotocl (PCEP) usage.
+
+// Qualitative metric objectives of a single path or service.
+//
+// See also:
+//   - RFC 8776
+//   - draft-ietf-teas-rfc8776-update
+//   - draft-ietf-teas-yang-te
+message Metrics {
+  // Committed Information Rate (CIR) in bits per second.
+  //
+  // N.B.: these units DIFFER from those of RFC 8294's
+  // bandwidth-ieee-float32 and RFC 8776's te-bandwidth.
+  double cir_bps = 1;
+
+  // Excess Information Rate (EIR) in bits per second.
+  //
+  // N.B.: these units DIFFER from those of RFC 8294's
+  // bandwidth-ieee-float32 and RFC 8776's te-bandwidth.
+  double eir_bps = 2;
+
+  // Maximum latency (one way frame delay).
+  google.protobuf.Duration max_latency = 3;
+}
