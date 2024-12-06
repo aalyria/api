@@ -32,13 +32,17 @@ message Metrics {
   //
   // N.B.: these units DIFFER from those of RFC 8294's
   // bandwidth-ieee-float32 and RFC 8776's te-bandwidth.
-  double cir_bps = 1;
+  //
+  // Cf. draft-ietf-opsawg-teas-common-ac's bandwidth-parameters
+  uint64 cir_bps = 1;
 
   // Excess Information Rate (EIR) in bits per second.
   //
   // N.B.: these units DIFFER from those of RFC 8294's
   // bandwidth-ieee-float32 and RFC 8776's te-bandwidth.
-  double eir_bps = 2;
+  //
+  // Cf. draft-ietf-opsawg-teas-common-ac's bandwidth-parameters
+  uint64 eir_bps = 2;
 
   // Maximum latency (one way frame delay).
   google.protobuf.Duration max_latency = 3;
