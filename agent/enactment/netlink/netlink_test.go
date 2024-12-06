@@ -25,9 +25,22 @@ import (
 	vnl "github.com/vishvananda/netlink"
 	"google.golang.org/protobuf/testing/protocmp"
 
-	apipb "aalyria.com/spacetime/api/common"
 	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
 )
+
+const AGENT_TABLE_ID = 252
+
+func mustParseCIDR(cidr string) (net.IP, *net.IPNet) {
+	ip, ipNet, err := net.ParseCIDR(cidr)
+	if err != nil {
+		panic(err)
+	}
+	return ip, ipNet
+}
+
+func ipNetOf(_ net.IP, ipNet *net.IPNet) *net.IPNet {
+	return ipNet
+}
 
 func TestNetlink(t *testing.T) {
 	// t.Parallel()
@@ -37,47 +50,65 @@ func TestNetlink(t *testing.T) {
 		err    error
 	}
 
+	var EMPTY_ROUTE_TABLE = routesError{routes: []vnl.Route{}, err: nil}
+
+	type routeError struct {
+		route vnl.Route
+		err   error
+	}
+
 	type linkIdxError struct {
 		idx int
 		err error
 	}
 
 	type testCase struct {
-		name                  string
-		preInstalledFlowRules map[string]*apipb.FlowRule
-		routeList             []routesError
-		routeAdd              []error
-		routeDel              []error
-		getLinkIDByName       []linkIdxError
-		configChanges         []*schedpb.CreateEntryRequest
-		wantRoutes            [][]*installedRoute
-		wantErrors            []error
+		name            string
+		routeList       []routesError
+		routeAdd        []routeError
+		routeDel        []routeError
+		getLinkIDByName map[string]linkIdxError
+		configChanges   []*schedpb.CreateEntryRequest
+		wantRoutes      [][]*installedRoute
+		wantErrors      []error
 	}
 
-	_, dst, err := net.ParseCIDR("192.168.1.0/24")
-	if err != nil {
-		t.Fatalf("failed net.ParseCIDR(dstString=%s): %v", "192.168.1.0/24", err)
-	}
-	gw, _, err := net.ParseCIDR("192.168.1.1/32")
-	if err != nil {
-		t.Fatalf("failed net.ParseCIDR(gwString=%s): %v", "192.168.1.1/32", err)
-	}
+	_, dst := mustParseCIDR("192.168.1.0/24")
+	gw, gwNet := mustParseCIDR("192.168.1.1/32")
 
 	testCases := []testCase{
 		{
-			name: "add route",
-			routeList: []routesError{{
-				routes: []vnl.Route{{
-					Src:       net.ParseIP("192.168.2.2"),
-					Dst:       dst,
-					Gw:        net.ParseIP("192.168.1.1"),
-					LinkIndex: 7,
-				}},
-				err: nil,
-			}},
-			routeAdd:        []error{nil, nil},
-			routeDel:        []error{nil},
-			getLinkIDByName: []linkIdxError{{idx: 7, err: nil}},
+			name: "add IPv4 unicast route",
+			routeList: []routesError{
+				EMPTY_ROUTE_TABLE, // AF_INET routes at start of Dispatch
+				EMPTY_ROUTE_TABLE, // AF_INET6 routes at start of Dispatch
+			},
+			routeAdd: []routeError{
+				{
+					vnl.Route{
+						Dst:       gwNet,
+						LinkIndex: 7,
+						Table:     AGENT_TABLE_ID,
+						Scope:     vnl.SCOPE_LINK,
+					},
+					nil,
+				},
+				{
+					vnl.Route{
+						Src:       nil, // no support for src-dst routing yet
+						Dst:       dst,
+						Gw:        gw,
+						LinkIndex: 7,
+						Table:     AGENT_TABLE_ID,
+						Scope:     vnl.SCOPE_UNIVERSE,
+					},
+					nil,
+				},
+			},
+			routeDel: []routeError{},
+			getLinkIDByName: map[string]linkIdxError{
+				"foo": {idx: 7, err: nil},
+			},
 			configChanges: []*schedpb.CreateEntryRequest{
 				{
 					Id:    "rule1",
@@ -104,25 +135,63 @@ func TestNetlink(t *testing.T) {
 			wantErrors: []error{nil},
 		},
 		{
-			name: "add and remove route",
+			name: "add and remove IPv4 unicast route",
 			routeList: []routesError{
+				EMPTY_ROUTE_TABLE, // AF_INET routes at start of Dispatch
+				EMPTY_ROUTE_TABLE, // AF_INET6 routes at start of Dispatch
 				{
+					// AF_INET routes at end of first Dispatch
 					routes: []vnl.Route{{
-						Src:       net.ParseIP("192.168.2.2"),
+						Src:       nil, // no support for src-dst routing yet
 						Dst:       dst,
 						Gw:        net.ParseIP("192.168.1.1"),
+						Table:     AGENT_TABLE_ID,
+						Scope:     vnl.SCOPE_UNIVERSE,
 						LinkIndex: 7,
 					}},
 					err: nil,
 				},
+				EMPTY_ROUTE_TABLE, // AF_INET6 routes at end of first Dispatch
+			},
+			routeAdd: []routeError{
 				{
-					routes: []vnl.Route{},
-					err:    nil,
+					vnl.Route{
+						Dst:       gwNet,
+						LinkIndex: 7,
+						Table:     AGENT_TABLE_ID,
+						Scope:     vnl.SCOPE_LINK,
+					},
+					nil,
+				},
+				{
+					vnl.Route{
+						Src:       nil, // no support for src-dst routing yet
+						Dst:       dst,
+						Gw:        gw,
+						LinkIndex: 7,
+						Table:     AGENT_TABLE_ID,
+						Scope:     vnl.SCOPE_UNIVERSE,
+					},
+					nil,
 				},
 			},
-			routeAdd:        []error{nil, nil},
-			routeDel:        []error{nil, nil},
-			getLinkIDByName: []linkIdxError{{idx: 7, err: nil}, {idx: 7, err: nil}},
+			routeDel: []routeError{
+				{
+					vnl.Route{
+						Dst:       dst,
+						Gw:        gw,
+						LinkIndex: 7,
+						Table:     AGENT_TABLE_ID,
+						Scope:     vnl.SCOPE_UNIVERSE,
+					},
+					nil,
+				},
+				// TODO: should delete the on-link gateway route as well.
+				// {vnl.Route{}, nil},
+			},
+			getLinkIDByName: map[string]linkIdxError{
+				"foo": {idx: 7, err: nil},
+			},
 			configChanges: []*schedpb.CreateEntryRequest{
 				{
 					Id:    "rule1",
@@ -162,82 +231,17 @@ func TestNetlink(t *testing.T) {
 			wantErrors: []error{nil, nil},
 		},
 		{
-			name: "remove existing route",
+			name: "remove nonexisting IPv4 unicast route",
 			routeList: []routesError{
-				{
-					routes: []vnl.Route{
-						{
-							Src:       net.ParseIP("192.168.2.2"),
-							Dst:       dst,
-							Gw:        net.ParseIP("192.168.1.1"),
-							LinkIndex: 7,
-						},
-					},
-					err: nil,
-				},
-				{
-					err: nil,
-				},
+				EMPTY_ROUTE_TABLE, // AF_INET routes at start of Dispatch
+				EMPTY_ROUTE_TABLE, // AF_INET6 routes at start of Dispatch
 			},
-			routeAdd:        []error{nil, nil},
-			routeDel:        []error{nil, nil},
-			getLinkIDByName: []linkIdxError{{idx: 7, err: nil}, {idx: 7, err: nil}},
-			configChanges: []*schedpb.CreateEntryRequest{
-				{
-					Id:    "rule1",
-					Seqno: 1,
-					ConfigurationChange: &schedpb.CreateEntryRequest_SetRoute{
-						SetRoute: &schedpb.SetRoute{
-							From: "192.168.2.2",
-							To:   "192.168.1.0/24",
-							Dev:  "foo",
-							Via:  "192.168.1.1",
-						},
-					},
-				},
-				{
-					Id:    "rule1",
-					Seqno: 2,
-					ConfigurationChange: &schedpb.CreateEntryRequest_DeleteRoute{
-						DeleteRoute: &schedpb.DeleteRoute{
-							From: "192.168.2.2",
-							To:   "192.168.1.0/24",
-						},
-					},
-				},
+			routeAdd: []routeError{},
+			routeDel: []routeError{},
+
+			getLinkIDByName: map[string]linkIdxError{
+				"foo": {idx: 7, err: nil},
 			},
-			wantRoutes: [][]*installedRoute{
-				{
-					{
-						ID:      "rule1",
-						DevName: "foo",
-						DevID:   7,
-						To:      dst,
-						Via:     gw,
-					},
-				},
-				{},
-			},
-			wantErrors: []error{nil, nil},
-		},
-		{
-			name: "remove nonexisting route",
-			routeList: []routesError{
-				{
-					routes: []vnl.Route{
-						{
-							Src:       net.ParseIP("192.168.2.2"),
-							Dst:       dst,
-							Gw:        net.ParseIP("192.168.1.1"),
-							LinkIndex: 7,
-						},
-					},
-					err: nil,
-				},
-			},
-			routeAdd:        []error{nil, nil},
-			routeDel:        []error{nil},
-			getLinkIDByName: []linkIdxError{{idx: 7, err: nil}},
 			configChanges: []*schedpb.CreateEntryRequest{
 				{
 					Id:    "rule1",
@@ -256,23 +260,11 @@ func TestNetlink(t *testing.T) {
 			wantErrors: []error{&UnknownRouteDeleteError{changeID: "rule1"}},
 		},
 		{
-			name: "attempt to perform CreateEntryRequest with no Change",
-			routeList: []routesError{
-				{
-					routes: []vnl.Route{
-						{
-							Src:       net.ParseIP("192.168.2.2"),
-							Dst:       dst,
-							Gw:        net.ParseIP("192.168.1.1"),
-							LinkIndex: 7,
-						},
-					},
-					err: nil,
-				},
-			},
-			routeAdd:        []error{nil},
-			routeDel:        []error{nil},
-			getLinkIDByName: []linkIdxError{{idx: 7, err: nil}},
+			name:            "attempt to perform CreateEntryRequest with no Change",
+			routeList:       []routesError{},
+			routeAdd:        []routeError{},
+			routeDel:        []routeError{},
+			getLinkIDByName: map[string]linkIdxError{},
 			configChanges: []*schedpb.CreateEntryRequest{
 				{
 					Id:                  "rule1",
@@ -286,21 +278,117 @@ func TestNetlink(t *testing.T) {
 			wantErrors: []error{&NoChangeSpecifiedError{&schedpb.CreateEntryRequest{Id: "rule1", Seqno: 1}}},
 		},
 		{
-			name: "attempt to perform unsupported UpdateBeam",
+			name: "add IPv6 unicast route (GUA next hop)",
 			routeList: []routesError{
+				EMPTY_ROUTE_TABLE, // AF_INET routes at start of Dispatch
+				EMPTY_ROUTE_TABLE, // AF_INET6 routes at start of Dispatch
+			},
+			routeAdd: []routeError{
 				{
-					routes: []vnl.Route{
-						{
-							Src:       net.ParseIP("192.168.2.2"),
-							Dst:       dst,
-							Gw:        net.ParseIP("192.168.1.1"),
-							LinkIndex: 7,
-						},
+					vnl.Route{
+						Dst:       ipNetOf(mustParseCIDR("2001:db8:0:2::1/128")),
+						LinkIndex: 7,
+						Table:     AGENT_TABLE_ID,
+						Scope:     vnl.SCOPE_LINK,
 					},
-					err: nil,
+					nil,
+				},
+				{
+					vnl.Route{
+						Src:       nil, // no support for src-dst routing yet
+						Dst:       ipNetOf(mustParseCIDR("2001:db8:0:3::/64")),
+						Gw:        net.ParseIP("2001:db8:0:2::1"),
+						LinkIndex: 7,
+						Table:     AGENT_TABLE_ID,
+						Scope:     vnl.SCOPE_UNIVERSE,
+					},
+					nil,
 				},
 			},
-			getLinkIDByName: []linkIdxError{{idx: 7, err: nil}},
+			routeDel: []routeError{},
+			getLinkIDByName: map[string]linkIdxError{
+				"foo": {idx: 7, err: nil},
+			},
+			configChanges: []*schedpb.CreateEntryRequest{
+				{
+					Id:    "rule1",
+					Seqno: 1,
+					ConfigurationChange: &schedpb.CreateEntryRequest_SetRoute{
+						SetRoute: &schedpb.SetRoute{
+							From: "2001:db8:0:1::/64",
+							To:   "2001:db8:0:3::/64",
+							Via:  "2001:db8:0:2::1",
+							Dev:  "foo",
+						},
+					},
+				},
+			},
+			wantRoutes: [][]*installedRoute{{
+				{
+					ID:      "rule1",
+					DevName: "foo",
+					DevID:   7,
+					To:      ipNetOf(mustParseCIDR("2001:db8:0:3::/64")),
+					Via:     net.ParseIP("2001:db8:0:2::1"),
+				},
+			}},
+			wantErrors: []error{nil},
+		},
+		{
+			name: "add IPv6 unicast route (LLUA next hop)",
+			routeList: []routesError{
+				EMPTY_ROUTE_TABLE, // AF_INET routes at start of Dispatch
+				EMPTY_ROUTE_TABLE, // AF_INET6 routes at start of Dispatch
+			},
+			routeAdd: []routeError{
+				{
+					vnl.Route{
+						Src:       nil, // no support for src-dst routing yet
+						Dst:       ipNetOf(mustParseCIDR("2001:db8:0:3::/64")),
+						Gw:        net.ParseIP("fe80::1"),
+						LinkIndex: 7,
+						Table:     AGENT_TABLE_ID,
+						Scope:     vnl.SCOPE_UNIVERSE,
+					},
+					nil,
+				},
+			},
+			routeDel: []routeError{},
+			getLinkIDByName: map[string]linkIdxError{
+				"foo": {idx: 7, err: nil},
+			},
+			configChanges: []*schedpb.CreateEntryRequest{
+				{
+					Id:    "rule1",
+					Seqno: 1,
+					ConfigurationChange: &schedpb.CreateEntryRequest_SetRoute{
+						SetRoute: &schedpb.SetRoute{
+							From: "2001:db8:0:1::/64",
+							To:   "2001:db8:0:3::/64",
+							Via:  "fe80::1",
+							Dev:  "foo",
+						},
+					},
+				},
+			},
+			wantRoutes: [][]*installedRoute{{
+				{
+					ID:      "rule1",
+					DevName: "foo",
+					DevID:   7,
+					To:      ipNetOf(mustParseCIDR("2001:db8:0:3::/64")),
+					Via:     net.ParseIP("fe80::1"),
+				},
+			}},
+			wantErrors: []error{nil},
+		},
+		{
+			name: "attempt to perform unsupported UpdateBeam",
+			routeList: []routesError{
+				EMPTY_ROUTE_TABLE, // AF_INET routes at start of Dispatch
+				EMPTY_ROUTE_TABLE, // AF_INET6 routes at start of Dispatch
+			},
+			getLinkIDByName: map[string]linkIdxError{},
 			configChanges: []*schedpb.CreateEntryRequest{
 				{
 					Id:    "beam_update_1",
@@ -328,19 +416,10 @@ func TestNetlink(t *testing.T) {
 		{
 			name: "attempt to perform unsupported DeleteBeam",
 			routeList: []routesError{
-				{
-					routes: []vnl.Route{
-						{
-							Src:       net.ParseIP("192.168.2.2"),
-							Dst:       dst,
-							Gw:        net.ParseIP("192.168.1.1"),
-							LinkIndex: 7,
-						},
-					},
-					err: nil,
-				},
+				EMPTY_ROUTE_TABLE, // AF_INET routes at start of Dispatch
+				EMPTY_ROUTE_TABLE, // AF_INET6 routes at start of Dispatch
 			},
-			getLinkIDByName: []linkIdxError{{idx: 7, err: nil}},
+			getLinkIDByName: map[string]linkIdxError{},
 			configChanges: []*schedpb.CreateEntryRequest{
 				{
 					Id:    "beam_update_1",
@@ -377,36 +456,38 @@ func TestNetlink(t *testing.T) {
 			routeListIdx := 0
 			routeAddIdx := 0
 			routeDelIdx := 0
-			getLinkIdxByNameIdx := 0
 
 			config := Config{
 				Clock:                 clockwork.NewFakeClock(),
-				RtTableID:             252,
+				RtTableID:             AGENT_TABLE_ID,
 				RtTableLookupPriority: 25200,
 				GetLinkIDByName: func(interface_id string) (int, error) {
-					rv := tc.getLinkIDByName[getLinkIdxByNameIdx/2]
-					getLinkIdxByNameIdx += 1
+					rv, ok := tc.getLinkIDByName[interface_id]
+					if !ok {
+						t.Fatalf("inteface %q not found", interface_id)
+					}
 					return rv.idx, rv.err
 				},
-				RouteList: func() ([]vnl.Route, error) {
+				RouteListFiltered: func(int, *vnl.Route, uint64) (routes []vnl.Route, err error) {
 					rv := tc.routeList[routeListIdx]
 					routeListIdx += 1
 					return rv.routes, rv.err
 				},
-				RouteListFiltered: func(int, *vnl.Route, uint64) (routes []vnl.Route, err error) {
-					rv := tc.routeList[routeListIdx/2] // Because now this function is invoked twice for every operation (due to syncCachedRoutes)
-					routeListIdx += 1
-					return rv.routes, rv.err
-				},
-				RouteAdd: func(*vnl.Route) error {
+				RouteAdd: func(toAdd *vnl.Route) error {
 					rv := tc.routeAdd[routeAddIdx]
+					if !routesMostlyEqual(rv.route, *toAdd) {
+						t.Errorf("RouteAdd(%q) does not match expected %q", toAdd, rv.route)
+					}
 					routeAddIdx += 1
-					return rv
+					return rv.err
 				},
-				RouteDel: func(*vnl.Route) error {
+				RouteDel: func(toDelete *vnl.Route) error {
 					rv := tc.routeDel[routeDelIdx]
+					if !routesMostlyEqual(rv.route, *toDelete) {
+						t.Errorf("RouteDel(%q) does not match expected %q", toDelete, rv.route)
+					}
 					routeDelIdx += 1
-					return rv
+					return rv.err
 				},
 				RuleAdd: func(*vnl.Rule) error {
 					return nil
@@ -433,9 +514,18 @@ func TestNetlink(t *testing.T) {
 				backend.mu.Unlock()
 
 				if diff := cmp.Diff(tc.wantRoutes[i], gotRoutes, protocmp.Transform()); diff != "" {
-					t.Fatalf("update %d unexpected message (-want +got):\n%s", i, diff)
+					t.Errorf("update %d unexpected message (-want +got):\n%s", i, diff)
 				}
+			}
 
+			if routeListIdx != len(tc.routeList) {
+				t.Errorf("expected %d RouteListFiltered calls but got %d", len(tc.routeList), routeListIdx)
+			}
+			if routeAddIdx != len(tc.routeAdd) {
+				t.Errorf("expected %d RouteAdd calls but got %d", len(tc.routeAdd), routeAddIdx)
+			}
+			if routeDelIdx != len(tc.routeDel) {
+				t.Errorf("expected %d RouteDel calls but got %d", len(tc.routeDel), routeDelIdx)
 			}
 		})
 	}

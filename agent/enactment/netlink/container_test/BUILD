@@ -16,7 +16,7 @@
 
 load("@container_structure_test//:defs.bzl", "container_structure_test")
 load("@rules_go//go:def.bzl", "go_binary", "go_library")
-load("@rules_oci//oci:defs.bzl", "oci_image")
+load("@rules_oci//oci:defs.bzl", "oci_image", "oci_tarball")
 load("@rules_pkg//:pkg.bzl", "pkg_tar")
 
 package(default_visibility = ["//visibility:public"])
@@ -53,6 +53,13 @@ oci_image(
     base = "@alpine_base",
     tars = [":netlink_exercise_tar"],
     user = "root",
+)
+
+oci_tarball(
+    name = "netlink_exercise_image.docker.tar",
+    format = "docker",
+    image = ":netlink_exercise_image",
+    repo_tags = ["netlink_exercise_image:latest"],
 )
 
 # To make this work in cloudtop (due to docker socket permissions errors) I had to:

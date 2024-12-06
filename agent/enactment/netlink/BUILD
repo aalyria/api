@@ -41,7 +41,6 @@ go_test(
     srcs = ["netlink_test.go"],
     embed = [":netlink"],
     deps = [
-        "//api/common:common_go_proto",
         "//api/scheduling/v1alpha:scheduling_go_grpc",
         "@com_github_google_go_cmp//cmp",
         "@com_github_jonboulle_clockwork//:clockwork",

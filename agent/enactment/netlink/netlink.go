@@ -36,7 +36,7 @@ const (
 )
 
 type Driver struct {
-	// mu protects the backend's map fields from concurrent mutation.
+	// mu protects the driver's map fields from concurrent mutation.
 	mu *sync.Mutex
 
 	routes []*installedRoute
@@ -53,7 +53,7 @@ type exportedStats struct {
 	RoutesSetCount, RoutesDeletedCount int
 }
 
-// Config provides configuration and dependency injection parameters for backend
+// Config provides configuration and dependency injection parameters for driver
 type Config struct {
 	// Clock to support repeatable unit or container testing
 	Clock clockwork.Clock
@@ -67,11 +67,10 @@ type Config struct {
 	// GetLinkIDByName returns the ID of the provided interface.
 	GetLinkIDByName func(interfaceID string) (int, error)
 
-	// RouteList fetches a list of installed routes.
-	// TODO: Evaluate whether this is still needed
-	RouteList func() ([]vnl.Route, error)
-
 	// RouteListFiltered fetches a list of installed routes matching a filter.
+	//
+	// Used to scope RT_NETLINK route actions to RtTableID and avoid
+	// acting on other tables, like local and main.
 	RouteListFiltered func(int, *vnl.Route, uint64) ([]vnl.Route, error)
 
 	// RouteAdd inserts new routes.
@@ -80,16 +79,16 @@ type Config struct {
 	// RouteDel removes the provided route.
 	RouteDel func(*vnl.Route) error
 
-	// RuleAdd is called during the backend Init() process.
+	// RuleAdd is called during the driver Init() process.
 	RuleAdd func(*vnl.Rule) error
 }
 
 // DefaultConfig generates a nominal Config for New().
 // Pass in a Netlink *Handle with the specified namespace, like so:
-// nlHandle, err := vnl.NewHandle(vnl.FAMILY_V4)
+// nlHandle, err := vnl.NewHandle(vnl.FAMILY_ALL)
 // config := DefaultConfig(nlHandle)
 func DefaultConfig(ctx context.Context, nlHandle *vnl.Handle, rtTableID int, rtTableLookupPriority int) Config {
-	log := zerolog.Ctx(ctx).With().Str("backend", "netlink").Logger()
+	log := zerolog.Ctx(ctx).With().Str("driver", "netlink").Logger()
 
 	if rtTableID <= 0 {
 		rtTableID = defaultRtTableID
@@ -117,25 +116,13 @@ func DefaultConfig(ctx context.Context, nlHandle *vnl.Handle, rtTableID int, rtT
 			return link.Attrs().Index, nil
 		},
 
-		// TODO: Evaluate whether this is still needed
-		RouteList: func() (routes []vnl.Route, err error) {
-			defer func() { log.Debug().Any("routes", routes).Err(err).Msgf("RouteList() returned") }()
-
-			// TODO: FAMILY_ALL.
-			routes, err = nlHandle.RouteList(nil, vnl.FAMILY_V4)
-			if err != nil {
-				return nil, fmt.Errorf("failed RouteList(): %w)", err)
-			}
-			return routes, nil
-		},
-
 		RouteListFiltered: func(family int, filter *vnl.Route, filterMask uint64) (routes []vnl.Route, err error) {
 			defer func() { log.Debug().Any("routes", routes).Err(err).Msgf("RouteListFiltered() returned") }()
 
 			// TODO: FAMILY_ALL.
 			routes, err = nlHandle.RouteListFiltered(family, filter, filterMask)
 			if err != nil {
-				return nil, fmt.Errorf("failed RouteList(): %w)", err)
+				return nil, fmt.Errorf("failed RouteListFiltered(): %w)", err)
 			}
 			return routes, nil
 		},
@@ -165,7 +152,15 @@ func DefaultConfig(ctx context.Context, nlHandle *vnl.Handle, rtTableID int, rtT
 
 // routeListFilteredByTableID is a helper function to return all routes from table <RtTableID>
 func (b *Driver) routeListFilteredByTableID() ([]vnl.Route, error) {
-	return b.config.RouteListFiltered(vnl.FAMILY_V4, &vnl.Route{Table: b.config.RtTableID}, vnl.RT_FILTER_TABLE)
+	routeList := []vnl.Route{}
+	for _, family := range []int{vnl.FAMILY_V4, vnl.FAMILY_V6} {
+		routesByFamily, err := b.config.RouteListFiltered(family, &vnl.Route{Table: b.config.RtTableID}, vnl.RT_FILTER_TABLE)
+		if err != nil {
+			return routeList, err
+		}
+		routeList = append(routeList, routesByFamily...)
+	}
+	return routeList, nil
 }
 
 // flushExistingRoutesInSpacetimeTable deletes all routes located in the Spacetime route table
@@ -203,7 +198,7 @@ func New(config Config) *Driver {
 func (b *Driver) Close() error { return nil }
 
 func (b *Driver) Init(ctx context.Context) error {
-	log := zerolog.Ctx(ctx).With().Str("backend", "netlink").Logger()
+	log := zerolog.Ctx(ctx).With().Str("driver", "netlink").Logger()
 	ctx = log.WithContext(ctx)
 
 	b.mu.Lock()
@@ -235,29 +230,29 @@ func (b *Driver) Init(ctx context.Context) error {
 	return nil
 }
 
-func (b *Driver) Stats() interface{} {
-	b.mu.Lock()
-	defer b.mu.Unlock()
+func (d *Driver) Stats() interface{} {
+	d.mu.Lock()
+	defer d.mu.Unlock()
 
-	changeIDs := make([]string, 0, len(b.routes))
-	for _, r := range b.routes {
+	changeIDs := make([]string, 0, len(d.routes))
+	for _, r := range d.routes {
 		changeIDs = append(changeIDs, r.ID)
 	}
 	slices.Sort(changeIDs)
-	b.stats.InstalledRoutes = changeIDs
+	d.stats.InstalledRoutes = changeIDs
 
-	return b.stats
+	return d.stats
 }
 
-func (b *Driver) addRoute(route *vnl.Route) error {
-	if err := b.config.RouteAdd(route); err != nil {
+func (d *Driver) addRoute(route *vnl.Route) error {
+	if err := d.config.RouteAdd(route); err != nil {
 		return fmt.Errorf("RouteAdd(%v): %w", route, err)
 	}
 	return nil
 }
 
-func (b *Driver) deleteRoute(route *vnl.Route) error {
-	if err := b.config.RouteDel(route); err != nil {
+func (d *Driver) deleteRoute(route *vnl.Route) error {
+	if err := d.config.RouteDel(route); err != nil {
 		return fmt.Errorf("RouteDel(%v): %w", route, err)
 	}
 	return nil
@@ -271,22 +266,22 @@ func (d *Driver) wantedRoutes() []vnl.Route {
 	return wantRoutes
 }
 
-func (b *Driver) reconcileRoutes(installedRoutes, wantRoutes []vnl.Route) error {
+func (d *Driver) reconcileRoutes(installedRoutes, wantRoutes []vnl.Route) error {
 	toAdd, toRemove := diffRoutes(installedRoutes, wantRoutes)
 	added, deleted := 0, 0
 
 	defer func() {
-		b.mu.Lock()
-		defer b.mu.Unlock()
+		d.mu.Lock()
+		defer d.mu.Unlock()
 
-		b.stats.RoutesSetCount += added
-		b.stats.RoutesDeletedCount += deleted
+		d.stats.RoutesSetCount += added
+		d.stats.RoutesDeletedCount += deleted
 	}()
 
 	for _, route := range toAdd {
 		routeWithPriority := route
-		routeWithPriority.Priority = int(math.MaxUint32 - uint32(b.config.Clock.Now().Unix()))
-		if err := b.addRoute(&routeWithPriority); err != nil && errors.Is(err, syscall.EEXIST) {
+		routeWithPriority.Priority = int(math.MaxUint32 - uint32(d.config.Clock.Now().Unix()))
+		if err := d.addRoute(&routeWithPriority); err != nil && errors.Is(err, syscall.EEXIST) {
 		} else if err != nil {
 			return fmt.Errorf("SetRoute failed with RTNETLINK-sourced error: %w", err)
 		} else {
@@ -297,7 +292,7 @@ func (b *Driver) reconcileRoutes(installedRoutes, wantRoutes []vnl.Route) error 
 	for _, route := range toRemove {
 		// First attempt to remove from the system via Netlink
 		// If this fails, we do not want to delete the stateful store of routes (which we do next)
-		if err := b.deleteRoute(&route); err != nil {
+		if err := d.deleteRoute(&route); err != nil {
 			return fmt.Errorf("DeleteRoute failed with RTNETLINK-sourced error: %w", err)
 		}
 		deleted++
@@ -306,8 +301,8 @@ func (b *Driver) reconcileRoutes(installedRoutes, wantRoutes []vnl.Route) error 
 	return nil
 }
 
-func (b *Driver) Dispatch(ctx context.Context, req *schedpb.CreateEntryRequest) error {
-	log := zerolog.Ctx(ctx).With().Str("backend", "netlink").Logger()
+func (d *Driver) Dispatch(ctx context.Context, req *schedpb.CreateEntryRequest) error {
+	log := zerolog.Ctx(ctx).With().Str("driver", "netlink").Logger()
 	ctx = log.WithContext(ctx)
 
 	if req.ConfigurationChange == nil {
@@ -316,51 +311,51 @@ func (b *Driver) Dispatch(ctx context.Context, req *schedpb.CreateEntryRequest) 
 
 	changeID := req.GetId()
 
-	installedRoutes, err := b.routeListFilteredByTableID()
+	installedRoutes, err := d.routeListFilteredByTableID()
 	if err != nil {
 		return fmt.Errorf("listing installed routes: %w", err)
 	}
 
 	switch cc := req.ConfigurationChange.(type) {
 	case *schedpb.CreateEntryRequest_SetRoute:
-		ir, err := newInstalledRoute(b.config, changeID, cc.SetRoute)
+		ir, err := newInstalledRoute(d.config, changeID, cc.SetRoute)
 		if err != nil {
 			return fmt.Errorf("constructing route from SetRoute command: %w", err)
 		}
 
-		b.mu.Lock()
+		d.mu.Lock()
 		replaced := false
-		for idx, r := range b.routes {
+		for idx, r := range d.routes {
 			if r.ID == changeID {
 				replaced = true
-				b.routes[idx] = ir
+				d.routes[idx] = ir
 				break
 			}
 		}
 		if !replaced {
-			b.routes = append(b.routes, ir)
+			d.routes = append(d.routes, ir)
 		}
 
-		wantedRoutes := b.wantedRoutes()
-		b.mu.Unlock()
+		wantedRoutes := d.wantedRoutes()
+		d.mu.Unlock()
 
-		if err := b.reconcileRoutes(installedRoutes, wantedRoutes); err != nil {
+		if err := d.reconcileRoutes(installedRoutes, wantedRoutes); err != nil {
 			return fmt.Errorf("installing change %s: %w", changeID, err)
 		}
 
 	case *schedpb.CreateEntryRequest_DeleteRoute:
-		b.mu.Lock()
-		oldLen := len(b.routes)
-		b.routes = slices.DeleteFunc(b.routes, func(r *installedRoute) bool { return r.ID == changeID })
-		newLen := len(b.routes)
-		wantedRoutes := b.wantedRoutes()
-		b.mu.Unlock()
+		d.mu.Lock()
+		oldLen := len(d.routes)
+		d.routes = slices.DeleteFunc(d.routes, func(r *installedRoute) bool { return r.ID == changeID })
+		newLen := len(d.routes)
+		wantedRoutes := d.wantedRoutes()
+		d.mu.Unlock()
 
 		if oldLen == newLen {
 			return &UnknownRouteDeleteError{changeID: changeID}
 		}
 
-		if err := b.reconcileRoutes(installedRoutes, wantedRoutes); err != nil {
+		if err := d.reconcileRoutes(installedRoutes, wantedRoutes); err != nil {
 			return fmt.Errorf("installing change %s: %w", changeID, err)
 		}
 

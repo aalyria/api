@@ -1,4 +1,4 @@
-# Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+# Copyright (c) Aalyria Technologies, Inc., and its affiliates.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,6 +31,10 @@ commandTests:
     setup: [
       ["apk", "add", "gcompat"],
       ["ln", "-sf", "/lib/libgcompat.so.0", "/lib/libresolv.so.2"],
+      # Required, but fails because /proc is mounted ro.
+      # The docker go HostConfig has a sysctls option, but no plumbing
+      # from container_structure_test bazel rules.
+      ["sysctl", "-w", "net.ipv6.conf.all.disable_ipv6=0", "net.ipv6.conf.default.disable_ipv6=0"],
     ]
     command: "/netlink_exercise"
     #args: ["add", "libcap"]

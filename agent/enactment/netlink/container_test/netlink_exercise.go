@@ -1,4 +1,4 @@
-// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,21 +38,32 @@ const (
 
 // setupInterface creates a dummy interface in the containter environment
 // which can be used to simulate the behaviour of real Linux network interfaces
-func setupInterface(nlHandle *vnl.Handle, ifaceIndex int, ifaceName string, ifaceIP string) {
+func setupInterface(nlHandle *vnl.Handle, ifaceIndex int, ifaceName string, ifaceIP4 string, ifaceIP6 string) {
 	// Generate synthetic link environment for test
 	link := vnl.Dummy{LinkAttrs: vnl.LinkAttrs{Index: ifaceIndex, Name: ifaceName}}
 	err := nlHandle.LinkAdd(&link)
 	if err != nil {
 		log.Fatalf("nlHandle.LinkAdd(Dummy(%s)) failed with: %s", ifaceName, err)
 	}
-	addr, err := vnl.ParseAddr(ifaceIP)
+
+	addr, err := vnl.ParseAddr(ifaceIP4)
 	if err != nil {
-		log.Fatalf("vnl.ParseAddr(%s) failure: %s", ifaceIP, err)
+		log.Fatalf("vnl.ParseAddr(%s) failure: %s", ifaceIP4, err)
 	}
 	err = nlHandle.AddrAdd(&link, addr)
 	if err != nil {
-		log.Fatalf("nlHandle.AddrAdd(Dummy(%s), addr) failed: %s", ifaceName, err)
+		log.Fatalf("nlHandle.AddrAdd(Dummy(%s), %q) failed: %s", ifaceName, addr, err)
 	}
+
+	addr, err = vnl.ParseAddr(ifaceIP6)
+	if err != nil {
+		log.Fatalf("vnl.ParseAddr(%s) failure: %s", ifaceIP6, err)
+	}
+	// TODO: diagnose why this throws EPERM.
+	// err = nlHandle.AddrAdd(&link, addr)
+	// if err != nil {
+	// 	log.Fatalf("nlHandle.AddrAdd(Dummy(%s), %q) failed: %s", ifaceName, addr, err)
+	// }
 
 	err = nlHandle.LinkSetUp(&link)
 	if err != nil {
@@ -129,10 +140,10 @@ func main() {
 		log.Fatalf("netlink.NewHandle(\"test_namespace\", vnl.FAMILY_V4) failed with: %s", err)
 	}
 
-	setupInterface(nlHandle, 1000, "ens161", "192.168.100.2/24") // setting up the OneWeb control plane interface
-	setupInterface(nlHandle, 1001, "ens224", "192.168.200.2/24") // setting up the OneWeb SD-One data plane interface
-	setupInterface(nlHandle, 1002, "ens256", "192.168.1.2/24")   // setting up the Viasat interface
-	setupInterface(nlHandle, 1003, "ens160", "172.16.51.1/24")   // setting up the ground mgmt interface
+	setupInterface(nlHandle, 1000, "ens161", "192.168.100.2/24", "fe80::1000/64") // setting up the OneWeb control plane interface
+	setupInterface(nlHandle, 1001, "ens224", "192.168.200.2/24", "fe80::1001/64") // setting up the OneWeb SD-One data plane interface
+	setupInterface(nlHandle, 1002, "ens256", "192.168.1.2/24", "fe80::1002/64")   // setting up the Viasat interface
+	setupInterface(nlHandle, 1003, "ens160", "172.16.51.1/24", "fe80::1003/64")   // setting up the ground mgmt interface
 
 	ctx := context.Background()
 	config := netlink.DefaultConfig(ctx, nlHandle, rtTableID, rtTableLookupPriority)

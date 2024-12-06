@@ -79,26 +79,26 @@ func (e *UnknownRouteDeleteError) Is(err error) bool {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
-// IPv4FormattingError indicates an erroneously formatted IPv4 address was passed
-type IPv4Field string
+// IPFormattingError indicates an erroneously formatted IP address or prefix was passed
+type IPField string
 
 const (
-	Dst_IPv4Field IPv4Field = "Dst"
-	Via_IPv4Field IPv4Field = "Via"
+	Dst_IPField IPField = "Dst"
+	Via_IPField IPField = "Via"
 )
 
-type IPv4FormattingError struct {
-	ipv4        string
-	sourceField IPv4Field
+type IPFormattingError struct {
+	ip          string
+	sourceField IPField
 }
 
-func (e IPv4FormattingError) Error() string {
-	return fmt.Sprintf("attempted using wrongly formatted IPv4 address/range (%s) for %s field", e.ipv4, e.sourceField)
+func (e IPFormattingError) Error() string {
+	return fmt.Sprintf("attempted using wrongly formatted IP address/range (%s) for %s field", e.ip, e.sourceField)
 }
 
-func (e IPv4FormattingError) Is(err error) bool {
-	if typedErr, ok := err.(IPv4FormattingError); ok {
-		return typedErr.sourceField == e.sourceField && typedErr.ipv4 == e.ipv4
+func (e IPFormattingError) Is(err error) bool {
+	if typedErr, ok := err.(IPFormattingError); ok {
+		return typedErr.sourceField == e.sourceField && typedErr.ip == e.ip
 	}
 	return false
 }

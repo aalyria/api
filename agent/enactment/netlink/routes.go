@@ -35,20 +35,53 @@ type installedRoute struct {
 	Via     net.IP
 }
 
+func addressFamilyOfIP(ip *net.IP) int {
+	switch ip != nil {
+	case ip.To4() != nil:
+		return unix.AF_INET
+	case ip.To16() != nil:
+		// It seems like net.IP lacks a proper test for IPv6, and that
+		// `To4() == nil && To16() != nil` might be the only option?
+		//
+		// Sigh.
+		return unix.AF_INET6
+	}
+	return unix.AF_UNSPEC
+}
+
+func addressFamilyOfIPNet(ipNet *net.IPNet) int {
+	var ip *net.IP = nil
+	if ipNet != nil {
+		ip = &ipNet.IP
+	}
+	return addressFamilyOfIP(ip)
+}
+
+func makeIPNetForIP(ip *net.IP) *net.IPNet {
+	switch addressFamilyOfIP(ip) {
+	case unix.AF_INET:
+		return &net.IPNet{IP: *ip, Mask: net.CIDRMask(32, 32)}
+	case unix.AF_INET6:
+		return &net.IPNet{IP: *ip, Mask: net.CIDRMask(128, 128)}
+	default:
+		return nil
+	}
+}
+
 func newInstalledRoute(cfg Config, id string, cc *schedpb.SetRoute) (*installedRoute, error) {
 	devID, err := cfg.GetLinkIDByName(cc.Dev)
 	if err != nil {
 		return nil, &OutInterfaceIdxError{wrongIface: cc.Dev, sourceError: err}
 	}
 	_, dst, err := net.ParseCIDR(cc.To)
-	if err != nil || dst.IP.To4() == nil {
-		return nil, &IPv4FormattingError{ipv4: cc.To, sourceField: Dst_IPv4Field}
+	if err != nil || addressFamilyOfIPNet(dst) == unix.AF_UNSPEC {
+		return nil, &IPFormattingError{ip: cc.To, sourceField: Dst_IPField}
 	}
 	nextHopIP, _, err := net.ParseCIDR(cc.Via)
 	if err != nil || nextHopIP == nil {
 		nextHopIP = net.ParseIP(cc.Via)
 		if nextHopIP == nil {
-			return nil, &IPv4FormattingError{ipv4: cc.Via, sourceField: Via_IPv4Field}
+			return nil, &IPFormattingError{ip: cc.Via, sourceField: Via_IPField}
 		}
 	}
 
@@ -62,35 +95,43 @@ func newInstalledRoute(cfg Config, id string, cc *schedpb.SetRoute) (*installedR
 }
 
 func (i *installedRoute) ToNetlinkRoutes(cfg Config) []vnl.Route {
-	routeToGateway := vnl.Route{
-		LinkIndex: i.DevID,
-		Scope:     vnl.SCOPE_LINK,
-		Dst:       &net.IPNet{IP: i.Via, Mask: net.CIDRMask(32, 32)},
-		Protocol:  vnl.RouteProtocol(0),
-		Family:    unix.AF_INET,
-		Table:     cfg.RtTableID,
-		Type:      unix.RTN_UNICAST,
+	netlinkRoutes := []vnl.Route{}
+
+	// If the next hop IP address is a link-local unicast address
+	// (LLUA) there will already be a directly connected route for
+	// the link-local prefix, i.e. fe80::/64 (or 169.254.0.0/16).
+	if !i.Via.IsLinkLocalUnicast() {
+		netlinkRoutes = append(netlinkRoutes, vnl.Route{
+			LinkIndex: i.DevID,
+			Scope:     vnl.SCOPE_LINK,
+			Dst:       makeIPNetForIP(&i.Via),
+			Protocol:  vnl.RouteProtocol(0),
+			Family:    addressFamilyOfIP(&i.Via),
+			Table:     cfg.RtTableID,
+			Type:      unix.RTN_UNICAST,
+		})
 	}
 
-	routeToDst := vnl.Route{
+	netlinkRoutes = append(netlinkRoutes, vnl.Route{
 		LinkIndex: i.DevID,
 		Scope:     vnl.SCOPE_UNIVERSE,
 		Dst:       i.To,
 		Gw:        i.Via,
 		Protocol:  vnl.RouteProtocol(0),
-		Family:    unix.AF_INET,
+		Family:    addressFamilyOfIPNet(i.To),
 		Table:     cfg.RtTableID,
 		Type:      unix.RTN_UNICAST,
-	}
+	})
 
-	return []vnl.Route{routeToGateway, routeToDst}
+	return netlinkRoutes
 }
 
 func routesMostlyEqual(l, r vnl.Route) bool {
 	return l.LinkIndex == r.LinkIndex &&
 		l.Scope == r.Scope &&
-		l.Src.Equal(r.Src) &&
-		l.Gw.Equal(r.Gw) &&
+		l.Table == r.Table &&
+		((l.Src == nil && r.Src == nil) || l.Src.Equal(r.Src)) &&
+		((l.Gw == nil && r.Gw == nil) || l.Gw.Equal(r.Gw)) &&
 		l.Dst.IP.Equal(r.Dst.IP) &&
 		bytes.Equal(l.Dst.Mask, r.Dst.Mask)
 }
