@@ -247,6 +247,186 @@ func TestNetlink(t *testing.T) {
 			wantErrors: []error{nil, nil},
 		},
 		{
+			name: "add two IPv4 routes via same gateway and remove one route",
+			routeList: []routesError{
+				EMPTY_ROUTE_TABLE, // AF_INET routes at start of first Dispatch
+				EMPTY_ROUTE_TABLE, // AF_INET6 routes at start of first Dispatch
+				{
+					// AF_INET routes at start of second Dispatch
+					routes: []vnl.Route{
+						{
+							Src:       nil, // no support for src-dst routing yet
+							Dst:       dst,
+							Gw:        net.ParseIP("192.168.1.1"),
+							Table:     AGENT_TABLE_ID,
+							Scope:     vnl.SCOPE_UNIVERSE,
+							LinkIndex: 7,
+						},
+						{
+							Src:       nil,
+							Dst:       gwNet,
+							Table:     AGENT_TABLE_ID,
+							Scope:     vnl.SCOPE_LINK,
+							LinkIndex: 7,
+						},
+					},
+					err: nil,
+				},
+				EMPTY_ROUTE_TABLE, // AF_INET6 routes at start of second Dispatch
+				{
+					// AF_INET routes at start of second Dispatch
+					routes: []vnl.Route{
+						{
+							Src:       nil, // no support for src-dst routing yet
+							Dst:       dst,
+							Gw:        net.ParseIP("192.168.1.1"),
+							Table:     AGENT_TABLE_ID,
+							Scope:     vnl.SCOPE_UNIVERSE,
+							LinkIndex: 7,
+						},
+						{
+							Src:       nil,
+							Dst:       gwNet,
+							Table:     AGENT_TABLE_ID,
+							Scope:     vnl.SCOPE_LINK,
+							LinkIndex: 7,
+						},
+						{
+							Src:       nil, // no support for src-dst routing yet
+							Dst:       ipNetOf(mustParseCIDR("192.168.3.0/24")),
+							Gw:        net.ParseIP("192.168.1.1"),
+							Table:     AGENT_TABLE_ID,
+							Scope:     vnl.SCOPE_UNIVERSE,
+							LinkIndex: 7,
+						},
+					},
+					err: nil,
+				},
+				EMPTY_ROUTE_TABLE, // AF_INET6 routes at start of second Dispatch
+			},
+			routeAdd: []routeError{
+				{
+					vnl.Route{
+						Dst:       gwNet,
+						LinkIndex: 7,
+						Table:     AGENT_TABLE_ID,
+						Scope:     vnl.SCOPE_LINK,
+					},
+					nil,
+				},
+				{
+					vnl.Route{
+						Src:       nil, // no support for src-dst routing yet
+						Dst:       dst,
+						Gw:        gw,
+						LinkIndex: 7,
+						Table:     AGENT_TABLE_ID,
+						Scope:     vnl.SCOPE_UNIVERSE,
+					},
+					nil,
+				},
+				{
+					vnl.Route{
+						Src:       nil, // no support for src-dst routing yet
+						Dst:       ipNetOf(mustParseCIDR("192.168.3.0/24")),
+						Gw:        gw,
+						LinkIndex: 7,
+						Table:     AGENT_TABLE_ID,
+						Scope:     vnl.SCOPE_UNIVERSE,
+					},
+					nil,
+				},
+			},
+			routeDel: []routeError{
+				{
+					vnl.Route{
+						Dst:       dst,
+						Gw:        gw,
+						LinkIndex: 7,
+						Table:     AGENT_TABLE_ID,
+						Scope:     vnl.SCOPE_UNIVERSE,
+					},
+					nil,
+				},
+			},
+			getLinkIDByName: map[string]linkIdxError{
+				"foo": {idx: 7, err: nil},
+			},
+			configChanges: []*schedpb.CreateEntryRequest{
+				{
+					Id:    "rule1",
+					Seqno: 1,
+					ConfigurationChange: &schedpb.CreateEntryRequest_SetRoute{
+						SetRoute: &schedpb.SetRoute{
+							From: "192.168.2.2",
+							To:   "192.168.1.0/24",
+							Dev:  "foo",
+							Via:  "192.168.1.1",
+						},
+					},
+				},
+				{
+					Id:    "rule2",
+					Seqno: 2,
+					ConfigurationChange: &schedpb.CreateEntryRequest_SetRoute{
+						SetRoute: &schedpb.SetRoute{
+							From: "192.168.2.2",
+							To:   "192.168.3.0/24",
+							Dev:  "foo",
+							Via:  "192.168.1.1",
+						},
+					},
+				},
+				{
+					Id:    "rule1",
+					Seqno: 3,
+					ConfigurationChange: &schedpb.CreateEntryRequest_DeleteRoute{
+						DeleteRoute: &schedpb.DeleteRoute{
+							From: "192.168.2.2",
+							To:   "192.168.1.0/24",
+						},
+					},
+				},
+			},
+			wantRoutes: [][]*installedRoute{
+				{
+					{
+						ID:      "rule1",
+						DevName: "foo",
+						DevID:   7,
+						To:      dst,
+						Via:     gw,
+					},
+				},
+				{
+					{
+						ID:      "rule1",
+						DevName: "foo",
+						DevID:   7,
+						To:      dst,
+						Via:     gw,
+					},
+					{
+						ID:      "rule2",
+						DevName: "foo",
+						DevID:   7,
+						To:      ipNetOf(mustParseCIDR("192.168.3.0/24")),
+						Via:     gw,
+					},
+				},
+				{
+					{
+						ID:      "rule2",
+						DevName: "foo",
+						DevID:   7,
+						To:      ipNetOf(mustParseCIDR("192.168.3.0/24")),
+						Via:     gw,
+					},
+				},
+			},
+			wantErrors: []error{nil, nil, nil},
+		},
+		{
 			name: "remove nonexisting IPv4 unicast route",
 			routeList: []routesError{
 				EMPTY_ROUTE_TABLE, // AF_INET routes at start of Dispatch
