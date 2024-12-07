@@ -132,8 +132,7 @@ func routesMostlyEqual(l, r vnl.Route) bool {
 		l.Table == r.Table &&
 		((l.Src == nil && r.Src == nil) || l.Src.Equal(r.Src)) &&
 		((l.Gw == nil && r.Gw == nil) || l.Gw.Equal(r.Gw)) &&
-		l.Dst.IP.Equal(r.Dst.IP) &&
-		bytes.Equal(l.Dst.Mask, r.Dst.Mask)
+		(l.Dst.IP.Equal(r.Dst.IP) && bytes.Equal(l.Dst.Mask, r.Dst.Mask))
 }
 
 func diffRoutes(got, want []vnl.Route) (toAdd []vnl.Route, toRemove []vnl.Route) {

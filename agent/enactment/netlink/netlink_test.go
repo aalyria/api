@@ -141,14 +141,23 @@ func TestNetlink(t *testing.T) {
 				EMPTY_ROUTE_TABLE, // AF_INET6 routes at start of Dispatch
 				{
 					// AF_INET routes at end of first Dispatch
-					routes: []vnl.Route{{
-						Src:       nil, // no support for src-dst routing yet
-						Dst:       dst,
-						Gw:        net.ParseIP("192.168.1.1"),
-						Table:     AGENT_TABLE_ID,
-						Scope:     vnl.SCOPE_UNIVERSE,
-						LinkIndex: 7,
-					}},
+					routes: []vnl.Route{
+						{
+							Src:       nil, // no support for src-dst routing yet
+							Dst:       dst,
+							Gw:        net.ParseIP("192.168.1.1"),
+							Table:     AGENT_TABLE_ID,
+							Scope:     vnl.SCOPE_UNIVERSE,
+							LinkIndex: 7,
+						},
+						{
+							Src:       nil,
+							Dst:       gwNet,
+							Table:     AGENT_TABLE_ID,
+							Scope:     vnl.SCOPE_LINK,
+							LinkIndex: 7,
+						},
+					},
 					err: nil,
 				},
 				EMPTY_ROUTE_TABLE, // AF_INET6 routes at end of first Dispatch
@@ -186,8 +195,15 @@ func TestNetlink(t *testing.T) {
 					},
 					nil,
 				},
-				// TODO: should delete the on-link gateway route as well.
-				// {vnl.Route{}, nil},
+				{
+					vnl.Route{
+						LinkIndex: 7,
+						Scope:     vnl.SCOPE_LINK,
+						Dst:       gwNet,
+						Table:     AGENT_TABLE_ID,
+					},
+					nil,
+				},
 			},
 			getLinkIDByName: map[string]linkIdxError{
 				"foo": {idx: 7, err: nil},
