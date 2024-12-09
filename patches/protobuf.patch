@@ -1,0 +1,191 @@
+diff --git a/MODULE.bazel b/MODULE.bazel
+index fb3065230..3758ec075 100644
+--- a/MODULE.bazel
++++ b/MODULE.bazel
+@@ -18,7 +18,8 @@ bazel_dep(name = "jsoncpp", version = "1.9.5")
+ bazel_dep(name = "rules_cc", version = "0.0.9")
+ bazel_dep(name = "rules_fuzzing", version = "0.5.2")
+ bazel_dep(name = "rules_java", version = "5.3.5")
+-bazel_dep(name = "rules_jvm_external", version = "5.1")
++bazel_dep(name = "rules_jvm_external", version = "6.0")
++bazel_dep(name = "rules_kotlin", version = "1.9.0")
+ bazel_dep(name = "rules_pkg", version = "0.7.0")
+ bazel_dep(name = "rules_python", version = "0.28.0")
+ bazel_dep(name = "rules_rust", version = "0.45.1")
+@@ -70,3 +71,29 @@ crate.spec(
+ )
+ crate.from_specs()
+ use_repo(crate, crate_index = "crates")
++
++maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
++maven.install(
++    artifacts = [
++        "com.google.caliper:caliper:1.0-beta-3",
++        "com.google.code.findbugs:jsr305:3.0.2",
++        "com.google.code.gson:gson:2.8.9",
++        "com.google.errorprone:error_prone_annotations:2.5.1",
++        "com.google.j2objc:j2objc-annotations:2.8",
++        "com.google.guava:guava:32.0.1-jre",
++        "com.google.guava:guava-testlib:32.0.1-jre",
++        "com.google.truth:truth:1.1.2",
++        "junit:junit:4.13.2",
++        "org.mockito:mockito-core:4.3.1",
++        "biz.aQute.bnd:biz.aQute.bndlib:6.4.0",
++        "info.picocli:picocli:4.6.3",
++    ],
++    repositories = [
++        "https://repo1.maven.org/maven2",
++        "https://repo.maven.apache.org/maven2",
++    ],
++)
++use_repo(maven, "maven")
++
++# Development dependencies
++bazel_dep(name = "googletest", version = "1.14.0", repo_name = "com_google_googletest", dev_dependency = True)
+diff --git a/java/kotlin-lite/BUILD.bazel b/java/kotlin-lite/BUILD.bazel
+index 4d5577048..431839fdd 100644
+--- a/java/kotlin-lite/BUILD.bazel
++++ b/java/kotlin-lite/BUILD.bazel
+@@ -50,7 +50,7 @@ kt_jvm_library(
+ kt_jvm_export(
+     name = "kotlin-lite_mvn",
+     deploy_env = [
+-        "@com_github_jetbrains_kotlin//:kotlin-stdlib",
++        "@rules_kotlin//kotlin/compiler:kotlin-stdlib",
+         "//java/lite",
+     ],
+     maven_coordinates = "com.google.protobuf:protobuf-kotlin-lite:%s" % PROTOBUF_JAVA_VERSION,
+@@ -99,7 +99,7 @@ kt_jvm_library(
+         "//java/kotlin:only_for_use_in_proto_generated_code_its_generator_and_tests",
+         "//java/kotlin:shared_runtime",
+         "//java/lite",
+-        "@com_github_jetbrains_kotlin//:kotlin-test",
++        "@rules_kotlin//kotlin/compiler:kotlin-test",
+         "@maven//:com_google_truth_truth",
+         "@maven//:junit_junit",
+     ],
+diff --git a/java/kotlin/BUILD.bazel b/java/kotlin/BUILD.bazel
+index 20dd242ae..3af561b74 100644
+--- a/java/kotlin/BUILD.bazel
++++ b/java/kotlin/BUILD.bazel
+@@ -1,5 +1,5 @@
+-load("@io_bazel_rules_kotlin//kotlin:jvm.bzl", "kt_jvm_library")
+ load("@rules_jvm_external//:kt_defs.bzl", "kt_jvm_export")
++load("@rules_kotlin//kotlin:jvm.bzl", "kt_jvm_library")
+ load("@rules_pkg//pkg:mappings.bzl", "pkg_files", "strip_prefix")
+ load("//:protobuf.bzl", "internal_gen_kt_protos")
+ load("//:protobuf_version.bzl", "PROTOBUF_JAVA_VERSION")
+@@ -53,7 +53,7 @@ kt_jvm_library(
+ kt_jvm_export(
+     name = "kotlin_mvn",
+     deploy_env = [
+-        "@com_github_jetbrains_kotlin//:kotlin-stdlib",
++        "@rules_kotlin//kotlin/compiler:kotlin-stdlib",
+         "//java/core",
+     ],
+     maven_coordinates = "com.google.protobuf:protobuf-kotlin:%s" % PROTOBUF_JAVA_VERSION,
+@@ -101,9 +101,9 @@ kt_jvm_library(
+     deps = [
+         ":bytestring_lib",
+         "//java/lite",
+-        "@com_github_jetbrains_kotlin//:kotlin-test",
+         "@maven//:com_google_truth_truth",
+         "@maven//:junit_junit",
++        "@rules_kotlin//kotlin/compiler:kotlin-test",
+     ],
+ )
+ 
+@@ -136,10 +136,10 @@ kt_jvm_library(
+         ":example_extensible_message_java_proto",
+         ":only_for_use_in_proto_generated_code_its_generator_and_tests",
+         ":shared_runtime",
+-        "@com_github_jetbrains_kotlin//:kotlin-test",
+         "@maven//:com_google_guava_guava_testlib",
+         "@maven//:com_google_truth_truth",
+         "@maven//:junit_junit",
++        "@rules_kotlin//kotlin/compiler:kotlin-test",
+     ],
+ )
+ 
+@@ -162,9 +162,9 @@ kt_jvm_library(
+         ":only_for_use_in_proto_generated_code_its_generator_and_tests",
+         ":shared_runtime",
+         "//java/core",
+-        "@com_github_jetbrains_kotlin//:kotlin-test",
+         "@maven//:com_google_truth_truth",
+         "@maven//:junit_junit",
++        "@rules_kotlin//kotlin/compiler:kotlin-test",
+     ],
+ )
+ 
+diff --git a/protobuf_deps.bzl b/protobuf_deps.bzl
+index ae2aa5e72..b8f5b989b 100644
+--- a/protobuf_deps.bzl
++++ b/protobuf_deps.bzl
+@@ -80,11 +80,27 @@ def protobuf_deps():
+         )
+ 
+     if not native.existing_rule("rules_java"):
+-        http_archive(
+-            name = "rules_java",
+-            url = "https://github.com/bazelbuild/rules_java/releases/download/6.0.0/rules_java-6.0.0.tar.gz",
+-            sha256 = "469b7f3b580b4fcf8112f4d6d0d5a4ce8e1ad5e21fee67d8e8335d5f8b3debab",
+-        )
++        bazel_version = native.bazel_version or "999999.999999.999999"
++        version_parts = bazel_version.split("-")[0].split(".")
++        if len(version_parts) != 3:
++            fail("invalid Bazel version '{}': got {} dot-separated segments, want 3".format(bazel_version, len(version_parts)))
++        major_version_int = int(version_parts[0])
++        minor_version_int = int(version_parts[1])
++
++        if major_version_int < 6 or (major_version_int == 6 and minor_version_int <= 3):
++            # Works with Bazel 6.3.0, but not higher
++            http_archive(
++                name = "rules_java",
++                url = "https://github.com/bazelbuild/rules_java/releases/download/6.0.0/rules_java-6.0.0.tar.gz",
++                sha256 = "469b7f3b580b4fcf8112f4d6d0d5a4ce8e1ad5e21fee67d8e8335d5f8b3debab",
++            )
++        else:
++            # Version 6.5.2 works both with Bazel 6.4.0 and Bazel 7
++            http_archive(
++                name = "rules_java",
++                url = "https://github.com/bazelbuild/rules_java/releases/download/6.5.0/rules_java-6.5.0.tar.gz",
++                sha256 = "160d1ebf33763124766fb35316329d907ca67f733238aa47624a8e3ff3cf2ef4",
++            )
+ 
+     # TODO: remove after toolchain types are moved to protobuf
+     if not native.existing_rule("rules_proto"):
+@@ -112,11 +128,12 @@ def protobuf_deps():
+         )
+ 
+     if not native.existing_rule("rules_jvm_external"):
+-        _github_archive(
++        # Version 6.0 is the lowest that works with rules_kotlin 1.9.0
++        http_archive(
+             name = "rules_jvm_external",
+-            repo = "https://github.com/bazelbuild/rules_jvm_external",
+-            commit = "906875b0d5eaaf61a8ca2c9c3835bde6f435d011",
+-            sha256 = "744bd7436f63af7e9872948773b8b106016dc164acb3960b4963f86754532ee7",
++            strip_prefix = "rules_jvm_external-6.0",
++            sha256 = "85fd6bad58ac76cc3a27c8e051e4255ff9ccd8c92ba879670d195622e7c0a9b7",
++            url = "https://github.com/bazelbuild/rules_jvm_external/releases/download/6.0/rules_jvm_external-6.0.tar.gz",
+         )
+ 
+     if not native.existing_rule("rules_pkg"):
+@@ -143,11 +160,12 @@ def protobuf_deps():
+             url = "https://github.com/bazelbuild/apple_support/releases/download/1.12.0/apple_support.1.12.0.tar.gz",
+         )
+ 
+-    if not native.existing_rule("io_bazel_rules_kotlin"):
++    if not native.existing_rule("rules_kotlin"):
++        # Version 1.9.0 is the lowest available on BCR
+         http_archive(
+-            name = "io_bazel_rules_kotlin",
+-            urls = ["https://github.com/bazelbuild/rules_kotlin/releases/download/v1.8.1/rules_kotlin_release.tgz"],
+-            sha256 = "a630cda9fdb4f56cf2dc20a4bf873765c41cf00e9379e8d59cd07b24730f4fde",
++            name = "rules_kotlin",
++            sha256 = "5766f1e599acf551aa56f49dab9ab9108269b03c557496c54acaf41f98e2b8d6",
++            url = "https://github.com/bazelbuild/rules_kotlin/releases/download/v1.9.0/rules_kotlin-v1.9.0.tar.gz",
+         )
+ 
+     # Python Downloads
