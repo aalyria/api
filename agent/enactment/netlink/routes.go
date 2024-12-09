@@ -32,6 +32,7 @@ type installedRoute struct {
 	DevName string
 	DevID   int
 	To      *net.IPNet
+	From    *net.IPNet
 	Via     net.IP
 }
 
@@ -68,15 +69,39 @@ func makeIPNetForIP(ip *net.IP) *net.IPNet {
 	}
 }
 
+func ipNetEqual(a, b *net.IPNet) bool {
+	return (a == nil && b == nil) || (a.IP.Equal(b.IP) && bytes.Equal(a.Mask, b.Mask))
+}
+
+func parseIPNetWithOptionalCIDRSuffix(s string) (*net.IPNet, bool) {
+	_, ipnet, err := net.ParseCIDR(s)
+	if err != nil || ipnet == nil {
+		src := net.ParseIP(s)
+		if src == nil {
+			return nil, false
+		}
+		return makeIPNetForIP(&src), true
+	}
+	return ipnet, true
+}
+
 func newInstalledRoute(cfg Config, id string, cc *schedpb.SetRoute) (*installedRoute, error) {
 	devID, err := cfg.GetLinkIDByName(cc.Dev)
 	if err != nil {
 		return nil, &OutInterfaceIdxError{wrongIface: cc.Dev, sourceError: err}
 	}
-	_, dst, err := net.ParseCIDR(cc.To)
-	if err != nil || addressFamilyOfIPNet(dst) == unix.AF_UNSPEC {
+	dst, ok := parseIPNetWithOptionalCIDRSuffix(cc.To)
+	if !ok || addressFamilyOfIPNet(dst) == unix.AF_UNSPEC {
 		return nil, &IPFormattingError{ip: cc.To, sourceField: Dst_IPField}
 	}
+	src, ok := parseIPNetWithOptionalCIDRSuffix(cc.From)
+	if !ok || addressFamilyOfIPNet(src) == unix.AF_UNSPEC {
+		return nil, &IPFormattingError{ip: cc.From, sourceField: Src_IPField}
+	}
+	if dstFamily, srcFamily := addressFamilyOfIPNet(dst), addressFamilyOfIPNet(src); dstFamily != srcFamily {
+		return nil, MismatchedAddressFamilyError{srcFamily: srcFamily, dstFamily: dstFamily}
+	}
+
 	nextHopIP, _, err := net.ParseCIDR(cc.Via)
 	if err != nil || nextHopIP == nil {
 		nextHopIP = net.ParseIP(cc.Via)
@@ -90,6 +115,7 @@ func newInstalledRoute(cfg Config, id string, cc *schedpb.SetRoute) (*installedR
 		DevName: cc.Dev,
 		DevID:   devID,
 		To:      dst,
+		From:    src,
 		Via:     nextHopIP,
 	}, nil
 }

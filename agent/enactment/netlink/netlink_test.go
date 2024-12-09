@@ -74,6 +74,7 @@ func TestNetlink(t *testing.T) {
 	}
 
 	_, dst := mustParseCIDR("192.168.1.0/24")
+	_, src := mustParseCIDR("192.168.2.2/32")
 	gw, gwNet := mustParseCIDR("192.168.1.1/32")
 
 	testCases := []testCase{
@@ -130,6 +131,7 @@ func TestNetlink(t *testing.T) {
 					DevID:   7,
 					To:      dst,
 					Via:     gw,
+					From:    src,
 				},
 			}},
 			wantErrors: []error{nil},
@@ -240,6 +242,7 @@ func TestNetlink(t *testing.T) {
 						DevID:   7,
 						To:      dst,
 						Via:     gw,
+						From:    src,
 					},
 				},
 				{},
@@ -395,6 +398,7 @@ func TestNetlink(t *testing.T) {
 						DevName: "foo",
 						DevID:   7,
 						To:      dst,
+						From:    src,
 						Via:     gw,
 					},
 				},
@@ -404,6 +408,7 @@ func TestNetlink(t *testing.T) {
 						DevName: "foo",
 						DevID:   7,
 						To:      dst,
+						From:    src,
 						Via:     gw,
 					},
 					{
@@ -411,6 +416,7 @@ func TestNetlink(t *testing.T) {
 						DevName: "foo",
 						DevID:   7,
 						To:      ipNetOf(mustParseCIDR("192.168.3.0/24")),
+						From:    src,
 						Via:     gw,
 					},
 				},
@@ -420,6 +426,7 @@ func TestNetlink(t *testing.T) {
 						DevName: "foo",
 						DevID:   7,
 						To:      ipNetOf(mustParseCIDR("192.168.3.0/24")),
+						From:    src,
 						Via:     gw,
 					},
 				},
@@ -524,6 +531,7 @@ func TestNetlink(t *testing.T) {
 					ID:      "rule1",
 					DevName: "foo",
 					DevID:   7,
+					From:    ipNetOf(mustParseCIDR("2001:db8:0:1::/64")),
 					To:      ipNetOf(mustParseCIDR("2001:db8:0:3::/64")),
 					Via:     net.ParseIP("2001:db8:0:2::1"),
 				},
@@ -573,6 +581,7 @@ func TestNetlink(t *testing.T) {
 					DevName: "foo",
 					DevID:   7,
 					To:      ipNetOf(mustParseCIDR("2001:db8:0:3::/64")),
+					From:    ipNetOf(mustParseCIDR("2001:db8:0:1::/64")),
 					Via:     net.ParseIP("fe80::1"),
 				},
 			}},

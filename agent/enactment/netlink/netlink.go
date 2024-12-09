@@ -26,6 +26,7 @@ import (
 	"github.com/jonboulle/clockwork"
 	"github.com/rs/zerolog"
 	vnl "github.com/vishvananda/netlink"
+	"golang.org/x/sys/unix"
 
 	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
 )
@@ -326,7 +327,7 @@ func (d *Driver) Dispatch(ctx context.Context, req *schedpb.CreateEntryRequest) 
 		d.mu.Lock()
 		replaced := false
 		for idx, r := range d.routes {
-			if r.ID == changeID {
+			if r.ID == changeID || (ipNetEqual(r.From, ir.From) && ipNetEqual(r.To, ir.To)) {
 				replaced = true
 				d.routes[idx] = ir
 				break
@@ -344,9 +345,18 @@ func (d *Driver) Dispatch(ctx context.Context, req *schedpb.CreateEntryRequest) 
 		}
 
 	case *schedpb.CreateEntryRequest_DeleteRoute:
+		dst, ok := parseIPNetWithOptionalCIDRSuffix(cc.DeleteRoute.To)
+		if !ok || addressFamilyOfIPNet(dst) == unix.AF_UNSPEC {
+			return &IPFormattingError{ip: cc.DeleteRoute.To, sourceField: Dst_IPField}
+		}
+		src, ok := parseIPNetWithOptionalCIDRSuffix(cc.DeleteRoute.From)
+		if !ok || addressFamilyOfIPNet(src) == unix.AF_UNSPEC {
+			return &IPFormattingError{ip: cc.DeleteRoute.From, sourceField: Src_IPField}
+		}
+
 		d.mu.Lock()
 		oldLen := len(d.routes)
-		d.routes = slices.DeleteFunc(d.routes, func(r *installedRoute) bool { return r.ID == changeID })
+		d.routes = slices.DeleteFunc(d.routes, func(r *installedRoute) bool { return ipNetEqual(r.From, src) && ipNetEqual(r.To, dst) })
 		newLen := len(d.routes)
 		wantedRoutes := d.wantedRoutes()
 		d.mu.Unlock()

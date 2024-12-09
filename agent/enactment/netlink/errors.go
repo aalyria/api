@@ -83,8 +83,9 @@ func (e *UnknownRouteDeleteError) Is(err error) bool {
 type IPField string
 
 const (
-	Dst_IPField IPField = "Dst"
+	Dst_IPField IPField = "To"
 	Via_IPField IPField = "Via"
+	Src_IPField IPField = "From"
 )
 
 type IPFormattingError struct {
@@ -122,6 +123,21 @@ func (e OutInterfaceIdxError) Unwrap() error {
 func (e OutInterfaceIdxError) Is(err error) bool {
 	if typedErr, ok := err.(OutInterfaceIdxError); ok {
 		return typedErr.wrongIface == e.wrongIface
+	}
+	return false
+}
+
+type MismatchedAddressFamilyError struct {
+	srcFamily, dstFamily int
+}
+
+func (m MismatchedAddressFamilyError) Error() string {
+	return fmt.Sprintf("got mismatched address families: from=%v to=%v", m.srcFamily, m.dstFamily)
+}
+
+func (m MismatchedAddressFamilyError) Is(err error) bool {
+	if typed, ok := err.(MismatchedAddressFamilyError); ok {
+		return typed.srcFamily == m.srcFamily && typed.dstFamily == m.dstFamily
 	}
 	return false
 }
