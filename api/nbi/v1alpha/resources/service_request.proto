@@ -18,7 +18,6 @@ package aalyria.spacetime.api.nbi.v1alpha.resources;
 
 import "api/common/network.proto";
 import "api/common/time.proto";
-import "api/common/tunnel.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 import "google/type/interval.proto";
@@ -26,19 +25,6 @@ import "google/type/money.proto";
 
 option java_package = "com.aalyria.spacetime.api.nbi.v1alpha.resources";
 option go_package = "aalyria.com/spacetime/api/nbi/v1alpha/resources";
-
-message TunnelConfiguration {
-  optional string src_interface_id = 1;
-  optional string dst_interface_id = 2;
-  optional aalyria.spacetime.api.common.TunnelMethod method = 3;
-
-  // Toporouter will produce a tunnel classifier based on L3 addresses of the
-  // provided interface IDs. Optionally, additional classification criteria can
-  // be provided here. These values are used as the bottom layer of a template,
-  // and then the L3 source/destination spec is overlaid.
-  optional aalyria.spacetime.api.common.FlowClassifier classifier = 4;
-  reserved 5 to max;
-}
 
 // Describes a request to provision a network flow.
 message ServiceRequest {
@@ -63,10 +49,6 @@ message ServiceRequest {
   // to optionally specify a custom classifier. Custom classifiers defined in
   // terms of nodes will have the node overwritten based on the solution route.
   optional aalyria.spacetime.api.common.FlowClassifier classifier = 9;
-
-  // Requests that the network flow traffic be tunnelled.
-  // TODO: Reconsider how to specify these.
-  repeated TunnelConfiguration tunnels = 10;
 
   // The priority field allows the requester to specify the order in which
   // service requests are satisfied relative to other requests.
