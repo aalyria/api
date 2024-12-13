@@ -19,7 +19,6 @@ package aalyria.spacetime.api.common;
 import "api/common/control_beam.proto";
 import "api/common/control_flow.proto";
 import "api/common/control_radio.proto";
-import "api/common/control_tunnel.proto";
 import "api/common/time.proto";
 import "google/protobuf/timestamp.proto";
 import "google/rpc/status.proto";
@@ -103,11 +102,8 @@ message ControlPlaneUpdate {
     // Example: update routing table.
     FlowUpdate flow_update = 3;
 
-    // TUNNELING
-    // Provides policies and aids in key distribution for tunnel establishment.
-    // Example: encap/decap, encrypt/decrypt packets based on classifier rules.
-    TunnelUpdate tunnel_update = 4;
   }
+  reserved 4 to max;
 }
 
 // Next ID : 7
@@ -115,9 +111,8 @@ message ControlPlaneState {
   optional BeamStates beam_states = 2;
   optional RadioStates radio_states = 3;
   optional FlowState forwarding_state = 5;
-  optional TunnelStates tunnel_states = 6;
 
-  reserved 1, 4;
+  reserved 1, 4, 6 to max;
 }
 
 // A ScheduledControlUpdate and a corresponding ScheduledControlUpdateStatus.

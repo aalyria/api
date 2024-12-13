@@ -22,7 +22,6 @@ package aalyria.spacetime.api.nbi.v1alpha.resources;
 import "api/common/control.proto";
 import "api/common/network.proto";
 import "api/common/time.proto";
-import "api/common/tunnel.proto";
 import "api/nbi/v1alpha/resources/network_link.proto";
 import "google/protobuf/timestamp.proto";
 import "google/rpc/code.proto";
@@ -70,7 +69,6 @@ message Intent {
     LinkIntent link = 4;
     RadioIntent radio = 5;
     PathIntent route = 6;
-    TunnelIntent tunnel = 10;
     ModemIntent modem = 18;
   }
   optional IntentState state = 7 [default = INSTALL_REQ];
@@ -82,7 +80,7 @@ message Intent {
 
   // This field is only set after a successful compile phase.
   // The field contains the updates necessary for intent installation.
-  repeated aalyria.spacetime.api.common.ScheduledControlUpdate 
+  repeated aalyria.spacetime.api.common.ScheduledControlUpdate
     compiled_updates = 8;
 
   // This field is set and defined if state = FAILED.
@@ -107,13 +105,13 @@ message Intent {
   // An annotation indicating the service requests that the intent supports over
   // time.
   repeated ServiceRequestAndIntervals dependent_service_requests = 16;
- 
+
   // This field is only set after a successful compile phase.
   // The field contains the updates necessary for intent withdrawal.
   repeated aalyria.spacetime.api.common.ScheduledControlUpdate
     compiled_withdrawal_updates = 17;
 
-  reserved 2, 12, 19 to max;  // Next IDs.
+  reserved 2, 10, 12, 19 to max;  // Next IDs.
 }
 
 // Models an intent to configure steerable beams and/or radio resources.
@@ -157,34 +155,6 @@ message PathIntent {
   repeated NetworkLink path_segments = 3;
 
   reserved 11 to max;  // Next IDs.
-}
-
-message TunnelIntent {
-  message TunnelEndpoint {
-    optional string node_id = 1;
-
-    // Rules for classifying flows transitting the node that should be subject
-    // to encapsulation.
-    optional aalyria.spacetime.api.common.FlowClassifier classifier = 5;
-
-    // A node-unique identifier for the network interface. Must match a known
-    // interface_id of this node (see network_element.proto). Used to derive the
-    // tunnel (outer) endpoint address.
-    optional string encapsulated_src_interface_id = 6;
-
-    // The port used to populate the source and destination port fields of
-    // the tunnel (outer) L4 header.
-    optional int32 encapsulated_src_port = 3;
-    reserved 2, 4;
-    reserved 7 to max;  // Next IDs.
-  }
-  optional TunnelEndpoint a = 10;
-  optional TunnelEndpoint b = 11;
-
-  optional aalyria.spacetime.api.common.TunnelMethod method = 5;
-
-  reserved 1 to 4, 6 to 9;
-  reserved 12 to max;  // Next IDs.
 }
 
 message ModemIntent {
