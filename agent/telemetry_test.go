@@ -80,10 +80,10 @@ func TestRelaysMetricsFromDriverToController(t *testing.T) {
 
 	servedReport := &telemetrypb.ExportMetricsRequest{
 		InterfaceMetrics: []*telemetrypb.InterfaceMetrics{{
-			InterfaceId: textPBIfaceID(t, "foobar", "lo0"),
+			InterfaceId: proto.String(textPBIfaceID(t, "foobar", "lo0")),
 			StandardInterfaceStatisticsDataPoints: []*telemetrypb.StandardInterfaceStatisticsDataPoint{{
-				TxBytes: 1,
-				RxBytes: 12,
+				TxBytes: proto.Int64(1),
+				RxBytes: proto.Int64(12),
 			}},
 		}},
 	}

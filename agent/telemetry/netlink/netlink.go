@@ -93,21 +93,21 @@ func (rg *reportGenerator) GenerateReport(ctx context.Context, nodeID string) (*
 		}
 
 		interfaceMetrics = append(interfaceMetrics, &telemetrypb.InterfaceMetrics{
-			InterfaceId: string(textNetIfaceID),
+			InterfaceId: proto.String(string(textNetIfaceID)),
 			OperationalStateDataPoints: []*telemetrypb.IfOperStatusDataPoint{{
 				Time:  timestamppb.New(ts),
-				Value: netlinkOperStateToTelemetryOperState(attrs.OperState),
+				Value: netlinkOperStateToTelemetryOperState(attrs.OperState).Enum(),
 			}},
 			StandardInterfaceStatisticsDataPoints: []*telemetrypb.StandardInterfaceStatisticsDataPoint{{
 				Time:      timestamppb.New(ts),
-				RxPackets: int64(stats.RxPackets),
-				TxPackets: int64(stats.TxPackets),
-				RxBytes:   int64(stats.RxBytes),
-				TxBytes:   int64(stats.TxBytes),
-				TxErrors:  int64(stats.TxErrors),
-				RxErrors:  int64(stats.RxErrors),
-				RxDropped: int64(stats.RxDropped),
-				TxDropped: int64(stats.TxDropped),
+				RxPackets: proto.Int64(int64(stats.RxPackets)),
+				TxPackets: proto.Int64(int64(stats.TxPackets)),
+				RxBytes:   proto.Int64(int64(stats.RxBytes)),
+				TxBytes:   proto.Int64(int64(stats.TxBytes)),
+				TxErrors:  proto.Int64(int64(stats.TxErrors)),
+				RxErrors:  proto.Int64(int64(stats.RxErrors)),
+				RxDropped: proto.Int64(int64(stats.RxDropped)),
+				TxDropped: proto.Int64(int64(stats.TxDropped)),
 			}},
 		})
 	}

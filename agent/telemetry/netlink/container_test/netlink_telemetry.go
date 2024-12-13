@@ -170,10 +170,10 @@ func main() {
 		firstStats := firstReport.GetInterfaceMetrics()[0].GetStandardInterfaceStatisticsDataPoints()[0]
 		secondStats := secondReport.GetInterfaceMetrics()[0].GetStandardInterfaceStatisticsDataPoints()[0]
 
-		if secondStats.TxPackets > firstStats.TxPackets &&
-			secondStats.RxPackets > firstStats.RxPackets &&
-			secondStats.TxBytes > firstStats.TxBytes &&
-			secondStats.RxBytes > firstStats.RxBytes {
+		if secondStats.GetTxPackets() > firstStats.GetTxPackets() &&
+			secondStats.GetRxPackets() > firstStats.GetRxPackets() &&
+			secondStats.GetTxBytes() > firstStats.GetTxBytes() &&
+			secondStats.GetRxBytes() > firstStats.GetRxBytes() {
 			fmt.Printf("PASS: Byte and packet counters all went up")
 		} else {
 			fmt.Printf("FAIL: Byte and packet counters did not all go up")
