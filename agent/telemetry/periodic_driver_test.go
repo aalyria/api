@@ -19,8 +19,9 @@ import (
 	"testing"
 	"time"
 
-	telemetrypb "aalyria.com/spacetime/telemetry/v1alpha"
 	"golang.org/x/sync/errgroup"
+
+	telemetrypb "aalyria.com/spacetime/telemetry/v1alpha"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/jonboulle/clockwork"
@@ -36,9 +37,11 @@ func (cg *constantGenerator) Stats() interface{} { return nil }
 func (cg *constantGenerator) GenerateReport(ctx context.Context, nodeID string) (*telemetrypb.ExportMetricsRequest, error) {
 	return &telemetrypb.ExportMetricsRequest{
 		ModemMetrics: []*telemetrypb.ModemMetrics{{
-			LinkMetricsDataPoints: []*telemetrypb.LinkMetricsDataPoint{{
-				Time: timestamppb.New(cg.clock.Now()),
-			}},
+			DataRateDataPoints: []*telemetrypb.DataRateDataPoint{
+				{
+					Time: timestamppb.New(cg.clock.Now()),
+				},
+			},
 		}},
 	}, nil
 }
@@ -67,9 +70,11 @@ func TestPeriodicDriver(t *testing.T) {
 	firstStats := <-reportedStats
 	if diff := cmp.Diff(&telemetrypb.ExportMetricsRequest{
 		ModemMetrics: []*telemetrypb.ModemMetrics{{
-			LinkMetricsDataPoints: []*telemetrypb.LinkMetricsDataPoint{{
-				Time: timestamppb.New(clock.Now()),
-			}},
+			DataRateDataPoints: []*telemetrypb.DataRateDataPoint{
+				{
+					Time: timestamppb.New(clock.Now()),
+				},
+			},
 		}},
 	}, firstStats, protocmp.Transform()); diff != "" {
 		t.Fatalf("unexpected stats (-want +got):\n%s", diff)
@@ -86,9 +91,11 @@ func TestPeriodicDriver(t *testing.T) {
 	secondStats := <-reportedStats
 	if diff := cmp.Diff(&telemetrypb.ExportMetricsRequest{
 		ModemMetrics: []*telemetrypb.ModemMetrics{{
-			LinkMetricsDataPoints: []*telemetrypb.LinkMetricsDataPoint{{
-				Time: timestamppb.New(clock.Now()),
-			}},
+			DataRateDataPoints: []*telemetrypb.DataRateDataPoint{
+				{
+					Time: timestamppb.New(clock.Now()),
+				},
+			},
 		}},
 	}, secondStats, protocmp.Transform()); diff != "" {
 		t.Fatalf("unexpected stats (-want +got):\n%s", diff)

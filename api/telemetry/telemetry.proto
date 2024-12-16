@@ -273,14 +273,25 @@ message ModemMetrics {
   // Required. The modem producing telemetry.
   optional string modem_id = 1;
 
-  // Data points describing the time-varying properties of the modem's links.
-  repeated LinkMetricsDataPoint link_metrics_data_points = 2;
+  // Data points describing the time-varying data rate of any link terminating
+  // at this modem.
+  repeated DataRateDataPoint data_rate_data_points = 3;
+
+  // Data points describing the time-varying energy per symbol to noise power
+  // spectral density observed by the modem.
+  repeated Esn0DataPoint esn0_data_points = 4;
+
+  // Data points describing the time-varying signal-to-interference-plus-noise
+  // ratio observed by the modem.
+  repeated SinrDataPoint sinr_data_points = 5;
+
+  reserved 2;
 }
 
-// A data point in a timeseries that describes the time-varying values of
-// a link's metrics.
-message LinkMetricsDataPoint {
-  // Required. When the values were captured.
+// A data point in a timeseries that describes the time-varying data rate of a
+// link.
+message DataRateDataPoint {
+  // Required. When the value was captured.
   google.protobuf.Timestamp time = 1;
 
   // The transmitting modem.
@@ -288,11 +299,32 @@ message LinkMetricsDataPoint {
 
   // The data rate in bits per second.
   optional double data_rate_bps = 3;
+}
+
+// A data point in a timeseries that describes the time-varying energy per
+// symbol to noise power spectral density observed by a modem.
+message Esn0DataPoint {
+  // Required. When the value was captured.
+  google.protobuf.Timestamp time = 1;
+
+  // The transmitting modem.
+  optional string tx_modem_id = 2;
 
   // The energy per symbol to noise power spectral density, expressed in
   // decibels.
-  optional double esn0_db = 4;
-  
-  // The signal-to-interference-plus-noise ratio, expressed in decibels.
-  optional double sinr_db = 5;
+  optional double esn0_db = 3;
 }
+
+// A data point in a timeseries that describes time-varying
+// signal-to-interference-plus-noise ratio observed by a modem.
+message SinrDataPoint {
+  // Required. When the value was captured.
+  google.protobuf.Timestamp time = 1;
+
+  // The transmitting modem.
+  optional string tx_modem_id = 2;
+
+  // The signal-to-interference-plus-noise ratio, expressed in decibels.
+  optional double sinr_db = 3;
+}
+

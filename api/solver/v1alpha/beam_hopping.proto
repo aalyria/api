@@ -68,11 +68,42 @@ message GetBeamHoppingPlansRequest {
     // modem bank contains multiple modems, the beam may utilize more than one
     // modem over the duration of its beam hopping plan.
     string modem_bank_id = 2;
+
+    // A collection of metrics from a modem.
+    message ModemMetrics {
+      // Required. The modem producing telemetry.
+      optional string modem_id = 1;
+
+      // A data point in a timeseries that describes the time-varying values of
+      // a link's metrics.
+      message LinkMetricsDataPoint {
+        // Required. When the values were captured.
+        google.protobuf.Timestamp time = 1;
+
+        // The transmitting modem.
+        optional string tx_modem_id = 2;
+
+        // The data rate in bits per second.
+        optional double data_rate_bps = 3;
+
+        // The energy per symbol to noise power spectral density, expressed in
+        // decibels.
+        optional double esn0_db = 4;
+          
+        // The signal-to-interference-plus-noise ratio, expressed in decibels.
+        optional double sinr_db = 5;
+      }
+
+      // Data points describing the time-varying properties of the modem's
+      // links.
+      repeated LinkMetricsDataPoint link_metrics_data_points = 2;
+    }
+
     
     // Required. A list of recent modem metrics between the beam and its users.
     // This field is used to derive the beam's total capacity. The client must
     // include at least one data point for each beam to user link.
-    repeated aalyria.spacetime.telemetry.v1alpha.ModemMetrics modem_metrics = 3;
+    repeated ModemMetrics modem_metrics = 3;
 
     // Models a collection of user demand metrics for a user connected to
     // the beam.
