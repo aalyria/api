@@ -1,17 +1,19 @@
 # Spacetime's APIs
 
-Spacetime has 2 APIs:
-- The **Northbound Interface (NBI)** allows humans or applications to define and orchestrate a network. This includes functions such as specifying the time-dynamic position and orientation of platforms and antennas, defining networking parameters on each node in the network, and creating requests for service that will be scheduled and routed through the network. 
-- The **Control to Data-plane Interface (CDPI)**, or Southbound Interface, allows Spacetime to control network devices and receive updates in return. This includes functions such as steering antenna beams to establish new links and configuring RF parameters like the transmit power and channel. 
+Spacetime offers 3 APIs:
+
+1. The **Northbound Interface (NBI)** allows humans or applications to define and orchestrate a network. This includes functions such as specifying the time-dynamic position and orientation of platforms and antennas, defining networking parameters on each node in the network, and creating requests for service that will be scheduled and routed through the network. [Learn more](nbi/)
+2. The **Southbound Interface (SBI)** is the collection of services through which devices participating in the network communicate with Spacetime. This includes services through which these devices may receive schedule updates from Spacetime, and through which they may push metrics and observations to Spacetime. [Learn more](sbi/)
+3. The **Federation API**, or East-West Interface, allows peer networks to request and to supply network resources and interconnections between partners’ networks. This facilitates dynamic, real-time inter-network connections, which allows operators to automatically and quickly supplement gaps in network coverage or advertise unused capacity to make full use of underutilized assets. [Learn more](federation/)
 
 ## Developer Guides
 You can find developer guides and tutorials on [this website](https://docs.spacetime.aalyria.com).
 
 This site contains:
-- [NBI Developer Guide](https://docs.spacetime.aalyria.com/nbi-developer-guide) 
-- [CDPI Developer Guide](https://docs.spacetime.aalyria.com/southbound-interface-developer-guide)
-- [Building a Scenario Tutorial](https://docs.spacetime.aalyria.com/scenario-building)
-- [Authentication](https://docs.spacetime.aalyria.com/authentication)
+- [NBI Developer Guide](https://docs.spacetime.aalyria.com/api/nbi) 
+- [SBI Developer Guide](https://docs.spacetime.aalyria.com/api/sbi)
+- [Building a Scenario Tutorial](https://docs.spacetime.aalyria.com/api/nbi/build-your-first-scenario/)
+- [Authentication](https://docs.spacetime.aalyria.com/api/authentication/)
 
 ## Repo Contents
 In this repo, you will find the following directories:
