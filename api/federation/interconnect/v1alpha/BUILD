@@ -34,7 +34,7 @@ proto_library(
 go_proto_library(
     name = "interconnect_go_proto",
     compilers = ["@rules_go//proto:go_grpc"],
-    importpath = "aalyria.com/spacetime/api/federation/interconnect",
+    importpath = "aalyria.com/spacetime/api/federation/interconnect/v1alpha",
     proto = ":interconnect_proto",
     visibility = ["//visibility:public"],
     deps = [

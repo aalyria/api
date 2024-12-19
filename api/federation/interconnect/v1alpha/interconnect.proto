@@ -25,6 +25,8 @@ import "nmts/proto/ek/physical/signal_processing_chain.proto";
 import "nmts/proto/ek/physical/transceiver.proto";
 import "nmts/proto/types/geophys/motion.proto";
 
+option go_package = "aalyria.com/spacetime/api/federation/interconnect/v1alpha";
+
 // Interconnect API
 //
 // The Interconnect API is intended to enable a network orchestrator to use
