@@ -139,9 +139,9 @@ message NetworkInterface {
   optional string interface_id = 1;
 
   // Optional friendly, human-readable string. Named after the analagous
-  // description field in the YANG model for interfaces. See:
+  // name field in the YANG model for interfaces ("leaf name"). See:
   // https://datatracker.ietf.org/doc/html/rfc8343#section-5
-  optional string description = 17;
+  optional string name = 17;
 
   // The interface's IP address represented as a CIDR notation subnet or single
   // IP address string.
