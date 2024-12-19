@@ -235,9 +235,8 @@ message WiredDevice {
 // Models a wireless device that uses modeled transmitters & receivers.
 // Spacetime's Link Evaluator services will write InterfaceLinkReports for
 // all possible wireless links based on models if real metrics are unavailable.
-// Next ID : 7
 message WirelessDevice {
-  reserved 1, 2, 4, 7 to max;
+  reserved 1, 2, 4, 17 to max;
   // Identifies a physical transceiver model from the SDN Store.
   optional aalyria.spacetime.api.common.TransceiverModelId 
     transceiver_model_id = 5;
@@ -246,4 +245,18 @@ message WirelessDevice {
   // should be used in BeamUpdate to time out the process of beam steering and
   // target acquisition.
   optional google.protobuf.Duration link_establishment_timeout = 6;
+
+  // NMTS Entity IDs of TX and RX signal processing chain elements.
+  optional string platform = 7;
+  optional string port = 8;
+  // TX
+  optional string modulator = 9;
+  repeated string tx_signal_processing_chains = 10;
+  optional string transmitter = 11;
+  optional string tx_antenna = 12;
+  // RX
+  optional string demodulator = 13;
+  repeated string rx_signal_processing_chains = 14;
+  optional string receiver = 15;
+  optional string rx_antenna = 16;
 }
