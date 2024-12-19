@@ -21,7 +21,7 @@ import "api/provisioning/v1alpha/te.proto";
 // A Point-to-Point (P2P) Segment Routing (SR) Traffic Engineering (TE)
 // Policy Request.
 //
-// Requests one or more SR TE policies between two EK_NETWORK_NODE
+// Requests one or more SR TE policies between two EK_ROUTE_FN
 // entities in the data model.
 //
 // See also:
