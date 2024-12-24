@@ -23,7 +23,7 @@ import (
 	"github.com/urfave/cli/v2"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
-	nmtspb "outernetcouncil.org/nmts/proto"
+	nmtspb "outernetcouncil.org/nmts/v1alpha/proto"
 )
 
 const modelAPISubDomain = "model"

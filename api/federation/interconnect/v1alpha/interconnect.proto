@@ -18,12 +18,12 @@ package aalyria.spacetime.api.fed.interconnect.v1alpha;
 
 import "google/protobuf/empty.proto";
 import "google/type/interval.proto";
-import "nmts/proto/ek/physical/antenna.proto";
-import "nmts/proto/ek/physical/modem.proto";
-import "nmts/proto/ek/physical/platform.proto";
-import "nmts/proto/ek/physical/signal_processing_chain.proto";
-import "nmts/proto/ek/physical/transceiver.proto";
-import "nmts/proto/types/geophys/motion.proto";
+import "nmts/v1alpha/proto/ek/physical/antenna.proto";
+import "nmts/v1alpha/proto/ek/physical/modem.proto";
+import "nmts/v1alpha/proto/ek/physical/platform.proto";
+import "nmts/v1alpha/proto/ek/physical/signal_processing_chain.proto";
+import "nmts/v1alpha/proto/ek/physical/transceiver.proto";
+import "nmts/v1alpha/proto/types/geophys/motion.proto";
 
 option go_package = "aalyria.com/spacetime/api/federation/interconnect/v1alpha";
 
@@ -131,19 +131,21 @@ message Transceiver {
 }
 
 message ReceiveSignalChain {
-  nmts.ek.physical.Demodulator demodulator = 1;
-  repeated nmts.ek.physical.SignalProcessingChain signal_processing_chains = 2;
-  nmts.ek.physical.Receiver receiver = 3;
-  nmts.ek.physical.Platform platform = 4;
-  nmts.ek.physical.Antenna antenna = 5;
+  nmts.v1alpha.ek.physical.Demodulator demodulator = 1;
+  repeated nmts.v1alpha.ek.physical.SignalProcessingChain
+    signal_processing_chains = 2;
+  nmts.v1alpha.ek.physical.Receiver receiver = 3;
+  nmts.v1alpha.ek.physical.Platform platform = 4;
+  nmts.v1alpha.ek.physical.Antenna antenna = 5;
 }
 
 message TransmitSignalChain {
-  nmts.ek.physical.Modulator modulator = 1;
-  repeated nmts.ek.physical.SignalProcessingChain signal_processing_chains = 2;
-  nmts.ek.physical.Transmitter transmitter = 3;
-  nmts.ek.physical.Platform platform = 4;
-  nmts.ek.physical.Antenna antenna = 5;
+  nmts.v1alpha.ek.physical.Modulator modulator = 1;
+  repeated nmts.v1alpha.ek.physical.SignalProcessingChain
+    signal_processing_chains = 2;
+  nmts.v1alpha.ek.physical.Transmitter transmitter = 3;
+  nmts.v1alpha.ek.physical.Platform platform = 4;
+  nmts.v1alpha.ek.physical.Antenna antenna = 5;
 }
 
 // An interval over which a client transceiver could feasibly connect to the
@@ -281,7 +283,7 @@ message AttachmentCircuit {
 message Target {
   string name = 1;
 
-  nmts.types.geophys.Motion motion = 2;  
+  nmts.v1alpha.types.geophys.Motion motion = 2;  
 }
 
 message ListCompatibleTransceiverTypesRequest {

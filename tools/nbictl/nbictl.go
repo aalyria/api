@@ -407,8 +407,9 @@ func App() *cli.App {
 				},
 			},
 			{
-				Name:  "model",
-				Usage: "Provides subcommands for accessing and managing the model elements comprising the digital twin.",
+				Name:    "model-v1alpha",
+				Aliases: []string{"model"},
+				Usage:   "Subcommands for Model API v1alpha, to manage the model elements comprising the digital twin.",
 				Subcommands: []*cli.Command{
 					{
 						Name:     "upsert-entity",

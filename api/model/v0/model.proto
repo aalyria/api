@@ -14,13 +14,13 @@
 
 syntax = "proto3";
 
-package aalyria.spacetime.api.model.v1alpha;
+package aalyria.spacetime.api.model.v0;
 
 import "google/protobuf/empty.proto";
-import "nmts/v1alpha/proto/nmts.proto";
+import "nmts/v0/proto/nmts.proto";
 
-option java_package = "com.aalyria.spacetime.api.model.v1alpha";
-option go_package = "aalyria.com/spacetime/api/model/v1alpha";
+option java_package = "com.aalyria.spacetime.api.model.v0";
+option go_package = "aalyria.com/spacetime/api/model/v0";
 
 service Model {
   // Insert or overwrite an nmts.Entity.
@@ -69,14 +69,14 @@ service Model {
 }
 
 message UpsertEntityRequest {
-  nmts.v1alpha.Entity entity = 1;
+  nmts.Entity entity = 1;
 }
 message UpsertEntityResponse {
   // presently empty
 }
 
 message UpdateEntityRequest {
-  nmts.v1alpha.PartialEntity patch = 1;
+  nmts.PartialEntity patch = 1;
 }
 message UpdateEntityResponse {
   // presently empty
@@ -86,30 +86,30 @@ message DeleteEntityRequest {
   string entity_id = 1;
 }
 message DeleteEntityResponse {
-  repeated nmts.v1alpha.Relationship deleted_relationships = 1;
+  repeated nmts.Relationship deleted_relationships = 1;
 }
 
 message InsertRelationshipRequest {
-  nmts.v1alpha.Relationship relationship = 1;
+  nmts.Relationship relationship = 1;
 }
 message InsertRelationshipResponse {
   // presently empty
 }
 
 message DeleteRelationshipRequest {
-  nmts.v1alpha.Relationship relationship = 1;
+  nmts.Relationship relationship = 1;
 }
 
 message GetEntityRequest {
   string entity_id = 1;
 }
 message GetEntityResponse {
-  nmts.v1alpha.EntityEdges entity_edges = 1;
+  nmts.EntityEdges entity_edges = 1;
 }
 
 message ListElementsRequest {
   // TODO: Support expressing some filtering/querying.
 }
 message ListElementsResponse {
-  nmts.v1alpha.Fragment elements = 1;
+  nmts.Fragment elements = 1;
 }

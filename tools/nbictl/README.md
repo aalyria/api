@@ -149,9 +149,9 @@ Sets or updates a configuration profile settings. You can create multiple profil
 
 **--user_id**="": User ID associated with the private key provided by Aalyria.
 
-## model
+## model-v1alpha, model
 
-Provides subcommands for accessing and managing the model elements comprising the digital twin.
+Subcommands for Model API v1alpha, to manage the model elements comprising the digital twin.
 
 ### upsert-entity
 
