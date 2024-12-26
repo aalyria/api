@@ -169,6 +169,6 @@ use_repo(oci, "alpine_base")
 bazel_dep(name = "org_outernetcouncil_nmts")
 archive_override(
     module_name = "org_outernetcouncil_nmts",
-    strip_prefix = "nmts-0.0.11",
-    urls = "https://github.com/outernetcouncil/nmts/archive/refs/tags/v0.0.11.tar.gz",
+    strip_prefix = "nmts-1.0.0-alpha.2",
+    urls = "https://github.com/outernetcouncil/nmts/archive/refs/tags/v1.0.0-alpha.2.tar.gz",
 )
