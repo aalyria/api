@@ -50,7 +50,7 @@ bazel_dep(name = "toolchains_protoc", version = "0.3.6")
 protoc = use_extension("@toolchains_protoc//protoc:extensions.bzl", "protoc")
 protoc.toolchain(
     google_protobuf = "com_google_protobuf",
-    version = "v29.0-rc3,
+    version = "v29.0-rc3",
 )
 
 bazel_dep(name = "container_structure_test", version = "1.16.0", dev_dependency = True)
