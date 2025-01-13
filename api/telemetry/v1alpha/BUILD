@@ -42,7 +42,7 @@ go_proto_library(
         "@rules_go//proto:go_proto",
         "@rules_go//proto:go_grpc_v2",
     ],
-    importpath = "aalyria.com/spacetime/telemetry/v1alpha",
+    importpath = "aalyria.com/spacetime/api/telemetry/v1alpha",
     proto = ":telemetry_proto",
 )
 

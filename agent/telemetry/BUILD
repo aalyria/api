@@ -24,7 +24,7 @@ go_library(
     ],
     importpath = "aalyria.com/spacetime/agent/telemetry",
     deps = [
-        "//api/telemetry:telemetry_go_grpc",
+        "//api/telemetry/v1alpha:telemetry_go_grpc",
         "@com_github_jonboulle_clockwork//:clockwork",
         "@com_github_rs_zerolog//:zerolog",
     ],
@@ -35,7 +35,7 @@ go_test(
     srcs = ["periodic_driver_test.go"],
     embed = [":telemetry"],
     deps = [
-        "//api/telemetry:telemetry_go_grpc",
+        "//api/telemetry/v1alpha:telemetry_go_grpc",
         "@com_github_google_go_cmp//cmp",
         "@com_github_jonboulle_clockwork//:clockwork",
         "@org_golang_google_protobuf//testing/protocmp",

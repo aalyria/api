@@ -18,7 +18,7 @@ import (
 	"context"
 
 	"aalyria.com/spacetime/agent/telemetry"
-	telemetrypb "aalyria.com/spacetime/telemetry/v1alpha"
+	telemetrypb "aalyria.com/spacetime/api/telemetry/v1alpha"
 )
 
 type telemetryService struct {
