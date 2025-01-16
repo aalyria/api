@@ -189,11 +189,19 @@ message Beam {
 
   // Parameters specifying the configuration of the beam in the receive
   // direction, keyed by arbitrary IDs.
+  //
+  // The string keys uniquely identify a corresponding RxConfiguration,
+  // and are present only for reference in FieldMask (update) operations.
+  //
   // Empty if the beam is to be used for transmit only.
   map<string, RxConfiguration> rxs = 3;
 
   // Parameters specifying the configuration of the beam in the transmit
   // direction, keyed by arbitrary IDs.
+  //
+  // The string keys uniquely identify a corresponding TxConfiguration,
+  // and are present only for reference in FieldMask (update) operations.
+  //
   // Empty if the beam is to be used for receiving only.
   map<string, TxConfiguration> txs = 4;
 
