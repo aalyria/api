@@ -28,6 +28,7 @@ proto_library(
     deps = [
         "//api/common:common_proto",
         "@googleapis//google/rpc:status_proto",
+        "@protobuf//:duration_proto",
         "@protobuf//:empty_proto",
         "@protobuf//:timestamp_proto",
     ],

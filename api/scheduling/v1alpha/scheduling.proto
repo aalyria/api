@@ -17,6 +17,7 @@ syntax = "proto3";
 package aalyria.spacetime.scheduling.v1alpha;
 
 import "api/common/field_mask.proto";
+import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 import "google/rpc/status.proto";
@@ -127,6 +128,9 @@ message CreateEntryRequest {
 
   // Required. The time at which the entry is scheduled to be executed.
   google.protobuf.Timestamp time = 4;
+  // `time` above as a Duration from the GPS Epoch (GPST time scale; see
+  // https://gssc.esa.int/navipedia/index.php/Time_References_in_GNSS).
+  google.protobuf.Duration time_gpst = 16;
 
   oneof configuration_change {
     UpdateBeam update_beam = 15;
@@ -505,6 +509,9 @@ message FinalizeRequest {
 
   // Required. The time before which the schedule will no longer be modified.
   google.protobuf.Timestamp up_to = 3;
+  // `up_to` above as a Duration from the GPS Epoch (GPST time scale; see
+  // https://gssc.esa.int/navipedia/index.php/Time_References_in_GNSS).
+  google.protobuf.Duration up_to_gpst = 4;
 }
 
 message ResetRequest {
