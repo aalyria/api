@@ -18,6 +18,9 @@ package aalyria.spacetime.api.provisioning.v1alpha;
 
 import "google/protobuf/duration.proto";
 
+option java_package = "com.aalyria.spacetime.api.provisioning.v1alpha";
+option go_package = "aalyria.com/spacetime/api/provisioning/v1alpha";
+
 // Traffic Engineering (TE) attributes, intended to be aligned with
 // Path Computation Element Procotocl (PCEP) usage.
 

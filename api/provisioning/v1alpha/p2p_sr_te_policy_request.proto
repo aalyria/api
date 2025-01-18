@@ -18,6 +18,9 @@ package aalyria.spacetime.api.provisioning.v1alpha;
 
 import "api/provisioning/v1alpha/te.proto";
 
+option java_package = "com.aalyria.spacetime.api.provisioning.v1alpha";
+option go_package = "aalyria.com/spacetime/api/provisioning/v1alpha";
+
 // A Point-to-Point (P2P) Segment Routing (SR) Traffic Engineering (TE)
 // Policy Request.
 //
