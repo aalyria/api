@@ -1,0 +1,497 @@
+// Copyright 2024 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package aalyria.spacetime.scheduling.v1alpha;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/timestamp.proto";
+import "google/rpc/status.proto";
+
+option go_package = "aalyria.com/spacetime/api/scheduling/v1alpha";
+option java_package = "com.aalyria.spacetime.scheduling.v1alpha";
+
+service Scheduling {
+  // Establishes a bidirectional stream through which the SDN controller may
+  // send scheduling requests to the SDN agent, and the agent may respond.
+  //
+  // The use of the stream allows the SDN controller to send requests to the
+  // agent even though the SDN controller may not be able to initiate a
+  // connection to the agent (if the agent is behind a firewall, for example,
+  // or a NAT gateway).
+  //
+  // The SDN controller will leave the stream open indefinitely. In the event
+  // that the stream closes, the agent should re-establish the stream to
+  // continue receiving requests.
+  rpc ReceiveRequests(stream ReceiveRequestsMessageToController)
+      returns (stream ReceiveRequestsMessageFromController) {}
+
+
+  // Notifies the SDN controller that an agent's schedule has been reset. The
+  // agent must call this upon startup and after any event that has reset the
+  // schedule.
+  rpc Reset(ResetRequest) returns (google.protobuf.Empty) {}
+}
+
+// The message type for Scheduling.ReceiveRequests in the direction toward the
+// controller.
+message ReceiveRequestsMessageToController {
+  message Hello {
+    // Required. Identifies the SDN agent whose schedule is to be managed by
+    // this scheduling session.
+    string agent_id = 1;
+  }
+
+  message Response {
+    // Required. The ID of the request to which this response corresponds. See
+    // ReceiveRequestsMessageFromController.request_id.
+    int64 request_id = 1;
+
+    // The response status.
+    google.rpc.Status status = 2;
+  }
+
+  // Required in the initial request of the session. Identifies the SDN agent
+  // and the properties of the underlying channel.
+  Hello hello = 1;
+
+  // A response to a request received from the SDN controller.
+  //
+  // The response may originate from a proxy rather than the SDN agent itself.
+  // For example, if the proxy is unable to deliver the request to the SDN
+  // agent, the proxy may populate the response with an appropriate error.
+  Response response = 2;
+}
+
+// The message type for Scheduling.ReceiveRequests in the direction from the
+// controller.
+//
+// This is a response message in that it flows from server to client, however
+// it holds requests being sent to the SDN agent (the client) by the SDN
+// controller (the server).
+message ReceiveRequestsMessageFromController {
+  // An SDN-controller-generated value uniquely identifying the request within
+  // the scope of the scheduling session. That is, two requests received from
+  // the same session will always have different request IDs. The SDN agent
+  // must provide the ID in the response to this request (see
+  // ReceiveRequestsMessageToController.Response.request_id).
+  int64 request_id = 1;
+
+  // The contents of the request.
+  oneof request {
+    // Creates an entry in the agent's schedule. Note that entries are
+    // immutable: once created, an entry may not changed, though it may be
+    // deleted.
+    CreateEntryRequest create_entry = 2;
+
+    // Deletes an entry from the agent's schedule.
+    DeleteEntryRequest delete_entry = 3;
+
+    // Finalizes all schedule entries earlier than a specified time.
+    //
+    // Notifies the agent that all aspects of its schedule pertaining to the
+    // interval prior to a given instant will no longer be modified . This frees
+    // the agent to garbage-collect all entries scheduled for before that
+    // instant.
+    FinalizeRequest finalize = 4;
+  }
+}
+
+message CreateEntryRequest {
+  // Required. A token that must match the agent's token for the request to be
+  // accepted (see ResetRequest.schedule_manipulation_token). This ensures that
+  // the agent does not execute an operation intended for an old edition of the
+  // schedule on a newer version.
+  string schedule_manipulation_token = 1;
+
+  // Required. The request's sequence number among all requests in the
+  // Scheduling service with the same schedule manipulation token. The sequence
+  // number resets with each new schedule manipulation token.
+  uint64 seqno = 2;
+
+  // Required. A unique identifier of the schedule entry being created.
+  string id = 3;
+
+  // Required. The time at which the entry is scheduled to be executed.
+  google.protobuf.Timestamp time = 4;
+
+  oneof configuration_change {
+    UpdateBeam update_beam = 15;
+    DeleteBeam delete_beam = 12;
+    SetRoute set_route = 5;
+    DeleteRoute delete_route = 6;
+    SetSrPolicy set_sr_policy = 9;
+    DeleteSrPolicy delete_sr_policy = 10;
+  }
+
+  reserved 7, 8, 11, 13, 14;
+}
+
+message SetRoute {
+  // The source prefix of the route.
+  //
+  // An IP or IPv6 address optionally followed by a slash and the prefix
+  // length.
+  string from = 1;
+
+  // The destination prefix of the route.
+  //
+  // An IP or IPv6 address optionally followed by a slash and the prefix
+  // length.
+  string to = 2;
+
+  // The output device name.
+  string dev = 3;
+
+  // The address of the nexthop router.
+  //
+  // An IP or IPv6 address.
+  string via = 4;
+}
+
+message DeleteRoute {
+  // The source prefix of the route.
+  //
+  // An IP or IPv6 address optionally followed by a slash and the prefix
+  // length.
+  string from = 1;
+
+  // The destination prefix of the route.
+  //
+  // An IP or IPv6 address optionally followed by a slash and the prefix
+  // length.
+  string to = 2;
+}
+
+message Beam {
+  reserved 7;
+
+  string id = 1;
+
+  // Identifies the pointing target for the beam to be aimed at & track.
+  BeamTarget target = 2;
+
+  // Identifies the antenna that is used to transmit and/or receive the beam.
+  string antenna_id = 9;
+
+  // Parameters specifying the configuration of the beam in the receive
+  // direction, keyed by arbitrary IDs.
+  //
+  // The string keys uniquely identify a corresponding RxConfiguration,
+  // and are present only for reference in FieldMask (update) operations.
+  //
+  // Empty if the beam is to be used for transmit only.
+  map<string, RxConfiguration> rxs = 3;
+
+  // Parameters specifying the configuration of the beam in the transmit
+  // direction, keyed by arbitrary IDs.
+  //
+  // The string keys uniquely identify a corresponding TxConfiguration,
+  // and are present only for reference in FieldMask (update) operations.
+  //
+  // Empty if the beam is to be used for receiving only.
+  map<string, TxConfiguration> txs = 4;
+
+  // The collection of endpoints served by the beam.
+  // For example, a collection of user terminals (UTs) served.
+  //
+  // Each key is the ID of the endpoint's network node in Spacetime's network
+  // model.
+  map<string, Endpoint> endpoints = 5;
+
+  // ID of the beam shape.
+  string shape_id = 6;
+
+  // Only present if beam-hopping is to be used.
+  BeamHoppingPlan beam_hopping_plan = 8;
+}
+
+message BeamHoppingPlan {
+  message Section {
+    // The length of the section, in number of time slots.
+    int32 length = 1;
+
+    // An entry in the beam-hopping plan section representing a time slot during
+    // which the associated beam is to be illuminated.
+    message Entry {
+      // The entry's time slot within the section.
+      int32 time_slot = 1;
+
+      string modem_id = 2;
+    }
+
+    // The entries in the beam-hopping plan section. The beam should not be
+    // illuminated during any time slot not represented in the collection of
+    // entries.
+    repeated Entry entries = 2;
+  }
+
+  repeated Section sections = 1;
+}
+
+message UpdateBeam {
+  Beam beam = 1;
+
+  google.protobuf.FieldMask update_mask = 2;
+}
+
+message DeleteBeam {
+  string id = 1;
+}
+
+message BeamTarget {
+  oneof target {
+    Ecef ecef = 1;
+    string ccsds_oem_file_content = 2;
+    AzEl az_el = 3;
+  }
+}
+
+message Ecef {
+  int64 x_m = 1;
+  int64 y_m = 2;
+  int64 z_m = 3;
+}
+
+// An azimuth and elevation angle pair.
+//
+// The azimuth angle of a vector is the angle between the x-axis and the
+// orthogonal projection of the vector onto the xy plane. The angle is positive
+// in going from the x axis toward the y axis. The elevation angle is the angle
+// between the vector and its orthogonal projection onto the xy-plane.
+message AzEl {
+  // Azimuth, in degrees.
+  double az_deg = 1;
+
+  // Elevation, in degrees.
+  double el_deg = 2;
+}
+
+message RxConfiguration {
+  uint64 center_frequency_hz = 1;
+  uint64 channel_bandwidth_hz = 2;
+  Polarization polarization = 3;
+
+  // Symbol rate in Megasymbols per second.
+  double symbol_rate_msps = 5;
+
+  // Identifies the receive modem associated with the carrier on this beam.
+  // Must be present if beam-hopping is not used, otherwise it should be
+  // empty and the modem IDs are found via the beam hopping plan.
+  string modem_id = 6;
+
+  ModemMode mode = 4;
+
+  // Includes technology-specific parameters needed for particular link and
+  // physical layer technology standards, such as DVB-S2X, etc.
+  oneof other_parameters {
+    DvbS2Params dvbs2_params = 7;
+  }
+}
+
+message TxConfiguration {
+  uint64 center_frequency_hz = 1;
+  uint64 channel_bandwidth_hz = 2;
+  Polarization polarization = 3;
+
+  // Transmit power in Watts.
+  double power_w = 5;
+
+  // Symbol rate in Megasymbols per second.
+  double symbol_rate_msps = 6;
+
+  // Identifies the transmit modem associated with the carrier on this beam.
+  // Must be present if beam-hopping is not used, otherwise it should be
+  // empty and the modem IDs are found via the beam hopping plan.
+  string modem_id = 8;
+
+  ModemMode mode = 4;
+
+  string initial_modcod = 7;
+
+  // Includes technology-specific parameters needed for particular link and
+  // physical layer technology standards, such as DVB-S2X, etc.
+  oneof other_parameters {
+    DvbS2Params dvbs2_params = 9;
+  }
+}
+
+enum Polarization {
+  POLARIZATION_UNSPECIFIED = 0;
+  POLARIZATION_LHCP = 1; // Left-handed circular polarization
+  POLARIZATION_RHCP = 2; // Right-handed circular polarization
+}
+
+enum ModemMode {
+  MODEM_MODE_UNSPECIFIED = 0;
+  MODEM_MODE_DVB_RCS2 = 1;
+  MODEM_MODE_DVB_S2X = 2;
+  MODEM_MODE_TRANSPARENT = 3; // No modulation/demodulation is performed.
+}
+
+// Groups configurable attributes specific to DVB-S2 / S2X links.
+message DvbS2Params {
+  // Identifies the physical layer scrambling codes used for payload data and
+  // pilot symbols.  Mapping to particular sequences may be user-defined.
+  uint32 payload_pl_scrambling_code = 1;
+  uint32 pilot_pl_scrambling_code = 2; 
+}
+
+message Endpoint {
+  string lowest_supported_rx_modcod = 2;
+  double rx_reference_throughput_bps = 3;
+  double tx_reference_throughput_bps = 4;
+
+  // Indicates the CIR and EIR used in plan generation, as guidance for
+  // realtime demand-based management systems.
+  double commited_information_rate_bps = 5;
+  double excess_information_rate_bps = 6;
+
+  EndpointSecurity security = 7;
+  EndpointRouting routing = 8;
+
+  reserved 1;
+}
+
+message EndpointSecurity {
+  // Identifies or provides key information for reception from and transmission
+  // to the endpoint.
+  string rx_key = 1;
+  string tx_key = 2;
+}
+
+message EndpointRouting {
+  // Indicates incoming MPLS SIDs pertaining to the endpoint.
+  repeated uint32 rx_segment_ids = 1;
+
+  // Provides a GSE label to be used for the endpoint.  This should either be
+  // a three-byte or a six-byte value (if it is used at all), as other lengths
+  // are not valid GSE labels.
+  bytes gse_label = 2;
+}
+
+// A Segment Routing Policy Architecture policy description.
+// Based largely upon elements from:
+//   * RFC 9256
+//   * draft-ietf-spring-sr-policy-yang
+message SetSrPolicy {
+  // The ID of the request for this SR policy, unique among all service
+  // requests, that caused this policy to be instantiated.
+  //
+  // Per RFC 9256 S2.1, "[a]n SR Policy MUST be identified through the
+  // tuple <Headend, Color, Endpoint>." That information is not copied
+  // here; rather it is assumed that this ID suffices to locate that
+  // information, should it be required.
+  string id = 1;
+
+  // For convenience, the optional symbolic name for this SR Policy.
+  // See also: RFC 9256 S2.1.
+  string name = 3;
+
+  // RFC 9256 S2.2 "Candidate Path and Segment List"; only explicit
+  // candidate paths are supported.
+  message ExplicitPath {
+    // RFC 9256 S2.5 Discriminator.
+    uint32 discriminator = 1;
+    // RFC 9256 S2.6 optional symbolic name.
+    string name = 4;
+    // RFC 9256 S2.7 Preference.
+    uint32 preference = 2;
+
+    // An ordered list of segments from ingress to egress. The first
+    // segment may be used to indicate the first hop and therefore
+    // need not be encoded in any dataplane encapsulation.
+    //
+    // As there is presently only one Segment List per candidate path
+    // there is no additional weight attribute.
+    repeated SrSegment segments = 3;
+
+    reserved 5 to max;
+  }
+  repeated ExplicitPath paths = 2;
+}
+
+// Identifiers for an SR segment (a SID).
+//
+// It is an error if multiple dataplane SIDs are present in this message
+// and do not all identify the same logical segment.
+message SrSegment {
+  // An RFC 8294 mpls-label
+  //
+  // Typically an RFC 9256 SR-DB Type A segment, but may be any
+  // segment with an MPLS dataplane identifier (label).
+  //
+  // The proto3-default value of zero (0) here is only valid iff:
+  //   - this is the last SR segment in a sequence, AND
+  //   - the SRv6 SID field is empty OR it contains an SRv6 SID that
+  //     identifies behavior equivalent to the RFC 3032 IPv4 Explicit
+  //     NULL Label behavior (e.g. RFC 8986 Section 4.16 variant SIDs).
+  uint32 mpls = 1;
+
+  // An RFC 6991 ipv6-address-no-zone
+  //
+  // Typically an RFC 9256 SR-DB Type B segment, but may be any
+  // segment with an SRv6 dataplane identifier (IPv6 address).
+  //
+  // For more on the relationship between SRv6 SIDs and the IPv6
+  // addressing architecture see RFC 9602.
+  string srv6 = 2;
+}
+
+message DeleteSrPolicy {
+  string id = 1;
+}
+
+message DeleteEntryRequest {
+  // Required. A token that must match the agent's token for the request to be
+  // accepted (see ResetRequest.schedule_manipulation_token). This ensures that
+  // the agent does not execute an operation intended for an old edition of the
+  // schedule on a newer version.
+  string schedule_manipulation_token = 1;
+
+  // Required. The request's sequence number among all requests in the
+  // Scheduling service with the same schedule manipulation token. The sequence
+  // number resets with each new schedule manipulation token.
+  uint64 seqno = 2;
+
+  // Required. The schedule entry to delete.
+  string id = 3;
+}
+
+message FinalizeRequest {
+  // Required. A token that must match the agent's token for the request to be
+  // accepted (see ResetRequest.schedule_manipulation_token). This ensures that
+  // the agent does not execute an operation intended for an old edition of the
+  // schedule on a newer version.
+  string schedule_manipulation_token = 1;
+
+  // Required. The request's sequence number among all requests in the
+  // Scheduling service with the same schedule manipulation token. The sequence
+  // number resets with each new schedule manipulation token.
+  uint64 seqno = 2;
+
+  // Required. The time before which the schedule will no longer be modified.
+  google.protobuf.Timestamp up_to = 3;
+}
+
+message ResetRequest {
+  // Required. Identifies the agent whose schedule has been reset.
+  string agent_id = 1;
+
+  // Required. The new schedule's manipulation token. Only requests annotated
+  // with a matching token should be accepted.
+  string schedule_manipulation_token = 2;
+}
