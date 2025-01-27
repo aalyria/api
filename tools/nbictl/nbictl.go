@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -28,6 +29,7 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/sync/errgroup"
 	intervalpb "google.golang.org/genproto/googleapis/type/interval"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -73,7 +75,35 @@ func init() {
 	cli.MarkdownDocTemplate = readmeDocTemplate
 }
 
+type protoFormat struct {
+	marshal   func(proto.Message) ([]byte, error)
+	unmarshal func([]byte, proto.Message) error
+	fileExt   string
+}
+
+func marshallerForFormat(format string) (protoFormat, error) {
+	switch format {
+	case "json":
+		return protoFormat{fileExt: "json", marshal: (protojson.MarshalOptions{Multiline: true, Indent: "  "}).Marshal, unmarshal: protojson.Unmarshal}, nil
+	case "text":
+		return protoFormat{fileExt: "txtpb", marshal: (prototext.MarshalOptions{Multiline: true, Indent: "  "}).Marshal, unmarshal: prototext.Unmarshal}, nil
+	case "binary":
+		return protoFormat{fileExt: "binpb", marshal: proto.Marshal, unmarshal: proto.Unmarshal}, nil
+	default:
+		return protoFormat{}, fmt.Errorf("unknown proto format %q", format)
+	}
+
+}
+
 func App() *cli.App {
+	formatFlag := &cli.StringFlag{
+		Name:     "format",
+		Usage:    "The format to use for encoding and decoding protobuf messages. One of [text, json, binary].",
+		Required: false,
+		Value:    "text",
+		Action:   validateProtoFormat,
+	}
+
 	return &cli.App{
 		Name:                 appName,
 		Version:              Version,
@@ -136,7 +166,7 @@ func App() *cli.App {
 				Name:     "get",
 				Category: "entities",
 				Usage:    "Gets the entity with the given type and ID.",
-				Flags: []cli.Flag{
+				Flags: append([]cli.Flag{
 					&cli.StringFlag{
 						Name:     "type",
 						Usage:    fmt.Sprintf("[REQUIRED] Type of entity to delete. Allowed values: [%s]", strings.Join(entityTypeList, ", ")),
@@ -150,28 +180,28 @@ func App() *cli.App {
 						Aliases:  []string{},
 						Required: true,
 					},
-				},
+				}, formatFlag),
 				Action: Get,
 			},
 			{
 				Name:     "create",
 				Category: "entities",
-				Usage:    "Create one or more entities described in textproto files.",
-				Flags: []cli.Flag{
+				Usage:    "Create one or more entities described in a file tree.",
+				Flags: append([]cli.Flag{
 					&cli.StringFlag{
 						Name:     "files",
-						Usage:    "[REQUIRED] Glob of textproto files that represent one or more Entity messages.",
+						Usage:    "[REQUIRED] Glob of files containing serialized Entity messages. Use - to read from stdin.",
 						Aliases:  []string{"f"},
 						Required: true,
 					},
-				},
+				}, formatFlag),
 				Action: Create,
 			},
 			{
 				Name:     "edit",
 				Category: "entities",
-				Usage:    "Opens the specified entity as a textproto in $EDITOR, then updates the NBI's version with any updates made.",
-				Flags: []cli.Flag{
+				Usage:    "Opens the specified entity in $EDITOR, then updates the NBI's version with any changes made.",
+				Flags: append([]cli.Flag{
 					&cli.StringFlag{
 						Name:     "type",
 						Usage:    fmt.Sprintf("[REQUIRED] Type of entity to edit. Allowed values: [%s]", strings.Join(entityTypeList, ", ")),
@@ -185,17 +215,17 @@ func App() *cli.App {
 						Aliases:  []string{},
 						Required: true,
 					},
-				},
+				}, formatFlag),
 				Action: Edit,
 			},
 			{
 				Name:     "update",
 				Category: "entities",
-				Usage:    "Updates, or creates if missing, one or more entities described in textproto files.",
-				Flags: []cli.Flag{
+				Usage:    "Updates, or creates if missing, one or more entities described in a file tree.",
+				Flags: append([]cli.Flag{
 					&cli.StringFlag{
 						Name:     "files",
-						Usage:    "[REQUIRED] Glob of textproto files that represent one or more Entity messages.",
+						Usage:    "[REQUIRED] Glob of files containing serialized Entity messages. Use - to read from stdin.",
 						Aliases:  []string{"f"},
 						Required: true,
 					},
@@ -204,14 +234,14 @@ func App() *cli.App {
 						DefaultText: "false",
 						Usage:       "Always update or create the entity, without verifying that the provided `commit_timestamp` matches the currently stored entity.",
 					},
-				},
+				}, formatFlag),
 				Action: Update,
 			},
 			{
 				Name:     "list",
 				Category: "entities",
 				Usage:    "Lists all entities of a given type.",
-				Flags: []cli.Flag{
+				Flags: append([]cli.Flag{
 					&cli.StringFlag{
 						Name:     "type",
 						Usage:    fmt.Sprintf("[REQUIRED] Type of entities to query. Allowed values: [%s]", strings.Join(entityTypeList, ", ")),
@@ -225,14 +255,14 @@ func App() *cli.App {
 						Required: false,
 						Aliases:  []string{},
 					},
-				},
+				}, formatFlag),
 				Action: List,
 			},
 			{
 				Name:     "delete",
 				Category: "entities",
-				Usage:    "Deletes one or more entities. Provide the type and ID to delete a single entity, or a directory of Entity textproto files to delete multiple entities.",
-				Flags: []cli.Flag{
+				Usage:    "Deletes one or more entities. Provide the type and ID to delete a single entity, or a directory of files containing serialized Entity messages to delete multiple entities.",
+				Flags: append([]cli.Flag{
 					&cli.StringFlag{
 						Name:    "type",
 						Usage:   fmt.Sprintf("Type of entity to delete. Allowed values: [%s]", strings.Join(entityTypeList, ", ")),
@@ -257,20 +287,20 @@ func App() *cli.App {
 					},
 					&cli.StringFlag{
 						Name:    "files",
-						Usage:   "Glob of textproto files that represent one or more Entity messages.",
+						Usage:   "Glob of serialized protobuf files that represent one or more Entity messages. Use - to read from stdin.",
 						Aliases: []string{"f"},
 					},
-				},
+				}, formatFlag),
 				Action: Delete,
 			},
 			{
 				Name:        "get-link-budget",
 				Usage:       "Gets link budget details",
 				Description: "Gets link budget details for a given signal propagation request between a transmitter and a target platform.",
-				Flags: []cli.Flag{
+				Flags: append([]cli.Flag{
 					&cli.StringFlag{
 						Name:  "input_file",
-						Usage: "A path to a textproto file containing a SignalPropagationRequest message. If set, it will be used as the request to the SignalPropagation service. If unset, the request will be built from the other flags.",
+						Usage: "A path to a file containing a serialized SignalPropagationRequest message. If set, it will be used as the request to the SignalPropagation service. If unset, the request will be built from the other flags.",
 					},
 					&cli.StringFlag{
 						Name:  "tx_platform_id",
@@ -325,10 +355,10 @@ func App() *cli.App {
 					},
 					&cli.PathFlag{
 						Name:        "output_file",
-						Usage:       "Path to a textproto file to write the response. If unset, defaults to stdout.",
+						Usage:       "Path to a file to write the response. If unset, defaults to stdout.",
 						DefaultText: "/dev/stdout",
 					},
-				},
+				}, formatFlag),
 				Action: GetLinkBudget,
 			},
 			{
@@ -416,48 +446,56 @@ func App() *cli.App {
 						Usage:    "Upsert the model NMTS Entity contained within the file provided on the command line ('-' reads from stdin).",
 						Category: "model entities",
 						Action:   ModelUpsertEntity,
+						Flags:    []cli.Flag{formatFlag},
 					},
 					{
 						Name:     "update-entity",
 						Usage:    "Update the model using NMTS PartialEntity contained within the file provided on the command line ('-' reads from stdin).",
 						Category: "model entities",
 						Action:   ModelUpdateEntity,
+						Flags:    []cli.Flag{formatFlag},
 					},
 					{
 						Name:     "delete-entity",
 						Usage:    "Delete the model NMTS Entity associated with the entity ID provided on the command line, along with any relationships in which it participates.",
 						Category: "model entities",
 						Action:   ModelDeleteEntity,
+						Flags:    []cli.Flag{formatFlag},
 					},
 					{
 						Name:     "get-entity",
 						Usage:    "Get the model NMTS Entity associated with the entity ID given on the command line.",
 						Category: "model entities",
 						Action:   ModelGetEntity,
+						Flags:    []cli.Flag{formatFlag},
 					},
 					{
 						Name:     "insert-relationship",
 						Usage:    "Insert the model NMTS Relationship contained within the file provided on the command line ('-' reads from stdin).",
 						Category: "model relationships",
 						Action:   ModelInsertRelationship,
+						Flags:    []cli.Flag{formatFlag},
 					},
 					{
 						Name:     "delete-relationship",
 						Usage:    "Delete the model NMTS Relationship contained within the file provided on the command line ('-' reads from stdin).",
 						Category: "model relationships",
 						Action:   ModelDeleteRelationship,
+						Flags:    []cli.Flag{formatFlag},
 					},
 					{
 						Name:     "upsert-fragment",
 						Usage:    "Upsert the model NMTS Fragment contained within the file provided on the command line ('-' reads from stdin).",
 						Category: "model relationships",
 						Action:   ModelUpsertFragment,
+						Flags:    []cli.Flag{formatFlag},
 					},
 					{
 						Name:     "list-elements",
 						Usage:    "List all model elements (NMTS Entities and Relationships).",
 						Category: "model entities and relationships",
 						Action:   ModelListElements,
+						Flags:    []cli.Flag{formatFlag},
 					},
 				},
 			},
@@ -482,10 +520,10 @@ func App() *cli.App {
 						Flags: []cli.Flag{
 							&cli.StringFlag{
 								Name:        "format",
-								Usage:       "Protobuf format to use for input and output. Allowed values: [text, json]",
+								Usage:       formatFlag.Usage,
 								DefaultText: "json",
 								Aliases:     []string{"f"},
-								Action:      validateProtoFormat,
+								Action:      formatFlag.Action,
 							},
 							&cli.StringFlag{
 								Name:        "request",
@@ -522,6 +560,11 @@ func App() *cli.App {
 }
 
 func Create(appCtx *cli.Context) error {
+	marshaller, err := marshallerForFormat(appCtx.String("format"))
+	if err != nil {
+		return err
+	}
+
 	conn, err := openConnection(appCtx)
 	if err != nil {
 		return err
@@ -538,7 +581,7 @@ func Create(appCtx *cli.Context) error {
 		fmt.Fprintf(appCtx.App.ErrWriter, "successfully created:  %s/%s\n", res.GetGroup().GetType(), res.GetId())
 		return nil
 	}
-	return processEntitiesFromFiles(appCtx.Context, appCtx.String("files"), createEntityFunc)
+	return processEntitiesFromFiles(appCtx, marshaller, appCtx.String("files"), createEntityFunc)
 }
 
 func Edit(appCtx *cli.Context) error {
@@ -551,6 +594,10 @@ func Edit(appCtx *cli.Context) error {
 	}
 	if ed == "" {
 		return fmt.Errorf("No $EDITOR value set, don't know which editor to use")
+	}
+	marshaller, err := marshallerForFormat(appCtx.String("format"))
+	if err != nil {
+		return err
 	}
 
 	conn, err := openConnection(appCtx)
@@ -577,16 +624,13 @@ func Edit(appCtx *cli.Context) error {
 	}
 	defer os.RemoveAll(tmp)
 
-	oldTxt, err := (prototext.MarshalOptions{
-		Multiline: true,
-		Indent:    "  ",
-	}).Marshal(oldEntity)
+	oldData, err := marshaller.marshal(oldEntity)
 	if err != nil {
 		return fmt.Errorf("marshalling entity as textproto: %w", err)
 	}
 
-	fname := filepath.Join(tmp, "entity.textproto")
-	if err := os.WriteFile(fname, oldTxt, 0o755); err != nil {
+	fname := filepath.Join(tmp, fmt.Sprintf("entity.%s", marshaller.fileExt))
+	if err := os.WriteFile(fname, oldData, 0o755); err != nil {
 		return fmt.Errorf("writing entity to file %s: %w", fname, err)
 	}
 
@@ -596,13 +640,13 @@ func Edit(appCtx *cli.Context) error {
 		return fmt.Errorf("command `%s` exited with an error: %w", cmd.Args, err)
 	}
 
-	newTxt, err := os.ReadFile(fname)
+	newData, err := os.ReadFile(fname)
 	if err != nil {
 		return fmt.Errorf("reading modified entity from %s: %w", fname, err)
 	}
 	newEntity := &nbipb.Entity{}
-	if err := prototext.Unmarshal(newTxt, newEntity); err != nil {
-		return fmt.Errorf("unmarshalling modified entity as textproto: %w", err)
+	if err := marshaller.unmarshal(newData, newEntity); err != nil {
+		return fmt.Errorf("unmarshalling modified entity: %w", err)
 	}
 	if _, err := client.UpdateEntity(appCtx.Context, &nbipb.UpdateEntityRequest{Entity: newEntity}); err != nil {
 		return fmt.Errorf("calling UpdateEntity: %w", err)
@@ -611,6 +655,10 @@ func Edit(appCtx *cli.Context) error {
 }
 
 func Update(appCtx *cli.Context) error {
+	marshaller, err := marshallerForFormat(appCtx.String("format"))
+	if err != nil {
+		return err
+	}
 	conn, err := openConnection(appCtx)
 	if err != nil {
 		return err
@@ -627,12 +675,17 @@ func Update(appCtx *cli.Context) error {
 		fmt.Fprintf(appCtx.App.ErrWriter, "successfully updated: %s/%s\n", res.GetGroup().GetType(), res.GetId())
 		return nil
 	}
-	return processEntitiesFromFiles(appCtx.Context, appCtx.String("files"), updateEntityFunc)
+	return processEntitiesFromFiles(appCtx, marshaller, appCtx.String("files"), updateEntityFunc)
 }
 
 func Get(appCtx *cli.Context) error {
 	entityType := appCtx.String("type")
 	id := appCtx.String("id")
+
+	marshaller, err := marshallerForFormat(appCtx.String("format"))
+	if err != nil {
+		return err
+	}
 
 	conn, err := openConnection(appCtx)
 	if err != nil {
@@ -650,18 +703,20 @@ func Get(appCtx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("unable to get the entity: %w", err)
 	}
-	entitiesOutput := &nbipb.TxtpbEntities{
-		Entity: []*nbipb.Entity{entity},
-	}
-	entitiesOutputTextProto, err := prototext.MarshalOptions{Multiline: true}.Marshal(entitiesOutput)
+	marshalledProtos, err := marshaller.marshal(&nbipb.TxtpbEntities{Entity: []*nbipb.Entity{entity}})
 	if err != nil {
-		return fmt.Errorf("unable to convert the response into textproto format: %w", err)
+		return fmt.Errorf("unable to marshal the response: %w", err)
 	}
-	fmt.Fprintln(appCtx.App.Writer, string(entitiesOutputTextProto))
+	fmt.Fprintln(appCtx.App.Writer, string(marshalledProtos))
 	return nil
 }
 
 func Delete(appCtx *cli.Context) error {
+	marshaller, err := marshallerForFormat(appCtx.String("format"))
+	if err != nil {
+		return err
+	}
+
 	conn, err := openConnection(appCtx)
 	if err != nil {
 		return err
@@ -709,13 +764,18 @@ func Delete(appCtx *cli.Context) error {
 			}
 			return deleteFunc(ctx, req)
 		}
-		return processEntitiesFromFiles(appCtx.Context, appCtx.String("files"), deleteEntityFunc)
+		return processEntitiesFromFiles(appCtx, marshaller, appCtx.String("files"), deleteEntityFunc)
 	} else {
 		return fmt.Errorf(`either the "type" and "id" flags must be set, or the "files" flag must be set.`)
 	}
 }
 
 func List(appCtx *cli.Context) error {
+	marshaller, err := marshallerForFormat(appCtx.String("format"))
+	if err != nil {
+		return err
+	}
+
 	entityType := appCtx.String("type")
 	fieldMasks := strings.Split(appCtx.String("field_masks"), ",")
 	entityTypeEnumValue, found := nbipb.EntityType_value[entityType]
@@ -741,19 +801,21 @@ func List(appCtx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("unable to list entities: %w", err)
 	}
-	entitiesOutput := &nbipb.TxtpbEntities{
-		Entity: res.Entities,
-	}
-	entitiesOutputTextProto, err := prototext.MarshalOptions{Multiline: true}.Marshal(entitiesOutput)
+	marshalledProtos, err := marshaller.marshal(&nbipb.TxtpbEntities{Entity: res.Entities})
 	if err != nil {
-		return fmt.Errorf("unable to convert the response into textproto format: %w", err)
+		return fmt.Errorf("unable to marshal the response: %w", err)
 	}
-	fmt.Fprintln(appCtx.App.Writer, string(entitiesOutputTextProto))
-	fmt.Fprintf(appCtx.App.ErrWriter, "successfully queried a list of entities. number of entities: %d\n", len(res.Entities))
+	fmt.Fprintln(appCtx.App.Writer, string(marshalledProtos))
+	fmt.Fprintf(appCtx.App.ErrWriter, "Successfully queried a list of entities. Number of entities: %d\n", len(res.Entities))
 	return nil
 }
 
 func GetLinkBudget(appCtx *cli.Context) error {
+	marshaller, err := marshallerForFormat(appCtx.String("format"))
+	if err != nil {
+		return err
+	}
+
 	conn, err := openConnection(appCtx)
 	if err != nil {
 		return err
@@ -770,7 +832,7 @@ func GetLinkBudget(appCtx *cli.Context) error {
 			return fmt.Errorf("invalid file path: %w", err)
 		}
 
-		if err := prototext.Unmarshal(req, spReq); err != nil {
+		if err := marshaller.unmarshal(req, spReq); err != nil {
 			return fmt.Errorf("reading SignalPropagationRequest from file %s: %w", reqPath, err)
 		}
 	} else {
@@ -874,9 +936,9 @@ func GetLinkBudget(appCtx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("SignalPropagation.Evaluate: %w", err)
 	}
-	spResProto, err := prototext.MarshalOptions{Multiline: true}.Marshal(spRes)
+	spResProto, err := marshaller.marshal(spRes)
 	if err != nil {
-		return fmt.Errorf("unable to convert the response into textproto format: %w", err)
+		return fmt.Errorf("unable to marshal the response: %w", err)
 	}
 
 	if !appCtx.IsSet("output_file") {
@@ -888,7 +950,7 @@ func GetLinkBudget(appCtx *cli.Context) error {
 			return fmt.Errorf("writing to output file %s: %w", outPath, err)
 		}
 	}
-	fmt.Fprintln(appCtx.App.ErrWriter, "successfully retrieved link budget.")
+	fmt.Fprintln(appCtx.App.ErrWriter, "Successfully retrieved link budget.")
 	return nil
 }
 
@@ -903,29 +965,44 @@ func generateTypeList() []string {
 	return typeList
 }
 
-func processEntitiesFromFiles(ctx context.Context, fileGlob string, f func(context.Context, *nbipb.Entity) error) error {
-	files, err := filepath.Glob(fileGlob)
-	if err != nil {
-		return fmt.Errorf("unable to expand the file path %w", err)
-	} else if len(files) == 0 {
-		return fmt.Errorf("no files found under the given file path: %s", fileGlob)
-	}
-	g, gCtx := errgroup.WithContext(ctx)
-	for _, filePath := range files {
-		entities := &nbipb.TxtpbEntities{}
-		msg, err := os.ReadFile(filePath)
+func processEntitiesFromFiles(appCtx *cli.Context, marshaller protoFormat, fileGlob string, f func(context.Context, *nbipb.Entity) error) error {
+	entities := &nbipb.TxtpbEntities{}
+
+	switch {
+	case fileGlob == "-":
+		data, err := io.ReadAll(appCtx.App.Reader)
 		if err != nil {
-			return fmt.Errorf("invalid file path: %w", err)
+			return fmt.Errorf("reading from stdin: %w", err)
 		}
-		if err := prototext.Unmarshal(msg, entities); err != nil {
-			return fmt.Errorf("error while parsing file %s: %w", filePath, err)
+		if err := marshaller.unmarshal(data, entities); err != nil {
+			return err
 		}
-		for _, e := range entities.Entity {
-			entity := e
-			g.Go(func() error {
-				return f(gCtx, entity)
-			})
+
+	default:
+		files, err := filepath.Glob(fileGlob)
+		if err != nil {
+			return fmt.Errorf("unable to expand the file glob %q: %w", fileGlob, err)
+		} else if len(files) == 0 {
+			return fmt.Errorf("no files found under the given file glob: %s", fileGlob)
 		}
+
+		for _, path := range files {
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return fmt.Errorf("invalid file path %q: %w", path, err)
+			}
+			fileEnts := &nbipb.TxtpbEntities{}
+			if err := marshaller.unmarshal(data, fileEnts); err != nil {
+				return fmt.Errorf("parsing file %q: %w", path, err)
+			}
+			entities.Entity = append(entities.Entity, fileEnts.Entity...)
+		}
+	}
+
+	g, gCtx := errgroup.WithContext(appCtx.Context)
+	for _, e := range entities.Entity {
+		entity := e
+		g.Go(func() error { return f(gCtx, entity) })
 	}
 	return g.Wait()
 }
@@ -941,7 +1018,7 @@ func validateEntityType(_ *cli.Context, t string) error {
 
 func validateProtoFormat(_ *cli.Context, f string) error {
 	switch f {
-	case "text", "json":
+	case "text", "json", "binary":
 		return nil
 	default:
 		return fmt.Errorf("unknown format %q", f)

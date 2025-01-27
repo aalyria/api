@@ -53,7 +53,9 @@ func (tc *testCase) Run(t *testing.T) {
 	tmpDir, err := bazel.NewTmpDir("nbictl")
 	checkErr(t, err)
 
-	os.Chdir(tmpDir)
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("changing to tmp dir %s: %v", tmpDir, err)
+	}
 
 	app := newTestApp()
 	for key, value := range tc.fileContents {
@@ -442,6 +444,7 @@ var testCases = []testCase{
 
 func TestCases(t *testing.T) {
 	for _, tc := range testCases {
-		tc.Run(t)
+		tc := tc
+		t.Run(tc.desc, tc.Run)
 	}
 }

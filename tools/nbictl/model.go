@@ -21,21 +21,11 @@ import (
 
 	modelpb "aalyria.com/spacetime/api/model/v1alpha"
 	"github.com/urfave/cli/v2"
-	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 	nmtspb "outernetcouncil.org/nmts/v1alpha/proto"
 )
 
 const modelAPISubDomain = "model"
-
-func prettyPrintProto[ProtoT proto.Message](appCtx *cli.Context, msg ProtoT) error {
-	txt, err := prototext.MarshalOptions{Multiline: true}.Marshal(msg)
-	if err != nil {
-		return err
-	}
-	fmt.Fprint(appCtx.App.Writer, string(txt))
-	return nil
-}
 
 func readDataFromCommandLineFilenameArgument(appCtx *cli.Context) ([]byte, error) {
 	if appCtx.Args().Len() != 1 {
@@ -50,17 +40,22 @@ func readDataFromCommandLineFilenameArgument(appCtx *cli.Context) ([]byte, error
 	}
 }
 
-func readProtoFromCommandLineFilenameArgument[ProtoT proto.Message](appCtx *cli.Context, msg ProtoT) error {
+func readProtoFromCommandLineFilenameArgument[ProtoT proto.Message](appCtx *cli.Context, marshaller protoFormat, msg ProtoT) error {
 	data, err := readDataFromCommandLineFilenameArgument(appCtx)
 	if err != nil {
 		return err
 	}
-	return prototext.Unmarshal(data, msg)
+	return marshaller.unmarshal(data, msg)
 }
 
 func ModelUpsertEntity(appCtx *cli.Context) error {
+	marshaller, err := marshallerForFormat(appCtx.String("format"))
+	if err != nil {
+		return err
+	}
+
 	nmtsEntity := &nmtspb.Entity{}
-	if err := readProtoFromCommandLineFilenameArgument(appCtx, nmtsEntity); err != nil {
+	if err := readProtoFromCommandLineFilenameArgument(appCtx, marshaller, nmtsEntity); err != nil {
 		return err
 	}
 
@@ -83,8 +78,13 @@ func ModelUpsertEntity(appCtx *cli.Context) error {
 }
 
 func ModelUpdateEntity(appCtx *cli.Context) error {
+	marshaller, err := marshallerForFormat(appCtx.String("format"))
+	if err != nil {
+		return err
+	}
+
 	nmtsPartialEntity := &nmtspb.PartialEntity{}
-	if err := readProtoFromCommandLineFilenameArgument(appCtx, nmtsPartialEntity); err != nil {
+	if err := readProtoFromCommandLineFilenameArgument(appCtx, marshaller, nmtsPartialEntity); err != nil {
 		return err
 	}
 
@@ -130,8 +130,13 @@ func ModelDeleteEntity(appCtx *cli.Context) error {
 }
 
 func ModelInsertRelationship(appCtx *cli.Context) error {
+	marshaller, err := marshallerForFormat(appCtx.String("format"))
+	if err != nil {
+		return err
+	}
+
 	nmtsRelationship := &nmtspb.Relationship{}
-	if err := readProtoFromCommandLineFilenameArgument(appCtx, nmtsRelationship); err != nil {
+	if err := readProtoFromCommandLineFilenameArgument(appCtx, marshaller, nmtsRelationship); err != nil {
 		return err
 	}
 
@@ -154,8 +159,13 @@ func ModelInsertRelationship(appCtx *cli.Context) error {
 }
 
 func ModelDeleteRelationship(appCtx *cli.Context) error {
+	marshaller, err := marshallerForFormat(appCtx.String("format"))
+	if err != nil {
+		return err
+	}
+
 	nmtsRelationship := &nmtspb.Relationship{}
-	if err := readProtoFromCommandLineFilenameArgument(appCtx, nmtsRelationship); err != nil {
+	if err := readProtoFromCommandLineFilenameArgument(appCtx, marshaller, nmtsRelationship); err != nil {
 		return err
 	}
 
@@ -179,8 +189,12 @@ func ModelDeleteRelationship(appCtx *cli.Context) error {
 
 // TODO: turn these into one atomic RPC call in the modelfe.
 func ModelUpsertFragment(appCtx *cli.Context) error {
+	marshaller, err := marshallerForFormat(appCtx.String("format"))
+	if err != nil {
+		return err
+	}
 	nmtsFragment := &nmtspb.Fragment{}
-	if err := readProtoFromCommandLineFilenameArgument(appCtx, nmtsFragment); err != nil {
+	if err := readProtoFromCommandLineFilenameArgument(appCtx, marshaller, nmtsFragment); err != nil {
 		return err
 	}
 
@@ -218,6 +232,11 @@ func ModelUpsertFragment(appCtx *cli.Context) error {
 }
 
 func ModelGetEntity(appCtx *cli.Context) error {
+	marshaller, err := marshallerForFormat(appCtx.String("format"))
+	if err != nil {
+		return err
+	}
+
 	if appCtx.Args().Len() != 1 {
 		return fmt.Errorf("need one and only one Entity ID argument")
 	}
@@ -238,7 +257,11 @@ func ModelGetEntity(appCtx *cli.Context) error {
 		return err
 	}
 
-	prettyPrintProto(appCtx, response)
+	marshalled, err := marshaller.marshal(response)
+	if err != nil {
+		return err
+	}
+	fmt.Fprint(appCtx.App.Writer, string(marshalled))
 	debugPrintNMTSEntityEdges(appCtx.App.ErrWriter, response.GetEntityEdges())
 	return nil
 }
@@ -252,6 +275,11 @@ func debugPrintNMTSEntityEdges(stderr io.Writer, entityEdges *nmtspb.EntityEdges
 }
 
 func ModelListElements(appCtx *cli.Context) error {
+	marshaller, err := marshallerForFormat(appCtx.String("format"))
+	if err != nil {
+		return err
+	}
+
 	conn, err := openAPIConnection(appCtx, modelAPISubDomain)
 	if err != nil {
 		return err
@@ -264,7 +292,11 @@ func ModelListElements(appCtx *cli.Context) error {
 		return err
 	}
 
-	prettyPrintProto(appCtx, response)
+	marshalled, err := marshaller.marshal(response)
+	if err != nil {
+		return err
+	}
+	fmt.Fprint(appCtx.App.Writer, string(marshalled))
 	debugPrintNMTSFragment(appCtx.App.ErrWriter, response.GetElements())
 	return nil
 }
