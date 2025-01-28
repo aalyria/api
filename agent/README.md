@@ -52,11 +52,12 @@ file might look like this:
 ```textproto
 # each network_node is configured with a stanza like so:
 network_nodes: {
-  id: "node-a"
+  # TODO: replace ${NODE_ID 1} to the specific node_id
+  id: "${NODE_ID 1}"
   enactment_driver: {
     connection_params: {
-      # TODO: change to point to the domain of your spacetime instance
-      endpoint_uri: "scheduling.my_instance.spacetime.aalyria.com"
+      # TODO: replace ${DOMAIN} to the domain of your spacetime instance
+      endpoint_uri: "scheduling.${DOMAIN}"
 
       transport_security: {
         system_cert_pool: {}
@@ -64,8 +65,8 @@ network_nodes: {
 
       auth_strategy: {
         jwt: {
-          # TODO: change to the domain of your spacetime instance
-          audience: "scheduling.my_instance.spacetime.aalyria.com"
+          # TODO: replace ${DOMAIN} to the domain of your spacetime instance
+          audience: "scheduling.${DOMAIN}"
           # TODO: use the email your Aalyria representative will share with you
           email: "my-cdpi-agent@example.com"
           # TODO: use the private key ID your Aalyria representative will share with you
@@ -94,11 +95,12 @@ network_nodes: {
 }
 
 network_nodes: {
-  id: "node-b"
+  # TODO: replace ${NODE_ID 2} to the specific node_id
+  id: "${NODE_ID 2}"
   enactment_driver: {
     connection_params: {
-      # TODO: change to point to the domain of your spacetime instance
-      endpoint_uri: "scheduling.my_instance.spacetime.aalyria.com"
+      # TODO: replace ${DOMAIN} to the domain of your spacetime instance
+      endpoint_uri: "scheduling.${DOMAIN}"
 
       transport_security: {
         system_cert_pool: {}
@@ -106,8 +108,8 @@ network_nodes: {
 
       auth_strategy: {
         jwt: {
-          # TODO: change to the domain of your spacetime instance
-          audience: "scheduling.my_instance.spacetime.aalyria.com"
+          # TODO: replace ${DOMAIN} to the domain of your spacetime instance
+          audience: "scheduling.${DOMAIN}"
           # TODO: use the email your Aalyria representative will share with you
           email: "my-cdpi-agent@example.com"
           # TODO: use the private key ID your Aalyria representative will share with you
