@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package agentcli provides a CDPI agent that is configured using a
+// Package agentcli provides an SBI agent that is configured using a
 // protobuf-based manifest.
 package agentcli
 
@@ -248,7 +248,7 @@ func injectTracer(ctx context.Context, params *configpb.AgentParams) (newCtx con
 		resource.Default(),
 		resource.NewWithAttributes(
 			semconv.SchemaURL,
-			semconv.ServiceName("cdpi-agent"),
+			semconv.ServiceName("sbi-agent"),
 			semconv.ServiceNamespaceKey.String("spacetime"),
 			semconv.ServiceVersion("v0.1.0"),
 		),

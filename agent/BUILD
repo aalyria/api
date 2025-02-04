@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Build rules for the Go CDPI agent. These shouldn't depend on any other
+# Build rules for the Go SBI agent. These shouldn't depend on any other
 # internal packages apart from those found in //api.
 
 load("@rules_go//go:def.bzl", "go_library", "go_test")
@@ -64,7 +64,6 @@ go_test(
     deps = [
         "//agent/internal/channels",
         "//agent/internal/task",
-        "//api/cdpi/v1alpha:cdpi_go_grpc",
         "//api/common:common_go_proto",
         "//api/scheduling/v1alpha:scheduling_go_grpc",
         "//api/telemetry/v1alpha:telemetry_go_grpc",

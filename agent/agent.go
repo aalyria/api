@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package agent provides a CDPI agent implementation.
+// Package agent provides an SBI agent implementation.
 package agent
 
 import (
@@ -64,7 +64,7 @@ type nodeOptFunc func(*node)
 
 func (fn nodeOptFunc) apply(n *node) { fn(n) }
 
-// Agent is a CDPI agent that coordinates change requests across multiple
+// Agent is an SBI agent that coordinates change requests across multiple
 // nodes.
 type Agent struct {
 	clock clockwork.Clock

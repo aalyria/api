@@ -23,11 +23,10 @@ import (
 	"testing"
 	"time"
 
-	afpb "aalyria.com/spacetime/api/cdpi/v1alpha"
-	apipb "aalyria.com/spacetime/api/common"
-	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
 	"aalyria.com/spacetime/agent/internal/channels"
 	"aalyria.com/spacetime/agent/internal/task"
+	apipb "aalyria.com/spacetime/api/common"
+	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/jonboulle/clockwork"
@@ -197,7 +196,6 @@ func (d *delegatingBackend) Dispatch(ctx context.Context, req *schedpb.CreateEnt
 }
 
 type server struct {
-	afpb.UnimplementedCdpiServer
 	ctx        context.Context
 	mu         *sync.Mutex
 	updateCond *sync.Cond

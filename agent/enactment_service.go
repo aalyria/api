@@ -27,16 +27,16 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	apipb "aalyria.com/spacetime/api/common"
-	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
 	"aalyria.com/spacetime/agent/enactment"
 	"aalyria.com/spacetime/agent/internal/channels"
 	"aalyria.com/spacetime/agent/internal/loggable"
 	"aalyria.com/spacetime/agent/internal/task"
+	apipb "aalyria.com/spacetime/api/common"
+	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
 )
 
-// we keep already attempted enactments in memory for this long to help resolve
-// issues where the CDPI server might try and update a request after it's been
+// We keep already attempted enactments in memory for this long to help resolve
+// issues where the SBI server might try and update a request after it's been
 // applied.
 const attemptedUpdateKeepAliveTimeout = 1 * time.Minute
 

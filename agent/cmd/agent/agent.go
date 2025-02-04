@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package main provides a CDPI agent that is configured using a protobuf-based
+// Package main provides an SBI agent that is configured using a protobuf-based
 // manifest.
 package main
 

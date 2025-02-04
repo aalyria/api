@@ -1,26 +1,27 @@
 # agent
 
-A Go implementation of a CDPI agent.
+A Go implementation of an SBI agent.
 
 ## Overview
 
-The Control-to-Data-Plane Interface (CDPI) works by exchanging
+The Southbound Interface (SBI) works by exchanging
 [Protocol Buffers](https://protobuf.dev/), a language-agnostic format and toolchain for serializing
 messages, transmitted using [gRPC](https://grpc.io/), a performant RPC framework with many
-sophisticated features.
+sophisticated features. The SBI comprises a variety of APIs, the principle one being the
+Scheduling API whereby Spacetime sends scheduled state changes to SDN agents.
 
-This directory provides two important pieces for interacting with the Spacetime CDPI:
+This directory provides two important pieces for interacting with the Spacetime SBI:
 
-- The `agent` (`//agent/cmd/agent`), a Go binary that handle the CDPI protocol and
+- The `agent` (`//agent/cmd/agent`), a Go binary that handle the SBI protocols and
   authentication details while delegating the actual implementation of enactments to a
-  user-configured external process. While the details of the CDPI protocol are still subject to
+  user-configured external process. While the details of SBI protocols are still subject to
   change, the command line interface for these binaries is intended to be significantly more stable
   and provide an easy to develop against abstraction that insulates platform integrators from the
   majority of those changes.
 
 - The `agent` library (`//agent`), a Go package that provides a growing set of
-  abstractions for writing a new CDPI agent. This library is subject to change alongside the CDPI
-  protocol, so platform integrators are encouraged to use the `agent` binary until the underlying
+  abstractions for writing a new SBI agent. This library is subject to change alongside the SBI
+  protocols, so platform integrators are encouraged to use the `agent` binary until the underlying
   APIs reach a stable milestone.
 
 ## Building
@@ -52,8 +53,8 @@ file might look like this:
 ```textproto
 # each network_node is configured with a stanza like so:
 network_nodes: {
-  # TODO: replace ${NODE_ID 1} to the specific node_id
-  id: "${NODE_ID 1}"
+  # TODO: replace ${AGENT_ID 1} with the specific SDN Agent ID.
+  id: "${AGENT_ID 1}"
   enactment_driver: {
     connection_params: {
       # TODO: replace ${DOMAIN} to the domain of your spacetime instance
@@ -68,7 +69,7 @@ network_nodes: {
           # TODO: replace ${DOMAIN} to the domain of your spacetime instance
           audience: "scheduling.${DOMAIN}"
           # TODO: use the email your Aalyria representative will share with you
-          email: "my-cdpi-agent@example.com"
+          email: "my-sdn-agent@example.com"
           # TODO: use the private key ID your Aalyria representative will share with you
           private_key_id: "BADDB0BACAFE"
           signing_strategy: {
@@ -95,8 +96,8 @@ network_nodes: {
 }
 
 network_nodes: {
-  # TODO: replace ${NODE_ID 2} to the specific node_id
-  id: "${NODE_ID 2}"
+  # TODO: replace ${AGENT_ID 2} with the specific SDN Agent ID.
+  id: "${AGENT_ID 2}"
   enactment_driver: {
     connection_params: {
       # TODO: replace ${DOMAIN} to the domain of your spacetime instance
@@ -111,7 +112,7 @@ network_nodes: {
           # TODO: replace ${DOMAIN} to the domain of your spacetime instance
           audience: "scheduling.${DOMAIN}"
           # TODO: use the email your Aalyria representative will share with you
-          email: "my-cdpi-agent@example.com"
+          email: "my-sdn-agent@example.com"
           # TODO: use the private key ID your Aalyria representative will share with you
           private_key_id: "BADDB0BACAFE"
           signing_strategy: {
@@ -151,7 +152,7 @@ INFO: Running command line: bazel-bin/agent/cmd/agent/agent_/agent --log-level t
 ### Authentication
 
 The agent uses signed [JSON Web Tokens (JWTs)](https://www.rfc-editor.org/rfc/rfc7519) to
-authenticate with the CDPI service. The JWT needs to be signed using an RSA private key with a
+authenticate with the SBI service. The JWT needs to be signed using an RSA private key with a
 corresponding public key that's been shared - inside of a self-signed x509 certificate - with the
 Aalyria team.
 
@@ -190,6 +191,8 @@ If the agent was able to authenticate correctly, you should see something like t
 ## Next steps
 
 ### Writing a custom extproc enactment backend
+
+<!-- TODO: this needs a more thoughtful rewrite. -->
 
 Writing a custom enactment backend using the `agent` is relatively simple as the agent takes care of
 the CDPI protocol details, including timing and error reporting. When the agent receives a scheduled
