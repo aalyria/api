@@ -18,7 +18,6 @@ syntax = "proto2";
 
 package aalyria.spacetime.api.common;
 
-import "api/common/channel.proto";
 import "api/common/wireless.proto";
 
 option java_package = "com.aalyria.spacetime.api.common";
@@ -34,9 +33,9 @@ message TxChannels {
   // Maps the channel's center frequency, in Hz, to channel parameters.
   // For RF transceivers, the map key is the carrier frequency.
   // For optical transceivers, the key may be converted to wavelength.
-  // TODO: Add an `aalyria.spacetime.api.common.Signal` field to 
+  // TODO: Add an `aalyria.spacetime.api.common.Signal` field to
   // `TxChannelParams`, and refactor this to be a repeated field of
-  // `TxChannelParams`. This helps to consolidate the modeling of 
+  // `TxChannelParams`. This helps to consolidate the modeling of
   // transmitted and received signals.
   map<uint64, TxChannelParams> channel = 1;
 }

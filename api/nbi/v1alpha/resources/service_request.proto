@@ -19,7 +19,6 @@ package aalyria.spacetime.api.nbi.v1alpha.resources;
 import "api/common/network.proto";
 import "api/common/time.proto";
 import "google/protobuf/duration.proto";
-import "google/protobuf/timestamp.proto";
 import "google/type/interval.proto";
 import "google/type/money.proto";
 

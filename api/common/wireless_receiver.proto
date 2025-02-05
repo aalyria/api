@@ -18,7 +18,6 @@ syntax = "proto2";
 
 package aalyria.spacetime.api.common;
 
-import "api/common/channel.proto";
 import "api/common/wireless.proto";
 
 option java_package = "com.aalyria.spacetime.api.common";
@@ -135,7 +134,7 @@ message PhotodetectorDefinition {
 
     // Units for emittance: W * m^-2 * Hz^-1
     optional double sun_spectral_radiant_emittance = 9;
-    
+
     // Must be greater than or equal to 2.99792458E-9 meters and less than
     // or equal to 9.993081933333333E-5 meters to model an optical wavelength.
     optional double wavelength_m = 10;
