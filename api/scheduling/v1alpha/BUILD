@@ -17,6 +17,7 @@ load("@rules_go//proto:def.bzl", "go_proto_library")
 load("@rules_proto_grpc_cpp//:defs.bzl", "cpp_grpc_library")
 load("@rules_proto_grpc_java//:defs.bzl", "java_grpc_library")
 load("@rules_proto_grpc_python//:defs.bzl", "python_grpc_library")
+load("//web:defs.bzl", "ts_proto_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -65,4 +66,12 @@ java_grpc_library(
 python_grpc_library(
     name = "scheduling_python_grpc",
     protos = [":scheduling_proto"],
+)
+
+ts_proto_library(
+    name = "scheduling_ts_proto",
+    proto = ":scheduling_proto",
+    deps = [
+        "//google:google_ts_protos",
+    ],
 )
