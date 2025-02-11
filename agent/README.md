@@ -195,28 +195,31 @@ If the agent was able to authenticate correctly, you should see something like t
 <!-- TODO: this needs a more thoughtful rewrite. -->
 
 Writing a custom enactment backend using the `agent` is relatively simple as the agent takes care of
-the CDPI protocol details, including timing and error reporting. When the agent receives a scheduled
-control update, it invokes the configured external process, writes the incoming
-`ScheduledControlUpdate` message in the encoding format of your choice to the process's stdin, and
-optionally reads a new `ControlPlaneState` message (using the same encoding format) from the
-process's stdout.
+the SBI [Scheduling API](../api/scheduling/) protocol details, including timing and error reporting.
+When the agent is due to enact a scheduled configuration change,
+it invokes the configured external process, writes the `CreateEntryRequest`
+message in the encoding format of your choice to the process's stdin, and
+examines the process's exit code.
 
-- If nothing is written to stdout and the process terminates with an exit code of 0, the enactment
-  is considered successful and the node state is assumed to have been updated to match the change.
+- If the process terminates with an exit code of 0, the enactment
+  is considered successful and the commanded element's state is assumed to have been updated to match the change.
 
 - If anything goes wrong during the enactment (indicated by a non-zero exit code), the process's
-  stderr and exit code are combined to form a gRPC status which is conveyed back to the CDPI
-  endpoint as the (failing) result of the enactment.
+  exit code is used to form an error message which is logged by the agent. The exact state
+  in which the commanded element was left may be reported via the [Telemetry API](../api/telemetry/).
 
 Since the external process only needs to be able to encode and decode JSON, it's trivial to write
-the platform-specific logic in whatever language best suits the task. Included in this repo are some
+the platform-specific logic in whatever language best suits the task.
+<!-- Included in this repo are some
 sample programs that demonstrate basic error handling and message parsing in different languages:
 
-<!-- TODO: add a go example here -->
+- TODO: add a go example here
 
 - examples/enact_flow_forward_updates.py: A python script that reads the input messages as ad-hoc
   JSON, implements some basic error handling, and demonstrates how one might go about enacting flow
   updates (the actual logic for forwarding packets is left as an exercise for the reader).
+
+-->
 
 ## Operational notes
 

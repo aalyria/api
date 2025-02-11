@@ -1,4 +1,4 @@
-// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ import (
 	vnl "github.com/vishvananda/netlink"
 )
 
-func newNetlinkEnactmentDriver(ctx context.Context, clock clockwork.Clock, nodeID string, conf *configpb.NetworkNode_NetlinkEnactment) (enactment.Driver, error) {
+func newNetlinkEnactmentDriver(ctx context.Context, clock clockwork.Clock, nodeID string, conf *configpb.SdnAgent_NetlinkEnactment) (enactment.Driver, error) {
 	nlHandle, err := vnl.NewHandle(vnl.FAMILY_ALL)
 	if err != nil {
 		return nil, fmt.Errorf("creating new netlink handle for enactments: %w", err)
@@ -44,7 +44,7 @@ func newNetlinkEnactmentDriver(ctx context.Context, clock clockwork.Clock, nodeI
 			int(conf.GetRouteTableLookupPriority()))), nil
 }
 
-func newNetlinkTelemetryDriver(ctx context.Context, clock clockwork.Clock, nodeID string, conf *configpb.NetworkNode_NetlinkTelemetry) (telemetry.Driver, error) {
+func newNetlinkTelemetryDriver(ctx context.Context, clock clockwork.Clock, nodeID string, conf *configpb.SdnAgent_NetlinkTelemetry) (telemetry.Driver, error) {
 	interfaceIDs := make([]string, 0, len(conf.GetMonitoredInterfaces()))
 	for _, mi := range conf.GetMonitoredInterfaces() {
 		interfaceIDs = append(interfaceIDs, mi.GetInterfaceId())

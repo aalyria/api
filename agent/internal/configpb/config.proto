@@ -1,4 +1,4 @@
-// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -103,8 +103,8 @@ message ConnectionParams {
   google.protobuf.Duration keepalive_period = 6;
 }
 
-// A node the agent represents.
-message NetworkNode {
+// An SDN agent, controlling any number of commandable elements.
+message SdnAgent {
   // An external command is a delegate process that handles implementing some
   // aspect of the SBI contract. Exit codes within the range of the canonical
   // gRPC status codes will be transformed (alongside any messages written to
@@ -206,7 +206,7 @@ message NetworkNode {
     }
   }
 
-  // The node's ID.
+  // The SDN Agent's ID.
   string id = 1;
 
   EnactmentDriver enactment_driver = 2;
@@ -239,5 +239,5 @@ message ObservabilityParams {
 
 message AgentParams {
   ObservabilityParams observability_params = 2;
-  repeated NetworkNode network_nodes = 3;
+  repeated SdnAgent sdn_agents = 3;
 }

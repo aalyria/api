@@ -1,4 +1,4 @@
-// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -296,16 +296,16 @@ func getPrivateKey(ss *configpb.SigningStrategy) (io.Reader, error) {
 	}
 }
 
-func getProtoFmt(pfpb configpb.NetworkNode_ExternalCommand_ProtoFormat) protofmt.Format {
+func getProtoFmt(pfpb configpb.SdnAgent_ExternalCommand_ProtoFormat) protofmt.Format {
 	switch pfpb.Enum() {
-	case configpb.NetworkNode_ExternalCommand_JSON.Enum():
+	case configpb.SdnAgent_ExternalCommand_JSON.Enum():
 		return protofmt.JSON
-	case configpb.NetworkNode_ExternalCommand_TEXT.Enum():
+	case configpb.SdnAgent_ExternalCommand_TEXT.Enum():
 		return protofmt.Text
-	case configpb.NetworkNode_ExternalCommand_WIRE.Enum():
+	case configpb.SdnAgent_ExternalCommand_WIRE.Enum():
 		return protofmt.Wire
 
-	case configpb.NetworkNode_ExternalCommand_PROTO_FORMAT_UNSPECIFIED.Enum():
+	case configpb.SdnAgent_ExternalCommand_PROTO_FORMAT_UNSPECIFIED.Enum():
 		fallthrough
 	default:
 		return protofmt.JSON
@@ -396,7 +396,7 @@ func getDialOpts(ctx context.Context, connParams *configpb.ConnectionParams, clo
 	return dialOpts, nil
 }
 
-func (ac *AgentConf) getNodeOpts(ctx context.Context, node *configpb.NetworkNode, clock clockwork.Clock) (nodeOpts []agent.NodeOption, err error) {
+func (ac *AgentConf) getNodeOpts(ctx context.Context, node *configpb.SdnAgent, clock clockwork.Clock) (nodeOpts []agent.NodeOption, err error) {
 	// EndpointUri should be in the format `hostname[:port]`, but we want to backward support configs that used the dns:/// prefix.
 	const dnsSchema = "dns:///"
 	if cp := node.GetEnactmentDriver().GetConnectionParams(); cp != nil {
@@ -408,7 +408,7 @@ func (ac *AgentConf) getNodeOpts(ctx context.Context, node *configpb.NetworkNode
 
 enactmentSwitch:
 	switch conf := node.GetEnactmentDriver().GetType().(type) {
-	case *configpb.NetworkNode_EnactmentDriver_ExternalCommand:
+	case *configpb.SdnAgent_EnactmentDriver_ExternalCommand:
 		dialOpts, err := getDialOpts(ctx, node.EnactmentDriver.GetConnectionParams(), clock)
 		if err != nil {
 			return nil, err
@@ -419,7 +419,7 @@ enactmentSwitch:
 
 		nodeOpts = append(nodeOpts, agent.WithEnactmentDriver(node.GetEnactmentDriver().GetConnectionParams().EndpointUri, ed, dialOpts...))
 
-	case *configpb.NetworkNode_EnactmentDriver_Netlink:
+	case *configpb.SdnAgent_EnactmentDriver_Netlink:
 		dialOpts, err := getDialOpts(ctx, node.EnactmentDriver.GetConnectionParams(), clock)
 		if err != nil {
 			return nil, err
@@ -431,7 +431,7 @@ enactmentSwitch:
 		}
 		nodeOpts = append(nodeOpts, agent.WithEnactmentDriver(node.GetEnactmentDriver().GetConnectionParams().EndpointUri, ed, dialOpts...))
 
-	case *configpb.NetworkNode_EnactmentDriver_Dynamic:
+	case *configpb.SdnAgent_EnactmentDriver_Dynamic:
 		dialOpts, err := getDialOpts(ctx, node.EnactmentDriver.GetConnectionParams(), clock)
 		if err != nil {
 			return nil, err
@@ -454,7 +454,7 @@ enactmentSwitch:
 
 telemetrySwitch:
 	switch conf := node.GetTelemetryDriver().GetType().(type) {
-	case *configpb.NetworkNode_TelemetryDriver_ExternalCommand:
+	case *configpb.SdnAgent_TelemetryDriver_ExternalCommand:
 		dialOpts, err := getDialOpts(ctx, node.TelemetryDriver.GetConnectionParams(), clock)
 		if err != nil {
 			return nil, err
@@ -467,7 +467,7 @@ telemetrySwitch:
 		}
 		nodeOpts = append(nodeOpts, agent.WithTelemetryDriver(node.GetTelemetryDriver().GetConnectionParams().EndpointUri, td, dialOpts...))
 
-	case *configpb.NetworkNode_TelemetryDriver_Netlink:
+	case *configpb.SdnAgent_TelemetryDriver_Netlink:
 		dialOpts, err := getDialOpts(ctx, node.TelemetryDriver.GetConnectionParams(), clock)
 		if err != nil {
 			return nil, err
@@ -479,7 +479,7 @@ telemetrySwitch:
 		}
 		nodeOpts = append(nodeOpts, agent.WithTelemetryDriver(node.GetTelemetryDriver().GetConnectionParams().EndpointUri, td, dialOpts...))
 
-	case *configpb.NetworkNode_TelemetryDriver_Dynamic:
+	case *configpb.SdnAgent_TelemetryDriver_Dynamic:
 		dialOpts, err := getDialOpts(ctx, node.TelemetryDriver.GetConnectionParams(), clock)
 		if err != nil {
 			return nil, err
@@ -572,7 +572,7 @@ func (ac *AgentConf) runAgent(ctx context.Context, params *configpb.AgentParams)
 
 	agentOpts := []agent.AgentOption{agent.WithClock(clock)}
 
-	for _, node := range params.GetNetworkNodes() {
+	for _, node := range params.GetSdnAgents() {
 		nodeOpts, err := ac.getNodeOpts(ctx, node, clock)
 		if err != nil {
 			return fmt.Errorf("node %s: %w", node.Id, err)
