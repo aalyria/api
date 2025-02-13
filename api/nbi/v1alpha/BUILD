@@ -17,7 +17,6 @@ load("@rules_go//proto:def.bzl", "go_proto_library")
 load("@rules_proto_grpc_cpp//:defs.bzl", "cpp_grpc_library")
 load("@rules_proto_grpc_java//:defs.bzl", "java_grpc_library")
 load("@rules_proto_grpc_python//:defs.bzl", "python_grpc_library")
-load("//web:defs.bzl", "ts_proto_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -82,14 +81,5 @@ go_proto_library(
         "//api/common:common_go_proto",
         "//api/nbi/v1alpha/resources:nbi_resources_go_grpc",
         "@org_golang_google_genproto//googleapis/type/interval",
-    ],
-)
-
-ts_proto_library(
-    name = "nbi_ts_proto",
-    proto = ":nbi_proto",
-    deps = [
-        "//api/common:common_ts_proto",
-        "//api/nbi/v1alpha/resources:nbi_resources_ts_proto",
     ],
 )
