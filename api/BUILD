@@ -16,7 +16,6 @@ load("@rules_proto_grpc_doc//:defs.bzl", "doc_markdown_compile", "doc_template_c
 
 # bazel query 'kind("^proto_library", //api/...)'
 _all_protos = [
-    "//api/cdpi/v1alpha:cdpi_proto",
     "//api/common:common_proto",
     "//api/federation:federation_proto",
     "//api/nbi/v1alpha:nbi_proto",
