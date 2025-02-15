@@ -31,7 +31,6 @@ import (
 	"aalyria.com/spacetime/agent/internal/channels"
 	"aalyria.com/spacetime/agent/internal/loggable"
 	"aalyria.com/spacetime/agent/internal/task"
-	apipb "aalyria.com/spacetime/api/common"
 	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
 )
 
@@ -43,11 +42,10 @@ const attemptedUpdateKeepAliveTimeout = 1 * time.Minute
 func OK() *status.Status { return status.New(codes.OK, "") }
 
 type enactmentService struct {
-	sc        schedpb.SchedulingClient
-	ed        enactment.Driver
-	clock     clockwork.Clock
-	initState *apipb.ControlPlaneState
-	nodeID    string
+	sc     schedpb.SchedulingClient
+	ed     enactment.Driver
+	clock  clockwork.Clock
+	nodeID string
 
 	scheduleManipulationToken string
 	schedMgr                  *scheduleManager
@@ -63,7 +61,6 @@ func (nc *nodeController) newEnactmentService(sc schedpb.SchedulingClient, ed en
 		sc:                        sc,
 		clock:                     nc.clock,
 		nodeID:                    nc.id,
-		initState:                 nc.initState,
 		scheduleManipulationToken: manipToken,
 		schedMgr:                  newScheduleManager(),
 		reqsFromController:        make(chan *schedpb.ReceiveRequestsMessageFromController),

@@ -21,7 +21,6 @@ proto_library(
     name = "configpb_proto",
     srcs = ["config.proto"],
     deps = [
-        "//api/common:common_proto",
         "@protobuf//:any_proto",
         "@protobuf//:duration_proto",
         "@protobuf//:empty_proto",
@@ -32,7 +31,4 @@ go_proto_library(
     name = "configpb_go_proto",
     importpath = "aalyria.com/spacetime/agent/internal/configpb",
     proto = ":configpb_proto",
-    deps = [
-        "//api/common:common_go_proto",
-    ],
 )
