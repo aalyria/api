@@ -1,0 +1,368 @@
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package aalyria.spacetime.api.fed.interconnect.v1alpha;
+
+import "google/protobuf/empty.proto";
+import "google/type/interval.proto";
+import "nmts/v1alpha/proto/ek/physical/antenna.proto";
+import "nmts/v1alpha/proto/ek/physical/modem.proto";
+import "nmts/v1alpha/proto/ek/physical/platform.proto";
+import "nmts/v1alpha/proto/ek/physical/signal_processing_chain.proto";
+import "nmts/v1alpha/proto/ek/physical/transceiver.proto";
+import "nmts/v1alpha/proto/types/geophys/motion.proto";
+
+option go_package = "aalyria.com/spacetime/api/federation/interconnect/v1alpha";
+
+// Interconnect API
+//
+// The Interconnect API is intended to enable a network orchestrator to use
+// connectivity services from multiple service providers without integrating
+// with each service provider separately. In particular, the API is intended to
+// facilitate use of connectivity services that require the customer to
+// establish a single wireless link with the service provider’s network, through
+// which connectivity is available. This wireless link could be a link to an
+// optical terminal on a low-Earth-orbiting satellite, or it could be a link to
+// a ground station, among other possibilities.
+service Interconnect {
+  // Lists the types of transceivers with which the connectivity service
+  // provider's network is compatible. This enables the client to provide the
+  // service provider with the details of only the transceivers that might
+  // feasibly be capable of connecting to the service provider's network.
+  rpc ListCompatibleTransceiverTypes(ListCompatibleTransceiverTypesRequest) 
+    returns (ListCompatibleTransceiverTypesResponse) {}
+
+  // Gets the definition of a client-operated wireless transceiver.
+  rpc GetTransceiver(GetTransceiverRequest)
+    returns (Transceiver) {}
+
+  // Creates a transceiver resource representing a client-operated wireless
+  // transceiver. Creation of the transceiver allows the connectivity service
+  // provider to begin creating the transceiver's contact windows. Each contact
+  // window represents a period of feasible communication between the
+  // client-operated transceiver and transceivers in the service provider's
+  // network.
+  rpc CreateTransceiver(CreateTransceiverRequest)
+    returns (Transceiver) {}
+
+  // Updates a transceiver. May be used to update a transceiver's predicted
+  // trajectory, for example.
+  rpc UpdateTransceiver(UpdateTransceiverRequest)
+    returns (Transceiver) {}
+
+  // Deletes a transceiver.
+  rpc DeleteTransceiver(DeleteTransceiverRequest)
+    returns (google.protobuf.Empty) {}
+
+  // Lists all available contact windows between client-operated transceivers
+  // and those in the connectivity service provider's network.
+  rpc ListContactWindows(ListContactWindowsRequest)
+    returns (ListContactWindowsResponse) {}
+
+  // Lists bearers.
+  rpc ListBearers(ListBearersRequest)
+    returns (ListBearersResponse) {}
+
+  // Creates a bearer.
+  rpc CreateBearer(CreateBearerRequest)
+    returns (Bearer) {}
+
+  // Deletes a bearer.
+  rpc DeleteBearer(DeleteBearerRequest)
+    returns (google.protobuf.Empty) {}
+
+  // Lists attachment circuits.
+  rpc ListAttachmentCircuits(ListAttachmentCircuitsRequest)
+    returns (ListAttachmentCircuitsResponse) {}
+
+  // Creates an attachment circuit.
+  rpc CreateAttachmentCircuit(CreateAttachmentCircuitRequest)
+    returns (AttachmentCircuit) {}
+
+  // Deletes an attachment circuit.
+  rpc DeleteAttachmentCircuit(DeleteAttachmentCircuitRequest)
+    returns (google.protobuf.Empty) {}
+
+  // Gets attributes of a target that are required for interconnection, such
+  // as the target's motion.
+  rpc GetTarget(GetTargetRequest)
+    returns (Target) {}
+
+  // Lists all targets. This may not list all target assets in the service
+  // provider's network. It may only return those targets referenced in contact
+  // windows visible to the client.
+  rpc ListTargets(ListTargetsRequest)
+    returns (ListTargetsResponse) {}
+}
+
+// Defines a class of transceivers that are compatible with the connectivity
+// provider's services.
+message CompatibleTransceiverType {
+  // A string specifying a filter over transceiver resources. Any transceiver
+  // matching the filter may be considered compatible with services offered by
+  // the service provider.
+  //
+  // extended to explicitly support matching of ranges in repeated fields.
+  // For example, a filter for transceivers capable of transmitting in the X
+  // band (8.0 – 12.0 GHz) could be represented by the expression
+  //
+  // transmit_signal_chain.transmitter.signals.signal.center_frequency_hz:\
+  // (>= 8000000000 AND <= 12000000000)
+  string transceiver_filter = 1;
+}
+
+message Transceiver {
+  string name = 1;
+  ReceiveSignalChain receive_signal_chain = 2;
+  TransmitSignalChain transmit_signal_chain = 3;
+}
+
+message ReceiveSignalChain {
+  nmts.v1alpha.ek.physical.Demodulator demodulator = 1;
+  repeated nmts.v1alpha.ek.physical.SignalProcessingChain
+    signal_processing_chains = 2;
+  nmts.v1alpha.ek.physical.Receiver receiver = 3;
+  nmts.v1alpha.ek.physical.Platform platform = 4;
+  nmts.v1alpha.ek.physical.Antenna antenna = 5;
+}
+
+message TransmitSignalChain {
+  nmts.v1alpha.ek.physical.Modulator modulator = 1;
+  repeated nmts.v1alpha.ek.physical.SignalProcessingChain
+    signal_processing_chains = 2;
+  nmts.v1alpha.ek.physical.Transmitter transmitter = 3;
+  nmts.v1alpha.ek.physical.Platform platform = 4;
+  nmts.v1alpha.ek.physical.Antenna antenna = 5;
+}
+
+// An interval over which a client transceiver could feasibly connect to the
+// service provider's network and utilize connectivity services. 
+message ContactWindow {
+  string name = 1;
+
+  google.type.Interval interval = 2;
+  string transceiver = 3;
+  string target = 4;
+  uint64 min_rx_center_frequency_hz = 5;
+  uint64 max_rx_center_frequency_hz = 6; 
+  uint64 min_rx_bandwidth_hz = 7;
+  uint64 max_rx_bandwidth_hz = 8;
+  uint64 min_tx_center_frequency_hz = 9;
+  uint64 max_tx_center_frequency_hz = 10; 
+  uint64 min_tx_bandwidth_hz = 11;
+  uint64 max_tx_bandwidth_hz = 12;
+}
+
+// A MAC protocol.
+enum Mac {
+  MAC_UNSPECIFIED = 0;
+  MAC_DVB_S2 = 1;
+  MAC_ETH = 2;
+}
+
+// A bearer is the required underlying connection for the provisioning of an
+// attachment circuit.
+message Bearer {
+  google.type.Interval interval = 1;
+
+  // The client's transceiver.
+  string transceiver = 2;
+
+  string target = 3;
+
+  uint64 rx_center_frequency_hz = 4;
+  uint64 rx_bandwidth_hz = 5;
+  uint64 tx_center_frequency_hz = 6;
+  uint64 tx_bandwidth_hz = 7;
+
+  Mac mac = 8;
+}
+
+// An attachment circuit is a means of attaching to a router.
+// Per Section 1.2 of RFC4364, it may be the sort of connection that is usually
+// thought of as a "data link", or it may be a tunnel of some sort; what matters
+// is that it be possible for two devices to be network layer peers over the
+// attachment circuit.
+message AttachmentCircuit {
+  message L2Connection {
+    message Encapsulation {
+      message Dot1Q {
+        uint32 cvlan_id = 1;
+      }
+      oneof type {
+        google.protobuf.Empty ethernet = 1;
+        Dot1Q dot1q = 2;
+      }
+    }
+
+    message L2Service {
+      message L2TunnelService {
+        message Pseudowire {
+          // Far end IP address.
+          string far_end = 1;
+        }
+
+        oneof type {
+          Pseudowire pseudowire = 1;
+        }
+      }
+      oneof type {
+        L2TunnelService l2_tunnel_service = 1;
+      }
+    }
+
+    Encapsulation encapsulation = 1;
+    L2Service l2_service = 2;
+  }
+  
+  message IpConnection {
+    message AllocationType {
+      message Static {
+        repeated string client_addresses = 1;
+      }
+
+      oneof type {
+        google.protobuf.Empty dynamic = 1;
+        Static static = 2;
+      }
+    }
+
+    string provider_address = 1;
+    uint32 prefix_length = 2;
+
+    // Specifies the IP address allocation service provided to the client's
+    // network by the service provider's network.
+    AllocationType allocation_type = 3;
+  }
+
+  message RoutingProtocol {
+    message Static {
+      message Prefix {
+        // The destination prefix of the route.
+        //
+        // An IP or IPv6 address optionally followed by a slash and the prefix
+        // length.
+        string prefix = 1;
+
+        // The next hop to be used for the static route.
+        //
+        // An IP or IPv6 address.
+        string next_hop = 2;
+      }
+      repeated Prefix prefixes = 1;
+    }
+
+    oneof type {
+      Static static = 1;
+      google.protobuf.Empty direct = 3;
+    }
+  }
+
+
+  google.type.Interval interval = 1;
+  L2Connection l2_connection = 2;
+  IpConnection ip_connection = 3;
+  repeated RoutingProtocol routing_protocols = 4;
+}
+
+// The attributes of a target that are required for interconnection, such as the
+// target's motion.
+message Target {
+  string name = 1;
+
+  nmts.v1alpha.types.geophys.Motion motion = 2;  
+}
+
+message ListCompatibleTransceiverTypesRequest {
+}
+
+message ListCompatibleTransceiverTypesResponse {
+  repeated CompatibleTransceiverType compatible_transceiver_types = 1;
+}
+
+message GetTransceiverRequest {
+  string name = 1;
+}
+
+message CreateTransceiverRequest {
+  string transceiver_id = 1;
+
+  // The transceiver to create.
+  Transceiver transceiver = 2;
+}
+
+message UpdateTransceiverRequest {
+  Transceiver transceiver = 1;
+}
+
+message DeleteTransceiverRequest {
+  string name = 1;
+}
+
+message ListContactWindowsRequest {
+  string filter = 1;
+}
+
+message ListContactWindowsResponse {
+  repeated ContactWindow contact_windows = 1;
+}
+
+message ListBearersRequest {
+  string filter = 1;
+}
+
+message ListBearersResponse {
+  repeated Bearer bearers = 1;
+}
+
+message CreateBearerRequest {
+  string bearer_id = 1;
+
+  Bearer bearer = 2;
+}
+
+message DeleteBearerRequest {
+  string name = 1;
+}
+
+message ListAttachmentCircuitsRequest {
+  string filter = 1;
+}
+
+message ListAttachmentCircuitsResponse {
+  repeated AttachmentCircuit attachment_circuits = 1;
+}
+
+message CreateAttachmentCircuitRequest {
+  string attachment_circuit_id = 1;
+
+  AttachmentCircuit attachment_circuit = 2;
+}
+
+message DeleteAttachmentCircuitRequest {
+  string name = 1;
+}
+
+message GetTargetRequest {
+  string name = 1;
+}
+
+message ListTargetsRequest {
+}
+
+message ListTargetsResponse {
+  repeated Target targets = 1;
+}
