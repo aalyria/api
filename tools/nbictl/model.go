@@ -22,7 +22,7 @@ import (
 	modelpb "aalyria.com/spacetime/api/model/v1alpha"
 	"github.com/urfave/cli/v2"
 	"google.golang.org/protobuf/proto"
-	nmtspb "outernetcouncil.org/nmts/v1alpha/proto"
+	nmtspb "outernetcouncil.org/nmts/v1/proto"
 )
 
 const modelAPISubDomain = "model"

@@ -60,7 +60,7 @@ go_library(
         "@org_golang_google_protobuf//types/known/durationpb",
         "@org_golang_google_protobuf//types/known/timestamppb",
         "@org_golang_x_sync//errgroup",
-        "@org_outernetcouncil_nmts//v1alpha/proto:nmts_go_proto",
+        "@org_outernetcouncil_nmts//v1/proto:nmts_go_proto",
     ],
 )
 
@@ -96,8 +96,8 @@ go_test(
         "@org_golang_google_protobuf//types/known/emptypb",
         "@org_golang_google_protobuf//types/known/fieldmaskpb",
         "@org_golang_x_sync//errgroup",
-        "@org_outernetcouncil_nmts//v1alpha/proto:nmts_go_proto",
-        "@org_outernetcouncil_nmts//v1alpha/proto/ek/physical:physical_go_proto",
+        "@org_outernetcouncil_nmts//v1/proto:nmts_go_proto",
+        "@org_outernetcouncil_nmts//v1/proto/ek/physical:physical_go_proto",
         "@rules_go//go/tools/bazel",
     ],
 )

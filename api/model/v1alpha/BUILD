@@ -24,7 +24,7 @@ proto_library(
     name = "model_proto",
     srcs = ["model.proto"],
     deps = [
-        "@org_outernetcouncil_nmts//v1alpha/proto:nmts_proto",
+        "@org_outernetcouncil_nmts//v1/proto:nmts_proto",
         "@protobuf//:empty_proto",
     ],
 )
@@ -33,19 +33,19 @@ cpp_grpc_library(
     name = "model_cpp_grpc",
     generate_mocks = True,
     protos = [":model_proto"],
-    deps = ["@org_outernetcouncil_nmts//v1alpha/proto:nmts_cpp_proto"],
+    deps = ["@org_outernetcouncil_nmts//v1/proto:nmts_cpp_proto"],
 )
 
 java_grpc_library(
     name = "model_java_grpc",
     protos = [":model_proto"],
-    deps = ["@org_outernetcouncil_nmts//v1alpha/proto:nmts_java_proto"],
+    deps = ["@org_outernetcouncil_nmts//v1/proto:nmts_java_proto"],
 )
 
 python_grpc_library(
     name = "model_python_grpc",
     protos = [":model_proto"],
-    deps = ["@org_outernetcouncil_nmts//v1alpha/proto:nmts_python_proto"],
+    deps = ["@org_outernetcouncil_nmts//v1/proto:nmts_python_proto"],
 )
 
 go_proto_library(
@@ -56,5 +56,5 @@ go_proto_library(
     ],
     importpath = "aalyria.com/spacetime/api/model/v1alpha",
     proto = ":model_proto",
-    deps = ["@org_outernetcouncil_nmts//v1alpha/proto:nmts_go_proto"],
+    deps = ["@org_outernetcouncil_nmts//v1/proto:nmts_go_proto"],
 )

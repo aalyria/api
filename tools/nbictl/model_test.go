@@ -30,8 +30,8 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
-	nmtspb "outernetcouncil.org/nmts/v1alpha/proto"
-	nmtsphypb "outernetcouncil.org/nmts/v1alpha/proto/ek/physical"
+	nmtspb "outernetcouncil.org/nmts/v1/proto"
+	nmtsphypb "outernetcouncil.org/nmts/v1/proto/ek/physical"
 )
 
 type testCase struct {

@@ -21,12 +21,12 @@ proto_library(
     visibility = ["//visibility:public"],
     deps = [
         "@googleapis//google/type:interval_proto",
-        "@org_outernetcouncil_nmts//v1alpha/proto/ek/physical:antenna_proto",
-        "@org_outernetcouncil_nmts//v1alpha/proto/ek/physical:modem_proto",
-        "@org_outernetcouncil_nmts//v1alpha/proto/ek/physical:platform_proto",
-        "@org_outernetcouncil_nmts//v1alpha/proto/ek/physical:signal_processing_chain_proto",
-        "@org_outernetcouncil_nmts//v1alpha/proto/ek/physical:transceiver_proto",
-        "@org_outernetcouncil_nmts//v1alpha/proto/types/geophys:motion_proto",
+        "@org_outernetcouncil_nmts//v1/proto/ek/physical:antenna_proto",
+        "@org_outernetcouncil_nmts//v1/proto/ek/physical:modem_proto",
+        "@org_outernetcouncil_nmts//v1/proto/ek/physical:platform_proto",
+        "@org_outernetcouncil_nmts//v1/proto/ek/physical:signal_processing_chain_proto",
+        "@org_outernetcouncil_nmts//v1/proto/ek/physical:transceiver_proto",
+        "@org_outernetcouncil_nmts//v1/proto/types/geophys:motion_proto",
         "@protobuf//:empty_proto",
     ],
 )
@@ -39,8 +39,8 @@ go_proto_library(
     visibility = ["//visibility:public"],
     deps = [
         "@org_golang_google_genproto//googleapis/type/interval",
-        "@org_outernetcouncil_nmts//v1alpha/proto/ek/physical:physical_go_proto",
-        "@org_outernetcouncil_nmts//v1alpha/proto/types/geophys:geophys_go_proto",
-        "@org_outernetcouncil_nmts//v1alpha/proto/types/ietf:ietf_go_proto",
+        "@org_outernetcouncil_nmts//v1/proto/ek/physical:physical_go_proto",
+        "@org_outernetcouncil_nmts//v1/proto/types/geophys:geophys_go_proto",
+        "@org_outernetcouncil_nmts//v1/proto/types/ietf:ietf_go_proto",
     ],
 )
