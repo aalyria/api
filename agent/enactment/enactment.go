@@ -20,9 +20,9 @@ import (
 	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
 )
 
-// Driver is the component that takes a ScheduledControlUpdate message for a
-// given node and returns the new state for that node. If the error returned
-// implements the gRPCStatus interface, the appropriate status will be used.
+// Driver is the component that takes a CreateEntryRequest message for a
+// given SDN agent and dispatches it. If the error returned implements the
+// gRPCStatus interface, the appropriate status will be used.
 type Driver interface {
 	// Init initializes the driver.
 	Init(context.Context) error

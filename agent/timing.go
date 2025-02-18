@@ -18,10 +18,7 @@ import (
 	"sync"
 	"time"
 
-	apipb "aalyria.com/spacetime/api/common"
-
 	"github.com/jonboulle/clockwork"
-	"google.golang.org/protobuf/proto"
 )
 
 func hzToDuration(hz float64) time.Duration {
@@ -85,11 +82,5 @@ func (r *reusableTicker) Chan() <-chan time.Time {
 		return r.activeTicker.Chan()
 	} else {
 		return r.inactiveCh
-	}
-}
-
-func timeToProto(t time.Time) *apipb.DateTime {
-	return &apipb.DateTime{
-		UnixTimeUsec: proto.Int64(t.UnixMicro()),
 	}
 }

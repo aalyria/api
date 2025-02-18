@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"aalyria.com/spacetime/agent/internal/task"
-	apipb "aalyria.com/spacetime/api/common"
 	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
 	telemetrypb "aalyria.com/spacetime/api/telemetry/v1alpha"
 
@@ -38,10 +37,9 @@ type nodeController struct {
 	// The node ID this controller is responsible for.
 	id string
 	// done is called when the controller should stop.
-	done      func()
-	clock     clockwork.Clock
-	initState *apipb.ControlPlaneState
-	services  []task.Task
+	done     func()
+	clock    clockwork.Clock
+	services []task.Task
 
 	enactmentStats func() interface{}
 	telemetryStats func() interface{}

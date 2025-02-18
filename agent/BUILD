@@ -35,7 +35,6 @@ go_library(
         "//agent/internal/loggable",
         "//agent/internal/task",
         "//agent/telemetry",
-        "//api/common:common_go_proto",
         "//api/scheduling/v1alpha:scheduling_go_grpc",
         "//api/telemetry/v1alpha:telemetry_go_grpc",
         "@com_github_google_uuid//:uuid",
@@ -45,7 +44,6 @@ go_library(
         "@org_golang_google_grpc//:grpc",
         "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//status",
-        "@org_golang_google_protobuf//proto",
         "@org_golang_x_sync//errgroup",
     ],
 )

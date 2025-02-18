@@ -25,7 +25,6 @@ import (
 
 	"aalyria.com/spacetime/agent/internal/channels"
 	"aalyria.com/spacetime/agent/internal/task"
-	apipb "aalyria.com/spacetime/api/common"
 	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
 
 	"github.com/google/go-cmp/cmp"
@@ -146,16 +145,12 @@ func (tc *testCase) runTest(t *testing.T) {
 }
 
 type delegatingBackend struct {
-	m    map[string]backendFn
 	errs []error
 	reqs chan *schedpb.CreateEntryRequest
 }
 
-type backendFn func(context.Context, *apipb.ScheduledControlUpdate) (*apipb.ControlPlaneState, error)
-
 func newDelegatingBackend() *delegatingBackend {
 	return &delegatingBackend{
-		m:    map[string]backendFn{},
 		errs: []error{},
 		reqs: make(chan *schedpb.CreateEntryRequest),
 	}
@@ -164,21 +159,6 @@ func newDelegatingBackend() *delegatingBackend {
 func (d *delegatingBackend) Init(context.Context) error { return nil }
 func (d *delegatingBackend) Close() error               { return nil }
 func (d *delegatingBackend) Stats() interface{}         { return nil }
-
-func (d *delegatingBackend) setBackendForUpdateID(updateID string, b backendFn) {
-	d.m[updateID] = b
-}
-
-func (d *delegatingBackend) Apply(ctx context.Context, scu *apipb.ScheduledControlUpdate) (*apipb.ControlPlaneState, error) {
-	uid := scu.GetUpdateId()
-	if b, ok := d.m[uid]; ok {
-		return b(ctx, scu)
-	}
-
-	err := fmt.Errorf("no delegate for update with ID %s", uid)
-	d.errs = append(d.errs, err)
-	return nil, err
-}
 
 func (d *delegatingBackend) checkNoUnhandledUpdates(t *testing.T) {
 	if err := errors.Join(d.errs...); err != nil {
