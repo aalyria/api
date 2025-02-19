@@ -134,7 +134,3 @@ message ScheduledControlUpdateReq {
   reserved 2 to 7, 9, 10;
 }
 
-// Holds count of a CDPI stream's priority.
-message TaskCdpiStreamCount {
-  map<uint32, int32> stream_count_per_priority = 1;
-}
