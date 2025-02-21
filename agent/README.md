@@ -51,18 +51,17 @@ More details for each aspect of the configuration are provided below, but a simp
 file might look like this:
 
 ```textproto
-# each network_node is configured with a stanza like so:
-network_nodes: {
-  # TODO: replace ${AGENT_ID 1} with the specific SDN Agent ID.
-  id: "${AGENT_ID 1}"
+# each SDN agent is configured with a stanza like so:
+sdn_agents: {
+  # TODO: replace ${AGENT_ID_1} with the specific SDN Agent ID.
+  id: "${AGENT_ID_1}"
+
   enactment_driver: {
     connection_params: {
       # TODO: replace ${DOMAIN} to the domain of your spacetime instance
       endpoint_uri: "scheduling.${DOMAIN}"
 
-      transport_security: {
-        system_cert_pool: {}
-      }
+      transport_security: { system_cert_pool: {} }
 
       auth_strategy: {
         jwt: {
@@ -73,7 +72,45 @@ network_nodes: {
           # TODO: use the private key ID your Aalyria representative will share with you
           private_key_id: "BADDB0BACAFE"
           signing_strategy: {
-	          # TODO: change to the path of your PEM-encoded RSA private key
+            # TODO: change to the path of your PEM-encoded RSA private key
+            private_key_file: "/path/to/agent/private/key.pem"
+          }
+        }
+      }
+    }
+
+    external_command: {
+      args: "bash"
+      args: "-c"
+      args: "jq -c . >> /tmp/AGENT_ID_2.enactments.json"
+      # Encode enactment requests as JSON to the process's standard input (this
+      # is the default)
+      proto_format: JSON
+    }
+  }
+}
+
+sdn_agents: {
+  # TODO: replace ${AGENT_ID_2} with the specific SDN Agent ID.
+  id: "${AGENT_ID_2}"
+
+  enactment_driver: {
+    connection_params: {
+      # TODO: replace ${DOMAIN} to the domain of your spacetime instance
+      endpoint_uri: "scheduling.${DOMAIN}"
+
+      transport_security: { system_cert_pool: {} }
+
+      auth_strategy: {
+        jwt: {
+          # TODO: replace ${DOMAIN} to the domain of your spacetime instance
+          audience: "scheduling.${DOMAIN}"
+          # TODO: use the email your Aalyria representative will share with you
+          email: "my-sdn-agent@example.com"
+          # TODO: use the private key ID your Aalyria representative will share with you
+          private_key_id: "BADDB0BACAFE"
+          signing_strategy: {
+            # TODO: change to the path of your PEM-encoded RSA private key
             private_key_file: "/path/to/agent/private/key.pem"
           }
         }
@@ -86,46 +123,7 @@ network_nodes: {
       # integrate with your own systems
       args: "/usr/local/bin/do_enactments"
       args: "--node=a"
-      args: "--format=json"
-      # Encode enactment requests as JSON to the process's standard input and
-      # expect any new state messages to be written as JSON to the process's
-      # standard output (this is the default)
-      proto_format: JSON
-    }
-  }
-}
-
-network_nodes: {
-  # TODO: replace ${AGENT_ID 2} with the specific SDN Agent ID.
-  id: "${AGENT_ID 2}"
-  enactment_driver: {
-    connection_params: {
-      # TODO: replace ${DOMAIN} to the domain of your spacetime instance
-      endpoint_uri: "scheduling.${DOMAIN}"
-
-      transport_security: {
-        system_cert_pool: {}
-      }
-
-      auth_strategy: {
-        jwt: {
-          # TODO: replace ${DOMAIN} to the domain of your spacetime instance
-          audience: "scheduling.${DOMAIN}"
-          # TODO: use the email your Aalyria representative will share with you
-          email: "my-sdn-agent@example.com"
-          # TODO: use the private key ID your Aalyria representative will share with you
-          private_key_id: "BADDB0BACAFE"
-          signing_strategy: {
-	          # TODO: change to the path of your PEM-encoded RSA private key
-            private_key_file: "/path/to/agent/private/key.pem"
-          }
-        }
-      }
-    }
-
-    external_command: {
-      args: "/usr/local/bin/some_other_enactment_cmd"
-      # Use the protobuf binary format for encoding both stdin and stdout messages.
+      args: "--format=wirepb"
       proto_format: WIRE
     }
   }
@@ -194,12 +192,12 @@ If the agent was able to authenticate correctly, you should see something like t
 
 <!-- TODO: this needs a more thoughtful rewrite. -->
 
-Writing a custom enactment backend using the `agent` is relatively simple as the agent takes care of
-the SBI [Scheduling API](../api/scheduling/) protocol details, including timing and error reporting.
-When the agent is due to enact a scheduled configuration change,
-it invokes the configured external process, writes the `CreateEntryRequest`
-message in the encoding format of your choice to the process's stdin, and
-examines the process's exit code.
+Writing a custom enactment backend using the `agent` is relatively simple as
+the agent takes care of the SBI [Scheduling API](../api/scheduling/) protocol
+details, including timing and error reporting. When the agent is due to enact a
+scheduled configuration change, it invokes the configured external process,
+writes the `CreateEntryRequest` message in the encoding format of your choice
+to the process's stdin, and examines the process's exit code.
 
 - If the process terminates with an exit code of 0, the enactment
   is considered successful and the commanded element's state is assumed to have been updated to match the change.
@@ -210,16 +208,6 @@ examines the process's exit code.
 
 Since the external process only needs to be able to encode and decode JSON, it's trivial to write
 the platform-specific logic in whatever language best suits the task.
-<!-- Included in this repo are some
-sample programs that demonstrate basic error handling and message parsing in different languages:
-
-- TODO: add a go example here
-
-- examples/enact_flow_forward_updates.py: A python script that reads the input messages as ad-hoc
-  JSON, implements some basic error handling, and demonstrates how one might go about enacting flow
-  updates (the actual logic for forwarding packets is left as an exercise for the reader).
-
--->
 
 ## Operational notes
 
