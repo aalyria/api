@@ -17,7 +17,6 @@ syntax = "proto2";
 package aalyria.spacetime.api.common;
 
 import "api/common/control_beam.proto";
-import "api/common/control_flow.proto";
 import "api/common/control_radio.proto";
 import "api/common/time.proto";
 import "google/protobuf/timestamp.proto";
@@ -96,23 +95,16 @@ message ControlPlaneUpdate {
     // Cognitive engine interface for configuring radio-system parameters.
     // Examples set transmit power, set channel, tune ARQ, etc.
     RadioUpdate radio_update = 2;
-
-    // FORWARDING
-    // Configures a router or switch.
-    // Example: update routing table.
-    FlowUpdate flow_update = 3;
-
   }
-  reserved 4 to max;
+  reserved 3 to max;
 }
 
 // Next ID : 7
 message ControlPlaneState {
   optional BeamStates beam_states = 2;
   optional RadioStates radio_states = 3;
-  optional FlowState forwarding_state = 5;
 
-  reserved 1, 4, 6 to max;
+  reserved 1, 4 to max;
 }
 
 // A ScheduledControlUpdate and a corresponding ScheduledControlUpdateStatus.
