@@ -60,12 +60,12 @@ func handleCall[RespT proto.Message](s *FakeModelServer, ctx context.Context, re
 	}
 }
 
-func (s *FakeModelServer) UpsertEntity(ctx context.Context, req *modelpb.UpsertEntityRequest) (*modelpb.UpsertEntityResponse, error) {
+func (s *FakeModelServer) UpsertEntity(ctx context.Context, req *modelpb.UpsertEntityRequest) (*nmtspb.Entity, error) {
 	s.RequestMessage = req
 	if s.ResponseError != nil {
 		return nil, s.ResponseError
 	} else {
-		resp := s.ResponseMessage.(*modelpb.UpsertEntityResponse)
+		resp := s.ResponseMessage.(*nmtspb.Entity)
 		return resp, nil
 	}
 }

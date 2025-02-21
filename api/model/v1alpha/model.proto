@@ -31,7 +31,7 @@ service Model {
   //   - the supplied nmts.Entity would change the Kind of an existing
   //     entity (with the same Id), because doing so could circumvent
   //     restrictions on permitted Relationships
-  rpc UpsertEntity(UpsertEntityRequest) returns (UpsertEntityResponse) {}
+  rpc UpsertEntity(UpsertEntityRequest) returns (nmts.v1.Entity) {}
 
   // Change a portion of an nmts.Entity.
   rpc UpdateEntity(UpdateEntityRequest) returns (nmts.v1.Entity) {}
@@ -70,9 +70,6 @@ service Model {
 
 message UpsertEntityRequest {
   nmts.v1.Entity entity = 1;
-}
-message UpsertEntityResponse {
-  // presently empty
 }
 
 message UpdateEntityRequest {

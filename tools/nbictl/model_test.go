@@ -140,7 +140,12 @@ var testCases = []testCase{
 			"-": "id: \"uuid-1234\" ek_platform{}",
 		},
 		responseError:   nil,
-		responseMessage: &modelpb.UpsertEntityResponse{},
+		responseMessage: &nmtspb.Entity{
+			Id: "uuid-1234",
+			Kind: &nmtspb.Entity_EkPlatform{
+				EkPlatform: &nmtsphypb.Platform{},
+			},
+		},
 		cmdLineArgs:     []string{"model", "upsert-entity", "-"},
 		wantAppError:    false,
 		wantRequest: &modelpb.UpsertEntityRequest{
@@ -158,7 +163,12 @@ var testCases = []testCase{
 			"uuid-1234.txtpb": "id: \"uuid-1234\" ek_platform{}",
 		},
 		responseError:   nil,
-		responseMessage: &modelpb.UpsertEntityResponse{},
+		responseMessage: &nmtspb.Entity{
+			Id: "uuid-1234",
+			Kind: &nmtspb.Entity_EkPlatform{
+				EkPlatform: &nmtsphypb.Platform{},
+			},
+		},
 		cmdLineArgs:     []string{"model", "upsert-entity", "uuid-1234.txtpb"},
 		wantAppError:    false,
 		wantRequest: &modelpb.UpsertEntityRequest{
