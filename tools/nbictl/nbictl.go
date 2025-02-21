@@ -442,10 +442,10 @@ func App() *cli.App {
 				Usage:   "Subcommands for Model API v1alpha, to manage the model elements comprising the digital twin.",
 				Subcommands: []*cli.Command{
 					{
-						Name:     "upsert-entity",
-						Usage:    "Upsert the model NMTS Entity contained within the file provided on the command line ('-' reads from stdin).",
+						Name:     "create-entity",
+						Usage:    "Create the model NMTS Entity contained within the file provided on the command line ('-' reads from stdin).",
 						Category: "model entities",
-						Action:   ModelUpsertEntity,
+						Action:   ModelCreateEntity,
 						Flags:    []cli.Flag{formatFlag},
 					},
 					{

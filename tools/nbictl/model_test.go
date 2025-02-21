@@ -108,34 +108,34 @@ func (tc *testCase) Run(t *testing.T) {
 
 var testCases = []testCase{
 	{
-		desc:            "'model upsert-entity' without arguments does not call API",
+		desc:            "'model create-entity' without arguments does not call API",
 		fileContents:    nil,
 		responseError:   nil,
 		responseMessage: nil,
-		cmdLineArgs:     []string{"model", "upsert-entity"},
+		cmdLineArgs:     []string{"model", "create-entity"},
 		wantAppError:    true,
 		wantRequest:     nil,
 	},
 	{
-		desc:            "'model upsert-entity' with too many arguments does not call API",
+		desc:            "'model create-entity' with too many arguments does not call API",
 		fileContents:    nil,
 		responseError:   nil,
 		responseMessage: nil,
-		cmdLineArgs:     []string{"model", "upsert-entity", "uuid-1234.txtpb", "uuid-5678.txtpb"},
+		cmdLineArgs:     []string{"model", "create-entity", "uuid-1234.txtpb", "uuid-5678.txtpb"},
 		wantAppError:    true,
 		wantRequest:     nil,
 	},
 	{
-		desc:            "'model upsert-entity' with one argument errors if file is missing",
+		desc:            "'model create-entity' with one argument errors if file is missing",
 		fileContents:    nil,
 		responseError:   nil,
 		responseMessage: nil,
-		cmdLineArgs:     []string{"model", "upsert-entity", "uuid-1234.txtpb"},
+		cmdLineArgs:     []string{"model", "create-entity", "uuid-1234.txtpb"},
 		wantAppError:    true,
 		wantRequest:     nil,
 	},
 	{
-		desc: "'model upsert-entity' with one argument calls API as expected (stdin)",
+		desc: "'model create-entity' with one argument calls API as expected (stdin)",
 		fileContents: map[string]string{
 			"-": "id: \"uuid-1234\" ek_platform{}",
 		},
@@ -146,9 +146,9 @@ var testCases = []testCase{
 				EkPlatform: &nmtsphypb.Platform{},
 			},
 		},
-		cmdLineArgs:     []string{"model", "upsert-entity", "-"},
+		cmdLineArgs:     []string{"model", "create-entity", "-"},
 		wantAppError:    false,
-		wantRequest: &modelpb.UpsertEntityRequest{
+		wantRequest: &modelpb.CreateEntityRequest{
 			Entity: &nmtspb.Entity{
 				Id: "uuid-1234",
 				Kind: &nmtspb.Entity_EkPlatform{
@@ -158,7 +158,7 @@ var testCases = []testCase{
 		},
 	},
 	{
-		desc: "'model upsert-entity' with one argument calls API as expected (stdin)",
+		desc: "'model create-entity' with one argument calls API as expected (stdin)",
 		fileContents: map[string]string{
 			"uuid-1234.txtpb": "id: \"uuid-1234\" ek_platform{}",
 		},
@@ -169,9 +169,9 @@ var testCases = []testCase{
 				EkPlatform: &nmtsphypb.Platform{},
 			},
 		},
-		cmdLineArgs:     []string{"model", "upsert-entity", "uuid-1234.txtpb"},
+		cmdLineArgs:     []string{"model", "create-entity", "uuid-1234.txtpb"},
 		wantAppError:    false,
-		wantRequest: &modelpb.UpsertEntityRequest{
+		wantRequest: &modelpb.CreateEntityRequest{
 			Entity: &nmtspb.Entity{
 				Id: "uuid-1234",
 				Kind: &nmtspb.Entity_EkPlatform{

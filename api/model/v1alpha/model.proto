@@ -23,15 +23,12 @@ option java_package = "com.aalyria.spacetime.api.model.v1alpha";
 option go_package = "aalyria.com/spacetime/api/model/v1alpha";
 
 service Model {
-  // Insert or overwrite an nmts.Entity.
+  // Create an nmts.Entity.
   //
   // Returns a gRPC error whenver:
-  //   - the supplied nmts.Entity's Id is ill-formed
-  //   - the supplied nmts.Entity's Kind is missing
-  //   - the supplied nmts.Entity would change the Kind of an existing
-  //     entity (with the same Id), because doing so could circumvent
-  //     restrictions on permitted Relationships
-  rpc UpsertEntity(UpsertEntityRequest) returns (nmts.v1.Entity) {}
+  //   - the supplied nmts.Entity's Id is already used
+  //   - the supplied nmts.Entity's Id is missing or ill-formed
+  rpc CreateEntity(CreateEntityRequest) returns (nmts.v1.Entity) {}
 
   // Change a portion of an nmts.Entity.
   rpc UpdateEntity(UpdateEntityRequest) returns (nmts.v1.Entity) {}
@@ -68,7 +65,7 @@ service Model {
   rpc ListElements(ListElementsRequest) returns (ListElementsResponse) {}
 }
 
-message UpsertEntityRequest {
+message CreateEntityRequest {
   nmts.v1.Entity entity = 1;
 }
 

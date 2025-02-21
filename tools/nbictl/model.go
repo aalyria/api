@@ -48,7 +48,7 @@ func readProtoFromCommandLineFilenameArgument[ProtoT proto.Message](appCtx *cli.
 	return marshaller.unmarshal(data, msg)
 }
 
-func ModelUpsertEntity(appCtx *cli.Context) error {
+func ModelCreateEntity(appCtx *cli.Context) error {
 	marshaller, err := marshallerForFormat(appCtx.String("format"))
 	if err != nil {
 		return err
@@ -66,9 +66,9 @@ func ModelUpsertEntity(appCtx *cli.Context) error {
 	defer conn.Close()
 	modelClient := modelpb.NewModelClient(conn)
 
-	_, err = modelClient.UpsertEntity(
+	_, err = modelClient.CreateEntity(
 		appCtx.Context,
-		&modelpb.UpsertEntityRequest{
+		&modelpb.CreateEntityRequest{
 			Entity: nmtsEntity,
 		})
 	if err == nil {
@@ -206,9 +206,9 @@ func ModelUpsertFragment(appCtx *cli.Context) error {
 	modelClient := modelpb.NewModelClient(conn)
 
 	for _, nmtsEntity := range nmtsFragment.GetEntity() {
-		_, err = modelClient.UpsertEntity(
+		_, err = modelClient.CreateEntity(
 			appCtx.Context,
-			&modelpb.UpsertEntityRequest{
+			&modelpb.CreateEntityRequest{
 				Entity: nmtsEntity,
 			})
 		if err != nil {

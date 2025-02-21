@@ -167,9 +167,9 @@ Sets or updates a configuration profile settings. You can create multiple profil
 
 Subcommands for Model API v1alpha, to manage the model elements comprising the digital twin.
 
-### upsert-entity
+### create-entity
 
-Upsert the model NMTS Entity contained within the file provided on the command line ('-' reads from stdin).
+Create the model NMTS Entity contained within the file provided on the command line ('-' reads from stdin).
 
 **--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: text)
 
