@@ -203,7 +203,14 @@ var testCases = []testCase{
 			"-": "entity{ id: \"uuid-1234\" ek_platform{ name: \"platform_1234\" } } mask: { paths: \"ek_platform.name\" }",
 		},
 		responseError:   nil,
-		responseMessage: &modelpb.UpdateEntityResponse{},
+		responseMessage: &nmtspb.Entity{
+			Id: "uuid-1234",
+			Kind: &nmtspb.Entity_EkPlatform{
+				EkPlatform: &nmtsphypb.Platform{
+					Name: "platform_1234",
+				},
+			},
+		},
 		cmdLineArgs:     []string{"model", "update-entity", "-"},
 		wantAppError:    false,
 		wantRequest: &modelpb.UpdateEntityRequest{
@@ -230,7 +237,14 @@ var testCases = []testCase{
 			"uuid-1234.txtpb": "entity{ id: \"uuid-1234\" ek_platform{ name: \"platform_1234\" } } mask: { paths: \"ek_platform.name\" }",
 		},
 		responseError:   nil,
-		responseMessage: &modelpb.UpdateEntityResponse{},
+		responseMessage: &nmtspb.Entity{
+			Id: "uuid-1234",
+			Kind: &nmtspb.Entity_EkPlatform{
+				EkPlatform: &nmtsphypb.Platform{
+					Name: "platform_1234",
+				},
+			},
+		},
 		cmdLineArgs:     []string{"model", "update-entity", "uuid-1234.txtpb"},
 		wantAppError:    false,
 		wantRequest: &modelpb.UpdateEntityRequest{

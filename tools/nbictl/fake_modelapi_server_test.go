@@ -70,8 +70,8 @@ func (s *FakeModelServer) UpsertEntity(ctx context.Context, req *modelpb.UpsertE
 	}
 }
 
-func (s *FakeModelServer) UpdateEntity(ctx context.Context, req *modelpb.UpdateEntityRequest) (*modelpb.UpdateEntityResponse, error) {
-	return handleCall[*modelpb.UpdateEntityResponse](s, ctx, req)
+func (s *FakeModelServer) UpdateEntity(ctx context.Context, req *modelpb.UpdateEntityRequest) (*nmtspb.Entity, error) {
+	return handleCall[*nmtspb.Entity](s, ctx, req)
 }
 
 func (s *FakeModelServer) DeleteEntity(ctx context.Context, req *modelpb.DeleteEntityRequest) (*modelpb.DeleteEntityResponse, error) {
