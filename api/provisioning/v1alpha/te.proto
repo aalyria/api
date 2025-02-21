@@ -24,7 +24,7 @@ option go_package = "aalyria.com/spacetime/api/provisioning/v1alpha";
 // Traffic Engineering (TE) attributes, intended to be aligned with
 // Path Computation Element Procotocl (PCEP) usage.
 
-// Qualitative metric objectives of a single path or service.
+// Quantitative metric objectives of a single path or service.
 //
 // See also:
 //   - RFC 8776

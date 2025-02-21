@@ -56,7 +56,7 @@ message P2pSrTePolicyRequest {
     // SR policy.
     uint32 preference = 3;
 
-    // Qualitative path metrics.
+    // Quantitative path metrics.
     Metrics metrics = 4;
 
     reserved 5 to max;
