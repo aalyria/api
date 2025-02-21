@@ -94,7 +94,6 @@ go_test(
         "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//testing/protocmp",
         "@org_golang_google_protobuf//types/known/emptypb",
-        "@org_golang_google_protobuf//types/known/fieldmaskpb",
         "@org_golang_x_sync//errgroup",
         "@org_outernetcouncil_nmts//v1/proto:nmts_go_proto",
         "@org_outernetcouncil_nmts//v1/proto/ek/physical:physical_go_proto",

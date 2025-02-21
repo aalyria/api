@@ -26,6 +26,7 @@ proto_library(
     deps = [
         "@org_outernetcouncil_nmts//v1/proto:nmts_proto",
         "@protobuf//:empty_proto",
+        "@protobuf//:field_mask_proto",
     ],
 )
 

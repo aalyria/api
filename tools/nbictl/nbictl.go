@@ -450,10 +450,11 @@ func App() *cli.App {
 					},
 					{
 						Name:     "update-entity",
-						Usage:    "Update the model using NMTS PartialEntity contained within the file provided on the command line ('-' reads from stdin).",
+						Usage:    "Update the model NMTS Entity contained within the file provided on the command line ('-' reads from stdin).",
 						Category: "model entities",
 						Action:   ModelUpdateEntity,
 						Flags:    []cli.Flag{formatFlag},
+						// TODO: support partial update by adding a flag to specify the update_mask						
 					},
 					{
 						Name:     "delete-entity",

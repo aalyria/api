@@ -17,6 +17,7 @@ syntax = "proto3";
 package aalyria.spacetime.api.model.v1alpha;
 
 import "google/protobuf/empty.proto";
+import "google/protobuf/field_mask.proto";
 import "nmts/v1/proto/nmts.proto";
 
 option java_package = "com.aalyria.spacetime.api.model.v1alpha";
@@ -70,7 +71,9 @@ message CreateEntityRequest {
 }
 
 message UpdateEntityRequest {
-  nmts.v1.PartialEntity patch = 1;
+  nmts.v1.Entity entity = 1;
+  // If provided, update only fields included in the update_mask.
+  google.protobuf.FieldMask update_mask = 2;
 }
 
 message DeleteEntityRequest {

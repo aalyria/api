@@ -175,7 +175,7 @@ Create the model NMTS Entity contained within the file provided on the command l
 
 ### update-entity
 
-Update the model using NMTS PartialEntity contained within the file provided on the command line ('-' reads from stdin).
+Update the model NMTS Entity contained within the file provided on the command line ('-' reads from stdin).
 
 **--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: text)
 

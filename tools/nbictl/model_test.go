@@ -29,7 +29,6 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/emptypb"
-	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	nmtspb "outernetcouncil.org/nmts/v1/proto"
 	nmtsphypb "outernetcouncil.org/nmts/v1/proto/ek/physical"
 )
@@ -210,7 +209,7 @@ var testCases = []testCase{
 	{
 		desc: "'model update-entity' with one argument calls API as expected (stdin)",
 		fileContents: map[string]string{
-			"-": "entity{ id: \"uuid-1234\" ek_platform{ name: \"platform_1234\" } } mask: { paths: \"ek_platform.name\" }",
+			"-": "id: \"uuid-1234\" ek_platform{ name: \"platform_1234\" }",
 		},
 		responseError:   nil,
 		responseMessage: &nmtspb.Entity{
@@ -224,18 +223,11 @@ var testCases = []testCase{
 		cmdLineArgs:     []string{"model", "update-entity", "-"},
 		wantAppError:    false,
 		wantRequest: &modelpb.UpdateEntityRequest{
-			Patch: &nmtspb.PartialEntity{
-				Entity: &nmtspb.Entity{
-					Id: "uuid-1234",
-					Kind: &nmtspb.Entity_EkPlatform{
-						EkPlatform: &nmtsphypb.Platform{
-							Name: "platform_1234",
-						},
-					},
-				},
-				Mask: &fieldmaskpb.FieldMask{
-					Paths: []string{
-						"ek_platform.name",
+			Entity: &nmtspb.Entity{
+				Id: "uuid-1234",
+				Kind: &nmtspb.Entity_EkPlatform{
+					EkPlatform: &nmtsphypb.Platform{
+						Name: "platform_1234",
 					},
 				},
 			},
@@ -244,7 +236,7 @@ var testCases = []testCase{
 	{
 		desc: "'model update-entity' with one argument calls API as expected (stdin)",
 		fileContents: map[string]string{
-			"uuid-1234.txtpb": "entity{ id: \"uuid-1234\" ek_platform{ name: \"platform_1234\" } } mask: { paths: \"ek_platform.name\" }",
+			"uuid-1234.txtpb": "id: \"uuid-1234\" ek_platform { name: \"platform_1234\" }",
 		},
 		responseError:   nil,
 		responseMessage: &nmtspb.Entity{
@@ -258,18 +250,11 @@ var testCases = []testCase{
 		cmdLineArgs:     []string{"model", "update-entity", "uuid-1234.txtpb"},
 		wantAppError:    false,
 		wantRequest: &modelpb.UpdateEntityRequest{
-			Patch: &nmtspb.PartialEntity{
-				Entity: &nmtspb.Entity{
-					Id: "uuid-1234",
-					Kind: &nmtspb.Entity_EkPlatform{
-						EkPlatform: &nmtsphypb.Platform{
-							Name: "platform_1234",
-						},
-					},
-				},
-				Mask: &fieldmaskpb.FieldMask{
-					Paths: []string{
-						"ek_platform.name",
+			Entity: &nmtspb.Entity{
+				Id: "uuid-1234",
+				Kind: &nmtspb.Entity_EkPlatform{
+					EkPlatform: &nmtsphypb.Platform{
+						Name: "platform_1234",
 					},
 				},
 			},

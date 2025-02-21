@@ -83,8 +83,8 @@ func ModelUpdateEntity(appCtx *cli.Context) error {
 		return err
 	}
 
-	nmtsPartialEntity := &nmtspb.PartialEntity{}
-	if err := readProtoFromCommandLineFilenameArgument(appCtx, marshaller, nmtsPartialEntity); err != nil {
+	nmtsEntity := &nmtspb.Entity{}
+	if err := readProtoFromCommandLineFilenameArgument(appCtx, marshaller, nmtsEntity); err != nil {
 		return err
 	}
 
@@ -98,7 +98,7 @@ func ModelUpdateEntity(appCtx *cli.Context) error {
 	_, err = modelClient.UpdateEntity(
 		appCtx.Context,
 		&modelpb.UpdateEntityRequest{
-			Patch: nmtsPartialEntity,
+			Entity: nmtsEntity,
 		})
 	if err == nil {
 		fmt.Fprintln(appCtx.App.ErrWriter, "# OK")
