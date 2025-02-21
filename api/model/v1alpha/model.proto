@@ -49,8 +49,8 @@ service Model {
   //
   // Returns a gRPC error if any of the preconditions for a valid
   // Relationship are not met (see NMTS's //lib/validation).
-  rpc InsertRelationship(InsertRelationshipRequest)
-      returns (InsertRelationshipResponse) {}
+  rpc CreateRelationship(CreateRelationshipRequest)
+      returns (nmts.v1.Relationship) {}
 
   // Delete an nmts.Relationship.
   //
@@ -89,11 +89,8 @@ message DeleteEntityResponse {
   repeated nmts.v1.Relationship deleted_relationships = 1;
 }
 
-message InsertRelationshipRequest {
+message CreateRelationshipRequest {
   nmts.v1.Relationship relationship = 1;
-}
-message InsertRelationshipResponse {
-  // presently empty
 }
 
 message DeleteRelationshipRequest {

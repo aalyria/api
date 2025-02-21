@@ -191,7 +191,7 @@ Get the model NMTS Entity associated with the entity ID given on the command lin
 
 **--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: text)
 
-### insert-relationship
+### create-relationship
 
 Insert the model NMTS Relationship contained within the file provided on the command line ('-' reads from stdin).
 

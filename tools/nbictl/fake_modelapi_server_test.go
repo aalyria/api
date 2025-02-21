@@ -25,6 +25,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	modelpb "aalyria.com/spacetime/api/model/v1alpha"
+	nmtspb "outernetcouncil.org/nmts/v1/proto"
 )
 
 type FakeModelServer struct {
@@ -77,8 +78,8 @@ func (s *FakeModelServer) DeleteEntity(ctx context.Context, req *modelpb.DeleteE
 	return handleCall[*modelpb.DeleteEntityResponse](s, ctx, req)
 }
 
-func (s *FakeModelServer) InsertRelationship(ctx context.Context, req *modelpb.InsertRelationshipRequest) (*modelpb.InsertRelationshipResponse, error) {
-	return handleCall[*modelpb.InsertRelationshipResponse](s, ctx, req)
+func (s *FakeModelServer) CreateRelationship(ctx context.Context, req *modelpb.CreateRelationshipRequest) (*nmtspb.Relationship, error) {
+	return handleCall[*nmtspb.Relationship](s, ctx, req)
 }
 
 func (s *FakeModelServer) DeleteRelationship(ctx context.Context, req *modelpb.DeleteRelationshipRequest) (*emptypb.Empty, error) {

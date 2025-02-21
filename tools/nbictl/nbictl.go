@@ -470,10 +470,10 @@ func App() *cli.App {
 						Flags:    []cli.Flag{formatFlag},
 					},
 					{
-						Name:     "insert-relationship",
+						Name:     "create-relationship",
 						Usage:    "Insert the model NMTS Relationship contained within the file provided on the command line ('-' reads from stdin).",
 						Category: "model relationships",
-						Action:   ModelInsertRelationship,
+						Action:   ModelCreateRelationship,
 						Flags:    []cli.Flag{formatFlag},
 					},
 					{

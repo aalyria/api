@@ -129,7 +129,7 @@ func ModelDeleteEntity(appCtx *cli.Context) error {
 	return err
 }
 
-func ModelInsertRelationship(appCtx *cli.Context) error {
+func ModelCreateRelationship(appCtx *cli.Context) error {
 	marshaller, err := marshallerForFormat(appCtx.String("format"))
 	if err != nil {
 		return err
@@ -147,9 +147,9 @@ func ModelInsertRelationship(appCtx *cli.Context) error {
 	defer conn.Close()
 	modelClient := modelpb.NewModelClient(conn)
 
-	_, err = modelClient.InsertRelationship(
+	_, err = modelClient.CreateRelationship(
 		appCtx.Context,
-		&modelpb.InsertRelationshipRequest{
+		&modelpb.CreateRelationshipRequest{
 			Relationship: nmtsRelationship,
 		})
 	if err == nil {
@@ -217,9 +217,9 @@ func ModelUpsertFragment(appCtx *cli.Context) error {
 	}
 
 	for _, nmtsRelationship := range nmtsFragment.GetRelationship() {
-		_, err = modelClient.InsertRelationship(
+		_, err = modelClient.CreateRelationship(
 			appCtx.Context,
-			&modelpb.InsertRelationshipRequest{
+			&modelpb.CreateRelationshipRequest{
 				Relationship: nmtsRelationship,
 			})
 		if err != nil {

@@ -281,42 +281,46 @@ var testCases = []testCase{
 		},
 	},
 	{
-		desc:            "'model insert-relationship' without arguments does not call API",
+		desc:            "'model create-relationship' without arguments does not call API",
 		fileContents:    nil,
 		responseError:   nil,
 		responseMessage: nil,
-		cmdLineArgs:     []string{"model", "insert-relationship"},
+		cmdLineArgs:     []string{"model", "create-relationship"},
 		wantAppError:    true,
 		wantRequest:     nil,
 	},
 	{
-		desc:            "'model insert-relationship' with too many arguments does not call API",
+		desc:            "'model create-relationship' with too many arguments does not call API",
 		fileContents:    nil,
 		responseError:   nil,
 		responseMessage: nil,
-		cmdLineArgs:     []string{"model", "insert-relationship", "uuid-1234.txtpb", "uuid-5678.txtpb"},
+		cmdLineArgs:     []string{"model", "create-relationship", "uuid-1234.txtpb", "uuid-5678.txtpb"},
 		wantAppError:    true,
 		wantRequest:     nil,
 	},
 	{
-		desc:            "'model insert-relationship' with one argument errors if file is missing",
+		desc:            "'model create-relationship' with one argument errors if file is missing",
 		fileContents:    nil,
 		responseError:   nil,
 		responseMessage: nil,
-		cmdLineArgs:     []string{"model", "insert-relationship", "uuid-1234.txtpb"},
+		cmdLineArgs:     []string{"model", "create-relationship", "uuid-1234.txtpb"},
 		wantAppError:    true,
 		wantRequest:     nil,
 	},
 	{
-		desc: "'model insert-relationship' with one argument calls API as expected (stdin)",
+		desc: "'model create-relationship' with one argument calls API as expected (stdin)",
 		fileContents: map[string]string{
 			"-": "a: \"uuid-1234\" kind: RK_CONTAINS z: \"uuid-5678\"",
 		},
 		responseError:   nil,
-		responseMessage: &modelpb.InsertRelationshipResponse{},
-		cmdLineArgs:     []string{"model", "insert-relationship", "-"},
+		responseMessage: &nmtspb.Relationship{
+			A:    "uuid-1234",
+			Kind: nmtspb.RK_RK_CONTAINS,
+			Z:    "uuid-5678",
+		},
+		cmdLineArgs:     []string{"model", "create-relationship", "-"},
 		wantAppError:    false,
-		wantRequest: &modelpb.InsertRelationshipRequest{
+		wantRequest: &modelpb.CreateRelationshipRequest{
 			Relationship: &nmtspb.Relationship{
 				A:    "uuid-1234",
 				Kind: nmtspb.RK_RK_CONTAINS,
@@ -325,15 +329,19 @@ var testCases = []testCase{
 		},
 	},
 	{
-		desc: "'model insert-relationship' with one argument calls API as expected (stdin)",
+		desc: "'model create-relationship' with one argument calls API as expected (stdin)",
 		fileContents: map[string]string{
 			"uuid-1234.txtpb": "a: \"uuid-1234\" kind: RK_CONTAINS z: \"uuid-5678\"",
 		},
 		responseError:   nil,
-		responseMessage: &modelpb.InsertRelationshipResponse{},
-		cmdLineArgs:     []string{"model", "insert-relationship", "uuid-1234.txtpb"},
+		responseMessage: &nmtspb.Relationship{
+			A:    "uuid-1234",
+			Kind: nmtspb.RK_RK_CONTAINS,
+			Z:    "uuid-5678",
+		},
+		cmdLineArgs:     []string{"model", "create-relationship", "uuid-1234.txtpb"},
 		wantAppError:    false,
-		wantRequest: &modelpb.InsertRelationshipRequest{
+		wantRequest: &modelpb.CreateRelationshipRequest{
 			Relationship: &nmtspb.Relationship{
 				A:    "uuid-1234",
 				Kind: nmtspb.RK_RK_CONTAINS,
