@@ -27,6 +27,7 @@ proto_library(
         "channel.proto",
         "control.proto",
         "control_beam.proto",
+        "control_flow.proto",
         "control_radio.proto",
         "coordinates.proto",
         "network.proto",
