@@ -28,9 +28,12 @@ proto_library(
         "te.proto",
     ],
     deps = [
+        "@googleapis//google/api:field_behavior_proto",
+        "@googleapis//google/api:resource_proto",
         "@googleapis//google/type:interval_proto",
         "@protobuf//:duration_proto",
         "@protobuf//:empty_proto",
+        "@protobuf//:field_mask_proto",
     ],
 )
 
@@ -39,6 +42,8 @@ cpp_grpc_library(
     generate_mocks = True,
     protos = [":provisioning_proto"],
     deps = [
+        "@googleapis//google/api:field_behavior_cc_proto",
+        "@googleapis//google/api:resource_cc_proto",
         "@googleapis//google/type:interval_cc_proto",
     ],
 )
@@ -47,6 +52,7 @@ java_grpc_library(
     name = "provisioning_java_grpc",
     protos = [":provisioning_proto"],
     deps = [
+        "@googleapis//google/api:api_java_proto",
         "@googleapis//google/type:type_java_proto",
     ],
 )
@@ -55,6 +61,8 @@ python_grpc_library(
     name = "provisioning_python_grpc",
     protos = [":provisioning_proto"],
     deps = [
+        "@googleapis//google/api:field_behavior_py_proto",
+        "@googleapis//google/api:resource_py_proto",
         "@googleapis//google/type:interval_py_proto",
     ],
 )
@@ -69,5 +77,6 @@ go_proto_library(
     proto = ":provisioning_proto",
     deps = [
         "@org_golang_google_genproto//googleapis/type/interval",
+        "@org_golang_google_genproto_googleapis_api//annotations",
     ],
 )
