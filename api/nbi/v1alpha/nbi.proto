@@ -17,8 +17,6 @@ syntax = "proto2";
 package aalyria.spacetime.api.nbi.v1alpha;
 
 import "api/common/channel.proto";
-import "api/common/control.proto";
-import "api/common/coordinates.proto";
 import "api/common/platform.proto";
 import "api/common/telemetry.proto";
 import "api/common/time.proto";

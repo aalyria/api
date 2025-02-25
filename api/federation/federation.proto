@@ -20,7 +20,6 @@ package aalyria.spacetime.api.fed.v1alpha;
 
 import "api/common/bent_pipe.proto";
 import "api/common/coordinates.proto";
-import "api/common/time.proto";
 import "api/common/wireless_transceiver.proto";
 import "api/types/ietf.proto";
 import "google/protobuf/duration.proto";

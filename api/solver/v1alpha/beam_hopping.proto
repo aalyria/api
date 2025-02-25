@@ -27,9 +27,7 @@ syntax = "proto3";
 
 package aalyria.spacetime.api.beam_hopping.v1alpha;
 
-import "api/common/network.proto";
 import "api/scheduling/v1alpha/scheduling.proto";
-import "api/telemetry/v1alpha/telemetry.proto";
 import "google/protobuf/timestamp.proto";
 
 option java_package = "com.aalyria.spacetime.api.beam_hopping.v1alpha";
@@ -39,7 +37,7 @@ service BeamHoppingSolver {
   // Issues a request to compute an optimal schedule of satellite beam
   // dwell times, taking into account real time link quality and user
   // demand.
-  rpc GetBeamHoppingPlans(GetBeamHoppingPlansRequest) 
+  rpc GetBeamHoppingPlans(GetBeamHoppingPlansRequest)
     returns (GetBeamHoppingPlansResponse) {}
 }
 
@@ -89,7 +87,7 @@ message GetBeamHoppingPlansRequest {
         // The energy per symbol to noise power spectral density, expressed in
         // decibels.
         optional double esn0_db = 4;
-          
+
         // The signal-to-interference-plus-noise ratio, expressed in decibels.
         optional double sinr_db = 5;
       }
@@ -99,7 +97,6 @@ message GetBeamHoppingPlansRequest {
       repeated LinkMetricsDataPoint link_metrics_data_points = 2;
     }
 
-    
     // Required. A list of recent modem metrics between the beam and its users.
     // This field is used to derive the beam's total capacity. The client must
     // include at least one data point for each beam to user link.
@@ -137,12 +134,12 @@ message GetBeamHoppingPlansRequest {
     message Endpoint {
       // Required. Identifies the user's modem that is connected to the beam.
       string modem_id = 1;
-      
+
       // Required. The committed information rate for the user.
       // The beam hopping solver will attempt to allocate sufficient capacity
       // to meet the minimum of the user's real-time demand and their CIR.
       double cir_data_rate_bps = 2;
-      
+
       // Required. The excess information rate for the user.
       // The beam hopping solver will, when possible, attempt to allocate
       // sufficient capacity to meet the minimum of the user's real-time
