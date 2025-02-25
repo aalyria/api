@@ -454,7 +454,7 @@ func App() *cli.App {
 						Category: "model entities",
 						Action:   ModelUpdateEntity,
 						Flags:    []cli.Flag{formatFlag},
-						// TODO: support partial update by adding a flag to specify the update_mask						
+						// TODO: support partial update by adding a flag to specify the update_mask
 					},
 					{
 						Name:     "delete-entity",
@@ -504,6 +504,7 @@ func App() *cli.App {
 						Category: "model relationships",
 						Action:   ModelListRelationships,
 						Flags:    []cli.Flag{formatFlag},
+						// TODO: support filter param
 					},
 				},
 			},

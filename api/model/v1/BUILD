@@ -50,12 +50,12 @@ python_grpc_library(
 )
 
 go_proto_library(
-    name = "v1alpha_go_proto",
+    name = "v1_go_proto",
     compilers = [
         "@rules_go//proto:go_proto",
         "@rules_go//proto:go_grpc_v2",
     ],
-    importpath = "aalyria.com/spacetime/api/model/v1alpha",
+    importpath = "aalyria.com/spacetime/api/model/v1",
     proto = ":model_proto",
     deps = ["@org_outernetcouncil_nmts//v1/proto:nmts_go_proto"],
 )

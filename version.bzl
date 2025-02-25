@@ -19,13 +19,13 @@
 # - Incompatible changes to APIs that can break depending projects code or expectations.
 # - Incompatible changes in how data is written or read from config files or DBs.
 # - Changes requiring manual enviroment adjustments before the new version can be used.
-MAJOR = 14
+MAJOR = 15
 
 # Increment after releasing a public version.
 # -------------------------------------------------------------
 # This allows to publish bugfixes to the released version
 # through increments of PATCH segment.
-MINOR = 111
+MINOR = 0
 
 # Monotonic ID of bugfixes applied to each MAJOR.MINOR release.
 # -------------------------------------------------------------

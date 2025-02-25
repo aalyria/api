@@ -14,14 +14,14 @@
 
 syntax = "proto3";
 
-package aalyria.spacetime.api.model.v1alpha;
+package aalyria.spacetime.api.model.v1;
 
 import "google/protobuf/empty.proto";
 import "google/protobuf/field_mask.proto";
 import "nmts/v1/proto/nmts.proto";
 
-option java_package = "com.aalyria.spacetime.api.model.v1alpha";
-option go_package = "aalyria.com/spacetime/api/model/v1alpha";
+option java_package = "com.aalyria.spacetime.api.model.v1";
+option go_package = "aalyria.com/spacetime/api/model/v1";
 
 service Model {
   // Create an nmts.Entity.

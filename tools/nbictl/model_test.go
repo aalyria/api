@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	modelpb "aalyria.com/spacetime/api/model/v1alpha"
+	modelpb "aalyria.com/spacetime/api/model/v1"
 	"github.com/bazelbuild/rules_go/go/tools/bazel"
 	gcmp "github.com/google/go-cmp/cmp"
 	"golang.org/x/sync/errgroup"

@@ -36,7 +36,7 @@ go_library(
     },
     deps = [
         "//api/common:common_go_proto",
-        "//api/model/v1alpha:v1alpha_go_proto",
+        "//api/model/v1:v1_go_proto",
         "//api/nbi/v1alpha:v1alpha_go_proto",
         "//api/nbi/v1alpha/resources:nbi_resources_go_grpc",
         "//auth",
@@ -79,7 +79,7 @@ go_test(
     embed = [":nbictl"],
     deps = [
         "//api/common:common_go_proto",
-        "//api/model/v1alpha:v1alpha_go_proto",
+        "//api/model/v1:v1_go_proto",
         "//api/nbi/v1alpha:v1alpha_go_proto",
         "//api/nbi/v1alpha/resources:nbi_resources_go_grpc",
         "//auth/authtest",

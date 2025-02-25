@@ -19,7 +19,7 @@ import (
 	"io"
 	"os"
 
-	modelpb "aalyria.com/spacetime/api/model/v1alpha"
+	modelpb "aalyria.com/spacetime/api/model/v1"
 	"github.com/urfave/cli/v2"
 	"google.golang.org/protobuf/proto"
 	nmtspb "outernetcouncil.org/nmts/v1/proto"

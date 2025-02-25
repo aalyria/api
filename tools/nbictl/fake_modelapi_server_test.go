@@ -24,7 +24,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	modelpb "aalyria.com/spacetime/api/model/v1alpha"
+	modelpb "aalyria.com/spacetime/api/model/v1"
 	nmtspb "outernetcouncil.org/nmts/v1/proto"
 )
 
