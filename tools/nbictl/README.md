@@ -209,9 +209,15 @@ Upsert the model NMTS Fragment contained within the file provided on the command
 
 **--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: text)
 
-### list-elements
+### list-entities
 
-List all model elements (NMTS Entities and Relationships).
+List all model entities.
+
+**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: text)
+
+### list-relationships
+
+List all model relationships.
 
 **--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: text)
 

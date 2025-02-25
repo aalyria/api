@@ -441,7 +441,7 @@ var testCases = []testCase{
 		desc:            "'model get-entity' with one argument calls API as expected",
 		fileContents:    nil,
 		responseError:   nil,
-		responseMessage: &modelpb.GetEntityResponse{},
+		responseMessage: &nmtspb.Entity{},
 		cmdLineArgs:     []string{"model", "get-entity", "uuid-1234"},
 		wantAppError:    false,
 		wantRequest: &modelpb.GetEntityRequest{
@@ -449,13 +449,22 @@ var testCases = []testCase{
 		},
 	},
 	{
-		desc:            "'model list-elements' calls API as expected",
+		desc:            "'model list-entities' calls API as expected",
 		fileContents:    nil,
 		responseError:   nil,
-		responseMessage: &modelpb.ListElementsResponse{},
-		cmdLineArgs:     []string{"model", "list-elements"},
+		responseMessage: &modelpb.ListEntitiesResponse{},
+		cmdLineArgs:     []string{"model", "list-entities"},
 		wantAppError:    false,
-		wantRequest:     &modelpb.ListElementsRequest{},
+		wantRequest:     &modelpb.ListEntitiesRequest{},
+	},
+	{
+		desc:            "'model list-relationships' calls API as expected",
+		fileContents:    nil,
+		responseError:   nil,
+		responseMessage: &modelpb.ListRelationshipsResponse{},
+		cmdLineArgs:     []string{"model", "list-relationships"},
+		wantAppError:    false,
+		wantRequest:     &modelpb.ListRelationshipsRequest{},
 	},
 }
 

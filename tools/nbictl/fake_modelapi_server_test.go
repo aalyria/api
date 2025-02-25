@@ -86,12 +86,16 @@ func (s *FakeModelServer) DeleteRelationship(ctx context.Context, req *modelpb.D
 	return handleCall[*emptypb.Empty](s, ctx, req)
 }
 
-func (s *FakeModelServer) GetEntity(ctx context.Context, req *modelpb.GetEntityRequest) (*modelpb.GetEntityResponse, error) {
-	return handleCall[*modelpb.GetEntityResponse](s, ctx, req)
+func (s *FakeModelServer) GetEntity(ctx context.Context, req *modelpb.GetEntityRequest) (*nmtspb.Entity, error) {
+	return handleCall[*nmtspb.Entity](s, ctx, req)
 }
 
-func (s *FakeModelServer) ListElements(ctx context.Context, req *modelpb.ListElementsRequest) (*modelpb.ListElementsResponse, error) {
-	return handleCall[*modelpb.ListElementsResponse](s, ctx, req)
+func (s *FakeModelServer) ListEntities(ctx context.Context, req *modelpb.ListEntitiesRequest) (*modelpb.ListEntitiesResponse, error) {
+	return handleCall[*modelpb.ListEntitiesResponse](s, ctx, req)
+}
+
+func (s *FakeModelServer) ListRelationships(ctx context.Context, req *modelpb.ListRelationshipsRequest) (*modelpb.ListRelationshipsResponse, error) {
+	return handleCall[*modelpb.ListRelationshipsResponse](s, ctx, req)
 }
 
 func startFakeModelServer(ctx context.Context, g *errgroup.Group, listener net.Listener) (*FakeModelServer, error) {

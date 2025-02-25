@@ -262,19 +262,10 @@ func ModelGetEntity(appCtx *cli.Context) error {
 		return err
 	}
 	fmt.Fprint(appCtx.App.Writer, string(marshalled))
-	debugPrintNMTSEntityEdges(appCtx.App.ErrWriter, response.GetEntityEdges())
 	return nil
 }
 
-func debugPrintNMTSEntityEdges(stderr io.Writer, entityEdges *nmtspb.EntityEdges) {
-	numEntities, numRelationships := 0, 0
-	if entityEdges != nil {
-		numEntities, numRelationships = 1, len(entityEdges.Relationship)
-	}
-	fmt.Fprintf(stderr, "# %v entity/ies, %v relationship/s\n", numEntities, numRelationships)
-}
-
-func ModelListElements(appCtx *cli.Context) error {
+func ModelListEntities(appCtx *cli.Context) error {
 	marshaller, err := marshallerForFormat(appCtx.String("format"))
 	if err != nil {
 		return err
@@ -287,7 +278,7 @@ func ModelListElements(appCtx *cli.Context) error {
 	defer conn.Close()
 	modelClient := modelpb.NewModelClient(conn)
 
-	response, err := modelClient.ListElements(appCtx.Context, &modelpb.ListElementsRequest{})
+	response, err := modelClient.ListEntities(appCtx.Context, &modelpb.ListEntitiesRequest{})
 	if err != nil {
 		return err
 	}
@@ -297,14 +288,31 @@ func ModelListElements(appCtx *cli.Context) error {
 		return err
 	}
 	fmt.Fprint(appCtx.App.Writer, string(marshalled))
-	debugPrintNMTSFragment(appCtx.App.ErrWriter, response.GetElements())
 	return nil
 }
 
-func debugPrintNMTSFragment(stderr io.Writer, fragment *nmtspb.Fragment) {
-	numEntities, numRelationships := 0, 0
-	if fragment != nil {
-		numEntities, numRelationships = len(fragment.Entity), len(fragment.Relationship)
+func ModelListRelationships(appCtx *cli.Context) error {
+	marshaller, err := marshallerForFormat(appCtx.String("format"))
+	if err != nil {
+		return err
 	}
-	fmt.Fprintf(stderr, "# %v entity/ies, %v relationship/s\n", numEntities, numRelationships)
+
+	conn, err := openAPIConnection(appCtx, modelAPISubDomain)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	modelClient := modelpb.NewModelClient(conn)
+
+	response, err := modelClient.ListRelationships(appCtx.Context, &modelpb.ListRelationshipsRequest{})
+	if err != nil {
+		return err
+	}
+
+	marshalled, err := marshaller.marshal(response)
+	if err != nil {
+		return err
+	}
+	fmt.Fprint(appCtx.App.Writer, string(marshalled))
+	return nil
 }
