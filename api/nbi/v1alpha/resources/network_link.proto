@@ -32,6 +32,9 @@ message NetworkLink {
   optional aalyria.spacetime.api.common.NetworkInterfaceId src = 3;
   optional aalyria.spacetime.api.common.NetworkInterfaceId dst = 4;
 
+  optional string src_interface_id = 5;
+  optional string dst_interface_id = 6;
+
   reserved 1, 2;
 }
 
@@ -150,6 +153,7 @@ message DirectionalLink {
 
 message RxPlatform {
   optional aalyria.spacetime.api.common.NetworkInterfaceId id = 1;
+  optional string network_node_id = 3;
 
   // Defines the radio configuration to apply to the receiving platform.
   optional RxRadioConfiguration rx_radio = 2;

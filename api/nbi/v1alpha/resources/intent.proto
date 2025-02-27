@@ -186,6 +186,8 @@ message Beam {
 }
 
 message RxConfiguration {
+  optional string demodulator_id = 6;
+
   optional uint64 center_frequency_hz = 1;
   optional uint64 channel_bandwidth_hz = 2;
   optional Polarization polarization = 3;
@@ -197,6 +199,8 @@ message RxConfiguration {
 }
 
 message TxConfiguration {
+  optional string modulator_id = 8;
+
   optional uint64 center_frequency_hz = 1;
   optional uint64 channel_bandwidth_hz = 2;
   optional Polarization polarization = 3;
