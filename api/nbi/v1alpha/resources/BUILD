@@ -40,6 +40,7 @@ proto_library(
         "@googleapis//google/rpc:code_proto",
         "@googleapis//google/type:interval_proto",
         "@googleapis//google/type:money_proto",
+        "@org_outernetcouncil_nmts//v1/proto/types/geophys:motion_proto",
         "@protobuf//:any_proto",
         "@protobuf//:duration_proto",
         "@protobuf//:timestamp_proto",
@@ -57,6 +58,7 @@ cpp_grpc_library(
         "@googleapis//google/rpc:code_cc_proto",
         "@googleapis//google/type:interval_cc_proto",
         "@googleapis//google/type:money_cc_proto",
+        "@org_outernetcouncil_nmts//v1/proto/types/geophys:geophys_cpp_proto",
     ],
 )
 
@@ -70,6 +72,7 @@ go_proto_library(
         "@org_golang_google_genproto//googleapis/type/interval",
         "@org_golang_google_genproto//googleapis/type/money",
         "@org_golang_google_genproto_googleapis_rpc//code",
+        "@org_outernetcouncil_nmts//v1/proto/types/geophys:geophys_go_proto",
     ],
 )
 
@@ -82,6 +85,7 @@ java_grpc_library(
         "@googleapis//google/api:api_java_proto",
         "@googleapis//google/rpc:rpc_java_proto",
         "@googleapis//google/type:type_java_proto",
+        "@org_outernetcouncil_nmts//v1/proto/types/geophys:geophys_java_proto",
     ],
 )
 
@@ -92,5 +96,6 @@ python_grpc_library(
         "//api/common:common_python_proto",
         "@googleapis//google/rpc:code_py_proto",
         "@googleapis//google/type:money_py_proto",
+        "@org_outernetcouncil_nmts//v1/proto/types/geophys:geophys_python_proto",
     ],
 )

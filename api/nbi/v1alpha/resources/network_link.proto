@@ -23,6 +23,8 @@ import "api/common/platform_antenna.proto";
 import "api/common/time.proto";
 import "api/common/wireless_transceiver.proto";
 import "google/type/interval.proto";
+import "nmts/v1/proto/types/geophys/motion.proto";
+
 
 option java_package = "com.aalyria.spacetime.api.nbi.v1alpha.resources";
 option go_package = "aalyria.com/spacetime/api/nbi/v1alpha/resources";
@@ -113,8 +115,10 @@ message LinkEnd {
 message BeamTarget {
   oneof type {
     aalyria.spacetime.api.common.TransceiverModelId transceiver_id = 1;
-    string platform_id = 3;
-    aalyria.spacetime.api.common.Motion coordinates = 2;
+    string platform_id = 3;  // can hold the ID of an NMTS platform
+    // TODO: remove coordinates below after NMTS migration
+    aalyria.spacetime.api.common.Motion coordinates = 2; 
+    nmts.v1.types.geophys.Motion motion = 4;
   }
 }
 
