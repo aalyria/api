@@ -89,6 +89,18 @@ service Provisioning {
   rpc UpdateP2pSrTePolicyCandidatePath(UpdateP2pSrTePolicyCandidatePathRequest) returns (P2pSrTePolicyCandidatePath) {}
   rpc DeleteP2pSrTePolicyCandidatePath(DeleteP2pSrTePolicyCandidatePathRequest) returns (google.protobuf.Empty) {}
 
+  // Downtime provisioning.
+  //
+  // Inform Spacetime when elements of the network will be, or should
+  // be considered, offline.
+  //
+  // Manage resources under `downtimes/{id}`.
+  rpc GetDowntime(GetDowntimeRequest) returns (Downtime) {}
+  rpc ListDowntimes(ListDowntimesRequest) returns (ListDowntimesResponse) {}
+  rpc CreateDowntime(CreateDowntimeRequest) returns (Downtime) {}
+  rpc UpdateDowntime(UpdateDowntimeRequest) returns (Downtime) {}
+  rpc DeleteDowntime(DeleteDowntimeRequest) returns (google.protobuf.Empty) {}
+
   // TODO: Consider RFC 8623 P2MP TE -like request
   // TODO: Consider PHY-layer requests (bent pipe, etc)
   // TODO: Add a DigitalTransparentService request (details TBD)
@@ -96,8 +108,6 @@ service Provisioning {
   // TODO: BundleProtocolServiceRequest
   // TODO: MEF E-{Line,Tree,LAN} services
   // TODO: 3GPP services
-  // TODO: Transmission Plan (Reservation)
-  // TODO: Drain/PlannedOutage/MaintenanceWindow
 }
 
 message CreateServiceProvisioningRequestRequest {
@@ -410,5 +420,116 @@ message DeleteP2pSrTePolicyCandidatePathRequest{
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
       type: "provisioning.spacetimeapis.com/P2pSrTePolicyCandidatePath"
+    }];
+}
+
+// A notification to Spacetime of downtime for specified network elements.
+//
+// This resource informs Spacetime of elements in the network scheduled
+// to be down, or currently down depending on the contents of `interval`.
+// Spacetime will exclude these elements from any solutions it computes
+// for other provisioning requests.
+message Downtime {
+  option (google.api.resource) = {
+    type: "provisioning.spacetimeapis.com/Downtime"
+    pattern: "downtimes/{id}"
+    singular: "downtime"
+    plural: "downtimes"
+  };
+
+  // The resource name of this Downtime request.
+  // Format: `downtimes/{id}`
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  // The time interval over which this downtime applies.
+  //
+  // If `start_time` is empty the downtime is requested to be provisioned
+  // at the earliest possible time it may be realized in the network.
+  //
+  // If `end_time` is empty the downtime is requested to be provisioned
+  // until this specific request is canceled or this interval field is
+  // updated with a non-empty `end_time`.
+  google.type.Interval interval = 2;
+
+  // A simple way to temporarily disable this request without deleting
+  // it from the store of requests.
+  bool disabled = 3;
+
+  // A freeform description of this downtime which my be rendered for
+  // users in certain contexts, e.g. in a UI.
+  //
+  // This field is not examined by Spacetime; no requirements are placed
+  // upon its presence or contents.
+  string reason = 4;
+
+  // A list of a NMTS Entity IDs affected during the downtime interval,
+  // i.e. which elements are to be considered by Spacetime as offline.
+  //
+  // For Entities that RK_CONTAINS other Entities, all "contained"
+  // elements will be considerd offline, i.e. listing an EK_PLATFORM
+  // Entity ID in `affected_entity_ids` implies that all contained
+  // EK_PORTs and/or EK_NETWORK_NODEs are also to be considered offline.
+  //
+  // For Entities that are RK_TRAVERSES'd by other Entities, all
+  // "traversing" Entities will also be considered offline, i.e.
+  // listing an EK_PORT Entity ID in `affected_entity_ids` implies that
+  // all EK_INTERFACEs that ultimately traverse the port are also
+  // to be considered offline. Similar consideration would apply to
+  // any associated RK_ORIGINATES and RK_TERMINATES elements.
+  repeated string affected_entity_ids = 5;
+}
+
+message GetDowntimeRequest{
+  // The resource name of the Downtime instance to retrieve.
+  // Format: `downtimes/{id}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/Downtime"
+    }];
+}
+
+message ListDowntimesRequest{
+}
+
+message ListDowntimesResponse{
+  repeated Downtime downtimes = 1;
+}
+
+message CreateDowntimeRequest{
+  // The ID to use for the Downtime, which will become the final
+  // component of the Downtime's resource name, i.e. `downtimes/{id}`.
+  //
+  // This value should be 4-63 characters, and valid characters
+  // are /[a-z][0-9]-/.
+  string id = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // The Downtime resource to create.
+  Downtime downtime = 3 [(google.api.field_behavior) = REQUIRED];
+}
+
+message UpdateDowntimeRequest{
+  // The Downtime to update.
+  //
+  // The Downtime's `name` field is used to identify the Downtime
+  // instance to be updated.
+  Downtime downtime = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // The list of fields to be updated.
+  google.protobuf.FieldMask update_mask = 2;
+
+  // If set to true, and the Downtime named above is not found, a new
+  // Downtime will be created. In this situation, `update_mask` is
+  // ignored.
+  bool allow_missing = 3;
+}
+
+message DeleteDowntimeRequest{
+  // The resource name of the Downtime instance to delete.
+  // Format: `downtimes/{id}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/Downtime"
     }];
 }
