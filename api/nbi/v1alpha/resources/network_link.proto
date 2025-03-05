@@ -318,9 +318,11 @@ message TransceiverLinkReport {
 // point-to-multipoint link. The candidate can model either the downlink
 // direction, from the beam to a set of receiving platforms,
 // or the uplink, from a set of platforms to the beam.
-
-// Note: BeamCandidate is still under development.
 message BeamCandidate {
+  // Beam Candidate ID. Stable across entities that describe
+  // different AccessIntervals for the same BeamCandidate.
+  optional string id  = 4;
+
   optional aalyria.spacetime.api.common.TransceiverModelId transceiver_id = 1;
 
   // The coordinates at which the beam is pointed.
