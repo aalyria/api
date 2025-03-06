@@ -33,38 +33,6 @@ option go_package = "aalyria.com/spacetime/api/provisioning/v1alpha";
 //
 // Each type of provisioning request has its own set of methods.
 service Provisioning {
-  // Managing ServiceProvisioningRequests.
-
-  // Registers the provided ServiceProvisioningRequest, subject to the
-  // constraint that the request's ID is non-empty and does not collide
-  // with any other registory request.
-  //
-  // Additional checks may be performed, including validating the
-  // existence of any NMTS Model API Entity IDs referenced by the request.
-  rpc CreateServiceProvisioningRequest(CreateServiceProvisioningRequestRequest)
-  returns (google.protobuf.Empty) {
-    option deprecated = true;
-  }
-  // Updates a previously-registered ServiceProvisioningRequest.
-  rpc UpdateServiceProvisioningRequest(UpdateServiceProvisioningRequestRequest)
-  returns (google.protobuf.Empty) {
-    option deprecated = true;
-  }
-  // Delete the ServiceProvisioningRequest matching the ID given.
-  rpc DeleteServiceProvisioningRequest(DeleteServiceProvisioningRequestRequest)
-  returns (google.protobuf.Empty) {
-    option deprecated = true;
-  }
-  // Retrieve the ServiceProvisioningRequest matching the ID given.
-  rpc GetServiceProvisioningRequest(GetServiceProvisioningRequestRequest)
-  returns (ServiceProvisioningRequest) {
-    option deprecated = true;
-  }
-  // List all registered ServiceProvisioningRequests.
-  rpc ListServiceProvisioningRequests(ListServiceProvisioningRequestsRequest)
-  returns (ListServiceProvisioningRequestsResponse) {
-    option deprecated = true;
-  }
 
   // P2P SR-TE Policy provisioning.
   //
