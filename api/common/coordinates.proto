@@ -577,6 +577,6 @@ message Motion {
 // - Presently supports single-segment CCSDS OEM Files (multi-segment will
 //   throw error)
 message CcsdsOrbitEphemerisMessage {
-  // CCSDS OEM File as a String
+  // CCSDS OEM file contents as a string.
   optional string file = 1;
 }
