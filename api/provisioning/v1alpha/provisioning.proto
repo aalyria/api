@@ -252,8 +252,9 @@ message CreateP2pSrTePolicyRequest{
   // The ID to use for the policy, which will become the final component of
   // the policy's resource name, i.e. `p2pSrTePolicies/{policy_id}`.
   //
-  // This value should be 4-63 characters, and valid characters
-  // are /[a-z][0-9]-/.
+  // This value should be 1-63 characters, and valid characters
+  // are /[a-z][0-9]-/, specifically of the form
+  // "^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$".
   string policy_id = 2 [(google.api.field_behavior) = REQUIRED];
 
   // The policy to create.
@@ -353,8 +354,9 @@ message CreateP2pSrTePolicyCandidatePathRequest{
   // the path's resource name, i.e.
   // `p2pSrTePolicies/{policy_id}/candidatePaths/{path_id}`
   //
-  // This value should be 4-63 characters, and valid characters
-  // are /[a-z][0-9]-/.
+  // This value should be 1-63 characters, and valid characters
+  // are /[a-z][0-9]-/, specifically of the form
+  // "^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$".
   string path_id = 2 [(google.api.field_behavior) = REQUIRED];
 
   // The Candidate Path to create.
@@ -468,8 +470,9 @@ message CreateDowntimeRequest{
   // The ID to use for the Downtime, which will become the final
   // component of the Downtime's resource name, i.e. `downtimes/{id}`.
   //
-  // This value should be 4-63 characters, and valid characters
-  // are /[a-z][0-9]-/.
+  // This value should be 1-63 characters, and valid characters
+  // are /[a-z][0-9]-/, specifically of the form
+  // "^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$".
   string id = 2 [(google.api.field_behavior) = REQUIRED];
 
   // The Downtime resource to create.
