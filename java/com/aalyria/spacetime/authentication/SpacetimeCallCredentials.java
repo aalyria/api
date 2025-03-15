@@ -267,7 +267,8 @@ public class SpacetimeCallCredentials extends CallCredentials {
 
     // Parses the OpenID Connect token.
     TypeToken<Map<String, String>> mapType = new TypeToken<Map<String, String>>() {};
-    return gson.fromJson(response.toString(), mapType).get("id_token");
+    Map<String, String> map = gson.fromJson(response.toString(), mapType.getType());
+    return map.get("id_token");
   }
 
   private boolean isOidcTokenExpired(Instant now) {
