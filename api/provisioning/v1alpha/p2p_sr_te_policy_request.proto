@@ -1,0 +1,68 @@
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package aalyria.spacetime.api.provisioning.v1alpha;
+
+import "api/provisioning/v1alpha/te.proto";
+
+option java_package = "com.aalyria.spacetime.api.provisioning.v1alpha";
+option go_package = "aalyria.com/spacetime/api/provisioning/v1alpha";
+
+// A Point-to-Point (P2P) Segment Routing (SR) Traffic Engineering (TE)
+// Policy Request.
+//
+// Requests one or more SR TE policies between two EK_ROUTE_FN
+// entities in the data model.
+//
+// See also:
+//   - RFC 9256
+//   - draft-ietf-pce-segment-routing-policy-cp
+message P2pSrTePolicyRequest {
+  // NMTS Entity IDs corresponding to the source and destination
+  // EK_ROUTE_FN Entity elements already created within the network
+  // data model.
+  //
+  // RFC 9256 S2.1 SR Policy identifying tuple; "[a]n SR Policy MUST
+  // be identified through the tuple <Headend, Color, Endpoint>."
+  string headend = 1;
+  uint32 color = 2;
+  string endpoint = 3;
+
+  // RFC 9256 S2.1; "[a]n implementation MAY allow the assignment
+  // of a symbolic name..."
+  string name = 4;
+
+  message CandidatePathRequest {
+    // RFC 9256 S2.5 Discriminator; used to associate a candidate path
+    // with this specific SR Policy's path request.
+    uint32 discriminator = 1;
+    // RFC 9256 S2.6 optional symbolic name.
+    string name = 2;
+    // RFC 9256 S2.7 Preference. An indication of this requested
+    // candidate path's priority relative to others in the same
+    // SR policy.
+    uint32 preference = 3;
+
+    // Quantitative path metrics.
+    Metrics metrics = 4;
+
+    reserved 5 to max;
+  }
+  // A solution for each candidate path will be attempted.
+  repeated CandidatePathRequest candidate_path_requests = 5;
+
+  reserved 6 to max;
+}
