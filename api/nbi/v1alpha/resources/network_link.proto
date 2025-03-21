@@ -22,6 +22,7 @@ import "api/common/network.proto";
 import "api/common/platform_antenna.proto";
 import "api/common/time.proto";
 import "api/common/wireless_transceiver.proto";
+import "google/protobuf/duration.proto";
 import "google/type/interval.proto";
 import "nmts/v1/proto/types/geophys/motion.proto";
 
@@ -327,6 +328,15 @@ message BeamCandidate {
 
   // The coordinates at which the beam is pointed.
   optional aalyria.spacetime.api.common.Motion target = 2;
+
+  optional google.type.Interval interval = 5;
+  optional google.protobuf.Duration sampling_resolution = 6;
+
+  // Incidence angle of the beam over time,
+  // observed from the point and orientation of the antenna.
+  // Each field contains (interval / sampling_resolution) data points.
+  repeated double beam_pointing_phi_rad = 7 [packed=true];
+  repeated double beam_pointing_theta_rad = 8 [packed=true];
 
   // AccessibilityInterval defines a link evaluation interval and the
   // corresponding groups of platforms and their modeled data.
