@@ -297,15 +297,15 @@ func getPrivateKey(ss *configpb.SigningStrategy) (io.Reader, error) {
 }
 
 func getProtoFmt(pfpb configpb.SdnAgent_ExternalCommand_ProtoFormat) protofmt.Format {
-	switch pfpb.Enum() {
-	case configpb.SdnAgent_ExternalCommand_JSON.Enum():
+	switch pfpb {
+	case configpb.SdnAgent_ExternalCommand_JSON:
 		return protofmt.JSON
-	case configpb.SdnAgent_ExternalCommand_TEXT.Enum():
+	case configpb.SdnAgent_ExternalCommand_TEXT:
 		return protofmt.Text
-	case configpb.SdnAgent_ExternalCommand_WIRE.Enum():
+	case configpb.SdnAgent_ExternalCommand_WIRE:
 		return protofmt.Wire
 
-	case configpb.SdnAgent_ExternalCommand_PROTO_FORMAT_UNSPECIFIED.Enum():
+	case configpb.SdnAgent_ExternalCommand_PROTO_FORMAT_UNSPECIFIED:
 		fallthrough
 	default:
 		return protofmt.JSON

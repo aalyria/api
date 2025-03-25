@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 load("//:version.bzl", "VERSION")
 
 package(default_visibility = ["//visibility:public"])
@@ -70,4 +70,14 @@ go_library(
         ],
         "//conditions:default": [],
     }),
+)
+
+go_test(
+    name = "agentcli_test",
+    srcs = ["agentcli_test.go"],
+    embed = [":agentcli"],
+    deps = [
+        "//agent/internal/configpb:configpb_go_proto",
+        "//agent/internal/protofmt",
+    ],
 )
