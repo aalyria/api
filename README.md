@@ -2,9 +2,9 @@
 
 Spacetime offers 3 APIs:
 
-1. The **Northbound Interface (NBI)** allows humans or applications to define and orchestrate a network. This includes functions such as specifying the time-dynamic position and orientation of platforms and antennas, defining networking parameters on each node in the network, and creating requests for service that will be scheduled and routed through the network. [Learn more](nbi/)
-2. The **Southbound Interface (SBI)** is the collection of services through which devices participating in the network communicate with Spacetime. This includes services through which these devices may receive schedule updates from Spacetime, and through which they may push metrics and observations to Spacetime. [Learn more](scheduling/)
-3. The **Federation API**, or East-West Interface, allows peer networks to request and to supply network resources and interconnections between partners’ networks. This facilitates dynamic, real-time inter-network connections, which allows operators to automatically and quickly supplement gaps in network coverage or advertise unused capacity to make full use of underutilized assets. [Learn more](federation/)
+1. The **Northbound Interface (NBI)** allows humans or applications to define and orchestrate a network. This includes functions such as specifying the time-dynamic position and orientation of platforms and antennas, defining networking parameters on each node in the network, and creating requests for service that will be scheduled and routed through the network. [Learn more](api/nbi/)
+2. The **Southbound Interface (SBI)** is the collection of services through which devices participating in the network communicate with Spacetime. This includes services through which these devices may receive schedule updates from Spacetime, and through which they may push metrics and observations to Spacetime. [Learn more](api/scheduling/)
+3. The **Federation API**, or East-West Interface, allows peer networks to request and to supply network resources and interconnections between partners’ networks. This facilitates dynamic, real-time inter-network connections, which allows operators to automatically and quickly supplement gaps in network coverage or advertise unused capacity to make full use of underutilized assets. [Learn more](api/federation/)
 
 ## Developer Guides
 You can find developer guides and tutorials on [this website](https://docs.spacetime.aalyria.com).
