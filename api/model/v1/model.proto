@@ -47,6 +47,9 @@ service Model {
   //
   // Returns a gRPC error if any of the preconditions for a valid
   // Relationship are not met (see NMTS's //lib/validation).
+  //
+  // Note: If the requested relationship kind between the same two entities
+  // already exists, then this has no real effect.  No duplicate is created.
   rpc CreateRelationship(CreateRelationshipRequest)
       returns (nmts.v1.Relationship) {}
 
