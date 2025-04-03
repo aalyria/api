@@ -16,14 +16,13 @@
 // the allocation of system and radio resources within the network instead of 
 // Spacetime's native solving engine.
 //
-// Clients should use the Northbound interface's 
-// aalyria.spacetime.api.nbi.v1alpha.NetOps RPCs to 
-// fetch the state of the network and maintain an up-to-date view of the
-// network's resources and the requests for connectivity across the network.
+// Clients should use the Spacetime Model API RPCs to fetch the state of the
+// network, and the Provisioning API RPCs for the network requests needing to
+// be solved.
 // TODO: Add a tailored RPC to this service to allow clients to stream 
-// the state of the network. 
+// the state of the network and requests. 
 // 
-// Client are expected to analyze the wireless signal propagation from the
+// Clients are expected to analyze the wireless signal propagation from the
 // devices in the network and accordingly, compute an allocation of system 
 // resources (e.g. assigning satellites to ground stations, user terminals to 
 // satellites, ISL resources, transmit power levels) and radio resources (e.g.
@@ -33,15 +32,15 @@
 // element across the Southbound interface in order to configure the resources
 // in the network.
 //
-// Specifically, clients should query the following entity types to fetch the
-// state of the network: PLATFORM_DEFINITION, NETWORK_NODE, BAND_PROFILE, 
-// ANTENNA_PATTERN, INTERFACE_LINK_REPORT, SERVICE_REQUEST. 
-// (NETWORK_STATS_REPORT entities can also optionally be fetched when resource
-// allocation calculations consider network telemetry. INTENT entities can also
-// optionally be fetched when calculations consider the current allocation of 
-// resources in the network.) 
+// Solvers may want to use up-to-date network telemetry reported by each
+// network element as an input.
+// TODO: Add an RPC to allow clients to retrieve telemetry from netowrk
+// elements.
+//
 // Spacetime uses INTENT entities to describe intended changes to the network,
 // so each resource allocation is defined by an INTENT entity.
+// TODO: Add an RPC to alloc clients to retrieve the current or previous
+// system and radio resource allocation decisions.
 
 syntax = "proto3";
 
