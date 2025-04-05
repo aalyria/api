@@ -262,6 +262,25 @@ message WirelessLinkReport {
       optional double received_isotropic_power_dbw = 11;
       optional double power_at_receiver_output_dbw = 12;
       optional double carrier_to_noise_plus_interference_db = 13;
+      enum PropagationModel {
+        PROPAGATION_MODEL_UNSPECIFIED = 0;
+        ATMOSPHERIC_ATTENUATION_MODEL_ITUR_P676 = 1;
+        DOPPLER_SHIFT_MODEL = 2;
+        FREE_SPACE_PATH_LOSS_MODEL = 3;
+        RAIN_ATTENUATION_MODEL_ITUR_P838 = 4;
+        CLOUD_AND_FOG_MODEL_ITUR_P840 = 5;
+        TROPOSPHERIC_SCINTILLATION_ATTENUATION_MODEL_ITUR_P1814 = 6;
+      }
+
+      message PropagationLoss {
+        optional PropagationModel model = 1;
+        optional double loss_db = 2;
+      }
+
+      // At most 1 entry for each `PropagationModel` model type.
+      // Except for PROPAGATION_MODEL_UNSPECIFIED which
+      // could be used in multiple entries.
+      repeated PropagationLoss propagation_losses = 14;
     }
     repeated WirelessLinkMetrics sampled_metrics = 4;
   }
