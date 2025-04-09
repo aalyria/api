@@ -179,6 +179,9 @@ message DeleteRoute {
 message Beam {
   reserved 7;
 
+  // The ID of the beam. This ID is unique within a schedule. Two beams in the
+  // same schedule will never share an ID even if the beams exist at different
+  // times.
   string id = 1;
 
   // Identifies the pointing target for the beam to be aimed at & track.
