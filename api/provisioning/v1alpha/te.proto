@@ -17,6 +17,7 @@ syntax = "proto3";
 package aalyria.spacetime.api.provisioning.v1alpha;
 
 import "google/protobuf/duration.proto";
+import "google/protobuf/empty.proto";
 
 option java_package = "com.aalyria.spacetime.api.provisioning.v1alpha";
 option go_package = "aalyria.com/spacetime/api/provisioning/v1alpha";
@@ -50,3 +51,8 @@ message Metrics {
   // Maximum latency (one way frame delay).
   google.protobuf.Duration max_latency = 3;
 }
+
+// TODO: RFC 8745 -style Protection Association Type roles.
+// TODO: RFC 9005 -style topological affinity policy association type?
+// TODO: RFC 9059 -style bidirectionality association type?
+// TODO: RFC 9059 -style co-routing association type?

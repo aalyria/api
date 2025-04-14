@@ -69,6 +69,15 @@ service Provisioning {
   rpc UpdateDowntime(UpdateDowntimeRequest) returns (Downtime) {}
   rpc DeleteDowntime(DeleteDowntimeRequest) returns (google.protobuf.Empty) {}
 
+  // Disjoint Association Group provisioning.
+  //
+  // Manage resources under `disjointAssociationGroup/{id}`.
+  rpc GetDisjointAssociationGroup(GetDisjointAssociationGroupRequest) returns (DisjointAssociationGroup) {}
+  rpc ListDisjointAssociationGroups(ListDisjointAssociationGroupsRequest) returns (ListDisjointAssociationGroupsResponse) {}
+  rpc CreateDisjointAssociationGroup(CreateDisjointAssociationGroupRequest) returns (DisjointAssociationGroup) {}
+  rpc UpdateDisjointAssociationGroup(UpdateDisjointAssociationGroupRequest) returns (DisjointAssociationGroup) {}
+  rpc DeleteDisjointAssociationGroup(DeleteDisjointAssociationGroupRequest) returns (google.protobuf.Empty) {}
+
   // TODO: Consider RFC 8623 P2MP TE -like request
   // TODO: Consider PHY-layer requests (bent pipe, etc)
   // TODO: Add a DigitalTransparentService request (details TBD)
@@ -271,7 +280,7 @@ message UpdateP2pSrTePolicyRequest{
   // The list of fields to be updated.
   google.protobuf.FieldMask update_mask = 2;
 
-  // If set to true, and the policy is not found, a new policy will be
+  // If set to true, and the policy is not found, a new instance will be
   // created. In this situation, `update_mask` is ignored.
   bool allow_missing = 3;
 }
@@ -374,7 +383,7 @@ message UpdateP2pSrTePolicyCandidatePathRequest{
   // The list of fields to be updated.
   google.protobuf.FieldMask update_mask = 2;
 
-  // If set to true, and the candidate is not found, a new candidate will
+  // If set to true, and the candidate path is not found, a new instance will
   // be created, subject to the existence the parent SR-TE Policy. In this
   // situation, `update_mask` is ignored.
   bool allow_missing = 3;
@@ -502,5 +511,128 @@ message DeleteDowntimeRequest{
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
       type: "provisioning.spacetimeapis.com/Downtime"
+    }];
+}
+
+message DisjointAssociationGroup {
+  option (google.api.resource) = {
+    type: "provisioning.spacetimeapis.com/DisjointAssociationGroup"
+    pattern: "disjointAssociationGroup/{group_id}"
+    singular: "disjointAssociationGroup"
+    plural: "disjointAssociationGroups"
+  };
+
+  // The resource name of this Disjoint Association Group.
+  // Format: `disjointAssociationGroup/{group_id}`
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  ///
+  // RFC 8800 -style Disjoint Association Type information.
+  //
+  // As per RFC 8800 S5.1, "[a]ll LSPs in a particular Disjoint
+  // Association Group MUST use the same combination of [...] flags."
+  // Note also that "[a] particular LSP MAY be associated to multiple
+  // Disjoint Association Groups."
+
+  // Equivalent to the Disjoint Association Group TLV's T bit; see
+  // RFC 8800 Section 5.6. Paraphrasing:
+  //   * when `true` Spacetime will NOT provision any TE paths or
+  //     resources for which the requested diversities below cannot
+  //     be ensured
+  //   * when `false` Spacetime MAY provision a TE path or resource
+  //     by relaxing the diversities requested below as necessary.
+  bool strict = 2;
+
+  // Standard bits indicating desired Link, Node, and/or Shared Risk
+  // Link Group (SRLG) diversities desired.
+  bool link_diverse = 3;
+  bool node_diverse = 4;
+  bool srlg_diverse = 5;
+
+  // An extension that, when true, augments the diversity constraint
+  // to REQUIRE changing a path origin's bearer (and therefore perhaps
+  // its attachment circuit) to a candidate bearer not already
+  // instantiated in the network topology.
+  //
+  // (The term "bearer" is used here to mean the "underlying link" of
+  // an Attachment Circuit [AC]; see
+  // draft-ietf-opsawg-teas-attachment-circuit.)
+  //
+  // This principally useful for paths originating at nodes like
+  // User Terminals that can be commanded to instantiate new bearers.
+  //
+  // For a `link_diverse` constraint a candidate bearer MAY be, for
+  // example, a newly formable wireless link to the same access node
+  // (e.g. the same satellite or HAPS platform).
+  //
+  // For a `node_diverse` constraint a candidate bearer MAY be, for
+  // example, a newly formable wireless link to a different access
+  // node (e.g. different satellite or HAPS platform).
+  bool use_alternate_bearer = 6;
+  //
+  ///
+
+  // MUST be the full resource name of a TE path or resource created
+  // previously via this API, e.g. a P2pSrTePolicyCandidatePath.
+  repeated string resources = 7;
+}
+
+message GetDisjointAssociationGroupRequest{
+  // The resource name of the disjoint association group to retrieve.
+  // Format: `disjointAssociationGroup/{group_id}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/DisjointAssociationGroup"
+    }];
+}
+
+message ListDisjointAssociationGroupsRequest{
+}
+
+message ListDisjointAssociationGroupsResponse{
+  repeated DisjointAssociationGroup disjoint_association_groups = 1;
+}
+
+message CreateDisjointAssociationGroupRequest{
+  // The ID to use for the group, which will become the final component of
+  // the group's resource name, i.e. `disjointAssociationGroup/{group_id}`.
+  //
+  // This value should be 1-63 characters, and valid characters
+  // are /[a-z][0-9]-/, specifically of the form
+  // "^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$".
+  string group_id = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // The disjoint association group to create.
+  DisjointAssociationGroup disjoint_association_group = 3 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+}
+
+message UpdateDisjointAssociationGroupRequest{
+  // The DisjointAssociationGroup to update.
+  //
+  // The DisjointAssociationGroup's `name` field is used to identify the
+  // DisjointAssociationGroup instance to be updated.
+  DisjointAssociationGroup disjoint_association_group  = 1 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+
+  // The list of fields to be updated.
+  google.protobuf.FieldMask update_mask = 2;
+
+  // If set to true, and the DisjointAssociation named above is not found,
+  // a new instance will be created. In this situation, `update_mask` is
+  // ignored.
+  bool allow_missing = 3;
+}
+
+message DeleteDisjointAssociationGroupRequest{
+  // The resource name of the disjoint association group to delete.
+  // Format: `disjointAssociationGroup/{group_id}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/DisjointAssociationGroup"
     }];
 }
