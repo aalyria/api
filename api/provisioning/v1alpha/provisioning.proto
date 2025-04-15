@@ -69,9 +69,18 @@ service Provisioning {
   rpc UpdateDowntime(UpdateDowntimeRequest) returns (Downtime) {}
   rpc DeleteDowntime(DeleteDowntimeRequest) returns (google.protobuf.Empty) {}
 
+  // Protection Association Group provisioning.
+  //
+  // Manage resources under `protectionAssociationGroups/{id}`.
+  rpc GetProtectionAssociationGroup(GetProtectionAssociationGroupRequest) returns (ProtectionAssociationGroup) {}
+  rpc ListProtectionAssociationGroups(ListProtectionAssociationGroupsRequest) returns (ListProtectionAssociationGroupsResponse) {}
+  rpc CreateProtectionAssociationGroup(CreateProtectionAssociationGroupRequest) returns (ProtectionAssociationGroup) {}
+  rpc UpdateProtectionAssociationGroup(UpdateProtectionAssociationGroupRequest) returns (ProtectionAssociationGroup) {}
+  rpc DeleteProtectionAssociationGroup(DeleteProtectionAssociationGroupRequest) returns (google.protobuf.Empty) {}
+
   // Disjoint Association Group provisioning.
   //
-  // Manage resources under `disjointAssociationGroup/{id}`.
+  // Manage resources under `disjointAssociationGroups/{id}`.
   rpc GetDisjointAssociationGroup(GetDisjointAssociationGroupRequest) returns (DisjointAssociationGroup) {}
   rpc ListDisjointAssociationGroups(ListDisjointAssociationGroupsRequest) returns (ListDisjointAssociationGroupsResponse) {}
   rpc CreateDisjointAssociationGroup(CreateDisjointAssociationGroupRequest) returns (DisjointAssociationGroup) {}
@@ -514,16 +523,114 @@ message DeleteDowntimeRequest{
     }];
 }
 
+// RFC 8745 -style Protection Association Group
+message ProtectionAssociationGroup {
+  option (google.api.resource) = {
+    type: "provisioning.spacetimeapis.com/ProtectionAssociationGroup"
+    pattern: "protectionAssociationGroups/{group_id}"
+    singular: "protectionAssociationGroup"
+    plural: "protectionAssociationGroups"
+  };
+
+  // The resource name of this Protection Association Group.
+  // Format: `protectionAssociationGroups/{group_id}`
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  message ProtectionResource {
+    ///
+    //
+    // RFC 8745 -style Protection Association Type information.
+    ProtectionRole role = 1;
+
+    // N.B.: RFC 4872 "Protection Type" for `protecting` (and `secondary`)
+    // resources is not included at this time.
+    //
+    // As a variant of the active stateful PCE model (see RFC 8051 S2),
+    // Spacetime provisioning requests default to pre-computed protection
+    // resources.
+    //
+    ///
+
+    // MUST be the full resource name of a TE path or resource created
+    // previously via this API, e.g. a P2pSrTePolicyCandidatePath.
+    string resource = 2;
+  }
+  // A list of Protection Association Group members with corresponding
+  // TE Protection roles. It is a configuration error if no association
+  // group member has a Protection role of `working`.
+  repeated ProtectionResource members = 2;
+}
+
+message GetProtectionAssociationGroupRequest{
+  // The resource name of the protection association group to retrieve.
+  // Format: `protectionAssociationGroups/{group_id}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/ProtectionAssociationGroup"
+    }];
+}
+
+message ListProtectionAssociationGroupsRequest{
+}
+
+message ListProtectionAssociationGroupsResponse{
+  repeated ProtectionAssociationGroup protection_association_groups = 1;
+}
+
+message CreateProtectionAssociationGroupRequest{
+  // The ID to use for the group, which will become the final component of
+  // the group's resource name, i.e. `protectionAssociationGroups/{group_id}`.
+  //
+  // This value should be 1-63 characters, and valid characters
+  // are /[a-z][0-9]-/, specifically of the form
+  // "^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$".
+  string group_id = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // The protection association group to create.
+  ProtectionAssociationGroup protection_association_group = 3 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+}
+
+message UpdateProtectionAssociationGroupRequest{
+  // The ProtectionAssociationGroup to update.
+  //
+  // The ProtectionAssociationGroup's `name` field is used to identify the
+  // ProtectionAssociationGroup instance to be updated.
+  ProtectionAssociationGroup protection_association_group  = 1 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+
+  // The list of fields to be updated.
+  google.protobuf.FieldMask update_mask = 2;
+
+  // If set to true, and the ProtectionAssociation named above is not found,
+  // a new instance will be created. In this situation, `update_mask` is
+  // ignored.
+  bool allow_missing = 3;
+}
+
+message DeleteProtectionAssociationGroupRequest{
+  // The resource name of the protection association group to delete.
+  // Format: `protectionAssociationGroups/{group_id}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/ProtectionAssociationGroup"
+    }];
+}
+
 message DisjointAssociationGroup {
   option (google.api.resource) = {
     type: "provisioning.spacetimeapis.com/DisjointAssociationGroup"
-    pattern: "disjointAssociationGroup/{group_id}"
+    pattern: "disjointAssociationGroups/{group_id}"
     singular: "disjointAssociationGroup"
     plural: "disjointAssociationGroups"
   };
 
   // The resource name of this Disjoint Association Group.
-  // Format: `disjointAssociationGroup/{group_id}`
+  // Format: `disjointAssociationGroups/{group_id}`
   string name = 1 [(google.api.field_behavior) = IDENTIFIER];
 
   ///
@@ -579,7 +686,7 @@ message DisjointAssociationGroup {
 
 message GetDisjointAssociationGroupRequest{
   // The resource name of the disjoint association group to retrieve.
-  // Format: `disjointAssociationGroup/{group_id}`
+  // Format: `disjointAssociationGroups/{group_id}`
   string name = 1 [
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
@@ -596,7 +703,7 @@ message ListDisjointAssociationGroupsResponse{
 
 message CreateDisjointAssociationGroupRequest{
   // The ID to use for the group, which will become the final component of
-  // the group's resource name, i.e. `disjointAssociationGroup/{group_id}`.
+  // the group's resource name, i.e. `disjointAssociationGroups/{group_id}`.
   //
   // This value should be 1-63 characters, and valid characters
   // are /[a-z][0-9]-/, specifically of the form
@@ -629,7 +736,7 @@ message UpdateDisjointAssociationGroupRequest{
 
 message DeleteDisjointAssociationGroupRequest{
   // The resource name of the disjoint association group to delete.
-  // Format: `disjointAssociationGroup/{group_id}`
+  // Format: `disjointAssociationGroups/{group_id}`
   string name = 1 [
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {

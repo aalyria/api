@@ -52,7 +52,26 @@ message Metrics {
   google.protobuf.Duration max_latency = 3;
 }
 
-// TODO: RFC 8745 -style Protection Association Type roles.
+// RFC 8745 -style Protection Association Type roles.
+enum ProtectionRole {
+  PROTECTION_ROLE_UNSPECIFIED = 0;
+
+  // RFC 8745 S3.2 Path Protection Association TLV flags: P=0 S=0
+  PROTECTION_ROLE_WORKING = 1;
+
+  // RFC 8745 S3.2 Path Protection Association TLV flags: P=1 S=0
+  PROTECTION_ROLE_PROTECTION = 2;
+
+  // RFC 8745 S3.2 Path Protection Association TLV flags: P=1 S=1
+  //
+  // Per RFC 4872 S4.2.1, "[a] secondary LSP is an LSP that has been
+  // provisioned in the control plane only, and for which resource
+  // selection MAY have been done but for which the resource
+  // allocation has not been committed at the data plane (for
+  // instance, no cross-connection has been performed)."
+  PROTECTION_ROLE_SECONDARY = 3;
+}
+
 // TODO: RFC 9005 -style topological affinity policy association type?
 // TODO: RFC 9059 -style bidirectionality association type?
 // TODO: RFC 9059 -style co-routing association type?
