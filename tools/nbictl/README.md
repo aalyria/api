@@ -29,7 +29,7 @@ nbictl [--profile=value] [--context=value] [--config_dir=value] [--help] [-h] [-
 
 Gets the entity with the given type and ID.
 
-**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: text)
+**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
 
 **--id**="": [REQUIRED] ID of entity to delete.
 
@@ -41,13 +41,13 @@ Create one or more entities described in a file tree.
 
 **--files, -f**="": [REQUIRED] Glob of files containing serialized Entity messages. Use - to read from stdin.
 
-**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: text)
+**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
 
 ## edit
 
 Opens the specified entity in $EDITOR, then updates the NBI's version with any changes made.
 
-**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: text)
+**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
 
 **--id**="": [REQUIRED] ID of entity to edit.
 
@@ -59,7 +59,7 @@ Updates, or creates if missing, one or more entities described in a file tree.
 
 **--files, -f**="": [REQUIRED] Glob of files containing serialized Entity messages. Use - to read from stdin.
 
-**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: text)
+**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
 
 **--ignore_consistency_check**: Always update or create the entity, without verifying that the provided `commit_timestamp` matches the currently stored entity.
 
@@ -69,7 +69,7 @@ Lists all entities of a given type.
 
 **--field_masks**="": Comma-separated allow-list of fields to include in the response; see the aalyria.spacetime.api.nbi.v1alpha.EntityFilter.field_masks documentation for usage details.
 
-**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: text)
+**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
 
 **--type, -t**="": [REQUIRED] Type of entities to query. Allowed values: [ANTENNA_PATTERN, BAND_PROFILE, COMPUTED_MOTION, DEVICES_IN_REGION, INTENT, INTERFACE_LINK_REPORT, INTERFERENCE_CONSTRAINT, NETWORK_NODE, NETWORK_STATS_REPORT, PLATFORM_DEFINITION, SERVICE_REQUEST, STATION_SET, SURFACE_REGION, TRANSCEIVER_LINK_REPORT]
 
@@ -79,7 +79,7 @@ Deletes one or more entities. Provide the type and ID to delete a single entity,
 
 **--files, -f**="": Glob of serialized protobuf files that represent one or more Entity messages. Use - to read from stdin.
 
-**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: text)
+**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
 
 **--id**="": ID of entity to delete.
 
@@ -101,7 +101,7 @@ Gets link budget details
 
 **--explain_inaccessibility**: If true, the server will spend additional computational time determining the specific set of access constraints that were not satisfied and including these reasons in the response.
 
-**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: text)
+**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
 
 **--input_file**="": A path to a file containing a serialized SignalPropagationRequest message. If set, it will be used as the request to the SignalPropagation service. If unset, the request will be built from the other flags.
 
@@ -171,55 +171,55 @@ Subcommands for Model API v1alpha, to manage the model elements comprising the d
 
 Create the model NMTS Entity contained within the file provided on the command line ('-' reads from stdin).
 
-**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: text)
+**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
 
 ### update-entity
 
 Update the model NMTS Entity contained within the file provided on the command line ('-' reads from stdin).
 
-**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: text)
+**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
 
 ### delete-entity
 
 Delete the model NMTS Entity associated with the entity ID provided on the command line, along with any relationships in which it participates.
 
-**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: text)
+**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
 
 ### get-entity
 
 Get the model NMTS Entity associated with the entity ID given on the command line.
 
-**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: text)
+**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
 
 ### create-relationship
 
 Insert the model NMTS Relationship contained within the file provided on the command line ('-' reads from stdin).
 
-**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: text)
+**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
 
 ### delete-relationship
 
 Delete the model NMTS Relationship contained within the file provided on the command line ('-' reads from stdin).
 
-**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: text)
+**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
 
 ### upsert-fragment
 
 Upsert the model NMTS Fragment contained within the file provided on the command line ('-' reads from stdin).
 
-**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: text)
+**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
 
 ### list-entities
 
 List all model entities.
 
-**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: text)
+**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
 
 ### list-relationships
 
 List all model relationships.
 
-**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: text)
+**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
 
 ## grpcurl
 
