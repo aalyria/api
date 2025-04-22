@@ -1,0 +1,47 @@
+// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto2";
+
+package aalyria.spacetime.api.nbi.v1alpha.resources;
+
+import "api/common/coordinates.proto";
+
+option java_package = "com.aalyria.spacetime.api.nbi.v1alpha.resources";
+option go_package = "aalyria.com/spacetime/api/nbi/v1alpha/resources";
+
+message ComputedMotion {
+  // The metadata that identifies the `MotionDefinition` entity that is
+  // used as the basis for the computed motion data in this message.
+  message ReferenceMotion {
+    // The string ID of the source `MotionDefinition` entity.
+    optional string motion_ref_id = 1;
+    // Commit timestamp of the source `MotionDefinition` entity.
+    // Microseconds since epoch.
+    optional int64 commit_timestamp = 2;
+  }
+  optional ReferenceMotion reference = 1;
+
+  // Holds `Motion` messages that may be more useful to internal consumers.
+  // These include trajectory descriptions that have been converted from
+  // another description type, e.g.:
+  //
+  //   * `PointAxesTemporalInterpolation` waypoints resulting from propogation
+  //      of a `StateVector` under an assumed set of forces, or
+  //
+  //   * an extrapolation of waypoints for platforms moving on fixed or
+  //     slowly varying headings (e.g. ships, planes, balloons, etc with
+  //     motion reported via relay of AIS or ADS-B information).
+  repeated aalyria.spacetime.api.common.Motion motions = 2;
+}
