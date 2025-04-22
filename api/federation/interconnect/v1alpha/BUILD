@@ -20,6 +20,10 @@ proto_library(
     srcs = ["interconnect.proto"],
     visibility = ["//visibility:public"],
     deps = [
+        "@googleapis//google/api:annotations_proto",
+        "@googleapis//google/api:client_proto",
+        "@googleapis//google/api:field_behavior_proto",
+        "@googleapis//google/api:resource_proto",
         "@googleapis//google/type:interval_proto",
         "@org_outernetcouncil_nmts//v1/proto/ek/physical:antenna_proto",
         "@org_outernetcouncil_nmts//v1/proto/ek/physical:modem_proto",
@@ -39,6 +43,7 @@ go_proto_library(
     visibility = ["//visibility:public"],
     deps = [
         "@org_golang_google_genproto//googleapis/type/interval",
+        "@org_golang_google_genproto_googleapis_api//annotations",
         "@org_outernetcouncil_nmts//v1/proto/ek/physical:physical_go_proto",
         "@org_outernetcouncil_nmts//v1/proto/types/geophys:geophys_go_proto",
         "@org_outernetcouncil_nmts//v1/proto/types/ietf:ietf_go_proto",
