@@ -70,6 +70,7 @@ message Intent {
     RadioIntent radio = 5;
     PathIntent route = 6;
     ModemIntent modem = 18;
+    BearerIntent bearer = 19;
   }
   optional IntentState state = 7 [default = INSTALL_REQ];
 
@@ -111,7 +112,7 @@ message Intent {
   repeated aalyria.spacetime.api.common.ScheduledControlUpdate
     compiled_withdrawal_updates = 17;
 
-  reserved 2, 10, 12, 19 to max;  // Next IDs.
+  reserved 2, 10, 12, 20 to max;  // Next IDs.
 }
 
 // Models an intent to configure steerable beams and/or radio resources.
@@ -295,4 +296,29 @@ message IntentWithdrawal {
   reserved 3 to max;  // Next IDs.
 }
 
+// A bearer intent represents an intent to establish a bearer towards a
+// connectivity service provider's network via an Interconnect API.
+message BearerIntent {
+  optional string provider_id = 1;
 
+  // The modulator that is to connect with a demodulator in the provider's
+  // network.
+  optional string modulator_id = 2;
+
+  // The demodulator that is to connect with a modulator in the provider's
+  // network.
+  optional string demodulator_id = 3;
+
+  // For non-NMTS environments, the interface that is to connect with the
+  // provider's network.
+  optional aalyria.spacetime.api.common.NetworkInterfaceId transceiver = 4;
+
+  // The ID of the InterconectTarget through which the connection is to be
+  // established.
+  optional string target_id = 5;
+
+  optional int64 rx_center_frequency_hz = 6;
+  optional int64 rx_bandwidth_hz = 7;
+  optional int64 tx_center_frequency_hz = 8;
+  optional int64 tx_bandwidth_hz = 9;
+}
