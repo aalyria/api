@@ -271,7 +271,7 @@ message StandardInterfaceStatisticsDataPoint {
 // A collection of metrics from a modem.
 message ModemMetrics {
   // Required. The modem producing telemetry.
-  optional string modem_id = 1;
+  optional string demodulator_id = 1;
 
   // Data points describing the time-varying data rate of any link terminating
   // at this modem.
@@ -295,7 +295,7 @@ message DataRateDataPoint {
   google.protobuf.Timestamp time = 1;
 
   // The transmitting modem.
-  optional string tx_modem_id = 2;
+  optional string modulator_id = 2;
 
   // The data rate in bits per second.
   optional double data_rate_bps = 3;
