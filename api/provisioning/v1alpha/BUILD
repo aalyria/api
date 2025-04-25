@@ -68,7 +68,7 @@ python_grpc_library(
 )
 
 go_proto_library(
-    name = "v1alpha_go_proto",
+    name = "provisioning_go_grpc",
     compilers = [
         "@rules_go//proto:go_proto",
         "@rules_go//proto:go_grpc_v2",
