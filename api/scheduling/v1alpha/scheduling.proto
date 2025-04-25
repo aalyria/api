@@ -16,8 +16,8 @@ syntax = "proto3";
 
 package aalyria.spacetime.scheduling.v1alpha;
 
+import "api/common/field_mask.proto";
 import "google/protobuf/empty.proto";
-import "google/protobuf/field_mask.proto";
 import "google/protobuf/timestamp.proto";
 import "google/rpc/status.proto";
 
@@ -248,7 +248,7 @@ message BeamHoppingPlan {
 message UpdateBeam {
   Beam beam = 1;
 
-  google.protobuf.FieldMask update_mask = 2;
+  aalyria.spacetime.api.common.FieldMask update_mask = 2;
 }
 
 message DeleteBeam {

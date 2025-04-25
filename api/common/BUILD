@@ -30,6 +30,7 @@ proto_library(
         "control_flow.proto",
         "control_radio.proto",
         "coordinates.proto",
+        "field_mask.proto",
         "network.proto",
         "platform.proto",
         "platform_antenna.proto",

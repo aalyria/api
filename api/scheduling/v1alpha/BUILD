@@ -26,9 +26,9 @@ proto_library(
         "scheduling.proto",
     ],
     deps = [
+        "//api/common:common_proto",
         "@googleapis//google/rpc:status_proto",
         "@protobuf//:empty_proto",
-        "@protobuf//:field_mask_proto",
         "@protobuf//:timestamp_proto",
     ],
 )
@@ -37,6 +37,7 @@ cpp_grpc_library(
     name = "scheduling_cpp_grpc",
     protos = [":scheduling_proto"],
     deps = [
+        "//api/common:common_cpp_proto",
         "@googleapis//google/rpc:status_cc_proto",
     ],
 )
@@ -50,6 +51,7 @@ go_proto_library(
     importpath = "aalyria.com/spacetime/api/scheduling/v1alpha",
     proto = ":scheduling_proto",
     deps = [
+        "//api/common:common_go_proto",
         "@org_golang_google_genproto_googleapis_rpc//status",
     ],
 )
@@ -58,6 +60,7 @@ java_grpc_library(
     name = "scheduling_java_grpc",
     protos = [":scheduling_proto"],
     deps = [
+        "//api/common:common_java_proto",
         "@googleapis//google/rpc:rpc_java_proto",
     ],
 )
@@ -65,4 +68,7 @@ java_grpc_library(
 python_grpc_library(
     name = "scheduling_python_grpc",
     protos = [":scheduling_proto"],
+    deps = [
+        "//api/common:common_python_proto",
+    ],
 )
