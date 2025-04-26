@@ -40,7 +40,7 @@ service Provisioning {
   //
   // Manage resources under `p2pSrTePolicy/{policy_id}`.
   rpc GetP2pSrTePolicy(GetP2pSrTePolicyRequest) returns (P2pSrTePolicy) {}
-  rpc ListP2pSrTePolicy(ListP2pSrTePoliciesRequest) returns (ListP2pSrTePoliciesResponse) {}
+  rpc ListP2pSrTePolicies(ListP2pSrTePoliciesRequest) returns (ListP2pSrTePoliciesResponse) {}
   rpc CreateP2pSrTePolicy(CreateP2pSrTePolicyRequest) returns (P2pSrTePolicy) {}
   rpc UpdateP2pSrTePolicy(UpdateP2pSrTePolicyRequest) returns (P2pSrTePolicy) {}
   rpc DeleteP2pSrTePolicy(DeleteP2pSrTePolicyRequest) returns (google.protobuf.Empty) {}
