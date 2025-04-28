@@ -83,6 +83,7 @@ def java_binary(name, javacopts = [], plugins = [], **kwargs):
         name = "%s_deployable" % name,
         binary = ":%s" % name,
         deploy_jar = ":%s_deploy.jar" % name,
+        testonly = kwargs.get("testonly", 0),
     )
 
 def java_test(javacopts = [], plugins = [], **kwargs):
