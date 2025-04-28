@@ -511,6 +511,14 @@ message PointingVector {
   optional double elevation_deg = 2;
 }
 
+// A phi/theta direction vector.
+message PhiTheta {
+  // Defaults to 0.
+  optional double phi_rad = 1;
+  // Defaults to 0.
+  optional double theta_rad = 2;
+}
+
 message Motion {
   // The time interval for which this motion specification is applicable.
   //

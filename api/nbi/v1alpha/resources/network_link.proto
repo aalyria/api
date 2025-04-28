@@ -240,9 +240,10 @@ message WirelessLinkReport {
       // The electromagnetic propagation delay.
       optional aalyria.spacetime.api.common.Duration propagation_delay = 2;
 
-      // The link direction from transmitter towards the receiver.
-      // This field is only applicable to wireless links.
-      optional aalyria.spacetime.api.common.PointingVector pointing_vector = 3;
+      // Incidence angles of the Tx and Rx beams.
+      // Observed from the point and orientation of the respective antenna.
+      optional aalyria.spacetime.api.common.PhiTheta tx_pointing_phi_theta = 3;
+      optional aalyria.spacetime.api.common.PhiTheta rx_pointing_phi_theta = 15;
 
       // The link distance, in meters.
       // This field is only applicable to wireless links.
