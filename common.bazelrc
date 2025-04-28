@@ -1,0 +1,79 @@
+# Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# This file defines bazelrc settings shared across workspaces.
+
+##
+# Make Bazel use an environment with a static value for PATH to facilitate
+# cross-user caching.
+#
+# Note that, at one point, this was the Bazel default, but that was reverted. See
+# https://github.com/bazelbuild/bazel/issues/7026.
+##
+build --incompatible_strict_action_env
+
+# Go 1.20 introduced some changes that can cause unnecessary rebuilds without
+# this flag: See https://github.com/bazelbuild/rules_go/issues/3430.
+build --experimental_output_directory_naming_scheme=diff_against_dynamic_baseline
+
+##
+# For information on C/C++ compiler warnings see:
+# https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html
+#
+# Set C++20 as the standard version to use
+build --cxxopt='-std=c++20'
+build --cxxopt='-Wall'
+build --cxxopt='-Werror'
+
+# TODO: remove these flags when grpc builds without them.
+build --cxxopt='-Wno-comment'
+build --cxxopt='-Wno-class-memaccess'
+build --cxxopt='-Wno-unused-variable'
+build --cxxopt='-Wno-unused-function'
+# TODO: remove this flag when protobuf builds without it.
+# See: https://github.com/protocolbuffers/protobuf/issues/12432
+build --cxxopt='-Wno-sign-compare'
+# TODO: remove -Wno-deprecated-declarations and live a healthier, happier life.
+build --cxxopt='-Wno-deprecated-declarations'
+build --host_cxxopt=-Wno-deprecated-declarations
+
+##
+# Disable strict warnings in header files from external repositories.
+#   - feature request: https://github.com/bazelbuild/bazel/issues/12009
+#   - commit: https://github.com/bazelbuild/bazel/commit/08936aecb96f2937c61bdedfebcf1c5a41a0786d
+##
+build --features=external_include_paths
+
+##
+# Enable hermetic testing and compilation of Java using a JVM downloaded from a
+# remote repository.
+##
+build --tool_java_runtime_version=remotejdk_21 --java_runtime_version=remotejdk_21
+
+##
+# Allow Java constructs compatible with the Java 21 specification.
+##
+build --tool_java_language_version=21 --java_language_version=21
+
+##
+# Don't automatically create __init__.py files in the runfiles of
+# Python targets.
+# See: https://github.com/bazelbuild/bazel/issues/10076
+#
+# This is motivated by our python proto library targets which produce
+# overlapping import paths.
+##
+build --incompatible_default_to_explicit_init_py
+
+common --experimental_downloader_config=./bazel/bazel_downloader.cfg

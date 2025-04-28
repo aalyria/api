@@ -1,0 +1,584 @@
+// Copyright 2024 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Spacetime Federation Interface
+
+syntax = "proto3";
+
+package aalyria.spacetime.api.fed.v1alpha;
+
+import "api/common/bent_pipe.proto";
+import "api/common/coordinates.proto";
+import "api/common/wireless_transceiver.proto";
+import "api/types/ietf.proto";
+import "google/protobuf/duration.proto";
+import "google/type/interval.proto";
+
+option java_package = "com.aalyria.spacetime.api.fed.v1alpha";
+option go_package = "aalyria.com/spacetime/api/fed/v1alpha";
+
+// FEDERATION OF NETWORKS
+//
+// Networks in the Federation operate as peers to one another, communicating via
+// the Federation API. Each network exposes interconnection points, which are
+// external representations of interfaces or other resources that are available
+// to external networks for ingress or egress.
+//
+// SCHEDULING A SERVICE
+//
+// `ScheduleService` allows a requestor to request a service from a provider's
+// network, regardless of any prior knowledge about that network.
+//
+// The requestor may choose to first gather more information about the service
+// provider's resource locations, attributes, and SLAs before submitting a
+// request for service. This additional information can give the requestor more
+// fine-grained control over service selection, if desired. The RPCs that
+// facilitate this are:
+//
+//   1) `StreamInterconnectionPoints`, which allows the requestor to see a
+//      long-lived stream of the service provider's interconnection points.
+//   2) `ListServiceOptions`, which allows the requestor to get a list of
+//      available services from the service provider's network.
+//
+// Generally, the more prescriptive the requestor is about requesting specific
+// interconnection points or service options, the less the provider needs to
+// know about the requestor network. Conversely, the requestor may prefer a more
+// hands-off approach to selecting and maintaining service interconnections, and
+// can let the provider handle the tasking by offering more information upfront.
+//
+// The service ends when the last time interval has ended.
+//
+// SERVICE LIFECYCLE
+//
+// The following RPCs handle lifecycle management for Services.
+//
+// All are called by the Requestor to the Provider.
+//
+// - ScheduleService requests a Service from the Provider, returning among
+//   other things a unique `service_id` for lifecycle management.
+// - StatusService creates a long-lived stream, through which the Provider
+//   generates dynamic Service status updates for one or more `service_id`.
+//   It is also the channel through which the Provider can notify the
+//   Requestor of Service termination.
+// - CancelService enables Requestor cancellation of an existing
+//   `service_id`.
+service Federation {
+  // Request a potentially long-lived stream of available
+  // `InterconnectionPoints`. The connection will stream one complete snapshot
+  // of InterconnectionPoints from the Provider. If the request specifies
+  // `snapshot_only=true`, the stream is terminated by the Provider after
+  // sending the snapshot. Otherwise, the Provider continues to stream any
+  // updates in real-time.
+  rpc StreamInterconnectionPoints(StreamInterconnectionPointsRequest)
+      returns (stream StreamInterconnectionPointsResponseChunk) {}
+
+  // Request a finite stream of `ServiceOptions`.
+  rpc ListServiceOptions(ListServiceOptionsRequest)
+      returns (stream ListServiceOptionsResponse) {}
+
+  // Request a Service.
+  rpc ScheduleService(ScheduleServiceRequest)
+    returns (ScheduleServiceResponse) {}
+
+  // Request Provider status updates for one or more Services.
+  rpc MonitorServices(stream MonitorServicesRequest)
+    returns (stream MonitorServicesResponse) {}
+
+  // Request a Service cancellation.
+  rpc CancelService(CancelServiceRequest) returns (CancelServiceResponse) {}
+}
+
+// Returns a collection of ServiceOptions, message may be repeated to stream
+// all ServiceOptions that resulted from the ListServiceOptions Request.
+message ListServiceOptionsResponse {
+  // A collection of ServiceOptions that satisfy the ListServiceOptionsRequest.
+  repeated ServiceOption service_options = 1;
+}
+
+// Update the requested set of Service `service_id`s for status updates.
+//
+// Updates are differential (specified in adds and drops) to support
+// potentially large cardinality.
+message MonitorServicesRequest {
+  // List of Services with `service_id`s to subscribe to status updates of.
+  repeated string add_service_ids = 1;
+
+  // List of Services with `service_id`s to drop status updates of.
+  repeated string drop_service_ids = 2;
+}
+
+// Streamed updates to subscribed `service_id`s providing updates.
+message MonitorServicesResponse {
+  repeated ServiceStatus updated_services =1;
+}
+
+// A StreamInterconnectionPointsResponseChunk returns a collection of Provider
+// InterconnectionPoint updates and signals when an entire snapshot has
+// successfully been transferred (leaving only live updates remaining).
+//
+// When streaming Interconnections, one or more
+// StreamInterconnectionPointsResponseChunks with `mutations` may be transmitted
+// in order to fully transfer the initial snapshot of InterconnectionPoints.
+//
+// For the longevity of a StreamInterconnectionPoints, there will be exactly one
+// StreamInterconnectionPointsResponseChunk in which `snapshot_complete` is set,
+// indicating that the mutations up to and including this Chunk complete the
+// initial system view at the start of streaming (initial snapshot). Future
+// StreamInterconnectionPointsResponseChunk (if `snapshot_only=False` or is
+// unset) will contain further live updates. Otherwise the stream is closed by
+// the Provider.
+message StreamInterconnectionPointsResponseChunk {
+  // Notification that the initial state snapshot has been fully provided, up
+  // to and including the `mutations` in this message.
+  optional SnapshotComplete snapshot_complete = 1;
+  // A set of InterconnectionPoint advertisement changes.
+  repeated InterconnectionMutation mutations = 2;
+
+  message SnapshotComplete{
+    // Message empty but left for ease of backwards compatibility should
+    // any snapshot completion signaling need arrise (e.g. timestamp).
+  }
+}
+
+// An InterconnectionMutation specifies one change to the advertised
+// InterconnectionPoints of a Provider.  This could be new or updated
+// InterconnectionPoints (upsert), or the removal of an existing offering
+// (delete).
+message InterconnectionMutation {
+  oneof type {
+    // upsert: update an existing InterconnectionPoint if it already exists
+    // (based on UUID comparison), or insert a new InterconnectionPoint if it
+    // doesn't already exist.  The full InterconnectionPoint object is
+    // required, the service does not support diffs for this field.
+    InterconnectionPoint upsert = 1;
+    // delete an existing InterconnectionPoint if it already exists (based on
+    // UUID comparison).
+    Delete delete = 2;
+  }
+
+  message Delete {
+    // The UUID of the now-deleted InterconnectionPoint.
+    string uuid = 1;
+  }
+}
+
+// An interconnection point is an endpoint of a link between two networks.
+//
+// This object is comprised of 1) an ID, and 2) fields that describe the L1 and
+// L2 attributes of the interconnection point. These attributes include physical
+// considerations for link budgeting such as geometric constraints and
+// time-dynamic location, as well as network-level information for link
+// compatibility such as interface types and modes, data rate constraints, and
+// network addresses. Other information is included when relevant, such as ADSB
+// transponders for any interconnection points aboard aircraft platforms.
+//
+// The ID is the only required field. Different fields may be populated for
+// different use cases of this object.
+//
+// It is the network controller's responsibility to maintain mappings between
+// their internal interfaces and corresponding external-facing
+// `InterconnectionPoints`. Once an `InterconnectionPoint` ID has been exposed
+// via the Federation API, it should never be re-mapped to a different internal
+// resource, though the ID may be deprecated or deleted.
+message InterconnectionPoint {
+  // The UUID of this interconnection point. Required. Unique across
+  // InterconnectionPoints advertised by this Provider. The UUID is maintained
+  // across mutations to this entity.
+  string uuid = 1;
+
+  oneof type {
+    // The transceiver model used by this interconnection point.
+    aalyria.spacetime.api.common.TransceiverModel transceiver_model = 2;
+    // The bent pipe payload model used by this interconnection point.
+    aalyria.spacetime.api.common.BentPipePayload bent_pipe_payload = 3;
+  }
+  // The location over time of this interconnection point.
+  aalyria.spacetime.api.common.Motion coordinates = 4;
+
+  // The interface's IP address represented as a CIDR notation subnet or
+  // single IP address string.
+  aalyria.spacetime.api.types.IPNetwork ip_network = 5;
+
+  // Ethernet address in readable colon separated format. e.g.
+  // "1:23:45:67:89:ab" or "01:23:45:67:89:ab"
+  string ethernet_address = 6;
+
+  // Mode field indicates whether or not the interface can receive packets in
+  // promiscuous mode, or if it can receive L2 packets only if the L2
+  // destination address matches it's own physical address.
+  enum Mode {
+    MODE_PROMISCUOUS = 0;
+    MODE_NON_PROMISCUOUS = 1;
+  }
+  Mode rx_mode = 7;
+
+  // Optionally specifies the local/hardware IDs within the platform or
+  // switch. These are not used by network controllers but may be useful for
+  // network elements for operational context.  Example: "eth:0", "gwl:1",
+  // "gre:2", etc.
+  message LocalId {
+    string type = 1;
+    int32 index = 2;
+  }
+  repeated LocalId local_ids = 8;
+
+  // The maximum data-rate of the interface, in layer 2 bits per second. For
+  // wired interconnection points only.
+  double max_data_rate_bps = 9;
+
+  // Optionally used to further constrain the maximum transmit power available
+  // for use, in aggregate, by the node's wireless network interface.
+  message SignalPowerBudget {
+    // The time interval (set to infinite if static).
+    google.type.Interval interval = 1;
+
+    // The total amount of available power, in Watts.
+    double max_available_signal_power_watts = 2;
+  }
+  repeated SignalPowerBudget power_budgets = 10;
+}
+
+// A filter for interconnection points, used by the requestor to constrain the
+// results they receive from the provider. Fields are optional and `AND`ed
+// together.
+//
+// More filters will be added as the federation grows.
+message InterconnectionPointFilters {
+  // The MAC type, e.g. "DVB-S2", "DVB-S2X", "802.11", "5G-NR", "Link-16",
+  // "CCSDS-AOS", etc.
+  string mac_type = 1;
+
+  // The role in the MAC layer, e.g. "HUB", "REMOTE", "AP", "CLIENT", etc.
+  string mac_role = 2;
+}
+
+// Requests will be treated as bidirectional by default, unless otherwise
+// specified in the proto documentation.
+enum Directionality {
+  DIRECTIONALITY_BIDIRECTIONAL = 0;
+  DIRECTIONALITY_X_TO_Y = 1;
+  DIRECTIONALITY_Y_TO_X = 2;
+}
+
+// This request message allows filtering of requested interconnection points.
+message StreamInterconnectionPointsRequest {
+  // If set to true, the connection will be closed by the Provider after
+  // streaming one snapshot's complete set of Interconnections (the stream is
+  // not held open for additional updates).
+  optional bool snapshot_only = 1;
+
+  // Future expansion possible to support filtering characteristics for
+  // the Stream.
+}
+
+// This object is used to frame `ServiceRequests` and `ServiceOptionRequests`
+// sent from the requestor to the provider, and defines two sets of potential
+// service endpoints:
+//   A) one or more interconnection points in the requestor's network
+//   B) an IP address that is reachable via the provider's network
+//
+// Any endpoint in (A) may be connected by a service to the IP address in (B).
+// Directionality may be specified; otherwise defaults to bidirectional.
+//
+// Because the provider will be tasking the interconnection resources if the
+// requestor uses this object in a request, interconnection points must contain
+// full link budgeting and compatilibity information.
+message RequestorEdgeToIpNetwork {
+  // An unordered set of `InterconnectionPoints` from the requestor's network.
+  // Each point must contain enough information to enable full link budgeting
+  // and compatibility analysis.
+  repeated InterconnectionPoint x_interconnection_points = 1;
+  // The IP address the requestor wishes to reach, represented as a CIDR
+  // notation subnet or single IP address string.
+  aalyria.spacetime.api.types.IPNetwork y_ip_network = 2;
+  // Defines the directionality of this pair of endpoint sets. Assumed to be
+  // bidirectional by default.
+  Directionality directionality = 3;
+}
+
+// This object is used to frame `ServiceRequests` and `ServiceOptionRequests`
+// sent from the requestor to the provider, and defines two sets of potential
+// service endpoints:
+//   A) one or more interconnection points in the requestor's network
+//   B) one or more interconnection points in the requestor's network
+//
+// Any endpoint in (A) may be connected by a service to any endpoint in (B).
+// Directionality may be specified; otherwise defaults to bidirectional.
+//
+// Because the provider will be tasking the interconnection resources if the
+// requestor uses this object in a request, interconnection points must contain
+// full link budgeting and compatilibity information.
+message RequestorEdgeToRequestorEdge {
+  // An unordered set of `InterconnectionPoints` from the requestor's network.
+  // Each point must contain enough information to enable full link budgeting
+  // and compatibility analysis.
+  repeated InterconnectionPoint x_interconnection_points = 1;
+  // An unordered set of `InterconnectionPoints` from the requestor's network.
+  // Each point must contain enough information to enable full link budgeting
+  // and compatibility analysis.
+  repeated InterconnectionPoint y_interconnection_points = 2;
+  // Defines the directionality of this pair of endpoint sets. Assumed to be
+  // bidirectional by default.
+  Directionality directionality = 3;
+}
+
+// A set of filters that define an unordered set of interconnection points from
+// the provider's network. This object is used in certain requests from the
+// requestor to the provider. All fields are optional, though filling in some
+// values is strongly encouraged.
+message InterconnectionPointSet {
+  // A filter that explicitly specifies one or more interconnection points, each
+  // requiring only the ID.
+  repeated InterconnectionPoint interconnection_points = 1;
+
+  // Broad filters that specify attributes of interconnection points.
+  InterconnectionPointFilters interconnection_point_filter = 2;
+}
+
+// This object is used to frame `ServiceRequests` and `ServiceOptionRequests`
+// sent from the requestor to the provider, and defines two sets of potential
+// service endpoints:
+//   A) one or more interconnection points in the provider's network
+//   B) an IP address that is reachable via the provider's network.
+//
+// Any endpoint in (A) may be connected by a service to the IP address in (B).
+// Directionality may be specified; otherwise defaults to bidirectional.
+message ProviderEdgeToIpNetwork {
+  // One or more interconnection points in the provider's network.
+  InterconnectionPointSet x_interconnection_points = 1;
+
+  // The IP address the requestor wishes to reach, represented as a CIDR
+  // notation subnet or single IP address string.
+  aalyria.spacetime.api.types.IPNetwork y_ip_network = 3;
+
+  // Defines the directionality of this pair of endpoint sets. Assumed to be
+  // bidirectional by default.
+  Directionality directionality = 4;
+}
+
+// This object is used to frame `ServiceRequests` and `ServiceOptionRequests`
+// sent from the requestor to the provider, and defines two sets of potential
+// service endpoints:
+//   A) one or more interconnection points in the provider's network,
+//   B) one or more interconnection points in the provider's network,
+//
+// Any endpoint in (A) may be connected by a service to any endpoint in (B).
+// Directionality may be specified; otherwise defaults to bidirectional.
+message ProviderEdgeToProviderEdge {
+  // One or more interconnection points in the provider's network.
+  InterconnectionPointSet x_interconnection_points = 1;
+
+  // One or more interconnection points in the provider's network.
+  InterconnectionPointSet y_interconnection_points = 3;
+
+  // Defines the directionality of this pair of endpoint sets. Assumed to be
+  // bidirectional by default.
+  Directionality directionality = 5;
+}
+
+// A set of filters for network interconnectivity information, which describes
+// how data should get through the network, with what characteristics, and in
+// which direction. This includes filters for attributes such as traffic types
+// and encapsulations, guaranteed MTU, and latency and/or bandwidth.
+//
+// This set contains three filters: bidirectional, x_to_y, and y_to_x. Any
+// fields populated in the x_to_y and y_to_x service attribute filters will
+// override the corresponding fields in the bidirectional filter.
+//
+// For example:
+// bidirectional_filter: { max_a = 5, max_b = 10, max_c = [EMPTY] }
+// x_to_y_filter: { max_b = 7 }
+// y_to_x_filter: { max_c = 2 }
+// Resulting x_to_y direction filter: { max_a = 5, max_b = 7 }
+// Resulting y_to_x direction filter: { max_a = 5, max_b = 10, max_c = 2 }
+message ServiceAttributesFilterSet {
+  // A filter for network interconnectivity information, going one way.
+  // In other words, fields such as latency describe one-way latency, not RTT.
+  //
+  // More types of filters will be added, such as for traffice types, as the
+  // federation grows.
+  message ServiceAttributesFilter {
+    // The minimum bandwidth, in layer 2 bits per second. Defaults to 100 bps.
+    double bandwidth_bps_minimum = 3;
+    // The maximum allowed end-to-end latency for the flow.
+    google.protobuf.Duration one_way_latency_maximum = 4;
+  }
+
+  // Service-level one-way filter used to prune `Services` and `ServiceOptions`.
+  // A given `Service` or `ServiceOption` passes this filter if all of its
+  // attributes in either the `x_to_y` or `y_to_x` direction pass.
+  //
+  // The `Directionality` field itself in the `Service` or `ServiceOption` is
+  // ignored.
+  ServiceAttributesFilter bidirectional_service_attributes_filter = 4;
+
+  // Service-level one-way filter used to prune `Services` and `ServiceOptions`
+  // by their attributes in the x_to_y direction.
+  //
+  // The `Directionality` field itself in the `Service` or `ServiceOption` is
+  // ignored.
+  ServiceAttributesFilter x_to_y_service_attributes_filter = 5;
+
+  // Service-level one-way filter used to prune `Services` and `ServiceOptions`
+  // by their attributes in the y_to_x direction.
+  //
+  // The `Directionality` field itself in the `Service` or `ServiceOption` is
+  // ignored.
+  ServiceAttributesFilter y_to_x_service_attributes_filter = 6;
+}
+
+// Network interconnectivity information, which describes how data will get
+// through the network, and with what characteristics. This includes traffic
+// types and encapsulations, guaranteed MTU, and latency and/or bandwidth.
+//
+// More attributes will be added as the federation grows.
+message TemporalServiceAttributes {
+  // The time interval during which these attributes are applicable.
+  google.type.Interval time_interval = 6;
+}
+
+// A request for service options. All fields are requirements that are ANDed
+// together to constrain the resulting set of service options.
+message ListServiceOptionsRequest {
+  // Requestable endpoint set pairs. Optional.
+  oneof type {
+    // All `InterconnectionPoints` must contain link compatibility and link
+    // evaluation fields.
+    RequestorEdgeToRequestorEdge requestor_edge_to_requestor_edge = 1;
+    // Only basic ID information on `InterconnectionPoints` is required.
+    ProviderEdgeToProviderEdge provider_edge_to_provider_edge = 2;
+    // Only basic ID information on `InterconnectionPoints` is required.
+    ProviderEdgeToIpNetwork provider_edge_to_ip_network = 3;
+  }
+
+  // Service-level filters used to prune `ServiceOptions`.
+  ServiceAttributesFilterSet service_attributes_filters = 4;
+}
+
+// A service option.
+message ServiceOption {
+  // The ID of the service option.
+  string id = 1;
+
+  // One endpoint of the service option.
+  oneof endpoint_x {
+    // An interconnection point in the requestor's network. Only ID required.
+    InterconnectionPoint x_requestor_interconnection = 2;
+    // An interconnection point in the provider's network. Only ID required.
+    InterconnectionPoint x_provider_interconnection = 3;
+  }
+
+  // The other endpoint of the service option.
+  oneof endpoint_y {
+    // An interconnection point in the requestor's network. Only ID required.
+    InterconnectionPoint y_requestor_interconnection = 4;
+    // An interconnection point in the provider's network. Only ID required.
+    InterconnectionPoint y_provider_interconnection = 5;
+    // An IP address, represented as a CIDR notation subnet or single IP address
+    // string.
+    aalyria.spacetime.api.types.IPNetwork ip_network = 6;
+  }
+
+  // Defines the directionality of this pair of endpoint sets. Assumed to be
+  // bidirectional by default.
+  Directionality directionality = 7;
+
+  // The service attributes of this service option, aggregated over the given
+  // time interval.
+  TemporalServiceAttributes service_attributes_x_to_y = 8;
+
+  TemporalServiceAttributes service_attributes_y_to_x = 9;
+}
+
+// A request for service. All fields are requirements that are ANDed together.
+// If the number of potential services is more than one, after all requirements
+// have been applied, then the provider selects one for the requestor.
+message ScheduleServiceRequest {
+  // Requestable endpoint set pairs.
+  oneof type {
+    // The service option to request.
+    string service_option_id = 2;
+    // All `InterconnectionPoints` must contain link compatibility and link
+    // evaluation fields.
+    RequestorEdgeToRequestorEdge requestor_edge_to_requestor_edge = 3;
+    // All `InterconnectionPoints` must contain link compatibility and link
+    // evaluation fields.
+    RequestorEdgeToIpNetwork requestor_edge_to_ip_network = 4;
+  }
+
+  // Service-level filters. Optional.
+  ServiceAttributesFilterSet service_attributes_filters = 5;
+
+  // A request will be treated as having a higher priority if the value of this
+  // field is greater than that of another service request from the same
+  // requestor.
+  uint32 priority = 6;
+}
+
+
+// The immediate result of a ScheduleService call, providing a unique
+// `service_id` for lifecycle managment of the resulting Service.
+message ScheduleServiceResponse {
+  // A unique service_id generated by the provider.
+  string service_id = 1;
+
+  // Any additional immutable Service fields can be added here.
+}
+
+// A ServiceUpdate to notify the Requestor of Service characteristics which may
+// change over time.
+message ServiceStatus {
+  // The ID of the service.
+  string id = 1;
+
+  oneof type {
+    // A Provider initiated notification of Service cancellation.
+    ServiceCancelled provider_cancelled = 2;
+    // A Provider notification of Service status changes.
+    ServiceUpdate service_update = 3;
+  }
+
+  message ServiceCancelled {
+    // To aid proto forward compatibility, leaving a message for future
+    // cancellation characteristics.
+  }
+
+  message ServiceUpdate {
+    // One endpoint of the service.
+    InterconnectionPoint x_service_endpoint = 1;
+
+    // The other endpoint of the service.
+    InterconnectionPoint y_service_endpoint = 2;
+
+    // Planned service attributes, confirmed by Requestor.
+    TemporalServiceAttributes planned_service_attributes_x_to_y = 3;
+    TemporalServiceAttributes planned_service_attributes_y_to_x = 4;
+
+    // Actual service attributes, reported by Requestor, which may differ
+    // from planned.
+    TemporalServiceAttributes reported_service_attributes_x_to_y = 5;
+    TemporalServiceAttributes reported_service_attributes_y_to_x = 6;
+
+    // True if the service is currently active and provisioned by the network.
+    bool is_active = 7;
+  }
+}
+
+message CancelServiceRequest {
+  string service_id = 1;
+}
+
+message CancelServiceResponse {
+  bool cancelled = 1;
+}
