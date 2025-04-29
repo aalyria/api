@@ -240,6 +240,14 @@ message BeamHoppingPlan {
     // illuminated during any time slot not represented in the collection of
     // entries.
     repeated Entry entries = 2;
+
+    // The number of extra times that the list of time slots defined by the
+    // section should be looped.  A zero value (no repeats) is assumed if not
+    // present, which means the entries are only visited once by the beam.  A
+    // value of 2 means the section is iterated through and then repeated
+    // twice (so all of the entries are visited three times by the beam).
+    // Negative values should not be used; the type is signed in accordance
+    int32 repeat_count = 3;
   }
 
   repeated Section sections = 1;
