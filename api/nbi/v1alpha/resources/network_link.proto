@@ -65,6 +65,7 @@ message Radio {
   // For optical transceivers, this may be converted to wavelength.
   optional uint64 center_frequency_hz = 1;
   optional string band_profile_id = 2;
+  optional int64 channel_bandwidth_hz = 6;
   optional aalyria.spacetime.api.common.Polarization polarization = 3;
 
   message TxRadioConfiguration {
