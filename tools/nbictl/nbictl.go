@@ -1,4 +1,4 @@
-// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -437,9 +437,9 @@ func App() *cli.App {
 				},
 			},
 			{
-				Name:    "model-v1alpha",
+				Name:    "model-v1",
 				Aliases: []string{"model"},
-				Usage:   "Subcommands for Model API v1alpha, to manage the model elements comprising the digital twin.",
+				Usage:   "Subcommands for Model API v1, to manage the model elements comprising the digital twin.",
 				Subcommands: []*cli.Command{
 					{
 						Name:     "create-entity",
