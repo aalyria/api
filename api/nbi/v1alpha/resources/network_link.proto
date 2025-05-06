@@ -264,6 +264,7 @@ message WirelessLinkReport {
       optional double received_isotropic_power_dbw = 11;
       optional double power_at_receiver_output_dbw = 12;
       optional double carrier_to_noise_plus_interference_db = 13;
+      optional double effective_isotropic_radiated_power_dbw = 16;
       enum PropagationModel {
         PROPAGATION_MODEL_UNSPECIFIED = 0;
         ATMOSPHERIC_ATTENUATION_MODEL_ITUR_P676 = 1;
