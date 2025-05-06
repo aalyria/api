@@ -18,12 +18,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/jonboulle/clockwork"
 	vnl "github.com/vishvananda/netlink"
+	"golang.org/x/sys/unix"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -273,12 +275,13 @@ func TestNetlink(t *testing.T) {
 			},
 		},
 		{
-			name:         "one link missing attrs",
+			name:         "one link missing attrs with IFF_RUNNING set",
 			interfaceIDs: []string{"dry-dock", "transporter-room"},
 			linkByName: linkByNameFromMap(map[string]vnl.Link{
 				"dry-dock": &vnl.Dummy{
 					LinkAttrs: vnl.LinkAttrs{
 						OperState: vnl.OperUnknown,
+						Flags:     net.FlagRunning,
 						Statistics: &vnl.LinkStatistics{
 							TxPackets: 1,
 							RxPackets: 2,
@@ -302,7 +305,101 @@ func TestNetlink(t *testing.T) {
 					})),
 					OperationalStateDataPoints: []*telemetrypb.IfOperStatusDataPoint{{
 						Time:  timestamppb.New(clock.Now()),
-						Value: telemetrypb.IfOperStatus_IF_OPER_STATUS_UNKNOWN.Enum(),
+						Value: telemetrypb.IfOperStatus_IF_OPER_STATUS_UP.Enum(),
+					}},
+					StandardInterfaceStatisticsDataPoints: []*telemetrypb.StandardInterfaceStatisticsDataPoint{{
+						Time:      timestamppb.New(clock.Now()),
+						TxPackets: proto.Int64(1),
+						RxPackets: proto.Int64(2),
+						TxBytes:   proto.Int64(3),
+						RxBytes:   proto.Int64(4),
+						TxDropped: proto.Int64(5),
+						RxDropped: proto.Int64(6),
+						TxErrors:  proto.Int64(7),
+						RxErrors:  proto.Int64(8),
+					}},
+				}},
+			},
+		},
+		{
+			name:         "one link missing attrs with IFF_DORMANT set",
+			interfaceIDs: []string{"dry-dock", "transporter-room"},
+			linkByName: linkByNameFromMap(map[string]vnl.Link{
+				"dry-dock": &vnl.Dummy{
+					LinkAttrs: vnl.LinkAttrs{
+						OperState: vnl.OperUnknown,
+						Flags:     unix.IFF_DORMANT,
+						Statistics: &vnl.LinkStatistics{
+							TxPackets: 1,
+							RxPackets: 2,
+							TxBytes:   3,
+							RxBytes:   4,
+							TxDropped: 5,
+							RxDropped: 6,
+							TxErrors:  7,
+							RxErrors:  8,
+						},
+					},
+				},
+				"transporter-room": &vnl.Dummy{},
+			}),
+			nodeID: "enterprise",
+			wantMetrics: &telemetrypb.ExportMetricsRequest{
+				InterfaceMetrics: []*telemetrypb.InterfaceMetrics{{
+					InterfaceId: proto.String(textNetworkIfaceID(&commonpb.NetworkInterfaceId{
+						NodeId:      proto.String("enterprise"),
+						InterfaceId: proto.String("dry-dock"),
+					})),
+					OperationalStateDataPoints: []*telemetrypb.IfOperStatusDataPoint{{
+						Time:  timestamppb.New(clock.Now()),
+						Value: telemetrypb.IfOperStatus_IF_OPER_STATUS_DORMANT.Enum(),
+					}},
+					StandardInterfaceStatisticsDataPoints: []*telemetrypb.StandardInterfaceStatisticsDataPoint{{
+						Time:      timestamppb.New(clock.Now()),
+						TxPackets: proto.Int64(1),
+						RxPackets: proto.Int64(2),
+						TxBytes:   proto.Int64(3),
+						RxBytes:   proto.Int64(4),
+						TxDropped: proto.Int64(5),
+						RxDropped: proto.Int64(6),
+						TxErrors:  proto.Int64(7),
+						RxErrors:  proto.Int64(8),
+					}},
+				}},
+			},
+		},
+		{
+			name:         "one link missing attrs with IFF_RUNNING *not* set",
+			interfaceIDs: []string{"dry-dock", "transporter-room"},
+			linkByName: linkByNameFromMap(map[string]vnl.Link{
+				"dry-dock": &vnl.Dummy{
+					LinkAttrs: vnl.LinkAttrs{
+						OperState: vnl.OperUnknown,
+						Flags:     0,
+						Statistics: &vnl.LinkStatistics{
+							TxPackets: 1,
+							RxPackets: 2,
+							TxBytes:   3,
+							RxBytes:   4,
+							TxDropped: 5,
+							RxDropped: 6,
+							TxErrors:  7,
+							RxErrors:  8,
+						},
+					},
+				},
+				"transporter-room": &vnl.Dummy{},
+			}),
+			nodeID: "enterprise",
+			wantMetrics: &telemetrypb.ExportMetricsRequest{
+				InterfaceMetrics: []*telemetrypb.InterfaceMetrics{{
+					InterfaceId: proto.String(textNetworkIfaceID(&commonpb.NetworkInterfaceId{
+						NodeId:      proto.String("enterprise"),
+						InterfaceId: proto.String("dry-dock"),
+					})),
+					OperationalStateDataPoints: []*telemetrypb.IfOperStatusDataPoint{{
+						Time:  timestamppb.New(clock.Now()),
+						Value: telemetrypb.IfOperStatus_IF_OPER_STATUS_DOWN.Enum(),
 					}},
 					StandardInterfaceStatisticsDataPoints: []*telemetrypb.StandardInterfaceStatisticsDataPoint{{
 						Time:      timestamppb.New(clock.Now()),

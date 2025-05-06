@@ -30,6 +30,7 @@ go_library(
         "@org_golang_google_protobuf//encoding/prototext",
         "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//types/known/timestamppb",
+        "@org_golang_x_sys//unix",
     ],
 )
 
@@ -47,5 +48,6 @@ go_test(
         "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//testing/protocmp",
         "@org_golang_google_protobuf//types/known/timestamppb",
+        "@org_golang_x_sys//unix",
     ],
 )

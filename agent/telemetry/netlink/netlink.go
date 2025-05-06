@@ -17,6 +17,7 @@ package netlink
 import (
 	"context"
 	"errors"
+	"net"
 	"time"
 
 	"aalyria.com/spacetime/agent/telemetry"
@@ -26,6 +27,7 @@ import (
 	"github.com/jonboulle/clockwork"
 	"github.com/rs/zerolog"
 	vnl "github.com/vishvananda/netlink"
+	"golang.org/x/sys/unix"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -96,7 +98,7 @@ func (rg *reportGenerator) GenerateReport(ctx context.Context, nodeID string) (*
 			InterfaceId: proto.String(string(textNetIfaceID)),
 			OperationalStateDataPoints: []*telemetrypb.IfOperStatusDataPoint{{
 				Time:  timestamppb.New(ts),
-				Value: netlinkOperStateToTelemetryOperState(attrs.OperState).Enum(),
+				Value: netlinkOperStateToTelemetryOperState(attrs).Enum(),
 			}},
 			StandardInterfaceStatisticsDataPoints: []*telemetrypb.StandardInterfaceStatisticsDataPoint{{
 				Time:      timestamppb.New(ts),
@@ -121,10 +123,27 @@ func (rg *reportGenerator) GenerateReport(ctx context.Context, nodeID string) (*
 	}, nil
 }
 
-func netlinkOperStateToTelemetryOperState(s vnl.LinkOperState) telemetrypb.IfOperStatus {
-	switch s {
+func netlinkOperStateToTelemetryOperState(attrs *vnl.LinkAttrs) telemetrypb.IfOperStatus {
+	switch attrs.OperState {
 	case vnl.OperUnknown:
-		return telemetrypb.IfOperStatus_IF_OPER_STATUS_UNKNOWN
+		// OperUnknown could mean running and the driver isn't reporting that via the state field.
+		// The Kernel docs recommend using the IFF_RUNNING flag to figure out if an interface is
+		// usable:
+		//
+		// >A routing daemon or dhcp client just needs to care for IFF_RUNNING or waiting for
+		// >operstate to go IF_OPER_UP/IF_OPER_UNKNOWN before considering the interface / querying a
+		// >DHCP address.
+		//
+		// https://docs.kernel.org/networking/operstates.html#tlv-ifla-operstate
+		switch {
+		case (attrs.Flags & net.FlagRunning) == net.FlagRunning:
+			return telemetrypb.IfOperStatus_IF_OPER_STATUS_UP
+		case (attrs.Flags & unix.IFF_DORMANT) == unix.IFF_DORMANT:
+			return telemetrypb.IfOperStatus_IF_OPER_STATUS_DORMANT
+		default:
+			return telemetrypb.IfOperStatus_IF_OPER_STATUS_DOWN
+		}
+
 	case vnl.OperNotPresent:
 		return telemetrypb.IfOperStatus_IF_OPER_STATUS_NOT_PRESENT
 	case vnl.OperDown:
