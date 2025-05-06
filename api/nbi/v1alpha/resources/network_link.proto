@@ -144,6 +144,8 @@ message BidirectionalLink {
 // between a transmitter and a list of receiving platforms, or a
 // point-to-point link between two transceivers.
 message DirectionalLink {
+  optional string network_node_id = 5;
+
   // Identifies the wireless network interface.
   optional aalyria.spacetime.api.common.NetworkInterfaceId id = 1;
 
