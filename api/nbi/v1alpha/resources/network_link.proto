@@ -130,6 +130,9 @@ message BidirectionalLink {
   optional LinkEnd a = 1;
   optional LinkEnd b = 2;
 
+  optional string a_network_node_id = 5;
+  optional string b_network_node_id = 6;
+
   // These fields are optional and may be omitted for wireless interfaces that
   // do not require centralized orchestration of radio-related parameters.
   // TODO: migrate RadioIntent usage to these fields instead.
