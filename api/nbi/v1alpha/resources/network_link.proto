@@ -35,6 +35,9 @@ message NetworkLink {
   optional aalyria.spacetime.api.common.NetworkInterfaceId src = 3;
   optional aalyria.spacetime.api.common.NetworkInterfaceId dst = 4;
 
+  optional string src_network_node_id = 7;
+  optional string dst_network_node_id = 8;
+
   optional string src_interface_id = 5;
   optional string dst_interface_id = 6;
 
