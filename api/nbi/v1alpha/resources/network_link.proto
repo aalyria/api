@@ -148,6 +148,7 @@ message BidirectionalLink {
 // point-to-point link between two transceivers.
 message DirectionalLink {
   optional string network_node_id = 5;
+  optional string interface_id = 6;
 
   // Identifies the wireless network interface.
   optional aalyria.spacetime.api.common.NetworkInterfaceId id = 1;
@@ -168,6 +169,7 @@ message DirectionalLink {
 message RxPlatform {
   optional aalyria.spacetime.api.common.NetworkInterfaceId id = 1;
   optional string network_node_id = 3;
+  optional string interface_id = 4;
 
   // Defines the radio configuration to apply to the receiving platform.
   optional RxRadioConfiguration rx_radio = 2;
