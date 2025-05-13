@@ -37,7 +37,7 @@ service SignalPropagation {
 message SignalPropagationRequest {
   // Identifies the transmitting transceiver model.
   optional aalyria.spacetime.api.nbi.v1alpha.resources.TransceiverProvider
-      transmitter_model = 1;
+    transmitter_model = 1;
 
   // This string should correspond to the `id` field of an
   // Entity message that contains a aalyria.spacetime.api.common.BandProfile
@@ -52,12 +52,12 @@ message SignalPropagationRequest {
   // Only coverage calculations will be completed. The link budget from
   // the transmitter to target will not be computed.
   optional aalyria.spacetime.api.nbi.v1alpha.resources.TransceiverProvider
-      target = 3;
+    target = 3;
 
   // This field is useful for interference analysis.
   // Omitting this field causes 'coverage' to be omitted from the response.
   optional aalyria.spacetime.api.nbi.v1alpha.resources.CoordinateArray
-      coverage = 4;
+    coverage = 4;
 
   oneof analysis_time {
     // The interval of time to evaluate signal propagation. This must be a
@@ -98,5 +98,5 @@ message SignalPropagationResponse {
   // Accessible intervals contain the modeled temporospatial signal propagation.
   // Access intervals are non-overlapping.
   repeated aalyria.spacetime.api.nbi.v1alpha.resources.AccessInterval
-      access_interval = 1;
+    access_interval = 1;
 }
