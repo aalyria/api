@@ -103,6 +103,16 @@ func App() *cli.App {
 		Value:    "text",
 		Action:   validateProtoFormat,
 	}
+	dryrunFlag := &cli.BoolFlag{
+		Name:    "dry-run",
+		Usage:   "perform a trial run that doesn't make any changes",
+		Aliases: []string{"n"},
+	}
+	verboseFlag := &cli.BoolFlag{
+		Name:    "verbose",
+		Usage:   "increase verbosity",
+		Aliases: []string{"v"},
+	}
 
 	return &cli.App{
 		Name:                 appName,
@@ -505,6 +515,27 @@ func App() *cli.App {
 						Action:   ModelListRelationships,
 						Flags:    []cli.Flag{formatFlag},
 						// TODO: support filter param
+					},
+					{
+						Name:     "sync",
+						Usage:    "Sync all model entities and relationships from file and directory arguments.",
+						Category: "model relationships",
+						Action:   ModelSync,
+						Flags: []cli.Flag{
+							formatFlag,
+							dryrunFlag,
+							verboseFlag,
+							&cli.BoolFlag{
+								Name:    "delete",
+								Usage:   "delete entities and relationships from remote instance not present in local sources",
+								Aliases: []string{"d"},
+							},
+							&cli.BoolFlag{
+								Name:    "recursive",
+								Usage:   "descend recursively into directory arguments",
+								Aliases: []string{"r"},
+							},
+						},
 					},
 				},
 			},

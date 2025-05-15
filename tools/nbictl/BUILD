@@ -46,6 +46,7 @@ go_library(
         "@com_github_jhump_protoreflect//desc",
         "@com_github_jhump_protoreflect//grpcreflect",
         "@com_github_jonboulle_clockwork//:clockwork",
+        "@com_github_samber_lo//:lo",
         "@com_github_urfave_cli_v2//:cli",
         "@org_golang_google_genproto//googleapis/type/interval",
         "@org_golang_google_grpc//:grpc",
@@ -60,6 +61,7 @@ go_library(
         "@org_golang_google_protobuf//types/known/durationpb",
         "@org_golang_google_protobuf//types/known/timestamppb",
         "@org_golang_x_sync//errgroup",
+        "@org_outernetcouncil_nmts//v1/lib/entityrelationship",
         "@org_outernetcouncil_nmts//v1/proto:nmts_go_proto",
     ],
 )

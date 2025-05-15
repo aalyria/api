@@ -15,13 +15,18 @@
 package nbictl
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
+	"path/filepath"
 
 	modelpb "aalyria.com/spacetime/api/model/v1"
+	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 	"google.golang.org/protobuf/proto"
+	er "outernetcouncil.org/nmts/v1/lib/entityrelationship"
 	nmtspb "outernetcouncil.org/nmts/v1/proto"
 )
 
@@ -315,4 +320,231 @@ func ModelListRelationships(appCtx *cli.Context) error {
 	}
 	fmt.Fprint(appCtx.App.Writer, string(marshalled))
 	return nil
+}
+
+func findAllLocalSourceFiles(fileExt string, recursive bool, sources ...string) ([]string, error) {
+	localSourceFiles := []string{}
+
+	for _, source := range sources {
+		fileInfo, err := os.Stat(source)
+		if err != nil {
+			return nil, err
+		}
+
+		mode := fileInfo.Mode()
+		switch {
+		case mode.IsRegular():
+			if filepath.Ext(source) == "."+fileExt {
+				localSourceFiles = append(localSourceFiles, source)
+			}
+		case mode.IsDir():
+			// Process this directory's files and optionally recurse.
+			walkDirFn := func(path string, dirEnt fs.DirEntry, err error) error {
+				switch {
+				case dirEnt.Type().IsRegular():
+					if filepath.Ext(path) == "."+fileExt {
+						localSourceFiles = append(localSourceFiles, path)
+					}
+				case dirEnt.IsDir():
+					if !recursive {
+						return filepath.SkipDir
+					}
+				}
+				return nil
+			}
+			filepath.WalkDir(source, walkDirFn)
+		default:
+			return nil, fmt.Errorf("cannot assess %q for reading", source)
+		}
+	}
+
+	return localSourceFiles, nil
+}
+
+func entitiesAreEquivalent(a, b *nmtspb.Entity) bool {
+	// TODO: find a more robust equivalency check.
+	return proto.Equal(a, b)
+}
+
+func ModelSync(appCtx *cli.Context) error {
+	marshaller, err := marshallerForFormat(appCtx.String("format"))
+	if err != nil {
+		return err
+	}
+
+	if !appCtx.Args().Present() {
+		return fmt.Errorf("sync needs at least one directory or filename argument")
+	}
+
+	// Step 1: load up all the local entity and relationship elements.
+	localEntities := map[string]*nmtspb.Entity{}
+	localRelationships := er.NewRelationshipSet()
+
+	localFiles, err := findAllLocalSourceFiles(marshaller.fileExt, appCtx.Bool("recursive"), appCtx.Args().Slice()...)
+	if err != nil {
+		return err
+	}
+	for _, localFile := range localFiles {
+		fmt.Fprintf(os.Stdout, "reading %s\n", localFile)
+		contents, err := os.ReadFile(localFile)
+		if err != nil {
+			return err
+		}
+
+		fragment := &nmtspb.Fragment{}
+		err = marshaller.unmarshal(contents, fragment)
+		if err != nil {
+			return err
+		}
+
+		for _, entity := range fragment.GetEntity() {
+			localEntities[entity.GetId()] = entity
+		}
+		for _, relationship := range fragment.GetRelationship() {
+			localRelationships.Insert(er.RelationshipFromProto(relationship))
+		}
+	}
+
+	if len(localEntities) == 0 {
+		return fmt.Errorf("no local entities to sync to remote instance")
+	}
+	if len(localRelationships.Relations) == 0 {
+		fmt.Fprintf(os.Stderr, "# Warning: no local relationship to sync to remote instance")
+	}
+	localEntityKeys := lo.Keys(localEntities)
+	localRelationshipKeys := lo.Keys(localRelationships.Relations)
+
+	// Step 2: load up all the remote instance entity and relationship elements.
+	remoteEntities := map[string]*nmtspb.Entity{}
+	remoteRelationships := er.NewRelationshipSet()
+
+	conn, err := openAPIConnection(appCtx, modelAPISubDomain)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	modelClient := modelpb.NewModelClient(conn)
+
+	entityList, err := modelClient.ListEntities(appCtx.Context, &modelpb.ListEntitiesRequest{})
+	if err != nil {
+		return err
+	}
+	for _, entity := range entityList.GetEntities() {
+		remoteEntities[entity.GetId()] = entity
+	}
+	remoteEntityKeys := lo.Keys(remoteEntities)
+
+	relationshipList, err := modelClient.ListRelationships(appCtx.Context, &modelpb.ListRelationshipsRequest{})
+	if err != nil {
+		return err
+	}
+	for _, relationship := range relationshipList.GetRelationships() {
+		remoteRelationships.Insert(er.RelationshipFromProto(relationship))
+	}
+	remoteRelationshipKeys := lo.Keys(remoteRelationships.Relations)
+
+	// Step 3: compute differences.
+	entitiesToBeAdded := lo.Without(localEntityKeys, remoteEntityKeys...)
+	entitiesInCommon := lo.Intersect(localEntityKeys, remoteEntityKeys)
+	entitiesToBeDeleted := lo.Without(remoteEntityKeys, localEntityKeys...)
+	relationshipsToBeAdded := lo.Without(localRelationshipKeys, remoteRelationshipKeys...)
+	relationshipsToBeDeleted := lo.Without(remoteRelationshipKeys, localRelationshipKeys...)
+
+	// Step 4: print/enact differences.
+	deleteMode := appCtx.Bool("delete")
+	dryRunMode := appCtx.Bool("dry-run")
+	verboseMode := appCtx.Bool("verbose")
+	printMode := dryRunMode || verboseMode
+
+	errs := []error{}
+
+	// Add entities.
+	for _, entity := range entitiesToBeAdded {
+		if printMode {
+			fmt.Printf("add entity: %s\n", entity)
+		}
+		if !dryRunMode {
+			_, err := modelClient.CreateEntity(appCtx.Context, &modelpb.CreateEntityRequest{
+				Entity: localEntities[entity],
+			})
+			if err != nil {
+				errs = append(errs, err)
+			}
+		}
+	}
+
+	// Update entities.
+	for _, entity := range entitiesInCommon {
+		if entitiesAreEquivalent(localEntities[entity], remoteEntities[entity]) {
+			continue
+		}
+		if printMode {
+			fmt.Printf("update entity: %s\n", entity)
+		}
+		if !dryRunMode {
+			_, err := modelClient.UpdateEntity(appCtx.Context, &modelpb.UpdateEntityRequest{
+				Entity: localEntities[entity],
+			})
+			if err != nil {
+				errs = append(errs, err)
+			}
+		}
+	}
+
+	// Maybe delete entities and prune collaterally deleted relationships.
+	if deleteMode {
+		for _, entity := range entitiesToBeDeleted {
+			if printMode {
+				fmt.Printf("delete entity: %s\n", entity)
+			}
+			if !dryRunMode {
+				deleteResponse, err := modelClient.DeleteEntity(appCtx.Context, &modelpb.DeleteEntityRequest{
+					EntityId: entity,
+				})
+				if err != nil {
+					errs = append(errs, err)
+				} else {
+					relationshipsToBeDeleted = lo.Without(
+						relationshipsToBeDeleted,
+						lo.Map(deleteResponse.GetDeletedRelationships(), func(r *nmtspb.Relationship, _ int) er.Relationship {
+							return er.RelationshipFromProto(r)
+						})...)
+				}
+			}
+		}
+	}
+
+	// Add relationships.
+	for _, relationship := range relationshipsToBeAdded {
+		if printMode {
+			fmt.Printf("add relationship: %s\n", relationship)
+		}
+		if !dryRunMode {
+			_, err := modelClient.CreateRelationship(appCtx.Context, &modelpb.CreateRelationshipRequest{
+				Relationship: relationship.ToProto(),
+			})
+			if err != nil {
+				errs = append(errs, err)
+			}
+		}
+	}
+
+	// Maybe delete relationships.
+	if deleteMode {
+		for _, relationship := range relationshipsToBeDeleted {
+			if printMode {
+				fmt.Printf("delete relationship: %s\n", relationship)
+			}
+			if !dryRunMode {
+				_, err := modelClient.DeleteRelationship(appCtx.Context, &modelpb.DeleteRelationshipRequest{
+					Relationship: relationship.ToProto(),
+				})
+				if err != nil {
+					errs = append(errs, err)
+				}
+			}
+		}
+	}
+
+	return errors.Join(errs...)
 }
