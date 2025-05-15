@@ -77,8 +77,14 @@ message CreateEntityRequest {
 
 message UpdateEntityRequest {
   nmts.v1.Entity entity = 1;
+
   // If provided, update only fields included in the update_mask.
   google.protobuf.FieldMask update_mask = 2;
+
+  // If set to true, and the entity named above is not found, a new
+  // instance will be created. In this situation, `update_mask` is
+  // ignored.
+  bool allow_missing = 3;
 }
 
 message DeleteEntityRequest {
