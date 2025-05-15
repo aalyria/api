@@ -221,7 +221,7 @@ List all model relationships.
 
 **--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
 
-### sync
+### sync, rsync
 
 Sync all model entities and relationships from file and directory arguments.
 

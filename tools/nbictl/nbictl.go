@@ -518,6 +518,7 @@ func App() *cli.App {
 					},
 					{
 						Name:     "sync",
+						Aliases:  []string{"rsync"},
 						Usage:    "Sync all model entities and relationships from file and directory arguments.",
 						Category: "model relationships",
 						Action:   ModelSync,
