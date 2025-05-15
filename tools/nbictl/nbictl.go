@@ -541,6 +541,35 @@ func App() *cli.App {
 				},
 			},
 			{
+				Name:    "provisioning-v1alpha",
+				Aliases: []string{"provisioning"},
+				Usage:   "Subcommands for Provisioning API v1alpha, to manage the provisioned resources within the digital twin.",
+				Subcommands: []*cli.Command{
+					{
+						Name:     "sync",
+						Aliases:  []string{"rsync"},
+						Usage:    "Sync all provisioning resources from file and directory arguments.",
+						Category: "provisioning resources",
+						Action:   ProvisioningSync,
+						Flags: []cli.Flag{
+							formatFlag,
+							dryrunFlag,
+							verboseFlag,
+							&cli.BoolFlag{
+								Name:    "delete",
+								Usage:   "delete resources from remote instance not present in local sources",
+								Aliases: []string{"d"},
+							},
+							&cli.BoolFlag{
+								Name:    "recursive",
+								Usage:   "descend recursively into directory arguments",
+								Aliases: []string{"r"},
+							},
+						},
+					},
+				},
+			},
+			{
 				Name:  "grpcurl",
 				Usage: "Provides curl-like equivalents for interacting with the NBI.",
 				Flags: []cli.Flag{

@@ -18,13 +18,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
-	"path/filepath"
 
 	modelpb "aalyria.com/spacetime/api/model/v1"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	er "outernetcouncil.org/nmts/v1/lib/entityrelationship"
 	nmtspb "outernetcouncil.org/nmts/v1/proto"
@@ -322,48 +322,24 @@ func ModelListRelationships(appCtx *cli.Context) error {
 	return nil
 }
 
-func findAllLocalSourceFiles(fileExt string, recursive bool, sources ...string) ([]string, error) {
-	localSourceFiles := []string{}
-
-	for _, source := range sources {
-		fileInfo, err := os.Stat(source)
-		if err != nil {
-			return nil, err
-		}
-
-		mode := fileInfo.Mode()
-		switch {
-		case mode.IsRegular():
-			if filepath.Ext(source) == "."+fileExt {
-				localSourceFiles = append(localSourceFiles, source)
-			}
-		case mode.IsDir():
-			// Process this directory's files and optionally recurse.
-			walkDirFn := func(path string, dirEnt fs.DirEntry, err error) error {
-				switch {
-				case dirEnt.Type().IsRegular():
-					if filepath.Ext(path) == "."+fileExt {
-						localSourceFiles = append(localSourceFiles, path)
-					}
-				case dirEnt.IsDir():
-					if !recursive {
-						return filepath.SkipDir
-					}
-				}
-				return nil
-			}
-			filepath.WalkDir(source, walkDirFn)
-		default:
-			return nil, fmt.Errorf("cannot assess %q for reading", source)
-		}
-	}
-
-	return localSourceFiles, nil
-}
-
-func entitiesAreEquivalent(a, b *nmtspb.Entity) bool {
+func nmtsEntitiesAreEquivalent(a, b *nmtspb.Entity) bool {
 	// TODO: find a more robust equivalency check.
 	return proto.Equal(a, b)
+}
+
+func isNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	st, ok := status.FromError(err)
+	if !ok {
+		// Not a gRPC status error
+		return false
+	}
+
+	// Check if the code is NotFound (code 5)
+	return st.Code() == codes.NotFound
 }
 
 func ModelSync(appCtx *cli.Context) error {
@@ -380,7 +356,7 @@ func ModelSync(appCtx *cli.Context) error {
 	localEntities := map[string]*nmtspb.Entity{}
 	localRelationships := er.NewRelationshipSet()
 
-	localFiles, err := findAllLocalSourceFiles(marshaller.fileExt, appCtx.Bool("recursive"), appCtx.Args().Slice()...)
+	localFiles, err := findAllFilesWithExtension(marshaller.fileExt, appCtx.Bool("recursive"), appCtx.Args().Slice()...)
 	if err != nil {
 		return err
 	}
@@ -413,6 +389,9 @@ func ModelSync(appCtx *cli.Context) error {
 	}
 	localEntityKeys := lo.Keys(localEntities)
 	localRelationshipKeys := lo.Keys(localRelationships.Relations)
+	fmt.Fprintf(os.Stdout, "local model elements:\n")
+	fmt.Fprintf(os.Stdout, "- %d NMTS Entities\n", len(localEntityKeys))
+	fmt.Fprintf(os.Stdout, "- %d NMTS Relationships\n", len(localRelationshipKeys))
 
 	// Step 2: load up all the remote instance entity and relationship elements.
 	remoteEntities := map[string]*nmtspb.Entity{}
@@ -442,6 +421,9 @@ func ModelSync(appCtx *cli.Context) error {
 		remoteRelationships.Insert(er.RelationshipFromProto(relationship))
 	}
 	remoteRelationshipKeys := lo.Keys(remoteRelationships.Relations)
+	fmt.Fprintf(os.Stdout, "remote model elements:\n")
+	fmt.Fprintf(os.Stdout, "- %d NMTS Entities\n", len(remoteEntityKeys))
+	fmt.Fprintf(os.Stdout, "- %d NMTS Relationships\n", len(remoteRelationshipKeys))
 
 	// Step 3: compute differences.
 	entitiesToBeAdded := lo.Without(localEntityKeys, remoteEntityKeys...)
@@ -475,7 +457,7 @@ func ModelSync(appCtx *cli.Context) error {
 
 	// Update entities.
 	for _, entity := range entitiesInCommon {
-		if entitiesAreEquivalent(localEntities[entity], remoteEntities[entity]) {
+		if nmtsEntitiesAreEquivalent(localEntities[entity], remoteEntities[entity]) {
 			continue
 		}
 		if printMode {
@@ -501,7 +483,7 @@ func ModelSync(appCtx *cli.Context) error {
 				deleteResponse, err := modelClient.DeleteEntity(appCtx.Context, &modelpb.DeleteEntityRequest{
 					EntityId: entity,
 				})
-				if err != nil {
+				if err != nil && !isNotFoundError(err) {
 					errs = append(errs, err)
 				} else {
 					relationshipsToBeDeleted = lo.Without(

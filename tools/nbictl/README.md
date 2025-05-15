@@ -235,6 +235,24 @@ Sync all model entities and relationships from file and directory arguments.
 
 **--verbose, -v**: increase verbosity
 
+## provisioning-v1alpha, provisioning
+
+Subcommands for Provisioning API v1alpha, to manage the provisioned resources within the digital twin.
+
+### sync, rsync
+
+Sync all provisioning resources from file and directory arguments.
+
+**--delete, -d**: delete resources from remote instance not present in local sources
+
+**--dry-run, -n**: perform a trial run that doesn't make any changes
+
+**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
+
+**--recursive, -r**: descend recursively into directory arguments
+
+**--verbose, -v**: increase verbosity
+
 ## grpcurl
 
 Provides curl-like equivalents for interacting with the NBI.
