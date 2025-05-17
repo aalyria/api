@@ -23,7 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"aalyria.com/spacetime/github/tools/nbictl/nbictlpb"
+	"aalyria.com/spacetime/tools/nbictl/nbictlpb"
 	"github.com/urfave/cli/v2"
 	"google.golang.org/protobuf/encoding/prototext"
 )

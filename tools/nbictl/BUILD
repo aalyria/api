@@ -29,7 +29,7 @@ go_library(
         "model.go",
         "nbictl.go",
     ],
-    importpath = "aalyria.com/spacetime/github/tools/nbictl",
+    importpath = "aalyria.com/spacetime/tools/nbictl",
     visibility = ["//visibility:public"],
     x_defs = {
         "Version": VERSION,

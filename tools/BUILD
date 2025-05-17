@@ -1,4 +1,4 @@
-# Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+# Copyright (c) Aalyria Technologies, Inc., and its affiliates.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,20 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Build rules for the Go CDPI agent. These shouldn't depend on any other
-# internal packages apart from those found in //api.
-
-load("@rules_go//go:def.bzl", "go_binary", "go_library")
-
-go_library(
-    name = "nbictl_lib",
-    srcs = ["nbictl.go"],
-    importpath = "aalyria.com/spacetime/tools/nbictl/cmd/nbictl",
-    deps = ["//tools/nbictl"],
-)
-
-go_binary(
-    name = "nbictl",
-    embed = [":nbictl_lib"],
-    visibility = ["//visibility:public"],
-)
+# gazelle:prefix aalyria.com/spacetime/tools

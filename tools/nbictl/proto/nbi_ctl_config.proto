@@ -14,11 +14,11 @@
 
 syntax = "proto3";
 
-package aalyria.spacetime.github.tools.nbictl;
+package aalyria.spacetime.tools.nbictl;
 
 import "google/protobuf/empty.proto";
 
-option go_package = "aalyria.com/spacetime/github/tools/nbictl/nbictlpb";
+option go_package = "aalyria.com/spacetime/tools/nbictl/nbictlpb";
 
 message AppConfig {
   repeated Config configs = 1;

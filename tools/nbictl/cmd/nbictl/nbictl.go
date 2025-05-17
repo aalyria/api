@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"os"
 
-	"aalyria.com/spacetime/github/tools/nbictl"
+	"aalyria.com/spacetime/tools/nbictl"
 )
 
 func main() {

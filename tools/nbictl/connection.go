@@ -35,7 +35,7 @@ import (
 	_ "google.golang.org/grpc/encoding/gzip" // Install the gzip compressor
 
 	"aalyria.com/spacetime/auth"
-	"aalyria.com/spacetime/github/tools/nbictl/nbictlpb"
+	"aalyria.com/spacetime/tools/nbictl/nbictlpb"
 )
 
 func openConnection(appCtx *cli.Context) (*grpc.ClientConn, error) {

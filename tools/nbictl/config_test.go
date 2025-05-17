@@ -1,4 +1,4 @@
-// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	"aalyria.com/spacetime/github/tools/nbictl/nbictlpb"
+	"aalyria.com/spacetime/tools/nbictl/nbictlpb"
 	"github.com/bazelbuild/rules_go/go/tools/bazel"
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/protobuf/proto"
