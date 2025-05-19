@@ -36,9 +36,13 @@ go_library(
     },
     deps = [
         "//api/common:common_go_proto",
+        "//api/federation/interconnect/v1alpha:interconnect_go_proto",
         "//api/model/v1:v1_go_proto",
         "//api/nbi/v1alpha:nbi_go_grpc",
         "//api/nbi/v1alpha/resources:nbi_resources_go_grpc",
+        "//api/provisioning/v1alpha:provisioning_go_grpc",
+        "//api/scheduling/v1alpha:scheduling_go_grpc",
+        "//api/telemetry/v1alpha:telemetry_go_grpc",
         "//auth",
         "//tools/nbictl/proto:nbictl_go_proto",
         "@com_github_fullstorydev_grpcurl//:grpcurl",

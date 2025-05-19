@@ -239,6 +239,8 @@ Sync all model entities and relationships from file and directory arguments.
 
 Provides curl-like equivalents for interacting with the NBI.
 
+**--subdomain**="": The subdomain to connect to (e.g. 'model', 'provisioning', ...).
+
 ### describe
 
 Takes an optional fully-qualified symbol (service, enum, or message). If provided, the descriptor for that symbol is shown. If not provided, the descriptor for all exposed or known services are shown.

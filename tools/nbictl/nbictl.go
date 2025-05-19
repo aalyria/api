@@ -543,6 +543,12 @@ func App() *cli.App {
 			{
 				Name:  "grpcurl",
 				Usage: "Provides curl-like equivalents for interacting with the NBI.",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:  "subdomain",
+						Usage: "The subdomain to connect to (e.g. 'model', 'provisioning', ...).",
+					},
+				},
 				Subcommands: []*cli.Command{
 					{
 						Name:   "describe",

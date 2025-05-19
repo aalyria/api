@@ -39,7 +39,7 @@ import (
 )
 
 func openConnection(appCtx *cli.Context) (*grpc.ClientConn, error) {
-	return openAPIConnection(appCtx, "")
+	return openAPIConnection(appCtx, appCtx.String("subdomain"))
 }
 
 func openAPIConnection(appCtx *cli.Context, apiSubDomain string) (*grpc.ClientConn, error) {
