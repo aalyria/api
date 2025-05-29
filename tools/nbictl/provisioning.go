@@ -217,7 +217,13 @@ func ProvisioningSync(appCtx *cli.Context) error {
 	fmt.Fprintf(os.Stdout, "- %d ProtectionAssociationGroups\n", len(remoteResources.protectionAssociationGroups))
 	fmt.Fprintf(os.Stdout, "- %d DisjointAssociationGroups\n", len(remoteResources.disjointAssociationGroups))
 
-	// Step 3: compute differences.
+	// Step 3: compute and print/enact differences.
+	deleteMode := appCtx.Bool("delete")
+	dryRunMode := appCtx.Bool("dry-run")
+	verboseMode := appCtx.Bool("verbose")
+	printMode := dryRunMode || verboseMode
+
+	// TODO: restructure these computations for scalability.
 	resourcesToBeAdded := map[string][]string{}
 	resourcesToBeAdded["p2pSrTePolicies"] = lo.Without(lo.Keys(localResources.p2pSrTePolicies), lo.Keys(remoteResources.p2pSrTePolicies)...)
 	resourcesToBeAdded["p2pSrTePolicyCandidatePaths"] = lo.Without(lo.Keys(localResources.p2pSrTePolicyCandidatePaths), lo.Keys(remoteResources.p2pSrTePolicyCandidatePaths)...)
@@ -232,27 +238,65 @@ func ProvisioningSync(appCtx *cli.Context) error {
 	resourcesInCommon["protectionAssociationGroups"] = lo.Intersect(lo.Keys(localResources.protectionAssociationGroups), lo.Keys(remoteResources.protectionAssociationGroups))
 	resourcesInCommon["disjointAssociationGroups"] = lo.Intersect(lo.Keys(localResources.disjointAssociationGroups), lo.Keys(remoteResources.disjointAssociationGroups))
 
-	resourcesToBeDeleted := map[string][]string{}
-	resourcesToBeDeleted["p2pSrTePolicies"] = lo.Without(lo.Keys(remoteResources.p2pSrTePolicies), lo.Keys(localResources.p2pSrTePolicies)...)
-	resourcesToBeDeleted["p2pSrTePolicyCandidatePaths"] = lo.Without(lo.Keys(remoteResources.p2pSrTePolicyCandidatePaths), lo.Keys(localResources.p2pSrTePolicyCandidatePaths)...)
-	resourcesToBeDeleted["downtimes"] = lo.Without(lo.Keys(remoteResources.downtimes), lo.Keys(localResources.downtimes)...)
-	resourcesToBeDeleted["protectionAssociationGroups"] = lo.Without(lo.Keys(remoteResources.protectionAssociationGroups), lo.Keys(localResources.protectionAssociationGroups)...)
-	resourcesToBeDeleted["disjointAssociationGroups"] = lo.Without(lo.Keys(remoteResources.disjointAssociationGroups), lo.Keys(localResources.disjointAssociationGroups)...)
-
-	// Step 4: print/enact differences.
-	deleteMode := appCtx.Bool("delete")
-	dryRunMode := appCtx.Bool("dry-run")
-	verboseMode := appCtx.Bool("verbose")
-	printMode := dryRunMode || verboseMode
-
 	fmt.Fprintf(os.Stdout, "\ncomparing local and remote resources:\n")
 	fmt.Fprintf(os.Stdout, "- %d resources to be added\n", countValues(resourcesToBeAdded))
 	fmt.Fprintf(os.Stdout, "- %d resources to be evaluated for update\n", countValues(resourcesInCommon))
-	if deleteMode {
-		fmt.Fprintf(os.Stdout, "- %d resources to be deleted\n", countValues(resourcesToBeDeleted))
-	}
 
 	errs := []error{}
+
+	///
+	// Maybe delete resources.
+	if deleteMode {
+		resourcesToBeDeleted := map[string][]string{}
+		resourcesToBeDeleted["p2pSrTePolicies"] = lo.Without(lo.Keys(remoteResources.p2pSrTePolicies), lo.Keys(localResources.p2pSrTePolicies)...)
+		resourcesToBeDeleted["p2pSrTePolicyCandidatePaths"] = lo.Without(lo.Keys(remoteResources.p2pSrTePolicyCandidatePaths), lo.Keys(localResources.p2pSrTePolicyCandidatePaths)...)
+		resourcesToBeDeleted["downtimes"] = lo.Without(lo.Keys(remoteResources.downtimes), lo.Keys(localResources.downtimes)...)
+		resourcesToBeDeleted["protectionAssociationGroups"] = lo.Without(lo.Keys(remoteResources.protectionAssociationGroups), lo.Keys(localResources.protectionAssociationGroups)...)
+		resourcesToBeDeleted["disjointAssociationGroups"] = lo.Without(lo.Keys(remoteResources.disjointAssociationGroups), lo.Keys(localResources.disjointAssociationGroups)...)
+
+		fmt.Fprintf(os.Stdout, "- %d resources to be deleted\n", countValues(resourcesToBeDeleted))
+
+		errs = append(errs,
+			deleteRemoteResources(
+				resourcesToBeDeleted["p2pSrTePolicies"], printMode, dryRunMode, func(policy string) error {
+					_, err := provisioningClient.DeleteP2PSrTePolicy(appCtx.Context, &provapipb.DeleteP2PSrTePolicyRequest{
+						Name: policy,
+					})
+					return err
+				})...)
+		errs = append(errs,
+			deleteRemoteResources(
+				resourcesToBeDeleted["p2pSrTePolicyCandidatePath"], printMode, dryRunMode, func(path string) error {
+					_, err := provisioningClient.DeleteP2PSrTePolicyCandidatePath(appCtx.Context, &provapipb.DeleteP2PSrTePolicyCandidatePathRequest{
+						Name: path,
+					})
+					return err
+				})...)
+		errs = append(errs,
+			deleteRemoteResources(
+				resourcesToBeDeleted["downtimes"], printMode, dryRunMode, func(downtime string) error {
+					_, err := provisioningClient.DeleteDowntime(appCtx.Context, &provapipb.DeleteDowntimeRequest{
+						Name: downtime,
+					})
+					return err
+				})...)
+		errs = append(errs,
+			deleteRemoteResources(
+				resourcesToBeDeleted["protectionAssociationGroups"], printMode, dryRunMode, func(protectionAssociationGroup string) error {
+					_, err := provisioningClient.DeleteProtectionAssociationGroup(appCtx.Context, &provapipb.DeleteProtectionAssociationGroupRequest{
+						Name: protectionAssociationGroup,
+					})
+					return err
+				})...)
+		errs = append(errs,
+			deleteRemoteResources(
+				resourcesToBeDeleted["disjointAssociationGroups"], printMode, dryRunMode, func(disjointAssociationGroup string) error {
+					_, err := provisioningClient.DeleteDisjointAssociationGroup(appCtx.Context, &provapipb.DeleteDisjointAssociationGroupRequest{
+						Name: disjointAssociationGroup,
+					})
+					return err
+				})...)
+	}
 
 	///
 	// Add resources.
@@ -349,51 +393,6 @@ func ProvisioningSync(appCtx *cli.Context) error {
 				})
 				return err
 			})...)
-
-	///
-	// Maybe delete resources.
-	if deleteMode {
-		errs = append(errs,
-			deleteRemoteResources(
-				resourcesToBeDeleted["p2pSrTePolicies"], printMode, dryRunMode, func(policy string) error {
-					_, err := provisioningClient.DeleteP2PSrTePolicy(appCtx.Context, &provapipb.DeleteP2PSrTePolicyRequest{
-						Name: policy,
-					})
-					return err
-				})...)
-		errs = append(errs,
-			deleteRemoteResources(
-				resourcesToBeDeleted["p2pSrTePolicyCandidatePath"], printMode, dryRunMode, func(path string) error {
-					_, err := provisioningClient.DeleteP2PSrTePolicyCandidatePath(appCtx.Context, &provapipb.DeleteP2PSrTePolicyCandidatePathRequest{
-						Name: path,
-					})
-					return err
-				})...)
-		errs = append(errs,
-			deleteRemoteResources(
-				resourcesToBeDeleted["downtimes"], printMode, dryRunMode, func(downtime string) error {
-					_, err := provisioningClient.DeleteDowntime(appCtx.Context, &provapipb.DeleteDowntimeRequest{
-						Name: downtime,
-					})
-					return err
-				})...)
-		errs = append(errs,
-			deleteRemoteResources(
-				resourcesToBeDeleted["protectionAssociationGroups"], printMode, dryRunMode, func(protectionAssociationGroup string) error {
-					_, err := provisioningClient.DeleteProtectionAssociationGroup(appCtx.Context, &provapipb.DeleteProtectionAssociationGroupRequest{
-						Name: protectionAssociationGroup,
-					})
-					return err
-				})...)
-		errs = append(errs,
-			deleteRemoteResources(
-				resourcesToBeDeleted["disjointAssociationGroups"], printMode, dryRunMode, func(disjointAssociationGroup string) error {
-					_, err := provisioningClient.DeleteDisjointAssociationGroup(appCtx.Context, &provapipb.DeleteDisjointAssociationGroupRequest{
-						Name: disjointAssociationGroup,
-					})
-					return err
-				})...)
-	}
 
 	return errors.Join(errs...)
 }

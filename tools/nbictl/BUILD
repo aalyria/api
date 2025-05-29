@@ -48,6 +48,7 @@ go_library(
         "//auth",
         "//tools/nbictl/proto:nbictl_go_proto",
         "//tools/nbictl/proto:provisioning_go_proto",
+        "@com_github_deckarep_golang_set_v2//:golang-set",
         "@com_github_fullstorydev_grpcurl//:grpcurl",
         "@com_github_golang_jwt_jwt_v5//:jwt",
         "@com_github_jhump_protoreflect//desc",

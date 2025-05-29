@@ -225,7 +225,7 @@ List all model relationships.
 
 Sync all model entities and relationships from file and directory arguments.
 
-**--delete, -d**: delete entities and relationships from remote instance not present in local sources
+**--delete, -d, --delete-before**: delete entities and relationships from remote instance not present in local sources
 
 **--dry-run, -n**: perform a trial run that doesn't make any changes
 
@@ -243,7 +243,7 @@ Subcommands for Provisioning API v1alpha, to manage the provisioned resources wi
 
 Sync all provisioning resources from file and directory arguments.
 
-**--delete, -d**: delete resources from remote instance not present in local sources
+**--delete, -d, --delete-before**: delete resources from remote instance not present in local sources
 
 **--dry-run, -n**: perform a trial run that doesn't make any changes
 

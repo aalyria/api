@@ -529,7 +529,7 @@ func App() *cli.App {
 							&cli.BoolFlag{
 								Name:    "delete",
 								Usage:   "delete entities and relationships from remote instance not present in local sources",
-								Aliases: []string{"d"},
+								Aliases: []string{"d", "delete-before"},
 							},
 							&cli.BoolFlag{
 								Name:    "recursive",
@@ -558,7 +558,7 @@ func App() *cli.App {
 							&cli.BoolFlag{
 								Name:    "delete",
 								Usage:   "delete resources from remote instance not present in local sources",
-								Aliases: []string{"d"},
+								Aliases: []string{"d", "delete-before"},
 							},
 							&cli.BoolFlag{
 								Name:    "recursive",
