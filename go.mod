@@ -4,6 +4,7 @@ go 1.24.0
 
 require (
 	github.com/bazelbuild/rules_go v0.50.1
+	github.com/deckarep/golang-set/v2 v2.8.0
 	github.com/fullstorydev/grpcurl v1.8.6
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/go-cmp v0.7.0
@@ -13,6 +14,7 @@ require (
 	github.com/prometheus/client_model v0.6.0
 	github.com/prometheus/prom2json v1.1.0
 	github.com/rs/zerolog v1.33.0
+	github.com/samber/lo v1.50.0
 	github.com/urfave/cli/v2 v2.27.6
 	github.com/vishvananda/netlink v1.2.1-beta.2
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.55.0
@@ -29,7 +31,6 @@ require (
 
 require (
 	github.com/bufbuild/protocompile v0.6.0 // indirect
-	github.com/BurntSushi/toml v1.4.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.5 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
