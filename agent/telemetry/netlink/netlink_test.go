@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
 	"testing"
 	"time"
 
@@ -281,7 +280,7 @@ func TestNetlink(t *testing.T) {
 				"dry-dock": &vnl.Dummy{
 					LinkAttrs: vnl.LinkAttrs{
 						OperState: vnl.OperUnknown,
-						Flags:     net.FlagRunning,
+						RawFlags:  unix.IFF_RUNNING,
 						Statistics: &vnl.LinkStatistics{
 							TxPackets: 1,
 							RxPackets: 2,
@@ -328,7 +327,7 @@ func TestNetlink(t *testing.T) {
 				"dry-dock": &vnl.Dummy{
 					LinkAttrs: vnl.LinkAttrs{
 						OperState: vnl.OperUnknown,
-						Flags:     unix.IFF_DORMANT,
+						RawFlags:  unix.IFF_DORMANT,
 						Statistics: &vnl.LinkStatistics{
 							TxPackets: 1,
 							RxPackets: 2,

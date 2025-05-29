@@ -17,7 +17,6 @@ package netlink
 import (
 	"context"
 	"errors"
-	"net"
 	"time"
 
 	"aalyria.com/spacetime/agent/telemetry"
@@ -136,9 +135,9 @@ func netlinkOperStateToTelemetryOperState(attrs *vnl.LinkAttrs) telemetrypb.IfOp
 		//
 		// https://docs.kernel.org/networking/operstates.html#tlv-ifla-operstate
 		switch {
-		case (attrs.Flags & net.FlagRunning) == net.FlagRunning:
+		case (attrs.RawFlags & unix.IFF_RUNNING) == unix.IFF_RUNNING:
 			return telemetrypb.IfOperStatus_IF_OPER_STATUS_UP
-		case (attrs.Flags & unix.IFF_DORMANT) == unix.IFF_DORMANT:
+		case (attrs.RawFlags & unix.IFF_DORMANT) == unix.IFF_DORMANT:
 			return telemetrypb.IfOperStatus_IF_OPER_STATUS_DORMANT
 		default:
 			return telemetrypb.IfOperStatus_IF_OPER_STATUS_DOWN
