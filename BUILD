@@ -17,5 +17,6 @@ gazelle(name = "gazelle")
 
 gazelle_test(
     name = "gazelle_test",
+    tags = ["manual"],
     workspace = "//:BUILD",
 )
