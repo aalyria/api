@@ -19,14 +19,38 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"aalyria.com/spacetime/tools/nbictl/nbictlpb"
+	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 	"google.golang.org/protobuf/encoding/prototext"
 )
+
+func compareEndpoints(endpoint1, endpoint2 string) bool {
+	// N.B.: does not support IPv6 string literals.
+	if !strings.Contains(endpoint1, ":") {
+		endpoint1 = endpoint1 + ":443"
+	}
+	if !strings.Contains(endpoint2, ":") {
+		endpoint2 = endpoint2 + ":443"
+	}
+
+	h1, p1, err := net.SplitHostPort(endpoint1)
+	if err != nil {
+		return false
+	}
+
+	h2, p2, err := net.SplitHostPort(endpoint2)
+	if err != nil {
+		return false
+	}
+
+	return strings.EqualFold(h1, h2) && p1 == p2
+}
 
 func getAppConfDir(appCtx *cli.Context) (string, error) {
 	if appCtx.IsSet("config_dir") {
@@ -44,31 +68,47 @@ func getAppConfDir(appCtx *cli.Context) (string, error) {
 	return filepath.Join(confDir, appCtx.App.Name), nil
 }
 
-func readConfig(context, confFilePath string) (*nbictlpb.Config, error) {
+func readConfig(profileName, confFilePath string) (*nbictlpb.Config, error) {
 	confs, err := readConfigs(confFilePath)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get config contexts: %w", err)
+		return nil, fmt.Errorf("unable to get config profiles: %w", err)
 	}
 
-	// if the context name is not specified and there is only one context in the config file
+	// If the profile name is not specified and there is only one context in the config file
 	// the function will return that configuration context
-	if context == "" {
+	if profileName == "" {
 		switch {
 		case len(confs.GetConfigs()) == 1:
 			return confs.GetConfigs()[0], nil
 		default:
-			return nil, errors.New("--context flag required because there are multiple contexts defined in the configuration.")
+			return nil, errors.New("--profile flag required because there are multiple profiles defined in the configuration.")
 		}
 	}
 
-	var confNames []string
+	allProfileNames := []string{}
+	matchingProfilesByHostPort := []*nbictlpb.Config{}
 	for _, conf := range confs.GetConfigs() {
-		if conf.GetName() == context {
+		if conf.GetName() == profileName {
 			return conf, nil
 		}
-		confNames = append(confNames, conf.GetName())
+		allProfileNames = append(allProfileNames, conf.GetName())
+
+		if compareEndpoints(profileName, conf.GetUrl()) {
+			matchingProfilesByHostPort = append(matchingProfilesByHostPort, conf)
+		}
 	}
-	return nil, fmt.Errorf("unable to get the context with the name: %q (expected one of [%s])", context, strings.Join(confNames, ", "))
+	if len(matchingProfilesByHostPort) == 1 {
+		// Did not find profile by name above, but found one (and only one) match by host:port.
+		return matchingProfilesByHostPort[0], nil
+	}
+
+	errMsg := fmt.Sprintf("unable to get the profile with the name: %q (expected one of [%s])", profileName, strings.Join(allProfileNames, ", "))
+	if urlMatchCount := len(matchingProfilesByHostPort); urlMatchCount > 1 {
+		errMsg += fmt.Sprintf("; additionally, profile match by URL found multiple matches (%d): [%s]",
+			urlMatchCount,
+			strings.Join(lo.Map(matchingProfilesByHostPort, func(c *nbictlpb.Config, _ int) string { return c.GetName() }), ", "))
+	}
+	return nil, fmt.Errorf(errMsg)
 }
 
 func readConfigs(confFilePath string) (*nbictlpb.AppConfig, error) {

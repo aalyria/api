@@ -48,7 +48,7 @@ var (
 	}
 )
 
-func TestReadContext(t *testing.T) {
+func TestReadConfig(t *testing.T) {
 	t.Parallel()
 
 	confDir, err := bazel.NewTmpDir("nbictl")
@@ -63,7 +63,7 @@ func TestReadContext(t *testing.T) {
 	assertProtosEqual(t, testConfig, got)
 }
 
-func TestReadContext_WithOnlyOneContextInConfig(t *testing.T) {
+func TestReadConfig_WithOnlyOneProfileInConfig(t *testing.T) {
 	t.Parallel()
 
 	confDir, err := bazel.NewTmpDir("nbictl")
@@ -78,7 +78,7 @@ func TestReadContext_WithOnlyOneContextInConfig(t *testing.T) {
 	assertProtosEqual(t, testConfig, got)
 }
 
-func TestReadContext_WithNoContextWithMultipleContextInConfig(t *testing.T) {
+func TestReadConfig_WithNoProfileNameWithMultipleProfilesInConfig(t *testing.T) {
 	t.Parallel()
 
 	confDir, err := bazel.NewTmpDir("nbictl")
@@ -89,13 +89,13 @@ func TestReadContext_WithNoContextWithMultipleContextInConfig(t *testing.T) {
 	}
 
 	_, err = readConfig("", confFile)
-	want := "--context flag required because there are multiple contexts defined in the configuration"
+	want := "--profile flag required because there are multiple profiles defined in the configuration"
 	if got := err.Error(); !strings.Contains(got, want) {
 		t.Fatalf("want: %s, got %s", want, got)
 	}
 }
 
-func TestReadContexts_WithFileWithNoPermission(t *testing.T) {
+func TestReadConfig_WithFileWithNoPermission(t *testing.T) {
 	t.Parallel()
 
 	confDir, err := bazel.NewTmpDir("nbictl")
@@ -112,7 +112,7 @@ func TestReadContexts_WithFileWithNoPermission(t *testing.T) {
 	}
 }
 
-func TestReadContext_WithNonExistingContextName(t *testing.T) {
+func TestReadConfig_WithNonExistingProfileName(t *testing.T) {
 	t.Parallel()
 
 	confDir, err := bazel.NewTmpDir("nbictl")
@@ -123,7 +123,43 @@ func TestReadContext_WithNonExistingContextName(t *testing.T) {
 	}
 
 	_, err = readConfig("non_existing", confFile)
-	wantErrMsg := `unable to get the context with the name: "non_existing" (expected one of [test_1, test_2, test_3])`
+	wantErrMsg := `unable to get the profile with the name: "non_existing" (expected one of [test_1, test_2, test_3])`
+	if gotErrMsg := err.Error(); !strings.Contains(gotErrMsg, wantErrMsg) {
+		t.Fatalf("want: %s, got %s", wantErrMsg, gotErrMsg)
+	}
+}
+
+func TestReadConfig_WithProfileNameMatchingOneProfileByURL(t *testing.T) {
+	t.Parallel()
+
+	confDir, err := bazel.NewTmpDir("nbictl")
+	checkErr(t, err)
+	confFile := filepath.Join(confDir, confFileName)
+	for _, str := range []string{"1", "2", "3"} {
+		checkErr(t, setConfig(io.Discard, io.Discard, &nbictlpb.Config{Name: "test_" + str, Url: str + ".test.example"}, confFile))
+	}
+
+	got, err := readConfig("2.test.example", confFile)
+	checkErr(t, err)
+	want, err := readConfig("test_2", confFile)
+	checkErr(t, err)
+	assertProtosEqual(t, want, got)
+}
+
+func TestReadConfig_WithProfileNameMatchingManyProfilesByURL(t *testing.T) {
+	t.Parallel()
+
+	confDir, err := bazel.NewTmpDir("nbictl")
+	checkErr(t, err)
+	confFile := filepath.Join(confDir, confFileName)
+	for _, str := range []string{"1", "2", "3"} {
+		checkErr(t, setConfig(io.Discard, io.Discard, &nbictlpb.Config{Name: "test_" + str, Url: "same.test.example"}, confFile))
+	}
+	checkErr(t, setConfig(io.Discard, io.Discard, &nbictlpb.Config{Name: "test_4", Url: "other.test.example"}, confFile))
+
+	_, err = readConfig("same.test.example", confFile)
+	wantErrMsg := `unable to get the profile with the name: "same.test.example" (expected one of [test_1, test_2, test_3, test_4]); ` +
+		`additionally, profile match by URL found multiple matches (3): [test_1, test_2, test_3]`
 	if gotErrMsg := err.Error(); !strings.Contains(gotErrMsg, wantErrMsg) {
 		t.Fatalf("want: %s, got %s", wantErrMsg, gotErrMsg)
 	}

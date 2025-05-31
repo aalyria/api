@@ -43,13 +43,13 @@ func openConnection(appCtx *cli.Context) (*grpc.ClientConn, error) {
 }
 
 func openAPIConnection(appCtx *cli.Context, apiSubDomain string) (*grpc.ClientConn, error) {
-	ctxName := appCtx.String("context")
+	profileName := appCtx.String("profile")
 
 	appConfDir, err := getAppConfDir(appCtx)
 	if err != nil {
 		return nil, err
 	}
-	setting, err := readConfig(ctxName, filepath.Join(appConfDir, confFileName))
+	setting, err := readConfig(profileName, filepath.Join(appConfDir, confFileName))
 	if err != nil {
 		return nil, fmt.Errorf("unable to obtain context information: %w", err)
 	}
