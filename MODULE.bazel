@@ -93,6 +93,7 @@ use_repo(
     "com_github_prometheus_prom2json",
     "com_github_rs_zerolog",
     "com_github_samber_lo",
+    "com_github_sourcegraph_conc",
     "com_github_urfave_cli_v2",
     "com_github_vishvananda_netlink",
     "io_opentelemetry_go_contrib_instrumentation_google_golang_org_grpc_otelgrpc",
