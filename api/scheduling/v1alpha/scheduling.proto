@@ -296,6 +296,8 @@ message RxConfiguration {
   uint64 channel_bandwidth_hz = 2;
   Polarization polarization = 3;
 
+  RxPower expected_rx_power = 8;
+
   // Symbol rate in Megasymbols per second.
   double symbol_rate_msps = 5;
 
@@ -351,6 +353,13 @@ enum ModemMode {
   MODEM_MODE_DVB_RCS2 = 1;
   MODEM_MODE_DVB_S2X = 2;
   MODEM_MODE_TRANSPARENT = 3; // No modulation/demodulation is performed.
+}
+
+message RxPower {
+  oneof value {
+    // Power Flux Density at receiver [dBW/m^2].
+    double pfd_dbw_per_m2 = 1;
+  }
 }
 
 // Groups configurable attributes specific to DVB-S2 / S2X links.

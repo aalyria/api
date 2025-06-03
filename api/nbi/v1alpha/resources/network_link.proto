@@ -112,6 +112,8 @@ message RxRadioConfiguration {
     DEMODULATOR_MODE_DIGITAL_TRANSPARENT = 3;
   }
   optional DemodulatorMode demodulator_mode = 2;
+
+  optional RxPower expected_rx_power = 4;
 }
 
 message LinkEnd {
@@ -180,6 +182,13 @@ message RxPlatform {
 
   // Defines the radio configuration to apply to the receiving platform.
   optional RxRadioConfiguration rx_radio = 2;
+}
+
+message RxPower {
+  oneof value {
+    // Power Flux Density at receiver [dBW/m^2].
+    double pfd_dbw_per_m2 = 1;
+  }
 }
 
 // Defines whether or not a link is usable or possible.

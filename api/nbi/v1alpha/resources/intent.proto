@@ -200,6 +200,8 @@ message RxConfiguration {
   optional double symbol_rate_msps = 5;
 
   optional ModemMode mode = 4;
+
+  optional RxPower expected_rx_power = 7;
 }
 
 message TxConfiguration {
