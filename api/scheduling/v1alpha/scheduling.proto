@@ -301,10 +301,10 @@ message RxConfiguration {
   // Symbol rate in Megasymbols per second.
   double symbol_rate_msps = 5;
 
-  // Identifies the receive modem associated with the carrier on this beam.
+  // Identifies the demodulator associated with the carrier on this beam.
   // Must be present if beam-hopping is not used, otherwise it should be
-  // empty and the modem IDs are found via the beam hopping plan.
-  string modem_id = 6;
+  // empty and the demodulator IDs are found via the beam hopping plan.
+  string demodulator_id = 6;
 
   ModemMode mode = 4;
 
@@ -326,10 +326,10 @@ message TxConfiguration {
   // Symbol rate in Megasymbols per second.
   double symbol_rate_msps = 6;
 
-  // Identifies the transmit modem associated with the carrier on this beam.
+  // Identifies the modulator associated with the carrier on this beam.
   // Must be present if beam-hopping is not used, otherwise it should be
-  // empty and the modem IDs are found via the beam hopping plan.
-  string modem_id = 8;
+  // empty and the modulator IDs are found via the beam hopping plan.
+  string modulator_id = 8;
 
   ModemMode mode = 4;
 
