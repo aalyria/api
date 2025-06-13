@@ -6,7 +6,7 @@ index fe5ee1a..15f490a 100644
  grpcio==1.64.1  # TODO: remove once pulling grpc from BCR @grpc works
  grpclib==0.4.7
 -protobuf==5.27.2
-+protobuf==5.29.0rc3
++protobuf==5.28.0rc3
 diff --git a/requirements.txt b/requirements.txt
 index 56f8c93..6aa360a 100644
 --- a/requirements.txt
@@ -34,16 +34,16 @@ index 56f8c93..6aa360a 100644
 -    --hash=sha256:a109916aaac42bff84702fb5187f3edadbc7c97fc2c99c5ff81dd15dcce0d1e5 \
 -    --hash=sha256:b848dbe1d57ed7c191dfc4ea64b8b004a3f9ece4bf4d0d80a367b76df20bf36e \
 -    --hash=sha256:f3ecdef226b9af856075f28227ff2c90ce3a594d092c39bee5513573f25e2714
-+protobuf==5.29.0rc3 \
-+    --hash=sha256:07a41c912b5013872ec14fba9de11524874438f4613840ca5fb65e3a20060af0 \
-+    --hash=sha256:0d0bf42471eacd9e0a46e7c4f5337b10ee68f4e518db64701f25f3936555065b \
-+    --hash=sha256:0f70e09d2d0fd895baafc944b1c9d1d5de528a8dad49e0d4f14a3201ca66657a \
-+    --hash=sha256:296c036e5ebf1676a7186cb4314fed0e9d6b4463437728c42399da0604c23600 \
-+    --hash=sha256:31cd71fa16846a5acf63dccae82b6a2fa6b873f02b175d9d630febd15186a58f \
-+    --hash=sha256:3c83ddf431910abfbea80f932eb2614346d4a9e19be62a69c0c8acd836fbe798 \
-+    --hash=sha256:3fa155f1f88b11e205a9f53cafc849302a776308edbb84dabd6e3b7ac41437df \
-+    --hash=sha256:5b87268a913b60b1a37bc575ecc81caef560cb02e88d53f9a57493859a3004fb \
-+    --hash=sha256:6bf8e290e847f9a1fa4beb90fa694fe12d6145eea370f737bbb7405b5f1e472f \
-+    --hash=sha256:8c54dbe6256714f08f7cf33e2df7bd6a0a3625cf9d2b336a21758cb9ff81f20e \
-+    --hash=sha256:d9d9f417d788236a9b162d848e41d95af1577dc0f5a2b1818903dd056a72c016
++protobuf==5.28.2 \
++    --hash=sha256:2c69461a7fcc8e24be697624c09a839976d82ae75062b11a0972e41fd2cd9132 \
++    --hash=sha256:35cfcb15f213449af7ff6198d6eb5f739c37d7e4f1c09b5d0641babf2cc0c68f \
++    --hash=sha256:52235802093bd8a2811abbe8bf0ab9c5f54cca0a751fdd3f6ac2a21438bffece \
++    --hash=sha256:59379674ff119717404f7454647913787034f03fe7049cbef1d74a97bb4593f0 \
++    --hash=sha256:5e8a95246d581eef20471b5d5ba010d55f66740942b95ba9b872d918c459452f \
++    --hash=sha256:87317e9bcda04a32f2ee82089a204d3a2f0d3c8aeed16568c7daf4756e4f1fe0 \
++    --hash=sha256:8ddc60bf374785fb7cb12510b267f59067fa10087325b8e1855b898a0d81d276 \
++    --hash=sha256:a8b9403fc70764b08d2f593ce44f1d2920c5077bf7d311fefec999f8c40f78b7 \
++    --hash=sha256:c0ea0123dac3399a2eeb1a1443d82b7afc9ff40241433296769f7da42d142ec3 \
++    --hash=sha256:ca53faf29896c526863366a52a8f4d88e69cd04ec9571ed6082fa117fac3ab36 \
++    --hash=sha256:eeea10f3dc0ac7e6b4933d32db20662902b4ab81bf28df12218aa389e9c2102d
      # via -r requirements.in
