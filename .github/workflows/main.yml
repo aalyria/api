@@ -30,7 +30,7 @@ jobs:
           path: |
             ~/.cache/bazelisk
             ~/.cache/bazel
-          key: bazel-${{ hashFiles('common.bazelrc', '.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
+          key: bazel-${{ hashFiles('.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
           restore-keys: bazel-
       - run: bazelisk test //...
 
@@ -53,7 +53,7 @@ jobs:
           path: |
             ~/.cache/bazelisk
             ~/.cache/bazel
-          key: bazel-${{ hashFiles('common.bazelrc', '.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
+          key: bazel-${{ hashFiles('.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
           restore-keys: bazel-
       - run: bazel/tools/update_version_bzl.sh version.bzl
       - run: bazelisk build --stamp "--platforms=@rules_go//go/toolchain:${{ matrix.os }}_${{ matrix.arch }}" "${{ matrix.target }}"
@@ -92,7 +92,7 @@ jobs:
           path: |
             ~/.cache/bazelisk
             ~/.cache/bazel
-          key: bazel-${{ hashFiles('common.bazelrc', '.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
+          key: bazel-${{ hashFiles('.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
           restore-keys: bazel-
       - run: bazelisk build "//api:api.html"
       - name: Upload API docs

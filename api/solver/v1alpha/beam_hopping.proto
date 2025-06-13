@@ -29,7 +29,7 @@ package aalyria.spacetime.api.beam_hopping.v1alpha;
 
 import "api/common/network.proto";
 import "api/scheduling/v1alpha/scheduling.proto";
-import "api/telemetry/v1alpha/telemetry.proto";
+import "api/telemetry/telemetry.proto";
 import "google/protobuf/timestamp.proto";
 
 option java_package = "com.aalyria.spacetime.api.beam_hopping.v1alpha";

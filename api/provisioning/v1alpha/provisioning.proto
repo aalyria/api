@@ -59,7 +59,6 @@ message CreateServiceProvisioningRequestRequest {
 
 message UpdateServiceProvisioningRequestRequest {
   ServiceProvisioningRequest request = 1;
-  // TODO: add FieldMask support
 }
 
 message DeleteServiceProvisioningRequestRequest {

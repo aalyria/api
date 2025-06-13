@@ -46,7 +46,6 @@ build --cxxopt='-Wno-unused-function'
 build --cxxopt='-Wno-sign-compare'
 # TODO: remove -Wno-deprecated-declarations and live a healthier, happier life.
 build --cxxopt='-Wno-deprecated-declarations'
-build --host_cxxopt=-Wno-deprecated-declarations
 
 ##
 # Disable strict warnings in header files from external repositories.

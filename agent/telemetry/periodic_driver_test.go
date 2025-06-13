@@ -19,13 +19,14 @@ import (
 	"testing"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+
+	telemetrypb "aalyria.com/spacetime/telemetry/v1alpha"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/jonboulle/clockwork"
-	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/timestamppb"
-
-	telemetrypb "aalyria.com/spacetime/api/telemetry/v1alpha"
 )
 
 type constantGenerator struct {

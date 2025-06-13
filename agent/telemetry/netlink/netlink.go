@@ -21,7 +21,7 @@ import (
 
 	"aalyria.com/spacetime/agent/telemetry"
 	apipb "aalyria.com/spacetime/api/common"
-	telemetrypb "aalyria.com/spacetime/api/telemetry/v1alpha"
+	telemetrypb "aalyria.com/spacetime/telemetry/v1alpha"
 
 	"github.com/jonboulle/clockwork"
 	"github.com/rs/zerolog"

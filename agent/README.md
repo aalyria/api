@@ -223,13 +223,13 @@ Ideally an agent's time would be synchronzied to the same ultimate source(s) use
 RECOMMENDED time synchronization mechanisms include:
 * GPS or another Global Navigation Satellite System (GNSS) PNT service
 * Network Time Protocol v4 ([NTPv4](https://www.rfc-editor.org/rfc/rfc5905.html)), ideally with Network Time Security ([NTS](https://www.rfc-editor.org/rfc/rfc8915.html))
-* IEEE Precision Time Protocol (PTP, [IEEE 1588-2019](https://ieeexplore.ieee.org/document/9120376))
+* IEEE Precision Time Protocol ([IEEE 1588-2019](https://ieeexplore.ieee.org/document/9120376))
 
 Some experimental time synchronization mechanisms include:
 * Network Time Protocol v5 ([draft](https://datatracker.ietf.org/doc/draft-ietf-ntp-ntpv5/))
 * roughtime ([draft](https://datatracker.ietf.org/doc/draft-ietf-ntp-roughtime/))
 
-An agent SHOULD maintain a sub-second difference from its chosen time source(s), and all RECOMMENDED time synchronization mechanisms can in principle achieve much better accuracies.
+An agent SHOULD maintain a sub-second difference from its chosen time source(s), and all RECOMMENDED time synchronizations can in principle achieve much better accuracies.
 The exact requirements and realistically achievable accuracies, however, are specific to a given deployment scenario.
 
 If an agent instance or its underlying platform cannot maintain adequate time synchronization, for a mission-specific definition of "adequate", then it MUST do one of the following:

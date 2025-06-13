@@ -149,7 +149,7 @@ func TestDial_serverCertificate(t *testing.T) {
 	defer func() { checkErr(t, g.Wait()) }()
 	defer cancel()
 	cert, _ := tls.X509KeyPair(LocalhostCert, LocalhostKey)
-	lis, err := tls.Listen("tcp", "127.0.0.1:0", &tls.Config{Certificates: []tls.Certificate{cert}, NextProtos: []string{"h2"}})
+	lis, err := tls.Listen("tcp", "127.0.0.1:0", &tls.Config{Certificates: []tls.Certificate{cert}})
 	checkErr(t, err)
 	fakeGrpcServer, err := startFakeNbiServer(ctx, g, lis)
 	checkErr(t, err)

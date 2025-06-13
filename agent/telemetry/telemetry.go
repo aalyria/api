@@ -17,7 +17,7 @@ package telemetry
 import (
 	"context"
 
-	telemetrypb "aalyria.com/spacetime/api/telemetry/v1alpha"
+	telemetrypb "aalyria.com/spacetime/telemetry/v1alpha"
 )
 
 // Driver is the component that gathers and reports metrics for a given
