@@ -32,7 +32,7 @@ go_library(
     importpath = "aalyria.com/spacetime/agent/telemetry/netlink/container_test",
     deps = [
         "//agent/telemetry/netlink",
-        "//api/telemetry:telemetry_go_grpc",
+        "//api/telemetry/v1alpha:telemetry_go_grpc",
         "@com_github_jonboulle_clockwork//:clockwork",
         "@com_github_vishvananda_netlink//:netlink",
         "@org_golang_x_sync//errgroup",

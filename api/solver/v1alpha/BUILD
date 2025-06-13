@@ -48,7 +48,7 @@ proto_library(
     deps = [
         "//api/common:common_proto",
         "//api/scheduling/v1alpha:scheduling_proto",
-        "//api/telemetry:telemetry_proto",
+        "//api/telemetry/v1alpha:telemetry_proto",
         "@protobuf//:timestamp_proto",
     ],
 )
@@ -60,7 +60,7 @@ cpp_grpc_library(
     deps = [
         "//api/common:common_cpp_proto",
         "//api/scheduling/v1alpha:scheduling_cpp_grpc",
-        "//api/telemetry:telemetry_cpp_grpc",
+        "//api/telemetry/v1alpha:telemetry_cpp_grpc",
         "@googleapis//google/rpc:status_cc_proto",
     ],
 )
@@ -87,6 +87,6 @@ go_proto_library(
     deps = [
         "//api/common:common_go_proto",
         "//api/scheduling/v1alpha:scheduling_go_grpc",
-        "//api/telemetry:telemetry_go_grpc",
+        "//api/telemetry/v1alpha:telemetry_go_grpc",
     ],
 )

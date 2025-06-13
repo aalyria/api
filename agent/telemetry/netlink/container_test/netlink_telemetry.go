@@ -36,7 +36,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"aalyria.com/spacetime/agent/telemetry/netlink"
-	telemetrypb "aalyria.com/spacetime/telemetry/v1alpha"
+	telemetrypb "aalyria.com/spacetime/api/telemetry/v1alpha"
 )
 
 type echoServer struct {

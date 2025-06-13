@@ -14,13 +14,13 @@
 
 syntax = "proto3";
 
-package aalyria.spacetime.telemetry.v1alpha;
+package aalyria.spacetime.api.telemetry.v1alpha;
 
 import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 
-option go_package = "aalyria.com/spacetime/telemetry/v1alpha";
-option java_package = "com.aalyria.spacetime.telemetry.v1alpha";
+option go_package = "aalyria.com/spacetime/api/telemetry/v1alpha";
+option java_package = "com.aalyria.spacetime.api.telemetry.v1alpha";
 
 service Telemetry {
   // Pushes metrics to the SDN controller.

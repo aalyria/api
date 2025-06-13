@@ -14,36 +14,14 @@
 
 module(name = "aalyria_api")
 
-bazel_dep(name = "protobuf")
-
-# Patch protobuf to backport
-# https://github.com/protocolbuffers/protobuf/pull/17402 to protobuf 28.2.
-archive_override(
-    module_name = "protobuf",
-    integrity = "sha256-C37zUG/ECthArdE4031EPEqfWwswfCXVFtu+9NwLxco=",
-    patch_strip = 1,
-    patches = [
-        "//patches:protobuf.patch",
-    ],
-    strip_prefix = "protobuf-28.2",
-    urls = "https://github.com/protocolbuffers/protobuf/archive/refs/tags/v28.2.zip",
-)
-
-bazel_dep(name = "gazelle", version = "0.39.1")
-bazel_dep(name = "googleapis", version = "0.0.0-20240326-1c8d509c5")
-
-# This override is necessary to prevent bzlmod from resolving grpc-java to a
-# version impacted by https://github.com/grpc/grpc-java/issues/11275.
-single_version_override(
-    module_name = "grpc-java",
-    version = "1.64.0",
-)
-
-bazel_dep(name = "rules_go", version = "0.49.0")
-bazel_dep(name = "rules_java", version = "7.9.0")
-bazel_dep(name = "rules_jvm_external", version = "6.2")
+bazel_dep(name = "protobuf", version = "29.0-rc3")
+bazel_dep(name = "gazelle", version = "0.40.0")
+bazel_dep(name = "googleapis", version = "0.0.0-20240819-fe8ba054a")
+bazel_dep(name = "rules_go", version = "0.50.1")
+bazel_dep(name = "rules_java", version = "7.12.2")
+bazel_dep(name = "rules_jvm_external", version = "6.3")
 bazel_dep(name = "rules_oci", version = "1.7.5")
-bazel_dep(name = "rules_pkg", version = "0.10.1")
+bazel_dep(name = "rules_pkg", version = "1.0.1")
 bazel_dep(name = "rules_proto_grpc_cpp", version = "5.0.0")
 bazel_dep(name = "rules_proto_grpc_doc", version = "5.0.0")
 bazel_dep(name = "rules_proto_grpc_java", version = "5.0.0")
@@ -62,14 +40,7 @@ archive_override(
 )
 
 bazel_dep(name = "rules_python", version = "0.35.0")
-bazel_dep(name = "toolchains_protoc")
-
-# Override toolchains_protoc to obtain a version with protoc v28.2 available.
-git_override(
-    module_name = "toolchains_protoc",
-    commit = "0ffd305814e08a4d835efbd106d609001f0d354c",
-    remote = "https://github.com/aspect-build/toolchains_protoc.git",
-)
+bazel_dep(name = "toolchains_protoc", version = "0.3.6")
 
 # Configure the protoc toolchain used by rules_proto_grpc to use protoc v28.2.
 # This ensures that the version agrees with the protobuf dependency version,
@@ -79,7 +50,7 @@ git_override(
 protoc = use_extension("@toolchains_protoc//protoc:extensions.bzl", "protoc")
 protoc.toolchain(
     google_protobuf = "com_google_protobuf",
-    version = "v28.2",
+    version = "v29.0-rc3",
 )
 
 bazel_dep(name = "container_structure_test", version = "1.16.0", dev_dependency = True)
@@ -104,7 +75,7 @@ use_repo(maven, "maven")
 
 go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
 go_sdk.download(
-    version = "1.23.0",
+    version = "1.23.4",
 )
 
 go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
