@@ -30,7 +30,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	commonpb "aalyria.com/spacetime/api/common"
-	telemetrypb "aalyria.com/spacetime/telemetry/v1alpha"
+	telemetrypb "aalyria.com/spacetime/api/telemetry/v1alpha"
 )
 
 func textNetworkIfaceID(id *commonpb.NetworkInterfaceId) string {

@@ -23,7 +23,7 @@ import (
 	"aalyria.com/spacetime/agent/internal/task"
 	apipb "aalyria.com/spacetime/api/common"
 	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
-	telemetrypb "aalyria.com/spacetime/telemetry/v1alpha"
+	telemetrypb "aalyria.com/spacetime/api/telemetry/v1alpha"
 
 	"github.com/google/uuid"
 	"github.com/jonboulle/clockwork"

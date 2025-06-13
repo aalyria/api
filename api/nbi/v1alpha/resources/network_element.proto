@@ -41,6 +41,9 @@ message NetworkNode {
   optional string category_tag = 6;
 
   message RoutingConfiguration {
+    // Model Entity ID of the associated EK_ROUTE_FN, if any.
+    optional string ek_route_fn = 3;
+
     // The router ID of this NetworkNode.
     optional types.RouterId router_id = 1;
 
@@ -120,8 +123,8 @@ message SdnAgent {
   }
   optional CdpiProtocol type = 1;
 
-  // The email address associated with the SDN agent's google account.
-  optional string google_user_id = 2;
+  // The Model Entity ID of a controlling EK_SDN_AGENT, if any.
+  optional string ek_sdn_agent = 2;
 
   // When sending updates to nodes, the SDN must send control updates far enough
   // ahead of their enactment time to account for the maximum control plane

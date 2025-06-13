@@ -13,6 +13,5 @@
 # limitations under the License.
 
 exports_files([
-    "protobuf.patch",
     "rules_proto_grpc_python.patch",
 ])
