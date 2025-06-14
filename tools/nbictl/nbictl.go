@@ -435,7 +435,7 @@ func App() *cli.App {
 							},
 							&cli.StringFlag{
 								Name:  "url",
-								Usage: "NBI endpoint specified as `host[:port]` (port is optional and defaults to 443). MUST NOT include any scheme (e.g. `https://` or `dns:///`) nor any API-specific prefix (e.g. `model-v1.`).",
+								Usage: "Spacetime endpoint specified as `host[:port]` (port is optional and defaults to 443). MUST NOT include any scheme (e.g. `https://` or `dns:///`) nor any API-specific prefix (e.g. `nbi.` or `model-v1.`).",
 							},
 							&cli.StringFlag{
 								Name:  "transport_security",
