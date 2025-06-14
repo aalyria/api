@@ -22,7 +22,7 @@ import (
 
 	modelpb "aalyria.com/spacetime/api/model/v1"
 	set "github.com/deckarep/golang-set/v2"
-	"github.com/samber/lo"
+	"github.com/sourcegraph/conc/pool"
 	"github.com/urfave/cli/v2"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -325,6 +325,11 @@ func ModelListRelationships(appCtx *cli.Context) error {
 
 func nmtsEntitiesAreEquivalent(a, b *nmtspb.Entity) bool {
 	// TODO: find a more robust equivalency check.
+	// Additionally, allow for not overwriting certain changes,
+	// like not changing interface admin status (because this
+	// can be changed in the UI), and perhaps not changing
+	// a KeplerianElements if the only change is the epoch
+	// time (just wastes a lot of motion computation).
 	return proto.Equal(a, b)
 }
 
@@ -405,22 +410,34 @@ func ModelSync(appCtx *cli.Context) error {
 	defer conn.Close()
 	modelClient := modelpb.NewModelClient(conn)
 
-	entityList, err := modelClient.ListEntities(appCtx.Context, &modelpb.ListEntitiesRequest{})
-	if err != nil {
+	listPool := pool.New().WithErrors()
+
+	listPool.Go(func() error {
+		entityList, err := modelClient.ListEntities(appCtx.Context, &modelpb.ListEntitiesRequest{})
+		if err != nil {
+			return err
+		}
+		for _, entity := range entityList.GetEntities() {
+			remoteEntities[entity.GetId()] = entity
+		}
+		return nil
+	})
+
+	listPool.Go(func() error {
+		relationshipList, err := modelClient.ListRelationships(appCtx.Context, &modelpb.ListRelationshipsRequest{})
+		if err != nil {
+			return err
+		}
+		for _, relationship := range relationshipList.GetRelationships() {
+			remoteRelationships.Insert(er.RelationshipFromProto(relationship))
+		}
+		return nil
+	})
+
+	if err = listPool.Wait(); err != nil {
 		return err
-	}
-	for _, entity := range entityList.GetEntities() {
-		remoteEntities[entity.GetId()] = entity
 	}
 	remoteEntityKeys := set.NewSetFromMapKeys(remoteEntities)
-
-	relationshipList, err := modelClient.ListRelationships(appCtx.Context, &modelpb.ListRelationshipsRequest{})
-	if err != nil {
-		return err
-	}
-	for _, relationship := range relationshipList.GetRelationships() {
-		remoteRelationships.Insert(er.RelationshipFromProto(relationship))
-	}
 	remoteRelationshipKeys := set.NewSetFromMapKeys(remoteRelationships.Relations)
 	fmt.Fprintf(os.Stdout, "remote model elements:\n")
 	fmt.Fprintf(os.Stdout, "- %d NMTS Entities\n", remoteEntityKeys.Cardinality())
@@ -434,96 +451,119 @@ func ModelSync(appCtx *cli.Context) error {
 
 	errs := []error{}
 
-	// Maybe delete entities (and prune collaterally deleted relationships)
-	// Maybe delete relationships.
-	if deleteMode {
-		entitiesToBeDeleted := remoteEntityKeys.Difference(localEntityKeys)
-		relationshipsToBeDeleted := remoteRelationshipKeys.Difference(localRelationshipKeys)
-
-		for entity := range entitiesToBeDeleted.Iter() {
-			if printMode {
-				fmt.Printf("delete entity: %s\n", entity)
-			}
-			if !dryRunMode {
-				deleteResponse, err := modelClient.DeleteEntity(appCtx.Context, &modelpb.DeleteEntityRequest{
-					EntityId: entity,
-				})
-				if err != nil && !isNotFoundError(err) {
-					errs = append(errs, err)
-				} else {
-					relationshipsToBeDeleted.RemoveAll(
-						lo.Map(deleteResponse.GetDeletedRelationships(), func(r *nmtspb.Relationship, _ int) er.Relationship {
-							return er.RelationshipFromProto(r)
-						})...)
-				}
-			}
-		}
-
-		for relationship := range relationshipsToBeDeleted.Iter() {
-			if printMode {
-				fmt.Printf("delete relationship: %s\n", relationship)
-			}
-			if !dryRunMode {
-				_, err := modelClient.DeleteRelationship(appCtx.Context, &modelpb.DeleteRelationshipRequest{
-					Relationship: relationship.ToProto(),
-				})
-				if err != nil {
-					errs = append(errs, err)
-				}
-			}
-		}
-	}
-
-	// Add entities.
-	entitiesToBeAdded := localEntityKeys.Difference(remoteEntityKeys)
-	for entity := range entitiesToBeAdded.Iter() {
-		if printMode {
-			fmt.Printf("add entity: %s\n", entity)
-		}
-		if !dryRunMode {
-			_, err := modelClient.CreateEntity(appCtx.Context, &modelpb.CreateEntityRequest{
-				Entity: localEntities[entity],
-			})
-			if err != nil {
-				errs = append(errs, err)
-			}
-		}
-	}
-
-	// Add relationships.
-	relationshipsToBeAdded := localRelationshipKeys.Difference(remoteRelationshipKeys)
-	for relationship := range relationshipsToBeAdded.Iter() {
-		if printMode {
-			fmt.Printf("add relationship: %s\n", relationship)
-		}
-		if !dryRunMode {
-			_, err := modelClient.CreateRelationship(appCtx.Context, &modelpb.CreateRelationshipRequest{
-				Relationship: relationship.ToProto(),
-			})
-			if err != nil {
-				errs = append(errs, err)
-			}
-		}
-	}
-
 	// Update entities.
+	updatePool := pool.New().WithErrors()
 	entitiesInCommon := localEntityKeys.Intersect(remoteEntityKeys)
 	for entity := range entitiesInCommon.Iter() {
-		if nmtsEntitiesAreEquivalent(localEntities[entity], remoteEntities[entity]) {
-			continue
-		}
-		if printMode {
-			fmt.Printf("update entity: %s\n", entity)
-		}
-		if !dryRunMode {
-			_, err := modelClient.UpdateEntity(appCtx.Context, &modelpb.UpdateEntityRequest{
-				Entity: localEntities[entity],
-			})
-			if err != nil {
-				errs = append(errs, err)
+		updatePool.Go(func() error {
+			if nmtsEntitiesAreEquivalent(localEntities[entity], remoteEntities[entity]) {
+				return nil
 			}
+			if printMode {
+				fmt.Printf("update entity: %s\n", entity)
+			}
+			var err error
+			if !dryRunMode {
+				_, err = modelClient.UpdateEntity(appCtx.Context, &modelpb.UpdateEntityRequest{
+					Entity: localEntities[entity],
+				})
+			}
+			return err
+		})
+	}
+
+	// Maybe delete entities (and prune collaterally deleted relationships)
+	deleteEntitiesPool := pool.New().WithErrors()
+	if deleteMode {
+		entitiesToBeDeleted := remoteEntityKeys.Difference(localEntityKeys)
+
+		for entity := range entitiesToBeDeleted.Iter() {
+			deleteEntitiesPool.Go(func() error {
+				if printMode {
+					fmt.Printf("delete entity: %s\n", entity)
+				}
+				var err error
+				if !dryRunMode {
+					_, err = modelClient.DeleteEntity(appCtx.Context, &modelpb.DeleteEntityRequest{
+						EntityId: entity,
+					})
+					if err != nil && isNotFoundError(err) {
+						err = nil
+					}
+					// TODO: retrieve list of deleted relationships
+					// from DeleteEntityResponse and prune them from
+					// the relationshipsToBeDeleted set.
+				}
+				return err
+			})
 		}
 	}
+
+	errs = append(errs, updatePool.Wait())
+	errs = append(errs, deleteEntitiesPool.Wait())
+
+	// Maybe delete relationships.
+	deleteRelationshipsPool := pool.New().WithErrors()
+	if deleteMode {
+		relationshipsToBeDeleted := remoteRelationshipKeys.Difference(localRelationshipKeys)
+		for relationship := range relationshipsToBeDeleted.Iter() {
+			deleteRelationshipsPool.Go(func() error {
+				if printMode {
+					fmt.Printf("delete relationship: %s\n", relationship)
+				}
+				var err error
+				if !dryRunMode {
+					_, err = modelClient.DeleteRelationship(appCtx.Context, &modelpb.DeleteRelationshipRequest{
+						Relationship: relationship.ToProto(),
+					})
+				}
+				return err
+			})
+		}
+	}
+	// Wait for relationship deletes before adding entities and
+	// relationships that might create difficult-to-analyze graphs.
+	errs = append(errs, deleteRelationshipsPool.Wait())
+
+	// Add entities.
+	addEntitiesPool := pool.New().WithErrors()
+	entitiesToBeAdded := localEntityKeys.Difference(remoteEntityKeys)
+	for entity := range entitiesToBeAdded.Iter() {
+		addEntitiesPool.Go(func() error {
+			if printMode {
+				fmt.Printf("add entity: %s\n", entity)
+			}
+			var err error
+			if !dryRunMode {
+				_, err = modelClient.CreateEntity(appCtx.Context, &modelpb.CreateEntityRequest{
+					Entity: localEntities[entity],
+				})
+			}
+			return err
+		})
+	}
+	// Need to wait for entities to be added before adding any
+	// relationships that might reference them.
+	errs = append(errs, addEntitiesPool.Wait())
+
+	// Add relationships.
+	addRelationshipsPool := pool.New().WithErrors()
+	relationshipsToBeAdded := localRelationshipKeys.Difference(remoteRelationshipKeys)
+	for relationship := range relationshipsToBeAdded.Iter() {
+		addRelationshipsPool.Go(func() error {
+			if printMode {
+				fmt.Printf("add relationship: %s\n", relationship)
+			}
+			var err error
+			if !dryRunMode {
+				_, err = modelClient.CreateRelationship(appCtx.Context, &modelpb.CreateRelationshipRequest{
+					Relationship: relationship.ToProto(),
+				})
+			}
+			return err
+		})
+	}
+	errs = append(errs, addRelationshipsPool.Wait())
 
 	return errors.Join(errs...)
 }

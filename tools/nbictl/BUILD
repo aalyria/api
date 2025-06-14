@@ -55,6 +55,7 @@ go_library(
         "@com_github_jhump_protoreflect//grpcreflect",
         "@com_github_jonboulle_clockwork//:clockwork",
         "@com_github_samber_lo//:lo",
+        "@com_github_sourcegraph_conc//pool",
         "@com_github_urfave_cli_v2//:cli",
         "@org_golang_google_genproto//googleapis/type/interval",
         "@org_golang_google_grpc//:grpc",
