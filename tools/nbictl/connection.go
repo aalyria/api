@@ -64,7 +64,7 @@ func openAPIConnection(appCtx *cli.Context, apiSubDomain string) (*grpc.ClientCo
 
 func adjustURLForAPISubDomain(url string, apiSubDomain string) string {
 	// Unexpectedly empty arguments or already the subdomain sought.
-	if url == "" || apiSubDomain == "" || strings.HasPrefix(url, apiSubDomain+".") {
+	if url == "" || apiSubDomain == "" || strings.HasPrefix(url, apiSubDomain) {
 		return url
 	}
 
