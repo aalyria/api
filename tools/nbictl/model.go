@@ -31,7 +31,7 @@ import (
 	nmtspb "outernetcouncil.org/nmts/v1/proto"
 )
 
-const modelAPISubDomain = "model"
+const modelAPISubDomain = "model-v1"
 
 func readDataFromCommandLineFilenameArgument(appCtx *cli.Context) ([]byte, error) {
 	if appCtx.Args().Len() != 1 {

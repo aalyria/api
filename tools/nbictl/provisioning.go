@@ -28,7 +28,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const provisioningAPISubDomain = "provisioning"
+const provisioningAPISubDomain = "provisioning-v1alpha"
 
 type ProvisioningResources struct {
 	p2pSrTePolicies             map[string]*provapipb.P2PSrTePolicy
