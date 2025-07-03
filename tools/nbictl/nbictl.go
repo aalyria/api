@@ -45,6 +45,8 @@ var Version = "0.0.0+development"
 const (
 	confFileName = "config.textproto"
 
+	nbiAPISubDomain = "nbi-v1alpha"
+
 	// modified from
 	// https://github.com/urfave/cli/blob/c023d9bc5a3122830c9355a0a8c17137e0c8556f/template.go#L98
 	readmeDocTemplate = `{{if gt .SectionNum 0}}% {{ .App.Name }} {{ .SectionNum }}
@@ -92,7 +94,6 @@ func marshallerForFormat(format string) (protoFormat, error) {
 	default:
 		return protoFormat{}, fmt.Errorf("unknown proto format %q", format)
 	}
-
 }
 
 func App() *cli.App {
@@ -447,9 +448,8 @@ func App() *cli.App {
 				},
 			},
 			{
-				Name:    "model-v1",
-				Aliases: []string{"model"},
-				Usage:   "Subcommands for Model API v1, to manage the model elements comprising the digital twin.",
+				Name:  "model-v1",
+				Usage: "Subcommands for Model API v1, to manage the model elements comprising the digital twin.",
 				Subcommands: []*cli.Command{
 					{
 						Name:     "create-entity",
@@ -541,9 +541,8 @@ func App() *cli.App {
 				},
 			},
 			{
-				Name:    "provisioning-v1alpha",
-				Aliases: []string{"provisioning"},
-				Usage:   "Subcommands for Provisioning API v1alpha, to manage the provisioned resources within the digital twin.",
+				Name:  "provisioning-v1alpha",
+				Usage: "Subcommands for Provisioning API v1alpha, to manage the provisioned resources within the digital twin.",
 				Subcommands: []*cli.Command{
 					{
 						Name:     "sync",
@@ -641,7 +640,7 @@ func Create(appCtx *cli.Context) error {
 		return err
 	}
 
-	conn, err := openConnection(appCtx)
+	conn, err := openAPIConnection(appCtx, nbiAPISubDomain)
 	if err != nil {
 		return err
 	}
@@ -676,7 +675,7 @@ func Edit(appCtx *cli.Context) error {
 		return err
 	}
 
-	conn, err := openConnection(appCtx)
+	conn, err := openAPIConnection(appCtx, nbiAPISubDomain)
 	if err != nil {
 		return err
 	}
@@ -735,7 +734,7 @@ func Update(appCtx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	conn, err := openConnection(appCtx)
+	conn, err := openAPIConnection(appCtx, nbiAPISubDomain)
 	if err != nil {
 		return err
 	}
@@ -763,7 +762,7 @@ func Get(appCtx *cli.Context) error {
 		return err
 	}
 
-	conn, err := openConnection(appCtx)
+	conn, err := openAPIConnection(appCtx, nbiAPISubDomain)
 	if err != nil {
 		return err
 	}
@@ -793,7 +792,7 @@ func Delete(appCtx *cli.Context) error {
 		return err
 	}
 
-	conn, err := openConnection(appCtx)
+	conn, err := openAPIConnection(appCtx, nbiAPISubDomain)
 	if err != nil {
 		return err
 	}
@@ -866,7 +865,7 @@ func List(appCtx *cli.Context) error {
 		}
 	}
 
-	conn, err := openConnection(appCtx)
+	conn, err := openAPIConnection(appCtx, nbiAPISubDomain)
 	if err != nil {
 		return err
 	}
@@ -892,7 +891,7 @@ func GetLinkBudget(appCtx *cli.Context) error {
 		return err
 	}
 
-	conn, err := openConnection(appCtx)
+	conn, err := openAPIConnection(appCtx, nbiAPISubDomain)
 	if err != nil {
 		return err
 	}

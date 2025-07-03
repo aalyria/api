@@ -22,7 +22,6 @@ import (
 	"testing"
 	"time"
 
-	modelpb "aalyria.com/spacetime/api/model/v1"
 	"github.com/bazelbuild/rules_go/go/tools/bazel"
 	gcmp "github.com/google/go-cmp/cmp"
 	"golang.org/x/sync/errgroup"
@@ -31,6 +30,8 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 	nmtspb "outernetcouncil.org/nmts/v1/proto"
 	nmtsphypb "outernetcouncil.org/nmts/v1/proto/ek/physical"
+
+	modelpb "aalyria.com/spacetime/api/model/v1"
 )
 
 type testCase struct {
@@ -111,7 +112,7 @@ var testCases = []testCase{
 		fileContents:    nil,
 		responseError:   nil,
 		responseMessage: nil,
-		cmdLineArgs:     []string{"model", "create-entity"},
+		cmdLineArgs:     []string{"model-v1", "create-entity"},
 		wantAppError:    true,
 		wantRequest:     nil,
 	},
@@ -120,7 +121,7 @@ var testCases = []testCase{
 		fileContents:    nil,
 		responseError:   nil,
 		responseMessage: nil,
-		cmdLineArgs:     []string{"model", "create-entity", "uuid-1234.txtpb", "uuid-5678.txtpb"},
+		cmdLineArgs:     []string{"model-v1", "create-entity", "uuid-1234.txtpb", "uuid-5678.txtpb"},
 		wantAppError:    true,
 		wantRequest:     nil,
 	},
@@ -129,7 +130,7 @@ var testCases = []testCase{
 		fileContents:    nil,
 		responseError:   nil,
 		responseMessage: nil,
-		cmdLineArgs:     []string{"model", "create-entity", "uuid-1234.txtpb"},
+		cmdLineArgs:     []string{"model-v1", "create-entity", "uuid-1234.txtpb"},
 		wantAppError:    true,
 		wantRequest:     nil,
 	},
@@ -138,15 +139,15 @@ var testCases = []testCase{
 		fileContents: map[string]string{
 			"-": "id: \"uuid-1234\" ek_platform{}",
 		},
-		responseError:   nil,
+		responseError: nil,
 		responseMessage: &nmtspb.Entity{
 			Id: "uuid-1234",
 			Kind: &nmtspb.Entity_EkPlatform{
 				EkPlatform: &nmtsphypb.Platform{},
 			},
 		},
-		cmdLineArgs:     []string{"model", "create-entity", "-"},
-		wantAppError:    false,
+		cmdLineArgs:  []string{"model-v1", "create-entity", "-"},
+		wantAppError: false,
 		wantRequest: &modelpb.CreateEntityRequest{
 			Entity: &nmtspb.Entity{
 				Id: "uuid-1234",
@@ -161,15 +162,15 @@ var testCases = []testCase{
 		fileContents: map[string]string{
 			"uuid-1234.txtpb": "id: \"uuid-1234\" ek_platform{}",
 		},
-		responseError:   nil,
+		responseError: nil,
 		responseMessage: &nmtspb.Entity{
 			Id: "uuid-1234",
 			Kind: &nmtspb.Entity_EkPlatform{
 				EkPlatform: &nmtsphypb.Platform{},
 			},
 		},
-		cmdLineArgs:     []string{"model", "create-entity", "uuid-1234.txtpb"},
-		wantAppError:    false,
+		cmdLineArgs:  []string{"model-v1", "create-entity", "uuid-1234.txtpb"},
+		wantAppError: false,
 		wantRequest: &modelpb.CreateEntityRequest{
 			Entity: &nmtspb.Entity{
 				Id: "uuid-1234",
@@ -184,7 +185,7 @@ var testCases = []testCase{
 		fileContents:    nil,
 		responseError:   nil,
 		responseMessage: nil,
-		cmdLineArgs:     []string{"model", "update-entity"},
+		cmdLineArgs:     []string{"model-v1", "update-entity"},
 		wantAppError:    true,
 		wantRequest:     nil,
 	},
@@ -193,7 +194,7 @@ var testCases = []testCase{
 		fileContents:    nil,
 		responseError:   nil,
 		responseMessage: nil,
-		cmdLineArgs:     []string{"model", "update-entity", "uuid-1234.txtpb", "uuid-5678.txtpb"},
+		cmdLineArgs:     []string{"model-v1", "update-entity", "uuid-1234.txtpb", "uuid-5678.txtpb"},
 		wantAppError:    true,
 		wantRequest:     nil,
 	},
@@ -202,7 +203,7 @@ var testCases = []testCase{
 		fileContents:    nil,
 		responseError:   nil,
 		responseMessage: nil,
-		cmdLineArgs:     []string{"model", "update-entity", "uuid-1234.txtpb"},
+		cmdLineArgs:     []string{"model-v1", "update-entity", "uuid-1234.txtpb"},
 		wantAppError:    true,
 		wantRequest:     nil,
 	},
@@ -211,7 +212,7 @@ var testCases = []testCase{
 		fileContents: map[string]string{
 			"-": "id: \"uuid-1234\" ek_platform{ name: \"platform_1234\" }",
 		},
-		responseError:   nil,
+		responseError: nil,
 		responseMessage: &nmtspb.Entity{
 			Id: "uuid-1234",
 			Kind: &nmtspb.Entity_EkPlatform{
@@ -220,8 +221,8 @@ var testCases = []testCase{
 				},
 			},
 		},
-		cmdLineArgs:     []string{"model", "update-entity", "-"},
-		wantAppError:    false,
+		cmdLineArgs:  []string{"model-v1", "update-entity", "-"},
+		wantAppError: false,
 		wantRequest: &modelpb.UpdateEntityRequest{
 			Entity: &nmtspb.Entity{
 				Id: "uuid-1234",
@@ -238,7 +239,7 @@ var testCases = []testCase{
 		fileContents: map[string]string{
 			"uuid-1234.txtpb": "id: \"uuid-1234\" ek_platform { name: \"platform_1234\" }",
 		},
-		responseError:   nil,
+		responseError: nil,
 		responseMessage: &nmtspb.Entity{
 			Id: "uuid-1234",
 			Kind: &nmtspb.Entity_EkPlatform{
@@ -247,8 +248,8 @@ var testCases = []testCase{
 				},
 			},
 		},
-		cmdLineArgs:     []string{"model", "update-entity", "uuid-1234.txtpb"},
-		wantAppError:    false,
+		cmdLineArgs:  []string{"model-v1", "update-entity", "uuid-1234.txtpb"},
+		wantAppError: false,
 		wantRequest: &modelpb.UpdateEntityRequest{
 			Entity: &nmtspb.Entity{
 				Id: "uuid-1234",
@@ -265,7 +266,7 @@ var testCases = []testCase{
 		fileContents:    nil,
 		responseError:   nil,
 		responseMessage: nil,
-		cmdLineArgs:     []string{"model", "delete-entity"},
+		cmdLineArgs:     []string{"model-v1", "delete-entity"},
 		wantAppError:    true,
 		wantRequest:     nil,
 	},
@@ -274,7 +275,7 @@ var testCases = []testCase{
 		fileContents:    nil,
 		responseError:   nil,
 		responseMessage: nil,
-		cmdLineArgs:     []string{"model", "delete-entity", "uuid-1234", "uuid-5678"},
+		cmdLineArgs:     []string{"model-v1", "delete-entity", "uuid-1234", "uuid-5678"},
 		wantAppError:    true,
 		wantRequest:     nil,
 	},
@@ -283,7 +284,7 @@ var testCases = []testCase{
 		fileContents:    nil,
 		responseError:   nil,
 		responseMessage: &modelpb.DeleteEntityResponse{},
-		cmdLineArgs:     []string{"model", "delete-entity", "uuid-1234"},
+		cmdLineArgs:     []string{"model-v1", "delete-entity", "uuid-1234"},
 		wantAppError:    false,
 		wantRequest: &modelpb.DeleteEntityRequest{
 			EntityId: "uuid-1234",
@@ -294,7 +295,7 @@ var testCases = []testCase{
 		fileContents:    nil,
 		responseError:   nil,
 		responseMessage: nil,
-		cmdLineArgs:     []string{"model", "create-relationship"},
+		cmdLineArgs:     []string{"model-v1", "create-relationship"},
 		wantAppError:    true,
 		wantRequest:     nil,
 	},
@@ -303,7 +304,7 @@ var testCases = []testCase{
 		fileContents:    nil,
 		responseError:   nil,
 		responseMessage: nil,
-		cmdLineArgs:     []string{"model", "create-relationship", "uuid-1234.txtpb", "uuid-5678.txtpb"},
+		cmdLineArgs:     []string{"model-v1", "create-relationship", "uuid-1234.txtpb", "uuid-5678.txtpb"},
 		wantAppError:    true,
 		wantRequest:     nil,
 	},
@@ -312,7 +313,7 @@ var testCases = []testCase{
 		fileContents:    nil,
 		responseError:   nil,
 		responseMessage: nil,
-		cmdLineArgs:     []string{"model", "create-relationship", "uuid-1234.txtpb"},
+		cmdLineArgs:     []string{"model-v1", "create-relationship", "uuid-1234.txtpb"},
 		wantAppError:    true,
 		wantRequest:     nil,
 	},
@@ -321,14 +322,14 @@ var testCases = []testCase{
 		fileContents: map[string]string{
 			"-": "a: \"uuid-1234\" kind: RK_CONTAINS z: \"uuid-5678\"",
 		},
-		responseError:   nil,
+		responseError: nil,
 		responseMessage: &nmtspb.Relationship{
 			A:    "uuid-1234",
 			Kind: nmtspb.RK_RK_CONTAINS,
 			Z:    "uuid-5678",
 		},
-		cmdLineArgs:     []string{"model", "create-relationship", "-"},
-		wantAppError:    false,
+		cmdLineArgs:  []string{"model-v1", "create-relationship", "-"},
+		wantAppError: false,
 		wantRequest: &modelpb.CreateRelationshipRequest{
 			Relationship: &nmtspb.Relationship{
 				A:    "uuid-1234",
@@ -342,14 +343,14 @@ var testCases = []testCase{
 		fileContents: map[string]string{
 			"uuid-1234.txtpb": "a: \"uuid-1234\" kind: RK_CONTAINS z: \"uuid-5678\"",
 		},
-		responseError:   nil,
+		responseError: nil,
 		responseMessage: &nmtspb.Relationship{
 			A:    "uuid-1234",
 			Kind: nmtspb.RK_RK_CONTAINS,
 			Z:    "uuid-5678",
 		},
-		cmdLineArgs:     []string{"model", "create-relationship", "uuid-1234.txtpb"},
-		wantAppError:    false,
+		cmdLineArgs:  []string{"model-v1", "create-relationship", "uuid-1234.txtpb"},
+		wantAppError: false,
 		wantRequest: &modelpb.CreateRelationshipRequest{
 			Relationship: &nmtspb.Relationship{
 				A:    "uuid-1234",
@@ -363,7 +364,7 @@ var testCases = []testCase{
 		fileContents:    nil,
 		responseError:   nil,
 		responseMessage: nil,
-		cmdLineArgs:     []string{"model", "delete-relationship"},
+		cmdLineArgs:     []string{"model-v1", "delete-relationship"},
 		wantAppError:    true,
 		wantRequest:     nil,
 	},
@@ -372,7 +373,7 @@ var testCases = []testCase{
 		fileContents:    nil,
 		responseError:   nil,
 		responseMessage: nil,
-		cmdLineArgs:     []string{"model", "delete-relationship", "uuid-1234.txtpb", "uuid-5678.txtpb"},
+		cmdLineArgs:     []string{"model-v1", "delete-relationship", "uuid-1234.txtpb", "uuid-5678.txtpb"},
 		wantAppError:    true,
 		wantRequest:     nil,
 	},
@@ -381,7 +382,7 @@ var testCases = []testCase{
 		fileContents:    nil,
 		responseError:   nil,
 		responseMessage: nil,
-		cmdLineArgs:     []string{"model", "delete-relationship", "uuid-1234.txtpb"},
+		cmdLineArgs:     []string{"model-v1", "delete-relationship", "uuid-1234.txtpb"},
 		wantAppError:    true,
 		wantRequest:     nil,
 	},
@@ -392,7 +393,7 @@ var testCases = []testCase{
 		},
 		responseError:   nil,
 		responseMessage: &emptypb.Empty{},
-		cmdLineArgs:     []string{"model", "delete-relationship", "-"},
+		cmdLineArgs:     []string{"model-v1", "delete-relationship", "-"},
 		wantAppError:    false,
 		wantRequest: &modelpb.DeleteRelationshipRequest{
 			Relationship: &nmtspb.Relationship{
@@ -409,7 +410,7 @@ var testCases = []testCase{
 		},
 		responseError:   nil,
 		responseMessage: &emptypb.Empty{},
-		cmdLineArgs:     []string{"model", "delete-relationship", "uuid-1234.txtpb"},
+		cmdLineArgs:     []string{"model-v1", "delete-relationship", "uuid-1234.txtpb"},
 		wantAppError:    false,
 		wantRequest: &modelpb.DeleteRelationshipRequest{
 			Relationship: &nmtspb.Relationship{
@@ -424,7 +425,7 @@ var testCases = []testCase{
 		fileContents:    nil,
 		responseError:   nil,
 		responseMessage: nil,
-		cmdLineArgs:     []string{"model", "get-entity"},
+		cmdLineArgs:     []string{"model-v1", "get-entity"},
 		wantAppError:    true,
 		wantRequest:     nil,
 	},
@@ -433,7 +434,7 @@ var testCases = []testCase{
 		fileContents:    nil,
 		responseError:   nil,
 		responseMessage: nil,
-		cmdLineArgs:     []string{"model", "get-entity", "uuid-1234", "uuid-5678"},
+		cmdLineArgs:     []string{"model-v1", "get-entity", "uuid-1234", "uuid-5678"},
 		wantAppError:    true,
 		wantRequest:     nil,
 	},
@@ -442,7 +443,7 @@ var testCases = []testCase{
 		fileContents:    nil,
 		responseError:   nil,
 		responseMessage: &nmtspb.Entity{},
-		cmdLineArgs:     []string{"model", "get-entity", "uuid-1234"},
+		cmdLineArgs:     []string{"model-v1", "get-entity", "uuid-1234"},
 		wantAppError:    false,
 		wantRequest: &modelpb.GetEntityRequest{
 			EntityId: "uuid-1234",
@@ -453,7 +454,7 @@ var testCases = []testCase{
 		fileContents:    nil,
 		responseError:   nil,
 		responseMessage: &modelpb.ListEntitiesResponse{},
-		cmdLineArgs:     []string{"model", "list-entities"},
+		cmdLineArgs:     []string{"model-v1", "list-entities"},
 		wantAppError:    false,
 		wantRequest:     &modelpb.ListEntitiesRequest{},
 	},
@@ -462,7 +463,7 @@ var testCases = []testCase{
 		fileContents:    nil,
 		responseError:   nil,
 		responseMessage: &modelpb.ListRelationshipsResponse{},
-		cmdLineArgs:     []string{"model", "list-relationships"},
+		cmdLineArgs:     []string{"model-v1", "list-relationships"},
 		wantAppError:    false,
 		wantRequest:     &modelpb.ListRelationshipsRequest{},
 	},

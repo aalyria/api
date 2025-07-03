@@ -20,18 +20,19 @@ import (
 	"os"
 	"sort"
 
-	fedpb "aalyria.com/spacetime/api/federation/interconnect/v1alpha"
-	modelpb "aalyria.com/spacetime/api/model/v1"
-	nbipb "aalyria.com/spacetime/api/nbi/v1alpha"
-	provpb "aalyria.com/spacetime/api/provisioning/v1alpha"
-	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
-	telemetrypb "aalyria.com/spacetime/api/telemetry/v1alpha"
 	"github.com/fullstorydev/grpcurl"
 	"github.com/jhump/protoreflect/desc"
 	"github.com/jhump/protoreflect/grpcreflect"
 	"github.com/urfave/cli/v2"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
+
+	fedpb "aalyria.com/spacetime/api/federation/interconnect/v1alpha"
+	modelpb "aalyria.com/spacetime/api/model/v1"
+	nbipb "aalyria.com/spacetime/api/nbi/v1alpha"
+	provpb "aalyria.com/spacetime/api/provisioning/v1alpha"
+	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
+	telemetrypb "aalyria.com/spacetime/api/telemetry/v1alpha"
 )
 
 func GRPCDescribe(appCtx *cli.Context) error {
@@ -46,7 +47,7 @@ func GRPCDescribe(appCtx *cli.Context) error {
 }
 
 func GRPCDescribeServices(appCtx *cli.Context) error {
-	conn, err := openConnection(appCtx)
+	conn, err := openAPIConnection(appCtx, appCtx.String("subdomain"))
 	if err != nil {
 		return err
 	}
@@ -67,7 +68,7 @@ func GRPCDescribeServices(appCtx *cli.Context) error {
 }
 
 func GRPCDescribeSymbol(appCtx *cli.Context, symbol string) error {
-	conn, err := openConnection(appCtx)
+	conn, err := openAPIConnection(appCtx, appCtx.String("subdomain"))
 	if err != nil {
 		return err
 	}
@@ -152,7 +153,7 @@ func GRPCList(appCtx *cli.Context) error {
 }
 
 func GRPCListServices(appCtx *cli.Context) error {
-	conn, err := openConnection(appCtx)
+	conn, err := openAPIConnection(appCtx, appCtx.String("subdomain"))
 	if err != nil {
 		return err
 	}
@@ -171,7 +172,7 @@ func GRPCListServices(appCtx *cli.Context) error {
 }
 
 func GRPCListMethods(appCtx *cli.Context, svc string) error {
-	conn, err := openConnection(appCtx)
+	conn, err := openAPIConnection(appCtx, appCtx.String("subdomain"))
 	if err != nil {
 		return err
 	}
@@ -213,7 +214,7 @@ func GRPCCall(appCtx *cli.Context) error {
 		r = rdr
 	}
 
-	conn, err := openConnection(appCtx)
+	conn, err := openAPIConnection(appCtx, appCtx.String("subdomain"))
 	if err != nil {
 		return err
 	}
