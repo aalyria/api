@@ -59,14 +59,14 @@ sdn_agents: {
   enactment_driver: {
     connection_params: {
       # TODO: replace ${DOMAIN} to the domain of your spacetime instance
-      endpoint_uri: "scheduling.${DOMAIN}"
+      endpoint_uri: "scheduling-v1alpha.${DOMAIN}"
 
       transport_security: { system_cert_pool: {} }
 
       auth_strategy: {
         jwt: {
           # TODO: replace ${DOMAIN} to the domain of your spacetime instance
-          audience: "scheduling.${DOMAIN}"
+          audience: "scheduling-v1alpha.${DOMAIN}"
           # TODO: use the email your Aalyria representative will share with you
           email: "my-sdn-agent@example.com"
           # TODO: use the private key ID your Aalyria representative will share with you
@@ -97,14 +97,14 @@ sdn_agents: {
   enactment_driver: {
     connection_params: {
       # TODO: replace ${DOMAIN} to the domain of your spacetime instance
-      endpoint_uri: "scheduling.${DOMAIN}"
+      endpoint_uri: "scheduling-v1alpha.${DOMAIN}"
 
       transport_security: { system_cert_pool: {} }
 
       auth_strategy: {
         jwt: {
           # TODO: replace ${DOMAIN} to the domain of your spacetime instance
-          audience: "scheduling.${DOMAIN}"
+          audience: "scheduling-v1alpha.${DOMAIN}"
           # TODO: use the email your Aalyria representative will share with you
           email: "my-sdn-agent@example.com"
           # TODO: use the private key ID your Aalyria representative will share with you

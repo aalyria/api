@@ -38,10 +38,6 @@ import (
 	"aalyria.com/spacetime/tools/nbictl/nbictlpb"
 )
 
-func openConnection(appCtx *cli.Context) (*grpc.ClientConn, error) {
-	return openAPIConnection(appCtx, appCtx.String("subdomain"))
-}
-
 func openAPIConnection(appCtx *cli.Context, apiSubDomain string) (*grpc.ClientConn, error) {
 	profileName := appCtx.String("profile")
 

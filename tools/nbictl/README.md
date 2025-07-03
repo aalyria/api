@@ -163,7 +163,7 @@ Sets or updates a configuration profile settings. You can create multiple profil
 
 **--user_id**="": User ID associated with the private key provided by Aalyria.
 
-## model-v1, model
+## model-v1
 
 Subcommands for Model API v1, to manage the model elements comprising the digital twin.
 
@@ -235,7 +235,7 @@ Sync all model entities and relationships from file and directory arguments.
 
 **--verbose, -v**: increase verbosity
 
-## provisioning-v1alpha, provisioning
+## provisioning-v1alpha
 
 Subcommands for Provisioning API v1alpha, to manage the provisioned resources within the digital twin.
 
