@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
 load("@rules_proto_grpc_doc//:defs.bzl", "doc_markdown_compile", "doc_template_compile")
 
 # bazel query 'kind("^proto_library", //api/...)'
@@ -38,27 +37,4 @@ doc_template_compile(
 doc_markdown_compile(
     name = "api.md",
     protos = _all_protos,
-)
-
-# Copy the files with the desired names
-copy_file(
-    name = "go_mod",
-    src = "github.go.mod",
-    out = "go.mod",
-)
-
-copy_file(
-    name = "go_sum",
-    src = "github.go.sum",
-    out = "go.sum",
-)
-
-# Expose them as a filegroup
-filegroup(
-    name = "go_files",
-    srcs = [
-        ":go_mod",
-        ":go_sum",
-    ],
-    visibility = ["//visibility:public"],  # or restrict to specific packages
 )
