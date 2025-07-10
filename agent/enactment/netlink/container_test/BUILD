@@ -16,7 +16,7 @@
 
 load("@container_structure_test//:defs.bzl", "container_structure_test")
 load("@rules_go//go:def.bzl", "go_binary", "go_library")
-load("@rules_oci//oci:defs.bzl", "oci_image", "oci_tarball")
+load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load")
 load("@rules_pkg//:pkg.bzl", "pkg_tar")
 
 package(default_visibility = ["//visibility:public"])
@@ -55,7 +55,7 @@ oci_image(
     user = "root",
 )
 
-oci_tarball(
+oci_load(
     name = "netlink_exercise_image.docker.tar",
     format = "docker",
     image = ":netlink_exercise_image",
