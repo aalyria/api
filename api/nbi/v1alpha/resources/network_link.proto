@@ -32,8 +32,10 @@ option go_package = "aalyria.com/spacetime/api/nbi/v1alpha/resources";
 
 // Defines a directional link between two logical network interfaces.
 message NetworkLink {
-  optional aalyria.spacetime.api.common.NetworkInterfaceId src = 3;
-  optional aalyria.spacetime.api.common.NetworkInterfaceId dst = 4;
+  optional aalyria.spacetime.api.common.NetworkInterfaceId 
+    src = 3 [deprecated = true];
+  optional aalyria.spacetime.api.common.NetworkInterfaceId 
+    dst = 4 [deprecated = true];
 
   optional string src_network_node_id = 7;
   optional string dst_network_node_id = 8;
@@ -67,7 +69,7 @@ message Radio {
   // For RF transceivers, this is the carrier frequency.
   // For optical transceivers, this may be converted to wavelength.
   optional uint64 center_frequency_hz = 1;
-  optional string band_profile_id = 2;
+  optional string band_profile_id = 2 [deprecated = true];
   optional int64 channel_bandwidth_hz = 6;
   optional aalyria.spacetime.api.common.Polarization polarization = 3;
 
@@ -134,8 +136,8 @@ message BeamTarget {
 // Defines a bidirectional network link. If necessary, asymmetric roles for the
 // endpoints may be specified.
 message BidirectionalLink {
-  optional LinkEnd a = 1;
-  optional LinkEnd b = 2;
+  optional LinkEnd a = 1 [deprecated = true];
+  optional LinkEnd b = 2 [deprecated = true];
 
   optional string a_network_node_id = 5;
   optional string b_network_node_id = 6;
