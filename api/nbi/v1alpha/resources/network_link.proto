@@ -24,7 +24,6 @@ import "api/common/time.proto";
 import "api/common/wireless_transceiver.proto";
 import "google/protobuf/duration.proto";
 import "google/type/interval.proto";
-import "nmts/v1/proto/types/geophys/motion.proto";
 
 
 option java_package = "com.aalyria.spacetime.api.nbi.v1alpha.resources";
@@ -123,14 +122,18 @@ message LinkEnd {
   reserved 1, 2, 4;
 }
 
+message GeodeticWgs84 {
+  optional double longitude_deg = 1;
+  optional double latitude_deg = 2;
+  optional double height_m = 3;
+}
+
 message BeamTarget {
   oneof type {
-    aalyria.spacetime.api.common.TransceiverModelId transceiver_id = 1;
     string platform_id = 3;  // can hold the ID of an NMTS platform
-    // TODO: remove coordinates below after NMTS migration
-    aalyria.spacetime.api.common.Motion coordinates = 2; 
-    nmts.v1.types.geophys.Motion motion = 4;
+    GeodeticWgs84 geodetic_wgs84 = 5;
   }
+  reserved 1, 2, 4;
 }
 
 // Defines a bidirectional network link. If necessary, asymmetric roles for the
