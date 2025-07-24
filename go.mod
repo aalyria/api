@@ -3,7 +3,7 @@ module aalyria.com/spacetime
 go 1.24.0
 
 require (
-	github.com/bazelbuild/rules_go v0.50.1
+	github.com/bazelbuild/rules_go v0.55.1
 	github.com/deckarep/golang-set/v2 v2.8.0
 	github.com/fullstorydev/grpcurl v1.8.6
 	github.com/golang-jwt/jwt/v5 v5.2.1
@@ -25,8 +25,8 @@ require (
 	go.opentelemetry.io/otel/trace v1.31.0
 	golang.org/x/sync v0.13.0
 	golang.org/x/sys v0.32.0
-	google.golang.org/genproto v0.0.0-20241007155032-5fefd90f89a9
-	google.golang.org/grpc v1.67.1
+	google.golang.org/genproto v0.0.0-20250115164207-1a7da9e5054f
+	google.golang.org/grpc v1.67.3
 	google.golang.org/protobuf v1.36.6
 )
 
@@ -54,6 +54,6 @@ require (
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/net v0.39.0 // indirect
 	golang.org/x/text v0.24.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20241007155032-5fefd90f89a9 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20241015192408-796eee8c2d53 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250106144421-5f5ef82da422 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250106144421-5f5ef82da422 // indirect
 )
