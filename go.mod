@@ -3,7 +3,7 @@ module aalyria.com/spacetime
 go 1.24.0
 
 require (
-	github.com/bazelbuild/rules_go v0.55.1
+	github.com/bazelbuild/rules_go v0.50.1
 	github.com/deckarep/golang-set/v2 v2.8.0
 	github.com/fullstorydev/grpcurl v1.8.6
 	github.com/golang-jwt/jwt/v5 v5.2.1
