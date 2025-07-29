@@ -51,7 +51,8 @@ jobs:
       - run: bazelisk test //...
 
   build-and-upload-tools:
-    needs: [build-and-test]
+    # FIXME
+    # needs: [build-and-test]
     strategy:
       matrix:
         # Only the go_binary targets support cross-compilation at the moment:
@@ -97,26 +98,27 @@ jobs:
         with:
           name: agent-${{ matrix.os }}-${{ matrix.arch }}
           path: bazel-bin/agent/cmd/agent/agent_/agent.exe
-
-  build-and-upload-docs:
-    needs: [build-and-test]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/bazelisk
-            ~/.cache/bazel
-          key: bazel-${{ hashFiles('common.bazelrc', '.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
-          restore-keys: bazel-
-      - run: bazelisk build "//api:api.html"
-      - name: Upload API docs
-        uses: actions/upload-artifact@v4
-        with:
-          name: api.html
-          path: |
-            bazel-bin/api/api.html/api.html
+  
+  # FIXME
+  # build-and-upload-docs:
+  #   needs: [build-and-test]
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/cache@v4
+  #       with:
+  #         path: |
+  #           ~/.cache/bazelisk
+  #           ~/.cache/bazel
+  #         key: bazel-${{ hashFiles('common.bazelrc', '.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
+  #         restore-keys: bazel-
+  #     - run: bazelisk build "//api:api.html"
+  #     - name: Upload API docs
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: api.html
+  #         path: |
+  #           bazel-bin/api/api.html/api.html
 
   create-release:
     needs: [build-and-upload-tools]
@@ -134,8 +136,11 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.version }}
-          name: Release ${{ inputs.version }}
+          # FIXME
+          # tag_name: ${{ inputs.version }}
+          # name: FIXME Release ${{ inputs.version }}
+          tag_name: FIXME-test-release-${{ github.ref_name }}
+          name: FIXME Release ${{ github.ref_name }}
           draft: true
           files: |
             nbictl-*
