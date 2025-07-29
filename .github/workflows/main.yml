@@ -126,9 +126,10 @@ jobs:
   create-release:
     needs: [build-and-upload-tools]
     runs-on: ubuntu-latest
-    if: |
-      github.event_name == 'workflow_dispatch' &&
-      inputs.create_release == true
+    # FIXME
+    # if: |
+    #   github.event_name == 'workflow_dispatch' &&
+    #   inputs.create_release == true
 
     steps:
       - uses: actions/checkout@v4
