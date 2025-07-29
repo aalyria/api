@@ -15,10 +15,26 @@
 name: Bazel
 
 on:
-  pull_request: {}
+  pull_request:
+    branches: [main]
+
   push: {}
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: "Create GitHub release"
+        type: boolean
+        default: false
+      version:
+        description: "Release version"
+        required: false
+        type: string
+      upload_to_registry:
+        description: "Upload to package registry"
+        type: boolean
+        default: false
 
 jobs:
   build-and-test:
@@ -101,3 +117,27 @@ jobs:
           name: api.html
           path: |
             bazel-bin/api/api.html/api.html
+
+  create-release:
+    needs: [build-and-upload-tools]
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' &&
+      inputs.create_release == true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.version }}
+          name: Release ${{ inputs.version }}
+          draft: true
+          files: |
+            nbictl-*
+            agent-*
+          generate_release_notes: true
