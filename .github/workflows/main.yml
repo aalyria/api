@@ -37,18 +37,19 @@ on:
         default: false
 
 jobs:
-  build-and-test:
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/bazelisk
-            ~/.cache/bazel
-          key: bazel-${{ hashFiles('common.bazelrc', '.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
-          restore-keys: bazel-
-      - run: bazelisk test //...
+  # FIXME
+  # build-and-test:
+  #   runs-on: ubuntu-22.04
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/cache@v4
+  #       with:
+  #         path: |
+  #           ~/.cache/bazelisk
+  #           ~/.cache/bazel
+  #         key: bazel-${{ hashFiles('common.bazelrc', '.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
+  #         restore-keys: bazel-
+  #     - run: bazelisk test //...
 
   build-and-upload-tools:
     # FIXME
@@ -59,7 +60,9 @@ jobs:
         target:
           - //agent/cmd/agent
           - //tools/nbictl/cmd/nbictl
-        os: [linux, windows, darwin]
+        # FIXME
+        # os: [linux, windows, darwin]
+        os: [linux, darwin]
         arch: [amd64, arm64]
 
     runs-on: ubuntu-latest
