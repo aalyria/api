@@ -78,21 +78,21 @@ jobs:
       - name: Package binary
         if: ${{ matrix.os != 'windows' }}
         run: |
-            zip -j nbictl-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl
-            zip -j agent-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/agent/cmd/agent/agent_/agent
+          zip -j nbictl-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl
+          zip -j agent-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/agent/cmd/agent/agent_/agent
 
       - name: Package binary - Windows
         if: ${{ matrix.os == 'windows' }}
         run: |
-            zip -j nbictl-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl.exe
-            zip -j agent-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/agent/cmd/agent/agent_/agent.exe
+          zip -j nbictl-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl.exe
+          zip -j agent-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/agent/cmd/agent/agent_/agent.exe
 
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
           name: tools-${{ matrix.os }}-${{ matrix.arch }}
-          path: '*.zip'
-  
+          path: "*.zip"
+
   # FIXME
   # build-and-upload-docs:
   #   needs: [build-and-test]
