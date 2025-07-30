@@ -82,30 +82,39 @@ jobs:
           restore-keys: bazel-
       - run: bazel/tools/update_version_bzl.sh version.bzl
       - run: bazelisk build --stamp "--platforms=@rules_go//go/toolchain:${{ matrix.os }}_${{ matrix.arch }}" "${{ matrix.target }}"
+
+      - name: Package nbictl binary
+        if: ${{ matrix.target == '//tools/nbictl/cmd/nbictl' && matrix.os != 'windows' }}
+        run: |
+            zip -j nbictl-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl
+
+      - name: Package nbictl binary - Windows
+        if: ${{ matrix.target == '//tools/nbictl/cmd/nbictl' && matrix.os == 'windows' }}
+        run: |
+            zip -j nbictl-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl.exe
+
+      - name: Package agent binary
+        if: ${{ matrix.target == '//agent/cmd/agent' && matrix.os != 'windows' }}
+        run: |
+            zip -j agent-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/agent/cmd/agent/agent_/agent
+
+      - name: Package agent binary - Windows
+        if: ${{ matrix.target == '//agent/cmd/agent' && matrix.os != 'windows' }}
+        run: |
+            zip -j agent-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/agent/cmd/agent/agent_/agent.exe
+
       - name: Upload nbictl binary
         uses: actions/upload-artifact@v4
-        if: ${{ matrix.target == '//tools/nbictl/cmd/nbictl' && matrix.os != 'windows' }}
+        if: ${{ matrix.target == '//tools/nbictl/cmd/nbictl' }}
         with:
           name: nbictl-${{ matrix.os }}-${{ matrix.arch }}
-          path: bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl
-      - name: Upload nbictl binary - Windows
-        uses: actions/upload-artifact@v4
-        if: ${{ matrix.target == '//tools/nbictl/cmd/nbictl' && matrix.os == 'windows' }}
-        with:
-          name: nbictl-${{ matrix.os }}-${{ matrix.arch }}
-          path: bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl.exe
+          path: nbictl-${{ matrix.os }}-${{ matrix.arch }}.zip
       - name: Upload agent binary
         uses: actions/upload-artifact@v4
         if: ${{ matrix.target == '//agent/cmd/agent' && matrix.os != 'windows' }}
         with:
           name: agent-${{ matrix.os }}-${{ matrix.arch }}
-          path: bazel-bin/agent/cmd/agent/agent_/agent
-      - name: Upload agent binary - Windows
-        uses: actions/upload-artifact@v4
-        if: ${{ matrix.target == '//agent/cmd/agent' && matrix.os == 'windows' }}
-        with:
-          name: agent-${{ matrix.os }}-${{ matrix.arch }}
-          path: bazel-bin/agent/cmd/agent/agent_/agent.exe
+          path: agent-${{ matrix.os }}-${{ matrix.arch }}.zip
   
   # FIXME
   # build-and-upload-docs:
@@ -156,7 +165,8 @@ jobs:
           name: FIXME Release ${{ github.ref_name }}
           draft: true
           files: |
-            nbictl-linux-amd64/nbictl
+            nbictl-*.zip
+            agent-*.zip
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
