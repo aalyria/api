@@ -149,6 +149,8 @@ message BidirectionalLink {
   optional string a_tx_interface_id = 8;
   optional string b_rx_interface_id = 9;
   optional string b_tx_interface_id = 10;
+  optional string a_to_b_link_report_id = 11;
+  optional string b_to_a_link_report_id = 12;
 
   // These fields are optional and may be omitted for wireless interfaces that
   // do not require centralized orchestration of radio-related parameters.
@@ -184,6 +186,9 @@ message RxPlatform {
   optional aalyria.spacetime.api.common.NetworkInterfaceId id = 1;
   optional string network_node_id = 3;
   optional string interface_id = 4;
+  
+  // Identifies the link report from the transmitter to receiving platform
+  optional string link_report_id = 5;
 
   // Defines the radio configuration to apply to the receiving platform.
   optional RxRadioConfiguration rx_radio = 2;
