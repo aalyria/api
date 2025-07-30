@@ -145,7 +145,7 @@ jobs:
       # FIXME
       - name: Show artifact structure
         run: |
-          find . -name "nbictl" | head -10
+          ls -alR
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
