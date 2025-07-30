@@ -122,7 +122,7 @@ jobs:
         with:
           tag_name: ${{ inputs.version }}
           name: Release ${{ inputs.version }}
-          # FIXME
+          # TODO: Change to non-draft after testing.
           draft: true
           files: |
             tools-*/*.zip
