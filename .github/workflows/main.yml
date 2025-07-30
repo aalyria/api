@@ -65,10 +65,10 @@ jobs:
           - //agent/cmd/agent
           - //tools/nbictl/cmd/nbictl
         # FIXME
-        # os: [linux, windows, darwin]
-        # arch: [amd64, arm64]
-        os: [linux]
-        arch: [amd64]
+        os: [linux, windows, darwin]
+        arch: [amd64, arm64]
+        # os: [linux]
+        # arch: [amd64]
 
     runs-on: ubuntu-latest
     steps:
