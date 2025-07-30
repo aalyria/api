@@ -35,10 +35,6 @@ on:
         description: "Release version"
         required: false
         type: string
-      upload_to_registry:
-        description: "Upload to package registry"
-        type: boolean
-        default: false
 
 jobs:
   # FIXME
