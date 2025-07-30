@@ -142,6 +142,10 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
 
+      # FIXME
+      - name: Show artifact structure
+        run: |
+          find . -name "nbictl" | head -10
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
