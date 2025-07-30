@@ -99,7 +99,7 @@ jobs:
             zip -j agent-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/agent/cmd/agent/agent_/agent
 
       - name: Package agent binary - Windows
-        if: ${{ matrix.target == '//agent/cmd/agent' && matrix.os != 'windows' }}
+        if: ${{ matrix.target == '//agent/cmd/agent' && matrix.os == 'windows' }}
         run: |
             zip -j agent-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/agent/cmd/agent/agent_/agent.exe
 
