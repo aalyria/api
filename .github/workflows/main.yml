@@ -15,9 +15,7 @@
 name: Bazel
 
 on:
-  pull_request:
-    branches: [main]
-
+  pull_request: {}
   push: {}
   release:
     types: [published]
@@ -33,34 +31,25 @@ on:
         type: string
 
 jobs:
-  # FIXME
-  # build-and-test:
-  #   runs-on: ubuntu-22.04
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: actions/cache@v4
-  #       with:
-  #         path: |
-  #           ~/.cache/bazelisk
-  #           ~/.cache/bazel
-  #         key: bazel-${{ hashFiles('common.bazelrc', '.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
-  #         restore-keys: bazel-
-  #     - run: bazelisk test //...
+  build-and-test:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/bazelisk
+            ~/.cache/bazel
+          key: bazel-${{ hashFiles('common.bazelrc', '.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
+          restore-keys: bazel-
+      - run: bazelisk test //...
 
   build-and-upload-tools:
-    # FIXME
-    # needs: [build-and-test]
+    needs: [build-and-test]
     strategy:
       matrix:
-        # Only the go_binary targets support cross-compilation at the moment:
-        # target:
-        #   - //agent/cmd/agent
-        #   - //tools/nbictl/cmd/nbictl
-        # FIXME
-        # os: [linux, windows, darwin]
-        # arch: [amd64, arm64]
-        os: [linux]
-        arch: [amd64]
+        os: [linux, windows, darwin]
+        arch: [amd64, arm64]
 
     runs-on: ubuntu-latest
     steps:
@@ -93,34 +82,32 @@ jobs:
           name: tools-${{ matrix.os }}-${{ matrix.arch }}
           path: "*.zip"
 
-  # FIXME
-  # build-and-upload-docs:
-  #   needs: [build-and-test]
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: actions/cache@v4
-  #       with:
-  #         path: |
-  #           ~/.cache/bazelisk
-  #           ~/.cache/bazel
-  #         key: bazel-${{ hashFiles('common.bazelrc', '.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
-  #         restore-keys: bazel-
-  #     - run: bazelisk build "//api:api.html"
-  #     - name: Upload API docs
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: api.html
-  #         path: |
-  #           bazel-bin/api/api.html/api.html
+  build-and-upload-docs:
+    needs: [build-and-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/bazelisk
+            ~/.cache/bazel
+          key: bazel-${{ hashFiles('common.bazelrc', '.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
+          restore-keys: bazel-
+      - run: bazelisk build "//api:api.html"
+      - name: Upload API docs
+        uses: actions/upload-artifact@v4
+        with:
+          name: api.html
+          path: |
+            bazel-bin/api/api.html/api.html
 
   create-release:
     needs: [build-and-upload-tools]
     runs-on: ubuntu-latest
-    # FIXME
-    # if: |
-    #   github.event_name == 'workflow_dispatch' &&
-    #   inputs.create_release == true
+    if: |
+      github.event_name == 'workflow_dispatch' &&
+      inputs.create_release == true
 
     steps:
       - uses: actions/checkout@v4
@@ -130,17 +117,12 @@ jobs:
         with:
           pattern: tools-*
 
-      # FIXME
-      - name: Show artifact structure
-        run: |
-          ls -alR
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.version }}
+          name: Release ${{ inputs.version }}
           # FIXME
-          # tag_name: ${{ inputs.version }}
-          name: FIXME Release ${{ github.ref_name }} ${{ inputs.version }}
-          tag_name: FIXME-test-release-${{ github.ref_name }}-${{ inputs.version }}
           draft: true
           files: |
             tools-*/*.zip
