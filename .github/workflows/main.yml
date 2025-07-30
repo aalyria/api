@@ -139,9 +139,8 @@ jobs:
         with:
           # FIXME
           # tag_name: ${{ inputs.version }}
-          # name: FIXME Release ${{ inputs.version }}
+          name: FIXME Release ${{ github.ref_name }} ${{ inputs.version }}
           tag_name: FIXME-test-release-${{ github.ref_name }}
-          name: FIXME Release ${{ github.ref_name }} 2
           draft: true
           files: |
             tools-*/*.zip
