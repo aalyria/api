@@ -156,8 +156,8 @@ jobs:
           name: FIXME Release ${{ github.ref_name }}
           draft: true
           files: |
-            nbictl-*
-            agent-*
+            nbictl-*/
+            agent-*/
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
