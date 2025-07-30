@@ -15,8 +15,8 @@
 name: Bazel
 
 # Needed for creating releases
-permissions:
-  contents: write
+# permissions:
+#   contents: write
 
 on:
   pull_request:
