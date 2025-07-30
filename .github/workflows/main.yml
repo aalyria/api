@@ -61,9 +61,9 @@ jobs:
     strategy:
       matrix:
         # Only the go_binary targets support cross-compilation at the moment:
-        target:
-          - //agent/cmd/agent
-          - //tools/nbictl/cmd/nbictl
+        # target:
+        #   - //agent/cmd/agent
+        #   - //tools/nbictl/cmd/nbictl
         # FIXME
         os: [linux, windows, darwin]
         arch: [amd64, arm64]
@@ -81,40 +81,25 @@ jobs:
           key: bazel-${{ hashFiles('common.bazelrc', '.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
           restore-keys: bazel-
       - run: bazel/tools/update_version_bzl.sh version.bzl
-      - run: bazelisk build --stamp "--platforms=@rules_go//go/toolchain:${{ matrix.os }}_${{ matrix.arch }}" "${{ matrix.target }}"
+      - run: bazelisk build --stamp "--platforms=@rules_go//go/toolchain:${{ matrix.os }}_${{ matrix.arch }}" //agent/cmd/agent //tools/nbictl/cmd/nbictl
 
-      - name: Package nbictl binary
-        if: ${{ matrix.target == '//tools/nbictl/cmd/nbictl' && matrix.os != 'windows' }}
+      - name: Package binary
+        if: ${{ matrix.os != 'windows' }}
         run: |
             zip -j nbictl-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl
-
-      - name: Package nbictl binary - Windows
-        if: ${{ matrix.target == '//tools/nbictl/cmd/nbictl' && matrix.os == 'windows' }}
-        run: |
-            zip -j nbictl-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl.exe
-
-      - name: Package agent binary
-        if: ${{ matrix.target == '//agent/cmd/agent' && matrix.os != 'windows' }}
-        run: |
             zip -j agent-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/agent/cmd/agent/agent_/agent
 
-      - name: Package agent binary - Windows
-        if: ${{ matrix.target == '//agent/cmd/agent' && matrix.os == 'windows' }}
+      - name: Package binary - Windows
+        if: ${{ matrix.os == 'windows' }}
         run: |
+            zip -j nbictl-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl.exe
             zip -j agent-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/agent/cmd/agent/agent_/agent.exe
 
-      - name: Upload nbictl binary
+      - name: Upload binary
         uses: actions/upload-artifact@v4
-        if: ${{ matrix.target == '//tools/nbictl/cmd/nbictl' }}
         with:
-          name: nbictl-${{ matrix.os }}-${{ matrix.arch }}
-          path: nbictl-${{ matrix.os }}-${{ matrix.arch }}.zip
-      - name: Upload agent binary
-        uses: actions/upload-artifact@v4
-        if: ${{ matrix.target == '//agent/cmd/agent' && matrix.os != 'windows' }}
-        with:
-          name: agent-${{ matrix.os }}-${{ matrix.arch }}
-          path: agent-${{ matrix.os }}-${{ matrix.arch }}.zip
+          name: tools-${{ matrix.os }}-${{ matrix.arch }}
+          path: *.zip
   
   # FIXME
   # build-and-upload-docs:
@@ -165,8 +150,7 @@ jobs:
           name: FIXME Release ${{ github.ref_name }} 2
           draft: true
           files: |
-            nbictl-*/*.zip
-            agent-*/*.zip
+            tools-*/*.zip
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
