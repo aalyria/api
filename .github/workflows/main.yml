@@ -127,6 +127,8 @@ jobs:
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
+        with:
+          pattern: tools-*
 
       # FIXME
       - name: Show artifact structure
@@ -144,5 +146,3 @@ jobs:
           files: |
             tools-*/*.zip
           generate_release_notes: true
-        # env:
-        #   GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
