@@ -156,7 +156,7 @@ jobs:
           name: FIXME Release ${{ github.ref_name }}
           draft: true
           files: |
-            nbictl-linux-amd64/
+            nbictl-linux-amd64/nbictl
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
