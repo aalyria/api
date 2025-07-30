@@ -19,6 +19,16 @@ on:
   push: {}
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: "Create GitHub release"
+        type: boolean
+        default: false
+      version:
+        description: "Release version"
+        required: false
+        type: string
 
 jobs:
   build-and-test:
@@ -38,10 +48,6 @@ jobs:
     needs: [build-and-test]
     strategy:
       matrix:
-        # Only the go_binary targets support cross-compilation at the moment:
-        target:
-          - //agent/cmd/agent
-          - //tools/nbictl/cmd/nbictl
         os: [linux, windows, darwin]
         arch: [amd64, arm64]
 
@@ -56,31 +62,25 @@ jobs:
           key: bazel-${{ hashFiles('common.bazelrc', '.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
           restore-keys: bazel-
       - run: bazel/tools/update_version_bzl.sh version.bzl
-      - run: bazelisk build --stamp "--platforms=@rules_go//go/toolchain:${{ matrix.os }}_${{ matrix.arch }}" "${{ matrix.target }}"
-      - name: Upload nbictl binary
+      - run: bazelisk build --stamp "--platforms=@rules_go//go/toolchain:${{ matrix.os }}_${{ matrix.arch }}" //agent/cmd/agent //tools/nbictl/cmd/nbictl
+
+      - name: Package binary
+        if: ${{ matrix.os != 'windows' }}
+        run: |
+          zip -j nbictl-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl
+          zip -j agent-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/agent/cmd/agent/agent_/agent
+
+      - name: Package binary - Windows
+        if: ${{ matrix.os == 'windows' }}
+        run: |
+          zip -j nbictl-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl.exe
+          zip -j agent-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/agent/cmd/agent/agent_/agent.exe
+
+      - name: Upload binary
         uses: actions/upload-artifact@v4
-        if: ${{ matrix.target == '//tools/nbictl/cmd/nbictl' && matrix.os != 'windows' }}
         with:
-          name: nbictl-${{ matrix.os }}-${{ matrix.arch }}
-          path: bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl
-      - name: Upload nbictl binary - Windows
-        uses: actions/upload-artifact@v4
-        if: ${{ matrix.target == '//tools/nbictl/cmd/nbictl' && matrix.os == 'windows' }}
-        with:
-          name: nbictl-${{ matrix.os }}-${{ matrix.arch }}
-          path: bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl.exe
-      - name: Upload agent binary
-        uses: actions/upload-artifact@v4
-        if: ${{ matrix.target == '//agent/cmd/agent' && matrix.os != 'windows' }}
-        with:
-          name: agent-${{ matrix.os }}-${{ matrix.arch }}
-          path: bazel-bin/agent/cmd/agent/agent_/agent
-      - name: Upload agent binary - Windows
-        uses: actions/upload-artifact@v4
-        if: ${{ matrix.target == '//agent/cmd/agent' && matrix.os == 'windows' }}
-        with:
-          name: agent-${{ matrix.os }}-${{ matrix.arch }}
-          path: bazel-bin/agent/cmd/agent/agent_/agent.exe
+          name: tools-${{ matrix.os }}-${{ matrix.arch }}
+          path: "*.zip"
 
   build-and-upload-docs:
     needs: [build-and-test]
@@ -101,3 +101,30 @@ jobs:
           name: api.html
           path: |
             bazel-bin/api/api.html/api.html
+
+  create-release:
+    needs: [build-and-upload-tools]
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' &&
+      inputs.create_release == true &&
+      inputs.version != ''
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: tools-*
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.version }}
+          name: Release ${{ inputs.version }}
+          # TODO: Change to non-draft after testing.
+          draft: true
+          files: |
+            tools-*/*.zip
+          generate_release_notes: true
