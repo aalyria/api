@@ -14,10 +14,6 @@
 
 name: Bazel
 
-# Needed for creating releases
-# permissions:
-#   contents: write
-
 on:
   pull_request:
     branches: [main]
@@ -148,5 +144,5 @@ jobs:
           files: |
             tools-*/*.zip
           generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        # env:
+        #   GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
