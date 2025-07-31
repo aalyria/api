@@ -14,6 +14,10 @@
 
 import %workspace%/common.bazelrc
 
+# Attempt to load an optional cache.bazelrc file that defines a remote cache
+# endpoint.
+try-import %workspace%/cache.bazelrc
+
 # Enable bzlmod, which is the new system of managing external dependencies
 # using a MODULE.bazel file instead of the legacy WORKSPACE system.
 common --enable_bzlmod

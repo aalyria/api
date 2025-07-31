@@ -13,3 +13,4 @@
 # limitations under the License.
 
 bazel-*
+cache.bazelrc
