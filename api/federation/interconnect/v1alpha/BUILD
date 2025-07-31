@@ -14,6 +14,7 @@
 
 load("@protobuf//bazel:proto_library.bzl", "proto_library")
 load("@rules_go//proto:def.bzl", "go_proto_library")
+load("@rules_proto_grpc_python//:defs.bzl", "python_grpc_library")
 
 proto_library(
     name = "interconnect_proto",
@@ -47,5 +48,15 @@ go_proto_library(
         "@org_outernetcouncil_nmts//v1/proto/ek/physical:physical_go_proto",
         "@org_outernetcouncil_nmts//v1/proto/types/geophys:geophys_go_proto",
         "@org_outernetcouncil_nmts//v1/proto/types/ietf:ietf_go_proto",
+    ],
+)
+
+python_grpc_library(
+    name = "interconnect_python_grpc",
+    protos = [":interconnect_proto"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//api/common:common_python_proto",
+        "@googleapis//google/rpc:code_py_proto",
     ],
 )

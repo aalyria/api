@@ -14,6 +14,7 @@
 
 load("@protobuf//bazel:proto_library.bzl", "proto_library")
 load("@rules_go//proto:def.bzl", "go_proto_library")
+load("@rules_proto_grpc_python//:defs.bzl", "python_grpc_library")
 
 proto_library(
     name = "federation_proto",
@@ -53,5 +54,16 @@ go_proto_library(
         "//api/common:common_go_proto",
         "//api/types:types_go_proto",
         "@org_golang_google_genproto//googleapis/type/interval",
+    ],
+)
+
+python_grpc_library(
+    name = "federation_python_grpc",
+    protos = [":federation_proto"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//api/common:common_python_proto",
+        "//api/federation/interconnect/v1alpha:interconnect_python_grpc",
+        "//api/types:types_python_proto",
     ],
 )

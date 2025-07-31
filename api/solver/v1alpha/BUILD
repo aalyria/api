@@ -15,6 +15,7 @@
 load("@protobuf//bazel:proto_library.bzl", "proto_library")
 load("@rules_go//proto:def.bzl", "go_proto_library")
 load("@rules_proto_grpc_cpp//:defs.bzl", "cpp_grpc_library", "cpp_proto_library")
+load("@rules_proto_grpc_python//:defs.bzl", "python_grpc_library")
 
 proto_library(
     name = "solver_proto",
@@ -88,5 +89,27 @@ go_proto_library(
         "//api/common:common_go_proto",
         "//api/scheduling/v1alpha:scheduling_go_grpc",
         "//api/telemetry/v1alpha:telemetry_go_grpc",
+    ],
+)
+
+python_grpc_library(
+    name = "beam_hopping_python_grpc",
+    protos = [":beam_hopping_proto"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//api/common:common_python_proto",
+        "//api/scheduling/v1alpha:scheduling_python_grpc",
+        "//api/telemetry/v1alpha:telemetry_python_grpc",
+        "@googleapis//google/rpc:status_py_proto",
+    ],
+)
+
+python_grpc_library(
+    name = "solver_python_grpc",
+    protos = [":solver_proto"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//api/nbi/v1alpha/resources:nbi_resources_python_grpc",
+        "@googleapis//google/type:interval_py_proto",
     ],
 )
