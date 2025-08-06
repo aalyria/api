@@ -15,15 +15,15 @@
 package nbictl
 
 import (
-	"crypto/x509"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	"os"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/urfave/cli/v2"
+
+	"aalyria.com/spacetime/auth"
 )
 
 func GenerateAuthToken(appCtx *cli.Context) error {
@@ -53,55 +53,24 @@ func GenerateAuthToken(appCtx *cli.Context) error {
 	if pkeyBlock == nil {
 		return errors.New("PrivateKey not PEM-encoded")
 	}
-	pkey, err := parsePrivateKey(pkeyBlock.Bytes)
+	pkey, err := auth.ParsePrivateKey(pkeyBlock.Bytes)
 	if err != nil {
 		return fmt.Errorf("error while parsing priv_key file (%s): %w", c.GetPrivKey(), err)
 	}
 
 	now := time.Now()
-	claims := jwt.MapClaims{
-		"iss": c.GetEmail(),
-		"sub": c.GetEmail(),
-		"iat": jwt.NewNumericDate(now),
-		"exp": jwt.NewNumericDate(now.Add(appCtx.Duration("expiration"))),
-	}
-	if aud := appCtx.String("audience"); aud != "" {
-		claims["aud"] = aud
+	opts := auth.JWTOptions{
+		Email:        c.GetEmail(),
+		PrivateKeyID: c.GetKeyId(),
+		Audience:     appCtx.String("audience"),
+		ExpiresAt:    now.Add(appCtx.Duration("expiration")),
+		IssuedAt:     now,
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
-	token.Header["kid"] = c.GetKeyId()
-	tokenString, err := token.SignedString(pkey)
+	tokenString, err := auth.CreateJWT(opts, pkey)
 	if err != nil {
-		return fmt.Errorf("signing auth token: %w", err)
+		return err
 	}
 	fmt.Fprintln(appCtx.App.Writer, tokenString)
 	return nil
-}
-
-func parsePrivateKey(data []byte) (any, error) {
-	var pkey any
-	ok := false
-	parseErrs := []error{}
-	for algName, parse := range map[string]func([]byte) (any, error){
-		"pkcs1": func(d []byte) (any, error) {
-			k, err := x509.ParsePKCS1PrivateKey(d)
-			return any(k), err
-		},
-		"pkcs8": x509.ParsePKCS8PrivateKey,
-	} {
-		k, err := parse(data)
-		if err != nil {
-			parseErrs = append(parseErrs, fmt.Errorf("%s: %w", algName, err))
-			continue
-		}
-
-		pkey = k
-		ok = true
-	}
-
-	if !ok {
-		return nil, errors.Join(parseErrs...)
-	}
-	return pkey, nil
 }
