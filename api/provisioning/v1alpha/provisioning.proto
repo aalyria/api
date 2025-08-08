@@ -384,6 +384,24 @@ message Downtime {
   // to be considered offline. Similar consideration would apply to
   // any associated RK_ORIGINATES and RK_TERMINATES elements.
   repeated string affected_entity_ids = 5;
+
+  // A list of transitively affected NMTS Entity IDs that are assessed
+  // to be affected during the downtime interval. This contains the
+  // Entity IDs expected to be affected according to the constraints
+  // documented above but DOES NOT include any of the
+  // affected_entity_ids given above (no need for repetition).
+  //
+  // The Entity IDs here are those evaluated as affected given the
+  // data model graph at the instant this specific Downtime message is
+  // generated. Changes in the model between a call to CreateDowntime()
+  // and call to GetDowntime() could result in a different list of
+  // computed affected Entity IDs.
+  //
+  // This field is OUTPUT_ONLY. Its contents are cleared when input
+  // to the Provisioning API (e.g. in CreateDowntime() and
+  // UpdateDowntime() calls).
+  repeated string transitively_affected_entity_ids = 6 [
+    (google.api.field_behavior) = OUTPUT_ONLY];
 }
 
 message GetDowntimeRequest{
