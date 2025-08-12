@@ -1,0 +1,265 @@
+// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto2";
+
+package aalyria.spacetime.api.nbi.v1alpha.resources;
+
+import "api/common/time.proto";
+import "api/common/wireless_transceiver.proto";
+import "api/types/ietf.proto";
+import "google/protobuf/any.proto";
+import "google/protobuf/duration.proto";
+
+option java_package = "com.aalyria.spacetime.api.nbi.v1alpha.resources";
+option go_package = "aalyria.com/spacetime/api/nbi/v1alpha/resources";
+
+// Models an abstract network node (a device, or an entire network).
+message NetworkNode {
+  reserved 11 to max;
+
+  // A globally unique identifier for the network node.
+  optional string node_id = 1;
+
+  // Optional friendly, human-readable strings for UI purposes.
+  optional string name = 2;
+  optional string type = 7;
+
+  // A freeform string, used as a key in other contexts to lookup
+  // context-relevant attributes (UI visual configuration, etc).
+  optional string category_tag = 6;
+
+  message RoutingConfiguration {
+    // Model Entity ID of the associated EK_ROUTE_FN, if any.
+    optional string ek_route_fn = 3;
+
+    // The router ID of this NetworkNode.
+    optional types.RouterId router_id = 1;
+
+    // The Segment Routing (RFC 8402) Node SID for this NetworkNode.
+    optional types.SegmentId node_sid = 2;
+  }
+  // Note: Only a single IP VRF at this time.
+  optional RoutingConfiguration routing_config = 3;
+
+  // A node may optionally act a gateway for a set of specified IP subnets.
+  repeated string subnet = 8;
+
+  // A network node may have one or more network interfaces/adapters.
+  repeated NetworkInterface node_interface = 4;
+
+  // Included if the network node is an SDN-enabled network element (optional).
+  optional SdnAgent agent = 5;
+
+  // Optionally used to further constrain the maximum transmit power available
+  // for use, in aggregate, by the node's wireless network interface.
+  message SignalPowerBudget {
+    // The time interval (set to infinite if static).
+    optional aalyria.spacetime.api.common.TimeInterval interval = 1;
+
+    // The total amount of available power, in Watts.
+    optional double available_signal_power_watts = 2;
+  }
+  repeated SignalPowerBudget power_budget = 9;
+
+  // Model a node’s ability to store data in order to tolerate disruption to
+  // end-to-end connectivity (i.e. "store and forward" of Bundle Protocol
+  // data units [BPDUs]).
+  //
+  // Any non-negative value for available_bytes indicates a node's support for
+  // store-and-forward operation of at least one of:
+  //
+  //     * BPv6 (RFC 5050), or
+  //     * BPv7 (RFC 9171)
+  //
+  // data units (BPDUs), even if that value is 1 byte.
+  //
+  // Support for originating BPDUs is also implied, as generation of a
+  // "status report" BPDU may be required under certain circumstances.
+  message Storage {
+    // The amount of storage, in bytes, that is available for use by
+    // store and forward operations.
+    //
+    // This includes the amount of storage, in bytes, that is available for
+    // storage of Bundle Protocol data units in transit.
+    //
+    // This can include space used by an application for flows that originate
+    // from this node as the source. This is usually from an application-layer
+    // queue, buffer, or cache.
+    //
+    // Nodes that separate storage for originated BPDUs from that use for
+    // bundles in transit may wish to set this value to the bytes allocated
+    // only for transit storage.
+    optional int64 available_bytes = 1;
+
+    // TODO: decide whether indication of specific Bundle Protocol
+    // version(s) is needed.
+    //
+    // For now it seems reasonable to require that a given Spacetime-modelled
+    // fleet support Bundle Protocol versions uniformly across the fleet, i.e.
+    // all store-and-forward capable nodes support BPv6 only, BPv7 only, or all
+    // are "dualstack" (to borrow a term from IPv4/IPv6 coexistence).
+  }
+  optional Storage storage = 10;
+}
+
+// Models a Software-Defined Networking (SDN) agent that handles the SDN
+// control-to-data-plane interface (CDPI).
+message SdnAgent {
+  enum CdpiProtocol {
+    UNKNOWN = 0;
+    AIRFLOW = 1;
+  }
+  optional CdpiProtocol type = 1;
+
+  // The Model Entity ID of a controlling EK_SDN_AGENT, if any.
+  optional string ek_sdn_agent = 2;
+
+  // When sending updates to nodes, the SDN must send control updates far enough
+  // ahead of their enactment time to account for the maximum control plane
+  // latency of the control stream. This field maps the CDPI stream priority to
+  // the maximum estimated latency of that stream.
+  map<uint32, google.protobuf.Duration> maximum_control_plane_latency = 3;
+}
+
+// Models a network interface (aka network device, port, cable, or adapter).
+// Next ID: 18
+message NetworkInterface {
+  reserved 2, 5, 9 to 13, 18 to max;
+
+  // A node-unique identifier for the network interface.
+  optional string interface_id = 1;
+
+  // Optional friendly, human-readable string. Named after the analagous
+  // name field in the YANG model for interfaces ("leaf name"). See:
+  // https://datatracker.ietf.org/doc/html/rfc8343#section-5
+  optional string name = 17;
+
+  // The interface's IP address represented as a CIDR notation subnet or single
+  // IP address string.
+  optional string ip_address = 14;
+
+  // Ethernet address in readable colon separated format. e.g.
+  // "1:23:45:67:89:ab" or "01:23:45:67:89:ab"
+  optional string ethernet_address = 15;
+
+  // Mode field indicates whether or not the interface can receive packets in
+  // promiscuous mode, or if it can receive L2 packets only if the L2
+  // destination address matches it's own physical address.
+  enum Mode {
+    PROMISCUOUS = 0;
+    NON_PROMISCUOUS = 1;
+  }
+  optional Mode rx_mode = 8;
+
+  // Optionally specifies the local/hardware IDs within the platform or switch.
+  // These are not used by network controllers but may be useful for network
+  // elements for operational context.  Example: "eth:0", "gwl:1", "gre:2", etc.
+  message LocalId {
+    optional string type = 1;
+    optional int32 index = 2;
+  }
+  repeated LocalId local_id = 3;
+
+  // Provides additional attributes based on the adapter/port it traverses.
+  oneof interface_medium {
+    WiredDevice wired = 4;
+    WirelessDevice wireless = 6;
+  }
+
+  message RoutingConfiguration {
+    message AdjacencySidEntry {
+      // Required.
+      optional types.SegmentId sid = 1;
+      // Only required if the link is not P2P (e.g., a LAN or multiple
+      // beams/channels associated with a single interface).
+      //
+      // This will typically be an IPv4 or IPv6 address, but if multiple
+      // beams or channels are associated with a single interface this
+      // might also be an identifier for  beam/subchannel/subcarrier.
+      optional string next_hop = 2;
+    }
+    repeated AdjacencySidEntry adjacency_sids = 1;
+  }
+  optional RoutingConfiguration routing_config = 7;
+
+  message Impairment {
+    enum Type {
+      // The interface is known to be unusable.
+      DEFAULT_UNUSABLE = 0;
+
+      // The reliability or performance of the interface is impaired in a
+      // non-deterministic manner or in a manner that is not otherwise modeled.
+      // The network should avoid using the interface; but, it might work.
+      UNRELIABLE = 1;
+    }
+    optional Type type = 1;
+    // AppId adding this impairment.
+    optional string app_id = 2;
+    // Time this impairment was added to the interface model.
+    optional int64 timestamp_usec = 3;
+    // The reason for this impairment.
+    optional string reason = 4;
+
+    // Customers can use these to add extra fields (for example classifications
+    // of the impairment reasons).
+    optional google.protobuf.Any details = 5;
+  }
+
+  // TODO: Add ability to submit drain intents.
+  // Reason (some internal transient state (power, etc.)) that affects its use.
+  repeated Impairment operational_impairment = 16;
+}
+
+// Models a wired interface to a static (wired or wireless) network link. The
+// Link Evaluator will not generate link metrics for these interfaces; instead,
+// an SDN topology manager must explictly define link accessibility and metrics
+// by adding an InterfaceLinkReport for each direction (see network_link.proto).
+message WiredDevice {
+  // The maximimum data-rate of the interface, in layer 2 bits per second.
+  optional double max_data_rate_bps = 1;
+
+  // Optionally specifies a physical platform associated with the wired device.
+  // This may be used for geospatial visualization of statically defined links.
+  optional string platform_id = 2;
+}
+
+// Models a wireless device that uses modeled transmitters & receivers.
+// Spacetime's Link Evaluator services will write InterfaceLinkReports for
+// all possible wireless links based on models if real metrics are unavailable.
+message WirelessDevice {
+  reserved 1, 2, 4, 17 to max;
+  // Identifies a physical transceiver model from the SDN Store.
+  optional aalyria.spacetime.api.common.TransceiverModelId 
+    transceiver_model_id = 5;
+
+  // Explicit timeout for enacting this wireless device. If present, this
+  // should be used in BeamUpdate to time out the process of beam steering and
+  // target acquisition.
+  optional google.protobuf.Duration link_establishment_timeout = 6;
+
+  // NMTS Entity IDs of TX and RX signal processing chain elements.
+  optional string platform = 7;
+  optional string port = 8;
+  // TX
+  optional string modulator = 9;
+  repeated string tx_signal_processing_chains = 10;
+  optional string transmitter = 11;
+  optional string tx_antenna = 12;
+  // RX
+  optional string demodulator = 13;
+  repeated string rx_signal_processing_chains = 14;
+  optional string receiver = 15;
+  optional string rx_antenna = 16;
+}
