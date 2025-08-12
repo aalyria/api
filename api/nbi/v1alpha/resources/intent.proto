@@ -314,6 +314,10 @@ message BearerIntent {
   // network.
   optional string demodulator_id = 3;
 
+  // The ID of the network node associated with the modulator and demodulator
+  // above.
+  optional string network_node_id = 10;
+
   // For non-NMTS environments, the interface that is to connect with the
   // provider's network.
   optional aalyria.spacetime.api.common.NetworkInterfaceId transceiver = 4;
