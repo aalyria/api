@@ -308,7 +308,7 @@ message Esn0DataPoint {
   google.protobuf.Timestamp time = 1;
 
   // The transmitting modem.
-  optional string tx_modem_id = 2;
+  optional string modulator_id = 2;
 
   // The energy per symbol to noise power spectral density, expressed in
   // decibels.
@@ -322,7 +322,7 @@ message SinrDataPoint {
   google.protobuf.Timestamp time = 1;
 
   // The transmitting modem.
-  optional string tx_modem_id = 2;
+  optional string modulator_id = 2;
 
   // The signal-to-interference-plus-noise ratio, expressed in decibels.
   optional double sinr_db = 3;
