@@ -253,6 +253,26 @@ Sync all provisioning resources from file and directory arguments.
 
 **--verbose, -v**: increase verbosity
 
+### list
+
+List all provisioning resources from remote.
+
+**--dry-run, -n**: perform a trial run that doesn't make any changes
+
+**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
+
+**--verbose, -v**: increase verbosity
+
+### delete
+
+Delete provisioning resources from remote.
+
+**--dry-run, -n**: perform a trial run that doesn't make any changes
+
+**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
+
+**--verbose, -v**: increase verbosity
+
 ## grpcurl
 
 Provides curl-like equivalents for interacting with the NBI.

@@ -566,6 +566,30 @@ func App() *cli.App {
 							},
 						},
 					},
+					{
+						Name:     "list",
+						Usage:    "List all provisioning resources from remote.",
+						Category: "provisioning resources",
+						Action:   ProvisioningList,
+						Flags: []cli.Flag{
+							formatFlag,
+							dryrunFlag,
+							verboseFlag,
+						},
+					},
+					{
+						Name:      "delete",
+						Usage:     "Delete provisioning resources from remote.",
+						Category:  "provisioning resources",
+						Action:    ProvisioningDelete,
+						Args:      true,
+						ArgsUsage: "[resource names]...",
+						Flags: []cli.Flag{
+							formatFlag,
+							dryrunFlag,
+							verboseFlag,
+						},
+					},
 				},
 			},
 			{
