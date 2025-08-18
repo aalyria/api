@@ -102,6 +102,91 @@ message ConnectionParams {
   google.protobuf.Duration keepalive_period = 6;
 }
 
+message SnmpUsmSecurityParameters {
+  // AuthProtocol mirrors gosnmp SnmpV3AuthProtocol.
+  // See https://github.com/gosnmp/gosnmp/blob/v1.39.0/v3_usm.go#L34 for details.
+  enum AuthProtocol {
+    AUTH_PROTOCOL_UNSPECIFIED = 0;
+    MD5    = 1;
+    SHA    = 2;
+    SHA224 = 3;
+    SHA256 = 4;
+    SHA384 = 5;
+    SHA512 = 6;
+  }
+
+  // PrivProtocol mirrors gosnmp SnmpV3AuthProtocol.
+  // See https://github.com/gosnmp/gosnmp/blob/v1.39.0/v3_usm.go#L115 for details.
+  enum PrivProtocol {
+    PRIV_PROTOCOL_UNSPECIFIED = 0;
+    DES     = 1;
+    AES     = 2;
+    AES192  = 3; // Blumenthal-AES192
+    AES256  = 4; // Blumenthal-AES256
+    AES192C = 5; // Reeder-AES192
+    AES256C = 6; // Reeder-AES256
+  }
+
+  string user_name = 1;
+  AuthProtocol auth_protocol = 2;
+  string auth_passphrase = 3;
+  PrivProtocol priv_protocol = 4;
+  string priv_passphrase = 5;
+}
+
+message SnmpConfig {
+  // MsgFlags mirrors gosnmp SnmpV3MessageFlags.
+  // See https://github.com/gosnmp/gosnmp/blob/v1.39.0/v3.go#L20 for details.
+  enum MsgFlags {
+    MSG_FLAGS_UNSPECIFIED = 0;
+    NO_AUTH_NO_PRIV       = 1; // No authentication, and no privacy
+    AUTH_NO_PRIV          = 2; // Authentication and no privacy
+    AUTH_PRIV             = 3; // Authentication and privacy
+    REPORTABLE            = 4; // Report PDU must be sent.
+  }
+
+  enum Version {
+    VERSION_UNSPECIFIED = 0;
+    VERSION_1 = 1;
+    VERSION_2 = 2;
+    VERSION_3 = 3;
+  }
+
+  string target_url = 1;
+  int32 target_port = 2;
+  MsgFlags msg_flags = 3;
+  google.protobuf.Duration timeout = 4;
+  int32 retries = 5;
+  SnmpUsmSecurityParameters security_parameters = 6; // security is only for V3
+  Version version = 7;
+  string community = 8; // community is not used for V3
+  int32 max_oids = 9; // This is needed if driver defaults to max of 0.
+}
+
+// SnmpObject can be used to query an SNMP object or, along with a value, to set an object value.
+message SnmpObject {
+  enum DataType {
+    DATA_TYPE_UNSPECIFIED = 0;
+    INT = 1;
+    STRING = 2;
+  }
+
+  message AlertConstraint {
+    string interface_id = 1;
+    string node_id = 4;
+    optional double min = 2; // optional -> pointer type in proto3
+    optional double max = 3;
+    bool trigger_if_unchanged = 5;
+    optional double shift_metric = 6;
+  }
+
+  string oid = 1;
+  DataType data_type = 2; // TODO : remove this if never used
+  string display_name = 3; // can be anything (typically = node name from MIB)
+  optional string set_to_value = 4; // present if the operation is to set a value to an OID
+  AlertConstraint alert_constraint = 5; // optional constraint that triggers alert
+}
+
 // An SDN agent, controlling any number of commandable elements.
 message SdnAgent {
   // An external command is a delegate process that handles implementing some
@@ -147,6 +232,15 @@ message SdnAgent {
     int32 route_table_lookup_priority = 2;
   }
 
+  // TODO : SnmpEnactment 
+  message SnmpEnactment {
+    SnmpConfig config = 1; 
+    repeated SnmpObject set_requests = 2;
+
+    // The port on which the metrics will be scrapable as Prometheus metrics
+    int32 prometheus_port = 3;
+  }
+
   // An EnactmentDriver is responsible for processing incoming enactments for
   // a given node.
   message EnactmentDriver {
@@ -159,6 +253,9 @@ message SdnAgent {
 
       // Use the Linux-only netlink APIs to process enactments.
       NetlinkEnactment netlink = 3;
+
+      // SNMPv3 for enactments
+      SnmpEnactment snmp = 5;
 
       // Use an agent-specific driver to process enactments.
       google.protobuf.Any dynamic = 4;
@@ -184,6 +281,17 @@ message SdnAgent {
     repeated MonitoredInterface monitored_interfaces = 1;
   }
 
+  message SnmpTelemetry {
+    SnmpConfig config = 1; 
+    repeated SnmpObject get_requests = 2;
+
+    // How often the metrics will be gathered and reported.
+    google.protobuf.Duration collection_period = 3;
+
+    // The port on which the metrics will be scrapable as Prometheus metrics
+    int32 prometheus_port = 4;
+  }
+
   // A TelemetryDriver is responsible for generating telemetry reports for a
   // given node.
   message TelemetryDriver {
@@ -198,6 +306,9 @@ message SdnAgent {
       // Use the Linux-only netlink APIs to gather telemetry.
       NetlinkTelemetry netlink = 3;
 
+      // Use SNMPv3 GET calls to gather telemetry.
+      SnmpTelemetry snmp = 5;
+
       // Use an agent-specific driver to gather telemetry.
       google.protobuf.Any dynamic = 4;
     }
@@ -210,6 +321,18 @@ message SdnAgent {
   TelemetryDriver telemetry_driver = 3;
 }
 
+// NOTE : I don't know if we need to support traps (from device->Spacetime), but this holds
+// the config we'd need for that.
+message SnmpTrapConfig {
+  string engine_id = 1;
+
+  // url and port are combined to create the address where the trap signals will be sent.
+  string url = 2;
+  int32 port = 3;
+
+  repeated SnmpUsmSecurityParameters trap_security_parameters = 4;
+}
+  
 message ObservabilityParams {
   // The OTEL gRPC collector endpoint the exporter will connect to. If blank,
   // no exporter will be configured.

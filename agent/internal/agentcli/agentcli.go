@@ -58,9 +58,11 @@ import (
 	enact_extproc "aalyria.com/spacetime/agent/enactment/extproc"
 	"aalyria.com/spacetime/agent/internal/configpb"
 	"aalyria.com/spacetime/agent/internal/protofmt"
+	"aalyria.com/spacetime/agent/internal/snmp"
 	"aalyria.com/spacetime/agent/internal/task"
 	"aalyria.com/spacetime/agent/telemetry"
 	telemetry_extproc "aalyria.com/spacetime/agent/telemetry/extproc"
+	telemetry_snmp "aalyria.com/spacetime/agent/telemetry/snmp"
 	"aalyria.com/spacetime/auth"
 )
 
@@ -423,6 +425,9 @@ enactmentSwitch:
 		}
 		nodeOpts = append(nodeOpts, agent.WithEnactmentDriver(node.GetEnactmentDriver().GetConnectionParams().EndpointUri, ed, dialOpts...))
 
+	case *configpb.SdnAgent_EnactmentDriver_Snmp:
+		fmt.Print("TODO: SdnAgent_EnactmentDriver_Snmp")
+
 	case *configpb.SdnAgent_EnactmentDriver_Dynamic:
 		dialOpts, err := getDialOpts(ctx, node.EnactmentDriver.GetConnectionParams(), clock)
 		if err != nil {
@@ -466,6 +471,24 @@ telemetrySwitch:
 		}
 
 		td, err := newNetlinkTelemetryDriver(ctx, clock, node.GetId(), conf.Netlink)
+		if err != nil {
+			return nil, err
+		}
+		nodeOpts = append(nodeOpts, agent.WithTelemetryDriver(node.GetTelemetryDriver().GetConnectionParams().EndpointUri, td, dialOpts...))
+
+	case *configpb.SdnAgent_TelemetryDriver_Snmp:
+		dialOpts, err := getDialOpts(ctx, node.TelemetryDriver.GetConnectionParams(), clock)
+		if err != nil {
+			return nil, err
+		}
+
+		td, err := telemetry_snmp.NewDriver(
+			ctx,
+			snmp.CreateSnmpStruct(ctx, conf.Snmp.Config),
+			snmp.CreateMetrics(ctx, conf.Snmp.GetRequests),
+			conf.Snmp.CollectionPeriod.AsDuration(),
+			conf.Snmp.PrometheusPort,
+			node.Id)
 		if err != nil {
 			return nil, err
 		}
