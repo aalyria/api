@@ -391,7 +391,7 @@ func ProvisioningSync(appCtx *cli.Context) error {
 	///
 	// Add resources.
 	p.Go(func() error {
-		return errors.Join(createRemoteResources[*provapipb.P2PSrTePolicy](
+		err := errors.Join(createRemoteResources[*provapipb.P2PSrTePolicy](
 			resourcesToBeAdded["p2pSrTePolicies"], localResources.p2pSrTePolicies, printMode, dryRunMode, func(policy *provapipb.P2PSrTePolicy) error {
 				_, err := provisioningClient.UpdateP2PSrTePolicy(ctx, &provapipb.UpdateP2PSrTePolicyRequest{
 					Policy:       policy,
@@ -399,8 +399,11 @@ func ProvisioningSync(appCtx *cli.Context) error {
 				})
 				return err
 			})...)
-	})
-	p.Go(func() error {
+		if err != nil {
+			return err
+		}
+
+		// Add candidate paths after all policies are created, so parent policies are guaranteed to exist.
 		return errors.Join(createRemoteResources[*provapipb.P2PSrTePolicyCandidatePath](
 			resourcesToBeAdded["p2pSrTePolicyCandidatePaths"], localResources.p2pSrTePolicyCandidatePaths, printMode, dryRunMode, func(path *provapipb.P2PSrTePolicyCandidatePath) error {
 				_, err := provisioningClient.UpdateP2PSrTePolicyCandidatePath(ctx, &provapipb.UpdateP2PSrTePolicyCandidatePathRequest{
