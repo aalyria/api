@@ -73,6 +73,8 @@ jobs:
       - name: Read version
         id: version
         run: echo "value=$(bazelisk run //:version)" >> $GITHUB_OUTPUT
+      - name: Echo version
+        run: echo ${{ steps.version.outputs.value }}
 
       - run: bazelisk build --stamp "--platforms=@rules_go//go/toolchain:${{ matrix.os }}_${{ matrix.arch }}" //agent/cmd/agent //tools/nbictl/cmd/nbictl
 
