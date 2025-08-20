@@ -60,7 +60,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.ref }}
+          ref: ${{ github.event.inputs.ref || github.ref }}
       - uses: actions/cache@v4
         with:
           path: |
@@ -69,6 +69,7 @@ jobs:
           key: bazel-${{ hashFiles('common.bazelrc', '.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
           restore-keys: bazel-
       - run: bazel/tools/update_version_bzl.sh version.bzl
+      - run: bazelisk run //:version > version.txt
       - run: bazelisk build --stamp "--platforms=@rules_go//go/toolchain:${{ matrix.os }}_${{ matrix.arch }}" //agent/cmd/agent //tools/nbictl/cmd/nbictl
 
       - name: Package binary
@@ -94,6 +95,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
       - uses: actions/cache@v4
         with:
           path: |
@@ -119,6 +122,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
