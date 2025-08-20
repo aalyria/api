@@ -16,7 +16,7 @@ name: Bazel
 
 on:
   pull_request: {}
-  push: {}
+  # push: {}
   release:
     types: [published]
   workflow_dispatch:
@@ -31,29 +31,37 @@ on:
         type: string
 
 jobs:
-  build-and-test:
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/bazelisk
-            ~/.cache/bazel
-          key: bazel-${{ hashFiles('common.bazelrc', '.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
-          restore-keys: bazel-
-      - run: bazelisk test //...
+  # build-and-test:
+  #   runs-on: ubuntu-22.04
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         ref: ${{ github.event.inputs.version || github.ref }}
+  #     - uses: actions/cache@v4
+  #       with:
+  #         path: |
+  #           ~/.cache/bazelisk
+  #           ~/.cache/bazel
+  #         key: bazel-${{ hashFiles('common.bazelrc', '.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
+  #         restore-keys: bazel-
+  #     - run: bazelisk test //...
 
   build-and-upload-tools:
-    needs: [build-and-test]
+    # FIXME
+    # needs: [build-and-test]
     strategy:
       matrix:
-        os: [linux, windows, darwin]
-        arch: [amd64, arm64]
+        # FIXME
+        # os: [linux, windows, darwin]
+        # arch: [amd64, arm64]
+        os: [linux]
+        arch: [amd64]
 
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.version || github.ref }}
       - uses: actions/cache@v4
         with:
           path: |
@@ -62,6 +70,12 @@ jobs:
           key: bazel-${{ hashFiles('common.bazelrc', '.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
           restore-keys: bazel-
       - run: bazel/tools/update_version_bzl.sh version.bzl
+      - name: Read version
+        id: version
+        run: echo "value=$(bazelisk run //:version)" >> $GITHUB_OUTPUT
+      - name: Echo version
+        run: echo ${{ steps.version.outputs.value }}
+
       - run: bazelisk build --stamp "--platforms=@rules_go//go/toolchain:${{ matrix.os }}_${{ matrix.arch }}" //agent/cmd/agent //tools/nbictl/cmd/nbictl
 
       - name: Package binary
@@ -82,25 +96,27 @@ jobs:
           name: tools-${{ matrix.os }}-${{ matrix.arch }}
           path: "*.zip"
 
-  build-and-upload-docs:
-    needs: [build-and-test]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/bazelisk
-            ~/.cache/bazel
-          key: bazel-${{ hashFiles('common.bazelrc', '.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
-          restore-keys: bazel-
-      - run: bazelisk build "//api:api.html"
-      - name: Upload API docs
-        uses: actions/upload-artifact@v4
-        with:
-          name: api.html
-          path: |
-            bazel-bin/api/api.html/api.html
+  # build-and-upload-docs:
+  #   needs: [build-and-test]
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         ref: ${{ github.event.inputs.version || github.ref }}
+  #     - uses: actions/cache@v4
+  #       with:
+  #         path: |
+  #           ~/.cache/bazelisk
+  #           ~/.cache/bazel
+  #         key: bazel-${{ hashFiles('common.bazelrc', '.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
+  #         restore-keys: bazel-
+  #     - run: bazelisk build "//api:api.html"
+  #     - name: Upload API docs
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: api.html
+  #         path: |
+  #           bazel-bin/api/api.html/api.html
 
   create-release:
     needs: [build-and-upload-tools]
@@ -112,17 +128,21 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
+        with:
+          ref: ${{ github.event.inputs.version || github.ref }}
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           pattern: tools-*
 
+      - name: Read version
+        id: version
+        run: echo "value=$(bazelisk run //:version)" >> $GITHUB_OUTPUT
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.version }}
-          name: Release ${{ inputs.version }}
+          tag_name: test-${{ steps.version.outputs.value }}
+          name: Test Release ${{ steps.version.outputs.value }}
           # TODO: Change to non-draft after testing.
           draft: true
           files: |

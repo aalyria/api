@@ -20,3 +20,12 @@ gazelle_test(
     tags = ["manual"],
     workspace = "//:BUILD",
 )
+
+load("//:version.bzl", "VERSION")
+
+genrule(
+    name = "version",
+    outs = ["print_version.sh"],
+    cmd = "echo '#!/bin/bash\necho " + VERSION + "' > $@",
+    executable = True,
+)
