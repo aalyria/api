@@ -48,32 +48,42 @@ func openAPIConnection(appCtx *cli.Context, apiSubDomain string) (*grpc.ClientCo
 	if err != nil {
 		return nil, fmt.Errorf("unable to obtain context information: %w", err)
 	}
+	url := setting.GetUrl()
+	originalURL := url
 	var containsDnsSchema bool
-	setting.Url, containsDnsSchema = strings.CutPrefix(setting.GetUrl(), "dns:///")
+	url, containsDnsSchema = strings.CutPrefix(url, "dns:///")
 	if containsDnsSchema {
-		fmt.Fprintf(appCtx.App.ErrWriter, "Warning: the URL setting should not contain the dns:/// prefix, please provide only host[:port]\n")
+		return nil, fmt.Errorf("URL (%s) with dns:/// prefix is unsupported. Please provide only host[:port].", originalURL)
 	}
-	setting.Url = adjustURLForAPISubDomain(setting.GetUrl(), apiSubDomain)
+	url, err = adjustURLForAPISubDomain(url, apiSubDomain)
+	if err != nil {
+		return nil, err
+	}
+
+	setting.Url = url
 	return dial(appCtx.Context, setting)
 }
 
-func adjustURLForAPISubDomain(url string, apiSubDomain string) string {
+func adjustURLForAPISubDomain(url string, apiSubDomain string) (string, error) {
 	// Unexpectedly empty arguments or already the subdomain sought.
 	if url == "" || apiSubDomain == "" || strings.HasPrefix(url, apiSubDomain+".") {
-		return url
+		return url, nil
 	}
 
 	// If the |url| is an ip:port then best to leave it alone.
 	if host, _, err := net.SplitHostPort(url); err == nil {
 		if net.ParseIP(host) != nil {
-			return url
+			return url, nil
 		}
 	}
 
-	// Earlier uses recommended setting the URL to "nbi.<instance_hostname>".
-	url = strings.TrimPrefix(url, "nbi.")
+	// TODO: Remove error after a release, so that customers do not depend on unsupported configuration.
+	if strings.HasPrefix(url, "nbi.") {
+		err := fmt.Errorf("URL (%s) with nbi subdomain is unsupported. Please remove the nbi subdomain.", url)
+		return "", err
+	}
 
-	return apiSubDomain + "." + url
+	return apiSubDomain + "." + url, nil
 }
 
 func dial(ctx context.Context, setting *nbictlpb.Config) (*grpc.ClientConn, error) {
