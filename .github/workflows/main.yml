@@ -46,55 +46,55 @@ jobs:
   #         restore-keys: bazel-
   #     - run: bazelisk test //...
 
-  build-and-upload-tools:
-    # FIXME
-    # needs: [build-and-test]
-    strategy:
-      matrix:
-        # FIXME
-        # os: [linux, windows, darwin]
-        # arch: [amd64, arm64]
-        os: [linux]
-        arch: [amd64]
+  # build-and-upload-tools:
+  #   # FIXME
+  #   # needs: [build-and-test]
+  #   strategy:
+  #     matrix:
+  #       # FIXME
+  #       # os: [linux, windows, darwin]
+  #       # arch: [amd64, arm64]
+  #       os: [linux]
+  #       arch: [amd64]
 
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.version || github.ref }}
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/bazelisk
-            ~/.cache/bazel
-          key: bazel-${{ hashFiles('common.bazelrc', '.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
-          restore-keys: bazel-
-      - run: bazel/tools/update_version_bzl.sh version.bzl
-      - name: Read version
-        id: version
-        run: echo "value=$(bazelisk run //:version)" >> $GITHUB_OUTPUT
-      - name: Echo version
-        run: echo ${{ steps.version.outputs.value }}
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         ref: ${{ github.event.inputs.version || github.ref }}
+  #     - uses: actions/cache@v4
+  #       with:
+  #         path: |
+  #           ~/.cache/bazelisk
+  #           ~/.cache/bazel
+  #         key: bazel-${{ hashFiles('common.bazelrc', '.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
+  #         restore-keys: bazel-
+  #     - run: bazel/tools/update_version_bzl.sh version.bzl
+  #     - name: Read version
+  #       id: version
+  #       run: echo "value=$(bazelisk run //:version)" >> $GITHUB_OUTPUT
+  #     - name: Echo version
+  #       run: echo ${{ steps.version.outputs.value }}
 
-      - run: bazelisk build --stamp "--platforms=@rules_go//go/toolchain:${{ matrix.os }}_${{ matrix.arch }}" //agent/cmd/agent //tools/nbictl/cmd/nbictl
+  #     - run: bazelisk build --stamp "--platforms=@rules_go//go/toolchain:${{ matrix.os }}_${{ matrix.arch }}" //agent/cmd/agent //tools/nbictl/cmd/nbictl
 
-      - name: Package binary
-        if: ${{ matrix.os != 'windows' }}
-        run: |
-          zip -j nbictl-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl
-          zip -j agent-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/agent/cmd/agent/agent_/agent
+  #     - name: Package binary
+  #       if: ${{ matrix.os != 'windows' }}
+  #       run: |
+  #         zip -j nbictl-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl
+  #         zip -j agent-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/agent/cmd/agent/agent_/agent
 
-      - name: Package binary - Windows
-        if: ${{ matrix.os == 'windows' }}
-        run: |
-          zip -j nbictl-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl.exe
-          zip -j agent-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/agent/cmd/agent/agent_/agent.exe
+  #     - name: Package binary - Windows
+  #       if: ${{ matrix.os == 'windows' }}
+  #       run: |
+  #         zip -j nbictl-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl.exe
+  #         zip -j agent-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/agent/cmd/agent/agent_/agent.exe
 
-      - name: Upload binary
-        uses: actions/upload-artifact@v4
-        with:
-          name: tools-${{ matrix.os }}-${{ matrix.arch }}
-          path: "*.zip"
+  #     - name: Upload binary
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: tools-${{ matrix.os }}-${{ matrix.arch }}
+  #         path: "*.zip"
 
   # build-and-upload-docs:
   #   needs: [build-and-test]
@@ -119,7 +119,7 @@ jobs:
   #           bazel-bin/api/api.html/api.html
 
   create-release:
-    needs: [build-and-upload-tools]
+    # needs: [build-and-upload-tools]
     runs-on: ubuntu-latest
     # if: |
     #   github.event_name == 'workflow_dispatch' &&
@@ -139,6 +139,7 @@ jobs:
         with:
           pattern: tools-*
 
+      - run: bazel/tools/update_version_bzl.sh version.bzl
       - name: Read version
         id: version
         run: echo "value=$(bazelisk run //:version)" >> $GITHUB_OUTPUT
