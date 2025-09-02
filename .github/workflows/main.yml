@@ -96,44 +96,37 @@ jobs:
           name: tools-${{ matrix.os }}-${{ matrix.arch }}
           path: "*.zip"
 
-  build-and-upload-docs:
-    needs: [build-and-test]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.version || github.ref }}
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/bazelisk
-            ~/.cache/bazel
-          key: bazel-${{ hashFiles('common.bazelrc', '.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
-          restore-keys: bazel-
-      - run: bazelisk build "//api:api.html"
-      - name: Upload API docs
-        uses: actions/upload-artifact@v4
-        with:
-          name: api.html
-          path: |
-            bazel-bin/api/api.html/api.html
+  # build-and-upload-docs:
+  #   needs: [build-and-test]
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         ref: ${{ github.event.inputs.version || github.ref }}
+  #     - uses: actions/cache@v4
+  #       with:
+  #         path: |
+  #           ~/.cache/bazelisk
+  #           ~/.cache/bazel
+  #         key: bazel-${{ hashFiles('common.bazelrc', '.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
+  #         restore-keys: bazel-
+  #     - run: bazelisk build "//api:api.html"
+  #     - name: Upload API docs
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: api.html
+  #         path: |
+  #           bazel-bin/api/api.html/api.html
 
   create-release:
     needs: [build-and-upload-tools]
     runs-on: ubuntu-latest
-    # if: |
-    #   github.event_name == 'workflow_dispatch' &&
-    #   inputs.create_release == true &&
-    #   inputs.version != ''
-    # if: |
-    #   github.event_name == 'workflow_dispatch' &&
-    #   inputs.create_release == true &&
-    #   inputs.version != ''
-
+    if: |
+      startsWith( github.ref, 'refs/heads/release-' )
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.version || github.ref }}
+          ref: ${{ github.ref }}
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
