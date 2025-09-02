@@ -16,7 +16,7 @@ name: Bazel
 
 on:
   pull_request: {}
-  # push: {}
+  push: {}
   release:
     types: [published]
   workflow_dispatch:
