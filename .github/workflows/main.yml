@@ -122,8 +122,8 @@ jobs:
     needs: [build-and-upload-tools]
     runs-on: ubuntu-latest
     if: |
-      (github.event_name == 'push' && startsWith( github.ref, 'refs/heads/release-' ))
-      || (github.event_name == 'workflow_dispatch' && inputs.create_release == true && inputs.ref != '')
+      startsWith( github.ref, 'refs/heads/release-' ) ||
+      (github.event_name == 'workflow_dispatch' && inputs.create_release == true && inputs.ref != '')
     steps:
       - uses: actions/checkout@v4
         with:
