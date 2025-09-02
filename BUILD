@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 load("@gazelle//:def.bzl", "gazelle", "gazelle_test")
+load("//:version.bzl", "VERSION")
 
 gazelle(name = "gazelle")
 
@@ -19,4 +20,11 @@ gazelle_test(
     name = "gazelle_test",
     tags = ["manual"],
     workspace = "//:BUILD",
+)
+
+genrule(
+    name = "version",
+    outs = ["print_version.sh"],
+    cmd = "echo '#!/bin/bash\necho " + VERSION + "' > $@",
+    executable = True,
 )
