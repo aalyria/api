@@ -49,3 +49,5 @@ PATCH = ${git_data[1]}" "$versions_bzl_file_path"
 
 sed -i "/^BUILD = /c\\
 BUILD = \"${git_data[0]}\"" "$versions_bzl_file_path"
+
+#FIXME

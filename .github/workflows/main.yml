@@ -46,7 +46,6 @@ jobs:
   #         restore-keys: bazel-
   #     - run: bazelisk test //...
 
-
   build-and-upload-tools:
     # FIXME
     # needs: [build-and-test]
