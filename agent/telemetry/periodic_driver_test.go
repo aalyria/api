@@ -36,7 +36,7 @@ func (cg *constantGenerator) Stats() interface{} { return nil }
 func (cg *constantGenerator) GenerateReport(ctx context.Context, nodeID string) (*telemetrypb.ExportMetricsRequest, error) {
 	return &telemetrypb.ExportMetricsRequest{
 		ModemMetrics: []*telemetrypb.ModemMetrics{{
-			DataRateDataPoints: []*telemetrypb.DataRateDataPoint{
+			SinrDataPoints: []*telemetrypb.SinrDataPoint{
 				{
 					Time: timestamppb.New(cg.clock.Now()),
 				},
@@ -69,7 +69,7 @@ func TestPeriodicDriver(t *testing.T) {
 	firstStats := <-reportedStats
 	if diff := cmp.Diff(&telemetrypb.ExportMetricsRequest{
 		ModemMetrics: []*telemetrypb.ModemMetrics{{
-			DataRateDataPoints: []*telemetrypb.DataRateDataPoint{
+			SinrDataPoints: []*telemetrypb.SinrDataPoint{
 				{
 					Time: timestamppb.New(clock.Now()),
 				},
@@ -90,7 +90,7 @@ func TestPeriodicDriver(t *testing.T) {
 	secondStats := <-reportedStats
 	if diff := cmp.Diff(&telemetrypb.ExportMetricsRequest{
 		ModemMetrics: []*telemetrypb.ModemMetrics{{
-			DataRateDataPoints: []*telemetrypb.DataRateDataPoint{
+			SinrDataPoints: []*telemetrypb.SinrDataPoint{
 				{
 					Time: timestamppb.New(clock.Now()),
 				},

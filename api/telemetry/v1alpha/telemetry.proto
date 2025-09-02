@@ -273,10 +273,6 @@ message ModemMetrics {
   // Required. The modem producing telemetry.
   optional string demodulator_id = 1;
 
-  // Data points describing the time-varying data rate of any link terminating
-  // at this modem.
-  repeated DataRateDataPoint data_rate_data_points = 3;
-
   // Data points describing the time-varying energy per symbol to noise power
   // spectral density observed by the modem.
   repeated Esn0DataPoint esn0_data_points = 4;
@@ -286,19 +282,6 @@ message ModemMetrics {
   repeated SinrDataPoint sinr_data_points = 5;
 
   reserved 2;
-}
-
-// A data point in a timeseries that describes the time-varying data rate of a
-// link.
-message DataRateDataPoint {
-  // Required. When the value was captured.
-  google.protobuf.Timestamp time = 1;
-
-  // The transmitting modem.
-  optional string modulator_id = 2;
-
-  // The data rate in bits per second.
-  optional double data_rate_bps = 3;
 }
 
 // A data point in a timeseries that describes the time-varying energy per
