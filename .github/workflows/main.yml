@@ -25,8 +25,8 @@ on:
         description: "Create GitHub release"
         type: boolean
         default: false
-      version:
-        description: "Release version"
+      ref:
+        description: "Release version ref"
         required: false
         type: string
 
@@ -36,7 +36,7 @@ jobs:
   #   steps:
   #     - uses: actions/checkout@v4
   #       with:
-  #         ref: ${{ github.event.inputs.version || github.ref }}
+  #         ref: ${{ github.event.inputs.ref || github.ref }}
   #     - uses: actions/cache@v4
   #       with:
   #         path: |
@@ -61,7 +61,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.version || github.ref }}
+          ref: ${{ github.event.inputs.ref || github.ref }}
       - uses: actions/cache@v4
         with:
           path: |
@@ -102,7 +102,7 @@ jobs:
   #   steps:
   #     - uses: actions/checkout@v4
   #       with:
-  #         ref: ${{ github.event.inputs.version || github.ref }}
+  #         ref: ${{ github.event.inputs.ref || github.ref }}
   #     - uses: actions/cache@v4
   #       with:
   #         path: |
@@ -122,11 +122,12 @@ jobs:
     needs: [build-and-upload-tools]
     runs-on: ubuntu-latest
     if: |
-      startsWith( github.event.inputs.version || github.ref, 'refs/heads/release-' )
+      (github.event_name == 'push' && startsWith( github.ref, 'refs/heads/release-' ))
+      || (github.event_name == 'workflow_dispatch' && inputs.create_release == true && inputs.ref != '')
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.version || github.ref }}
+          ref: ${{ github.event.inputs.ref || github.ref }}
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -139,6 +140,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
+          # FIXME
           tag_name: test-${{ steps.version.outputs.value }}
           name: Test Release ${{ steps.version.outputs.value }}
           # TODO: Change to non-draft after testing.
