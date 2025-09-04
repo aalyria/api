@@ -108,15 +108,7 @@ service Provisioning {
 //   - draft-ietf-pce-segment-routing-policy-cp
 //   - draft-ietf-spring-sr-policy-yang
 message P2pSrTePolicy {
-  option (google.api.resource) = {
-    type: "provisioning.spacetimeapis.com/P2pSrTePolicy"
-    pattern: "p2pSrTePolicies/{policy_id}"
-    singular: "p2pSrTePolicy"
-    plural: "p2pSrTePolicies"
-  };
-
   // The resource name of this policy.
-  // Format: `p2pSrTePolicies/{policy_id}`
   string name = 1 [(google.api.field_behavior) = IDENTIFIER];
 
   // The priority field allows the requester to specify the order in
@@ -226,15 +218,7 @@ message DeleteP2pSrTePolicyRequest{
 }
 
 message P2pSrTePolicyCandidatePath {
-  option (google.api.resource) = {
-    type: "provisioning.spacetimeapis.com/P2pSrTePolicyCandidatePath"
-    pattern: "p2pSrTePolicies/{policy_id}/candidatePaths/{path_id}"
-    singular: "p2pSrTePolicyCandidatePath"
-    plural: "p2pSrTePoliciesCandidatePaths"
-  };
-
   // The resource name of this candidate path.
-  // Format: `p2pSrTePolicies/{policy_id}/candidatePaths/{path_id}`
   string name = 1 [(google.api.field_behavior) = IDENTIFIER];
 
   // Candidate Paths inherit the scheduling parameters of their
@@ -337,15 +321,7 @@ message DeleteP2pSrTePolicyCandidatePathRequest{
 // Spacetime will exclude these elements from any solutions it computes
 // for other provisioning requests.
 message Downtime {
-  option (google.api.resource) = {
-    type: "provisioning.spacetimeapis.com/Downtime"
-    pattern: "downtimes/{id}"
-    singular: "downtime"
-    plural: "downtimes"
-  };
-
   // The resource name of this Downtime request.
-  // Format: `downtimes/{id}`
   string name = 1 [(google.api.field_behavior) = IDENTIFIER];
 
   // The time interval over which this downtime applies.
@@ -462,15 +438,7 @@ message DeleteDowntimeRequest{
 
 // RFC 8745 -style Protection Association Group
 message ProtectionAssociationGroup {
-  option (google.api.resource) = {
-    type: "provisioning.spacetimeapis.com/ProtectionAssociationGroup"
-    pattern: "protectionAssociationGroups/{group_id}"
-    singular: "protectionAssociationGroup"
-    plural: "protectionAssociationGroups"
-  };
-
   // The resource name of this Protection Association Group.
-  // Format: `protectionAssociationGroups/{group_id}`
   string name = 1 [(google.api.field_behavior) = IDENTIFIER];
 
   message ProtectionResource {
@@ -559,15 +527,7 @@ message DeleteProtectionAssociationGroupRequest{
 }
 
 message DisjointAssociationGroup {
-  option (google.api.resource) = {
-    type: "provisioning.spacetimeapis.com/DisjointAssociationGroup"
-    pattern: "disjointAssociationGroups/{group_id}"
-    singular: "disjointAssociationGroup"
-    plural: "disjointAssociationGroups"
-  };
-
   // The resource name of this Disjoint Association Group.
-  // Format: `disjointAssociationGroups/{group_id}`
   string name = 1 [(google.api.field_behavior) = IDENTIFIER];
 
   ///
