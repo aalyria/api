@@ -126,20 +126,41 @@ message Entity {
 }
 
 service NetOps {
-  rpc GetEntity(GetEntityRequest) returns (Entity) {}
+  rpc GetEntity(GetEntityRequest) returns (Entity) {
+    // API deprecated in favor of Model API.
+    option deprecated = true;
+  }
 
-  rpc CreateEntity(CreateEntityRequest) returns (Entity) {}
+  rpc CreateEntity(CreateEntityRequest) returns (Entity) {
+    // API deprecated in favor of Model API.
+    option deprecated = true;
+  }
 
-  rpc UpdateEntity(UpdateEntityRequest) returns (Entity) {}
+  rpc UpdateEntity(UpdateEntityRequest) returns (Entity) {
+    // API deprecated in favor of Model API.
+    option deprecated = true;
+  }
 
-  rpc ListEntities(ListEntitiesRequest) returns (ListEntitiesResponse) {}
+  rpc ListEntities(ListEntitiesRequest) returns (ListEntitiesResponse) {
+    // API deprecated in favor of Model API.
+    option deprecated = true;
+  }
 
   rpc ListEntitiesOverTime(ListEntitiesOverTimeRequest)
-      returns (ListEntitiesOverTimeResponse) {}
+      returns (ListEntitiesOverTimeResponse) {
+    // API deprecated in favor of Model API.
+    option deprecated = true;
+  }
 
-  rpc DeleteEntity(DeleteEntityRequest) returns (DeleteEntityResponse) {}
+  rpc DeleteEntity(DeleteEntityRequest) returns (DeleteEntityResponse) {
+    // API deprecated in favor of Model API.
+    option deprecated = true;
+  }
 
-  rpc VersionInfo(VersionInfoRequest) returns (VersionInfoResponse) {}
+  rpc VersionInfo(VersionInfoRequest) returns (VersionInfoResponse) {
+    // API deprecated in favor of VersionInfo API.
+    option deprecated = true;
+  }
 }
 
 message GetEntityRequest {
