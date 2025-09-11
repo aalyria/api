@@ -273,6 +273,16 @@ Delete provisioning resources from remote.
 
 **--verbose, -v**: increase verbosity
 
+## status-v1
+
+Subcommands for Status API v1.
+
+### get-version
+
+Retrieve the version of this Spacetime instance.
+
+**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
+
 ## grpcurl
 
 Provides curl-like equivalents for interacting with the NBI.

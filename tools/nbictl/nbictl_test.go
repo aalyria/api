@@ -17,10 +17,12 @@ package nbictl
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -336,6 +338,49 @@ func buildTestEntities(numFiles int, numEntities int) [][]*nbipb.Entity {
 	return files
 }
 
+func expectLines(lines ...string) func([]byte) error {
+	return func(gotData []byte) error {
+		got := strings.Split(strings.TrimSpace(string(gotData)), "\n")
+		if diff := cmp.Diff(lines, got); diff != "" {
+			return fmt.Errorf("output mismatch: (-want +got):\n%s", diff)
+		}
+		return nil
+	}
+}
+
+// We can't use expectLines for prototext output because the format isn't
+// stable (the authors intentionally sometimes vary the format by using two
+// spaces between field name + colon and value), so instead we just verify
+// that the result can get unmarshalled using the prototext library.
+func expectTextProto(want proto.Message) func([]byte) error {
+	return func(gotData []byte) error {
+		got := proto.Clone(want)
+		if err := prototext.Unmarshal(gotData, got); err != nil {
+			return err
+		}
+		if diff := cmp.Diff(want, got, protocmp.Transform()); diff != "" {
+			return fmt.Errorf("output mismatch: (-want +got):\n%s", diff)
+		}
+		return nil
+	}
+}
+
+func expectJSON(want any) func([]byte) error {
+	return func(gotData []byte) error {
+		// Create a new instance of the same type as want
+		got := reflect.New(reflect.TypeOf(want).Elem()).Interface()
+
+		if err := json.Unmarshal(gotData, got); err != nil {
+			return err
+		}
+
+		if diff := cmp.Diff(want, got); diff != "" {
+			return fmt.Errorf("output mismatch: (-want +got):\n%s", diff)
+		}
+		return nil
+	}
+}
+
 func TestEndToEnd(t *testing.T) {
 	t.Parallel()
 
@@ -354,33 +399,6 @@ func TestEndToEnd(t *testing.T) {
 		// contents of the files containing the entities.
 		expectEntityFilesFn func(string) error
 		changeServer        func(*FakeNetOpsServer)
-	}
-
-	expectLines := func(lines ...string) func([]byte) error {
-		return func(gotData []byte) error {
-			got := strings.Split(strings.TrimSpace(string(gotData)), "\n")
-			if diff := cmp.Diff(lines, got); diff != "" {
-				return fmt.Errorf("output mismatch: (-want +got):\n%s", diff)
-			}
-			return nil
-		}
-	}
-
-	// We can't use expectLines for prototext output because the format isn't
-	// stable (the authors intentionally sometimes vary the format by using two
-	// spaces between field name + colon and value), so instead we just verify
-	// that the result can get unmarshalled using the prototext library.
-	expectTextProto := func(want proto.Message) func([]byte) error {
-		return func(gotData []byte) error {
-			got := proto.Clone(want)
-			if err := prototext.Unmarshal(gotData, got); err != nil {
-				return err
-			}
-			if diff := cmp.Diff(want, got, protocmp.Transform()); diff != "" {
-				return fmt.Errorf("output mismatch: (-want +got):\n%s", diff)
-			}
-			return nil
-		}
 	}
 
 	// Verifies that all of the expected entities were processed by the server.
