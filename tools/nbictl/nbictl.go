@@ -593,6 +593,20 @@ func App() *cli.App {
 				},
 			},
 			{
+				Name:  "status-v1",
+				Usage: "Subcommands for Status API v1.",
+				Subcommands: []*cli.Command{
+					{
+						Name:   "get-version",
+						Usage:  "Retrieve the version of this Spacetime instance.",
+						Action: StatusGetVersion,
+						Flags: []cli.Flag{
+							formatFlag,
+						},
+					},
+				},
+			},
+			{
 				Name:  "grpcurl",
 				Usage: "Provides curl-like equivalents for interacting with the NBI.",
 				Flags: []cli.Flag{
