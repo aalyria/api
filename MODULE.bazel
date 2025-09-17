@@ -99,6 +99,8 @@ use_repo(
     "com_github_sourcegraph_conc",
     "com_github_urfave_cli_v2",
     "com_github_vishvananda_netlink",
+    "com_google_cloud_go",
+    "com_google_cloud_go_longrunning",
     "io_opentelemetry_go_contrib_instrumentation_google_golang_org_grpc_otelgrpc",
     "io_opentelemetry_go_otel",
     "io_opentelemetry_go_otel_exporters_otlp_otlptrace_otlptracegrpc",
