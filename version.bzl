@@ -25,7 +25,7 @@ MAJOR = 18
 # -------------------------------------------------------------
 # This allows to publish bugfixes to the released version
 # through increments of PATCH segment.
-MINOR = 8
+MINOR = 9
 
 # Monotonic ID of bugfixes applied to each MAJOR.MINOR release.
 # -------------------------------------------------------------
