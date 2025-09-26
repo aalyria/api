@@ -23,14 +23,14 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
-	"aalyria.com/spacetime/auth/authtest"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/jonboulle/clockwork"
+	"google.golang.org/grpc/credentials"
 )
-
-const validToken = `eyJhbGciOiJSUzI1NiIsImtpZCI6IjcyMTk0YjI2MzU0YzIzYzBiYTU5YTZkNzUxZGZmYWEyNTg2NTkwNGUiLCJ0eXAiOiJKV1QifQ.eyJhdWQiOiJodHRwczovL3d3dy5nb29nbGVhcGlzLmNvbS9vYXV0aDIvdjQvdG9rZW4iLCJleHAiOjE2ODE3OTIzMTksImlhdCI6MTY4MTc4ODcxOSwiaXNzIjoiY2RwaS1hZ2VudEBhNWEtc3BhY2V0aW1lLWdrZS1iYWNrLWRldi5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSIsInN1YiI6ImNkcGktYWdlbnRAYTVhLXNwYWNldGltZS1na2UtYmFjay1kZXYuaWFtLmdzZXJ2aWNlYWNjb3VudC5jb20iLCJ0YXJnZXRfYXVkaWVuY2UiOiI2MDI5MjQwMzEzOS1tZTY4dGpnYWpsNWRjZGJwbmxtMmVrODMwbHZzbnNscS5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSJ9.QyOi7vkFCwdmjT4ChT3_yVY4ZObUJkZkYC0q7alF_thiotdJKRiSo1ZHp_XnS0nM4WSWcQYLGHUDdAMPS0R22brFGzCl8ndgNjqI38yp_LDL8QVTqnLBGUj-m3xB5wH17Q_Dt8riBB4IE-mSS8FB-R6sqSwn-seMfMDydScC0FrtOF3-2BCYpIAlf1AQKN083QdtKgNEVDi72npPr2MmsWV3tct6ydXHWNbxG423kfSD6vCZSUTvWXAuVjuOwnbc2LHZS04U-jiLpvHxu06OwHOQ5LoGVPyd69o8Ny_Bapd2m0YCX2xJr8_HH2nw1jH7EplFf-owbBYz9ZtQoQ2YTA`
 
 var testKey = generateRSAPrivateKey()
 
@@ -54,7 +54,6 @@ func TestNewCredentials_validation(t *testing.T) {
 				PrivateKey:   bytes.NewBuffer(testKey.privatePEM),
 				PrivateKeyID: "1",
 				Clock:        clockwork.NewRealClock(),
-				Host:         "example.com",
 			},
 		},
 		{
@@ -65,7 +64,6 @@ func TestNewCredentials_validation(t *testing.T) {
 				PrivateKey:   bytes.NewBuffer(testKey.privatePEM),
 				PrivateKeyID: "",
 				Clock:        clockwork.NewRealClock(),
-				Host:         "example.com",
 			},
 		},
 		{
@@ -76,7 +74,6 @@ func TestNewCredentials_validation(t *testing.T) {
 				PrivateKey:   bytes.NewBuffer(testKey.privatePEM),
 				PrivateKeyID: "1",
 				Clock:        nil,
-				Host:         "example.com",
 			},
 		},
 		{
@@ -87,7 +84,6 @@ func TestNewCredentials_validation(t *testing.T) {
 				PrivateKey:   badReader{errors.New("read went wrong!")},
 				PrivateKeyID: "1",
 				Clock:        clockwork.NewRealClock(),
-				Host:         "example.com",
 			},
 		},
 		{
@@ -98,18 +94,6 @@ func TestNewCredentials_validation(t *testing.T) {
 				PrivateKey:   bytes.NewBuffer([]byte{}),
 				PrivateKeyID: "1",
 				Clock:        clockwork.NewRealClock(),
-				Host:         "example.com",
-			},
-		},
-		{
-			name: "empty host",
-			want: `missing required field 'Host'`,
-			c: Config{
-				Email:        "some@example.com",
-				PrivateKey:   bytes.NewBuffer(testKey.privatePEM),
-				PrivateKeyID: "1",
-				Clock:        clockwork.NewRealClock(),
-				Host:         "",
 			},
 		},
 	} {
@@ -126,19 +110,14 @@ func TestNewCredentials_validation(t *testing.T) {
 	}
 }
 
-func TestNewCredentials(t *testing.T) {
+func TestRequireTransportSecurity_Default(t *testing.T) {
 	t.Parallel()
 
-	srv := authtest.NewOIDCServer(validToken)
-	defer srv.Close()
-
 	conf := Config{
-		Client:       srv.Client(),
 		Email:        "some@example.com",
 		PrivateKey:   bytes.NewBuffer(testKey.privatePEM),
 		PrivateKeyID: "1",
 		Clock:        clockwork.NewFakeClockAt(time.Date(2011, time.February, 16, 0, 0, 0, 0, time.UTC)),
-		Host:         "example.com",
 	}
 
 	creds, err := NewCredentials(context.Background(), conf)
@@ -146,17 +125,28 @@ func TestNewCredentials(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if !creds.RequireTransportSecurity() {
-		t.Errorf("credentials should enforce transport security")
+		t.Errorf("credentials should enforce transport security by default")
 	}
-	if nc := srv.NumberOfCalls(); nc != 1 {
-		t.Errorf("expected test server to be called once, but got %d calls", nc)
+}
+
+func TestRequireTransportSecurity_Skip(t *testing.T) {
+	t.Parallel()
+
+	conf := Config{
+		Email:                 "some@example.com",
+		PrivateKey:            bytes.NewBuffer(testKey.privatePEM),
+		PrivateKeyID:          "1",
+		Clock:                 clockwork.NewFakeClockAt(time.Date(2011, time.February, 16, 0, 0, 0, 0, time.UTC)),
+		SkipTransportSecurity: true,
 	}
 
-	// TODO: setup a secure local gRPC server and add a test that
-	// checks that the credentials are adding the metadata appropriately. This
-	// is more difficult than it sounds because the gRPC RequestInfo struct is
-	// required and only gets added by the grpc/internal/credentials package,
-	// which can't be used outside the grpc packages.
+	creds, err := NewCredentials(context.Background(), conf)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if creds.RequireTransportSecurity() {
+		t.Errorf("credentials should not enforce transport security when SkipTransportSecurity is true")
+	}
 }
 
 type rsaKeyForTesting struct {
@@ -196,5 +186,116 @@ func generateRSAPrivateKey() rsaKeyForTesting {
 		privateKey: key,
 		privatePEM: keyPEM,
 		publicPEM:  pubPEM,
+	}
+}
+
+func TestGetRequestMetadata_JWTValidation(t *testing.T) {
+	t.Parallel()
+
+	clock := clockwork.NewFakeClockAt(time.Date(2023, time.January, 1, 12, 0, 0, 0, time.UTC))
+
+	conf := Config{
+		Email:                 "test@example.com",
+		PrivateKey:            bytes.NewBuffer(testKey.privatePEM),
+		PrivateKeyID:          "test-key-id",
+		Clock:                 clock,
+		SkipTransportSecurity: true, // For testing only
+	}
+
+	creds, err := NewCredentials(context.Background(), conf)
+	if err != nil {
+		t.Fatalf("failed to create credentials: %v", err)
+	}
+
+	ctx := credentials.NewContextWithRequestInfo(context.Background(), credentials.RequestInfo{Method: "/service.TestService/TestMethod"})
+	testURI := "https://api.example.com:8080/service.TestService"
+
+	metadata, err := creds.GetRequestMetadata(ctx, testURI)
+	if err != nil {
+		t.Fatalf("GetRequestMetadata failed: %v", err)
+	}
+
+	// Validate metadata structure
+	if len(metadata) != 1 {
+		t.Errorf("expected 1 metadata entry, got %d", len(metadata))
+	}
+
+	authHeader, exists := metadata["authorization"]
+	if !exists {
+		t.Fatal("authorization header not found in metadata")
+	}
+
+	if !strings.HasPrefix(authHeader, "Bearer ") {
+		t.Errorf("authorization header should start with 'Bearer ', got: %s", authHeader)
+	}
+
+	// Extract and validate JWT token
+	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+
+	// Parse the JWT token without verification first to examine structure
+	token, _, err := jwt.NewParser().ParseUnverified(tokenString, jwt.MapClaims{})
+	if err != nil {
+		t.Fatalf("failed to parse JWT token: %v", err)
+	}
+
+	// Validate header
+	if token.Header["alg"] != "RS256" {
+		t.Errorf("expected RS256 algorithm, got %s", token.Header["alg"])
+	}
+	if token.Header["kid"] != "test-key-id" {
+		t.Errorf("expected kid 'test-key-id', got %s", token.Header["kid"])
+	}
+
+	// Validate claims
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		t.Fatal("failed to cast claims to MapClaims")
+	}
+
+	// Check issuer and subject
+	if claims["iss"] != "test@example.com" {
+		t.Errorf("expected iss 'test@example.com', got %s", claims["iss"])
+	}
+	if claims["sub"] != "test@example.com" {
+		t.Errorf("expected sub 'test@example.com', got %s", claims["sub"])
+	}
+
+	// Check audience
+	expectedAudience := "https://api.example.com:8080/service.TestService/TestMethod"
+	if claims["aud"] != expectedAudience {
+		t.Errorf("expected aud '%s', got %s", expectedAudience, claims["aud"])
+	}
+
+	// Check timing claims
+	iatClaim, ok := claims["iat"].(float64)
+	if !ok {
+		t.Error("iat claim should be a number")
+	} else {
+		expectedIat := clock.Now().Unix()
+		if int64(iatClaim) != expectedIat {
+			t.Errorf("expected iat %d, got %d", expectedIat, int64(iatClaim))
+		}
+	}
+
+	expClaim, ok := claims["exp"].(float64)
+	if !ok {
+		t.Error("exp claim should be a number")
+	} else {
+		expectedExp := clock.Now().Add(time.Hour).Unix()
+		if int64(expClaim) != expectedExp {
+			t.Errorf("expected exp %d, got %d", expectedExp, int64(expClaim))
+		}
+	}
+
+	// Verify the token signature using the private key's public key
+	publicKey := &testKey.privateKey.PublicKey
+	_, err = jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+			return nil, errors.New("unexpected signing method")
+		}
+		return publicKey, nil
+	}, jwt.WithTimeFunc(clock.Now))
+	if err != nil {
+		t.Errorf("JWT signature validation failed: %v", err)
 	}
 }

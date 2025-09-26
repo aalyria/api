@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -59,7 +58,7 @@ func openAPIConnection(appCtx *cli.Context, apiSubDomain string) (*grpc.ClientCo
 		fmt.Fprintf(appCtx.App.ErrWriter, "Warning: the URL setting should not contain the dns:/// prefix, please provide only host[:port]\n")
 	}
 	setting.Url = adjustURLForAPISubDomain(setting.GetUrl(), apiSubDomain)
-	return dial(appCtx.Context, setting, nil)
+	return dial(appCtx.Context, setting)
 }
 
 func adjustURLForAPISubDomain(url string, apiSubDomain string) string {
@@ -81,8 +80,8 @@ func adjustURLForAPISubDomain(url string, apiSubDomain string) string {
 	return apiSubDomain + "." + url
 }
 
-func dial(ctx context.Context, setting *nbictlpb.Config, httpClient *http.Client) (*grpc.ClientConn, error) {
-	dialOpts, err := getDialOpts(ctx, setting, httpClient)
+func dial(ctx context.Context, setting *nbictlpb.Config) (*grpc.ClientConn, error) {
+	dialOpts, err := getDialOpts(ctx, setting)
 	if err != nil {
 		return nil, fmt.Errorf("unable to construct dial options: %w", err)
 	}
@@ -93,7 +92,7 @@ func dial(ctx context.Context, setting *nbictlpb.Config, httpClient *http.Client
 	return conn, nil
 }
 
-func getDialOpts(ctx context.Context, setting *nbictlpb.Config, httpClient *http.Client) ([]grpc.DialOption, error) {
+func getDialOpts(ctx context.Context, setting *nbictlpb.Config) ([]grpc.DialOption, error) {
 	dialOpts := []grpc.DialOption{
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(1024*1024*256), grpc.UseCompressor(gzip.Name)),
 	}
@@ -123,12 +122,6 @@ func getDialOpts(ctx context.Context, setting *nbictlpb.Config, httpClient *http
 
 	// Unless transport-security is set to Insecure, add Spacetime PerRPCCredentials.
 	if _, insecure := setting.GetTransportSecurity().GetType().(*nbictlpb.Config_TransportSecurity_Insecure); !insecure {
-		host, _, err := net.SplitHostPort(setting.GetUrl())
-		// If parsing host:port fails, let's use the whole param as host
-		// and let downstream libraries fail if the host is actually invalid.
-		if err != nil {
-			host = setting.GetUrl()
-		}
 		if setting.GetPrivKey() == "" {
 			return nil, errors.New("no private key set for chosen context")
 		}
@@ -140,12 +133,10 @@ func getDialOpts(ctx context.Context, setting *nbictlpb.Config, httpClient *http
 		clock := clockwork.NewRealClock()
 
 		config := auth.Config{
-			Client:       httpClient,
 			Clock:        clock,
 			PrivateKey:   privateKey,
 			PrivateKeyID: setting.GetKeyId(),
 			Email:        setting.GetEmail(),
-			Host:         host,
 		}
 
 		creds, err := auth.NewCredentials(ctx, config)
