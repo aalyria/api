@@ -28,6 +28,7 @@ proto_library(
     deps = [
         "//api/common:common_proto",
         "@googleapis//google/rpc:status_proto",
+        "@googleapis//google/type:interval_proto",
         "@org_outernetcouncil_nmts//v1/proto/types/geophys:coordinates_proto",
         "@protobuf//:duration_proto",
         "@protobuf//:empty_proto",
@@ -41,6 +42,7 @@ cpp_grpc_library(
     deps = [
         "//api/common:common_cpp_proto",
         "@googleapis//google/rpc:status_cc_proto",
+        "@googleapis//google/type:interval_cc_proto",
         "@org_outernetcouncil_nmts//v1/proto/types/geophys:geophys_cpp_proto",
     ],
 )
@@ -55,6 +57,7 @@ go_proto_library(
     proto = ":scheduling_proto",
     deps = [
         "//api/common:common_go_proto",
+        "@org_golang_google_genproto//googleapis/type/interval",
         "@org_golang_google_genproto_googleapis_rpc//status",
         "@org_outernetcouncil_nmts//v1/proto/types/geophys:geophys_go_proto",
     ],
@@ -66,6 +69,7 @@ java_grpc_library(
     deps = [
         "//api/common:common_java_proto",
         "@googleapis//google/rpc:rpc_java_proto",
+        "@googleapis//google/type:type_java_proto",
         "@org_outernetcouncil_nmts//v1/proto/types/geophys:geophys_java_proto",
     ],
 )
@@ -75,5 +79,6 @@ python_grpc_library(
     protos = [":scheduling_proto"],
     deps = [
         "//api/common:common_python_proto",
+        "@googleapis//google/type:interval_py_proto",
     ],
 )

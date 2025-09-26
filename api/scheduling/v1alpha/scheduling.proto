@@ -21,6 +21,7 @@ import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 import "google/rpc/status.proto";
+import "google/type/interval.proto";
 import "nmts/v1/proto/types/geophys/coordinates.proto";
 
 option go_package = "aalyria.com/spacetime/api/scheduling/v1alpha";
@@ -192,6 +193,11 @@ message Beam {
   // Identifies the pointing target for the beam to be aimed at & track.
   BeamTarget target = 2;
 
+  // Identifies the location of the origin of the beam (local platform).
+  // Note:  origin is currently supported in the API only and is not 
+  // yet implemented.
+  BeamOrigin origin = 10;
+
   // Identifies the antenna that is used to transmit and/or receive the beam.
   string antenna_id = 9;
 
@@ -268,15 +274,77 @@ message DeleteBeam {
   string id = 1;
 }
 
+// BeamTarget type will be populated according to the Antenna.pointing_format
+// field specified in the relevant Model entities.
 message BeamTarget {
   oneof target {
     Cartesian cartesian = 4;
     string ccsds_oem_file_content = 2;
     AzEl az_el = 3;
     StateVector state_vector = 5;
+
+    // Note:  Chebyshev Coefficients are currently only supported in the API,
+    // they are not currently implemented.
+    ChebyshevCoefficients chebyshev_coefficients = 6;
   }
 
   reserved 1;
+}
+
+// This is the expected location of the beam origin based on the projected
+// motion.  This may diverge from the actual position of the spacecraft
+// and is not intended to be guidance or to influence the vehicle motion
+// in any way.  This can be used to compute beam pointing vectors (origin
+// to target) in agents that are not aware of the local platform position 
+// via other means.
+//
+// BeamOrigin type will be populated according to the Antenna.pointing_format
+// field specified in the relevant Model entities.
+message BeamOrigin {
+  oneof origin {
+    Cartesian cartesian = 1;
+    string ccsds_oem_file_content = 2;
+    StateVector state_vector = 3;
+
+    // Note:  Chebyshev Coefficients are currently only supported in the API,
+    // they are not currently implemented.
+    ChebyshevCoefficients chebyshev_coefficients = 4;
+  }
+}
+
+// Coefficients for a Chebyshev Polynomial.
+message ChebyshevCoefficients {
+  nmts.v1.types.geophys.CoordinateFrame reference_frame = 1;
+
+  // Lists of coefficients.
+  // Note: length of list implies the degree of the polynomial 
+  // (e.g. len(coefficient) = Degree of Polynomial + 1)
+  //
+  // In each list, the value at idx i is the coefficient of the 
+  // Chebyshev Polynomial of order i.  
+  // 
+  // Note:  this uses the convention where the first coefficient is 
+  // multiplied by 1/2 (i.e. p(x) = c_0 / 2.0 + \sum_{n=1}{c_n*T_n(x)}).
+  // See:  https://www.gnu.org/software/gsl/doc/html/cheb.html
+  //
+  // Coefficients for X,Y,Z Position (in meters).
+  repeated double x_m_coefficients = 2;
+  repeated double y_m_coefficients = 3;
+  repeated double z_m_coefficients = 4;
+
+  // Coefficents for X_dot, Y_dot, Z_dot Velocity (in meters per second)
+  repeated double x_dot_m_per_s_coefficients = 5;
+  repeated double y_dot_m_per_s_coefficients = 6;
+  repeated double z_dot_m_per_s_coefficients = 7;
+  
+  // The period of time over which these coefficients are valid. The 
+  // start and end times can be defined in UTC and/or GPS timestamps.
+  // `_gpst` below as a Duration from the GPS Epoch (GPST time scale; see
+  // https://gssc.esa.int/navipedia/index.php/Time_References_in_GNSS).
+  google.protobuf.Timestamp validity_period_start_time = 8;
+  google.protobuf.Duration validity_period_start_time_gpst = 9;
+  google.protobuf.Timestamp validity_period_end_time = 10;
+  google.protobuf.Duration validity_period_end_time_gpst = 11;
 }
 
 message Cartesian {
