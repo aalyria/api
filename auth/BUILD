@@ -35,7 +35,8 @@ go_test(
     embed = [":auth"],
     tags = ["block-network"],
     deps = [
-        "//auth/authtest",
+        "@com_github_golang_jwt_jwt_v5//:jwt",
         "@com_github_jonboulle_clockwork//:clockwork",
+        "@org_golang_google_grpc//credentials",
     ],
 )

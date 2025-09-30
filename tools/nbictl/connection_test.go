@@ -27,14 +27,11 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	nbi "aalyria.com/spacetime/api/nbi/v1alpha"
-	"aalyria.com/spacetime/auth/authtest"
 	"aalyria.com/spacetime/tools/nbictl/nbictlpb"
 )
 
 const (
-	authHeader      = "authorization"
-	proxyAuthHeader = "proxy-authorization"
-	oidcToken       = `eyJhbGciOiJSUzI1NiIsImtpZCI6IjcyMTk0YjI2MzU0YzIzYzBiYTU5YTZkNzUxZGZmYWEyNTg2NTkwNGUiLCJ0eXAiOiJKV1QifQ.eyJhdWQiOiJodHRwczovL3d3dy5nb29nbGVhcGlzLmNvbS9vYXV0aDIvdjQvdG9rZW4iLCJleHAiOjE2ODE3OTIzMTksImlhdCI6MTY4MTc4ODcxOSwiaXNzIjoiY2RwaS1hZ2VudEBhNWEtc3BhY2V0aW1lLWdrZS1iYWNrLWRldi5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSIsInN1YiI6ImNkcGktYWdlbnRAYTVhLXNwYWNldGltZS1na2UtYmFjay1kZXYuaWFtLmdzZXJ2aWNlYWNjb3VudC5jb20iLCJ0YXJnZXRfYXVkaWVuY2UiOiI2MDI5MjQwMzEzOS1tZTY4dGpnYWpsNWRjZGJwbmxtMmVrODMwbHZzbnNscS5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSJ9.QyOi7vkFCwdmjT4ChT3_yVY4ZObUJkZkYC0q7alF_thiotdJKRiSo1ZHp_XnS0nM4WSWcQYLGHUDdAMPS0R22brFGzCl8ndgNjqI38yp_LDL8QVTqnLBGUj-m3xB5wH17Q_Dt8riBB4IE-mSS8FB-R6sqSwn-seMfMDydScC0FrtOF3-2BCYpIAlf1AQKN083QdtKgNEVDi72npPr2MmsWV3tct6ydXHWNbxG423kfSD6vCZSUTvWXAuVjuOwnbc2LHZS04U-jiLpvHxu06OwHOQ5LoGVPyd69o8Ny_Bapd2m0YCX2xJr8_HH2nw1jH7EplFf-owbBYz9ZtQoQ2YTA`
+	authHeader = "authorization"
 )
 
 // LocalhostCert is a PEM-encoded TLS cert with SAN IPs
@@ -109,7 +106,7 @@ func TestDial_insecure(t *testing.T) {
 			Type: &nbictlpb.Config_TransportSecurity_Insecure{},
 		},
 	}
-	conn, err := dial(ctx, nbiConf, nil)
+	conn, err := dial(ctx, nbiConf)
 	checkErr(t, err)
 	defer conn.Close()
 
@@ -122,13 +119,10 @@ func TestDial_insecure(t *testing.T) {
 	if srv.NumCallsListEntities.Load() != 1 {
 		t.Fatal("ListEntities has not been invoked correctly")
 	}
-	// Verify that when transportSecurity = insecure, the gRPC headers
-	// authHeader and proxyAuthHeader are NOT transmitted to the server.
+	// Verify that when transportSecurity = insecure, the gRPC header
+	// authHeader is NOT transmitted to the server.
 	if len(srv.IncomingMetadata[0].Get(authHeader)) > 0 {
 		t.Fatal("Unexpected Incoming Metadata: ", authHeader)
-	}
-	if len(srv.IncomingMetadata[0].Get(proxyAuthHeader)) > 0 {
-		t.Fatal("Unexpected Incoming Metadata: ", proxyAuthHeader)
 	}
 }
 
@@ -154,10 +148,6 @@ func TestDial_serverCertificate(t *testing.T) {
 	fakeGrpcServer, err := startFakeNbiServer(ctx, g, lis)
 	checkErr(t, err)
 
-	// Start a fake OIDCServer
-	ts := authtest.NewOIDCServer(oidcToken)
-	defer ts.Close()
-
 	// Invoke OpenConnection
 	nbiConf := &nbictlpb.Config{
 		Url:     lis.Addr().String(),
@@ -173,7 +163,7 @@ func TestDial_serverCertificate(t *testing.T) {
 			},
 		},
 	}
-	conn, err := dial(ctx, nbiConf, ts.Client())
+	conn, err := dial(ctx, nbiConf)
 	checkErr(t, err)
 	defer conn.Close()
 
@@ -186,16 +176,10 @@ func TestDial_serverCertificate(t *testing.T) {
 	if fakeGrpcServer.NumCallsListEntities.Load() != 1 {
 		t.Fatal("ListEntities has not been invoked correctly")
 	}
-	// Verify that when transportSecurity != insecure, the gRPC headers
-	// authHeader and proxyAuthHeader are transmitted to the server.
+	// Verify that when transportSecurity != insecure, the gRPC header
+	// authHeader is transmitted to the server.
 	if len(fakeGrpcServer.IncomingMetadata[0].Get(authHeader)) != 1 {
 		t.Fatal("Missing incoming metadata: ", authHeader)
-	}
-	if len(fakeGrpcServer.IncomingMetadata[0].Get(proxyAuthHeader)) != 1 {
-		t.Fatal("Missing incoming metadata: ", proxyAuthHeader)
-	}
-	if want, got := "Bearer "+oidcToken, fakeGrpcServer.IncomingMetadata[0].Get(proxyAuthHeader)[0]; want != got {
-		t.Fatalf("fakeGrpcServer received the wrong proxyAuthHeader header: got %+v, wanted %+v ", got, want)
 	}
 }
 

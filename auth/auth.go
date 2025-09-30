@@ -15,16 +15,12 @@
 package auth // import "aalyria.com/spacetime/auth"
 
 import (
-	"cmp"
 	"context"
 	"crypto/x509"
-	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
-	"maps"
-	"net/http"
 	"net/url"
 	"strings"
 	"sync"
@@ -36,74 +32,112 @@ import (
 )
 
 const (
-	authHeader            = "authorization"
-	proxyAuthHeader       = "proxy-authorization"
+	authorizationHeader   = "authorization"
 	tokenLifetime         = 1 * time.Hour
 	tokenExpirationWindow = 5 * time.Minute
-	proxyAudience         = "60292403139-me68tjgajl5dcdbpnlm2ek830lvsnslq.apps.googleusercontent.com"
-	GoogleOIDCURL         = "https://www.googleapis.com/oauth2/v4/token"
-)
-
-var (
-	// Google OIDC only supports RS256: https://accounts.google.com/.well-known/openid-configuration
-	proxySigningMethod = jwt.SigningMethodRS256
-	// Spacetime expects RS384
-	spacetimeSigningMethod = jwt.SigningMethodRS384
 )
 
 // authCredentials is an implementation of [credentials.PerRPCCredentials].
 type authCredentials struct {
-	spacetimeTokenSrc, proxyTokenSrc func(context.Context) (string, error)
+	mu     sync.RWMutex
+	tokens map[string]*expiringToken
+	config Config
+	pkey   any
 }
 
-func (ac authCredentials) RequireTransportSecurity() bool { return true }
-
-func (ac authCredentials) fetch(ctx context.Context) (stToken, proxyToken string, _ error) {
-	wg := sync.WaitGroup{}
-	wg.Add(2)
-
-	var stErr, proxyErr error
-	go func() {
-		defer wg.Done()
-		stToken, stErr = ac.spacetimeTokenSrc(ctx)
-	}()
-	go func() {
-		defer wg.Done()
-		proxyToken, proxyErr = ac.proxyTokenSrc(ctx)
-	}()
-
-	wg.Wait()
-
-	return stToken, proxyToken, errors.Join(stErr, proxyErr)
+func (ac *authCredentials) RequireTransportSecurity() bool {
+	return !ac.config.SkipTransportSecurity
 }
 
-// This was copied from the grpc/credentials/oauth.TokenSource implementation.
-// The gRPC version doesn't allow changing the header, whereas we need to
-// support both "authorization" and "proxy-authorization".
-func (ac authCredentials) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
-	stToken, proxyToken, err := ac.fetch(ctx)
+// getToken retrieves a cached token for the given audience or creates a new one
+func (ac *authCredentials) getToken(_ context.Context, audience string) (string, error) {
+	ac.mu.RLock()
+	token, exists := ac.tokens[audience]
+	ac.mu.RUnlock()
+	if exists && !token.isStale(ac.config.Clock) {
+		return token.tok, nil
+	}
+
+	// Need to create a new token
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+
+	// Double-check after acquiring write lock
+	token, exists = ac.tokens[audience]
+	if exists && !token.isStale(ac.config.Clock) {
+		return token.tok, nil
+	}
+
+	// Generate new token
+	now := ac.config.Clock.Now()
+	expiresAt := now.Add(tokenLifetime)
+	opts := JWTOptions{
+		Email:        ac.config.Email,
+		PrivateKeyID: ac.config.PrivateKeyID,
+		Audience:     audience,
+		ExpiresAt:    expiresAt,
+		IssuedAt:     now,
+	}
+
+	newToken, err := CreateJWT(opts, ac.pkey)
+	if err != nil {
+		return "", err
+	}
+
+	ac.tokens[audience] = &expiringToken{tok: newToken, expiresAt: expiresAt}
+	return newToken, nil
+}
+
+func (ac *authCredentials) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
+	reqInfo, ok := credentials.RequestInfoFromContext(ctx)
+	if !ok {
+		return nil, errors.New("failed to obtain RequestInfoFromContext")
+	}
+	if !ac.config.SkipTransportSecurity {
+		if err := credentials.CheckSecurityLevel(reqInfo.AuthInfo, credentials.PrivacyAndIntegrity); err != nil {
+			return nil, fmt.Errorf("cannot include credentials in unsafe communication: %w", err)
+		}
+	}
+
+	// URI is required and must be exactly one value
+	if len(uri) == 0 {
+		return nil, errors.New("URI is required for authentication")
+	}
+	if len(uri) > 1 {
+		return nil, errors.New("exactly one URI must be provided for authentication")
+	}
+
+	// Compose the audience by parsing the URI for hostname and port, but read Method from reqInfo
+	// because the uri provided here is truncated off the grpcMethod part.
+	// See: https://github.com/grpc/grpc-go/blob/85240a5b02defe7b653ccba66866b4370c982b6a/internal/transport/http2_client.go#L645
+	// and: https://github.com/grpc/grpc-go/issues/8421
+	// PS: expect `uri` to be in the form of: "https://hostname[:non-standard-port]/packageName"
+	parsedUri, err := url.Parse(uri[0])
 	if err != nil {
 		return nil, err
 	}
+	// URL.Host has the form of host[:port]
+	// We trim the default port `:443` if present
+	audience := "https://" + strings.TrimSuffix(parsedUri.Host, ":443") + reqInfo.Method
 
-	ri, _ := credentials.RequestInfoFromContext(ctx)
-	if err := credentials.CheckSecurityLevel(ri.AuthInfo, credentials.PrivacyAndIntegrity); err != nil {
-		return nil, fmt.Errorf("unable to transfer TokenSource PerRPCCredentials: %w", err)
+	// Get or create token for this specific audience
+	token, err := ac.getToken(ctx, audience)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get authentication token: %w", err)
 	}
 
 	return map[string]string{
-		authHeader:      "Bearer " + stToken,
-		proxyAuthHeader: "Bearer " + proxyToken,
+		authorizationHeader: "Bearer " + token,
 	}, nil
 }
 
 type Config struct {
-	Client       *http.Client
 	Clock        clockwork.Clock
 	PrivateKey   io.Reader
 	PrivateKeyID string
 	Email        string
-	Host         string
+	// SkipTransportSecurity disables transport security checks for testing only
+	SkipTransportSecurity bool
 }
 
 // NewCredentials creates a [credentials.PerRPCCredentials] implementation that
@@ -119,8 +153,6 @@ func NewCredentials(ctx context.Context, c Config) (credentials.PerRPCCredential
 		errs = append(errs, errors.New("missing required field 'PrivateKeyID'"))
 	case c.PrivateKey == nil:
 		errs = append(errs, errors.New("missing required field 'PrivateKey'"))
-	case c.Host == "":
-		errs = append(errs, errors.New("missing required field 'Host'"))
 	}
 	if len(errs) > 0 {
 		return nil, errors.Join(errs...)
@@ -137,103 +169,55 @@ func NewCredentials(ctx context.Context, c Config) (credentials.PerRPCCredential
 	if pkeyBlock == nil {
 		return nil, errors.New("PrivateKey not PEM-encoded")
 	}
-	pkey, err := parsePrivateKey(pkeyBlock.Bytes)
+	pkey, err := ParsePrivateKey(pkeyBlock.Bytes)
 	if err != nil {
 		return nil, err
 	}
 
-	var (
-		stSrc, proxySrc func(context.Context) (string, error)
-		stErr, proxyErr error
-		wg              sync.WaitGroup
-	)
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		stSrc, stErr = newSpacetimeTokenSource(ctx, c, pkey)
-	}()
-	go func() {
-		defer wg.Done()
-		proxySrc, proxyErr = newProxyTokenSource(ctx, c, pkey)
-	}()
-	wg.Wait()
-
-	return authCredentials{spacetimeTokenSrc: stSrc, proxyTokenSrc: proxySrc}, errors.Join(stErr, proxyErr)
-}
-
-func newSpacetimeTokenSource(ctx context.Context, c Config, pkey any) (func(context.Context) (string, error), error) {
-	return reuseToken(ctx, c, pkey, func(context.Context) (*expiringToken, error) {
-		return generateNewJWT(c, pkey, spacetimeSigningMethod, nil)
-	})
-}
-
-func newProxyTokenSource(ctx context.Context, c Config, pkey any) (func(context.Context) (string, error), error) {
-	return reuseToken(ctx, c, pkey, func(ctx context.Context) (*expiringToken, error) {
-		toExchange, err := generateNewJWT(c, pkey, proxySigningMethod, map[string]any{
-			"aud":             GoogleOIDCURL,
-			"target_audience": proxyAudience,
-		})
-		if err != nil {
-			return nil, err
-		}
-
-		req, err := http.NewRequestWithContext(ctx, "POST", GoogleOIDCURL, strings.NewReader((url.Values{
-			"grant_type": {"urn:ietf:params:oauth:grant-type:jwt-bearer"},
-			"assertion":  {toExchange.tok},
-		}).Encode()))
-		if err != nil {
-			return nil, err
-		}
-		req.Header.Set("Content-Type", `application/x-www-form-urlencoded`)
-
-		resp, err := cmp.Or(c.Client, http.DefaultClient).Do(req)
-		if err != nil {
-			return nil, err
-		}
-		defer resp.Body.Close()
-		data, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return nil, err
-		}
-		type oidcResponse struct {
-			Error            string `json:"error"`
-			ErrorDescription string `json:"error_description"`
-			IDToken          string `json:"id_token"`
-		}
-		r := oidcResponse{}
-		if err := json.Unmarshal(data, &r); err != nil {
-			return nil, err
-		}
-		if r.Error != "" {
-			return nil, fmt.Errorf("exchanging OIDC token: %s: %s", r.Error, r.ErrorDescription)
-		}
-		return &expiringToken{tok: r.IDToken, expiresAt: toExchange.expiresAt}, nil
-	})
-}
-
-func reuseToken(ctx context.Context, c Config, pkey any, genToken func(context.Context) (*expiringToken, error)) (func(context.Context) (string, error), error) {
-	freshToken, err := genToken(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	mu := &sync.Mutex{}
-	return func(_ context.Context) (string, error) {
-		mu.Lock()
-		defer mu.Unlock()
-
-		if freshToken.isStale(c.Clock) {
-			ft, err := genToken(ctx)
-			if err != nil {
-				return "", err
-			}
-			freshToken = ft
-		}
-		return freshToken.tok, nil
+	return &authCredentials{
+		tokens: make(map[string]*expiringToken),
+		config: c,
+		pkey:   pkey,
 	}, nil
 }
 
-func parsePrivateKey(data []byte) (any, error) {
+// JWTOptions contains options for JWT creation
+type JWTOptions struct {
+	Email        string
+	PrivateKeyID string
+	Audience     string
+	ExpiresAt    time.Time
+	IssuedAt     time.Time
+}
+
+// CreateJWT creates a JWT token with the specified options and private key
+func CreateJWT(opts JWTOptions, pkey any) (string, error) {
+	claims := jwt.MapClaims{
+		"iss": opts.Email,
+		"sub": opts.Email,
+		"iat": jwt.NewNumericDate(opts.IssuedAt),
+		"exp": jwt.NewNumericDate(opts.ExpiresAt),
+	}
+
+	if opts.Audience != "" {
+		claims["aud"] = opts.Audience
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	if opts.PrivateKeyID != "" {
+		token.Header["kid"] = opts.PrivateKeyID
+	}
+
+	tokenString, err := token.SignedString(pkey)
+	if err != nil {
+		return "", fmt.Errorf("signing auth jwt: %w", err)
+	}
+
+	return tokenString, nil
+}
+
+// ParsePrivateKey parses a private key from PEM-encoded data
+func ParsePrivateKey(data []byte) (any, error) {
 	var pkey any
 	ok := false
 	parseErrs := []error{}
@@ -263,34 +247,6 @@ func parsePrivateKey(data []byte) (any, error) {
 type expiringToken struct {
 	expiresAt time.Time
 	tok       string
-}
-
-func generateNewJWT(c Config, pkey any, signingMethod jwt.SigningMethod, extraClaims map[string]any) (*expiringToken, error) {
-	now := c.Clock.Now()
-	expiresAt := now.Add(tokenLifetime)
-
-	claims := jwt.MapClaims{
-		// AUDience
-		"aud": c.Host,
-		// Key ID
-		"kid": c.PrivateKeyID,
-		// ISSuer
-		"iss": c.Email,
-		// SUBject
-		"sub": c.Email,
-		// EXPires at
-		"exp": jwt.NewNumericDate(expiresAt),
-		// Issued AT
-		"iat": jwt.NewNumericDate(now),
-	}
-	maps.Insert(claims, maps.All(extraClaims))
-
-	token, err := jwt.NewWithClaims(signingMethod, claims).SignedString(pkey)
-	if err != nil {
-		return nil, fmt.Errorf("signing auth jwt: %w", err)
-	}
-
-	return &expiringToken{tok: token, expiresAt: expiresAt}, nil
 }
 
 func (et *expiringToken) isStale(clock clockwork.Clock) bool {

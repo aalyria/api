@@ -370,19 +370,11 @@ func getDialOpts(ctx context.Context, connParams *configpb.ConnectionParams, clo
 		if err != nil {
 			return nil, err
 		}
-		host, _, err := net.SplitHostPort(connParams.GetEndpointUri())
-		// If parsing host:port fails, let's use the whole param as host
-		// and let downstream libraries fail if the host is actually invalid.
-		if err != nil {
-			host = connParams.GetEndpointUri()
-		}
-
 		creds, err := auth.NewCredentials(ctx, auth.Config{
 			Clock:        clock,
 			Email:        jwtSpec.GetEmail(),
 			PrivateKeyID: jwtSpec.GetPrivateKeyId(),
 			PrivateKey:   pkeySrc,
-			Host:         host,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("generating authorization JWT: %w", err)
