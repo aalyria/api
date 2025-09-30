@@ -133,6 +133,7 @@ jobs:
           tag_name: v${{ steps.version.outputs.value }}
           name: Release v${{ steps.version.outputs.value }}
           target_commitish: ${{ github.event.inputs.ref || github.ref }}
+          make_latest: legacy # determined based on the release creation date and higher semantic version
           draft: false
           files: |
             tools-*/*.zip
