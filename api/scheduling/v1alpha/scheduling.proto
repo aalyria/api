@@ -384,11 +384,27 @@ message RxConfiguration {
   uint64 center_frequency_hz = 1;
   uint64 channel_bandwidth_hz = 2;
   Polarization polarization = 3;
+  // Corresponds to an nmts.v1.ek.physical.Carrier.config_id of a carrier within
+  // an nmts.v1.ek.physical.CarrierConfiguration. In NMTS graphs, demodulators
+  // are associated with CarrierConfigurations through receivers, e.g.,
+  // Demodulator <--RK_SIGNAL_TRANSITS-- 
+  //    SignalProcessingChain <--RK_SIGNAL_TRANSITS-- 
+  //        Receiver <--RK_SIGNAL_TRANSITS-- Antenna
+  //            |
+  //            |--RK_SUPPORTS--> CarrierConfiguration
+  string carrier_config_id = 9;
 
   RxPower expected_rx_power = 8;
 
   // Symbol rate in Megasymbols per second.
   double symbol_rate_msps = 5;
+  // The roll-off factor, which is a measure of the excess bandwidth of a 
+  // carrier’s pulse-shaping filter, as a decimal value. 
+  // Note: The channel bandwidth, symbol rate, and roll-off parameters hold 
+  // redundant information (since with any two of those parameters the third 
+  // value is computable), but all three can be provided to a client for clarity
+  // and convenience.
+  float roll_off_factor = 10;
 
   // Identifies the demodulator associated with the carrier on this beam.
   // Must be present if beam-hopping is not used, otherwise it should be
@@ -408,12 +424,28 @@ message TxConfiguration {
   uint64 center_frequency_hz = 1;
   uint64 channel_bandwidth_hz = 2;
   Polarization polarization = 3;
+  // Corresponds to an nmts.v1.ek.physical.Carrier.config_id of a carrier within
+  // an nmts.v1.ek.physical.CarrierConfiguration. In NMTS graphs, modulators are
+  // associated with CarrierConfigurations through transmitters, e.g.,
+  // Modulator --RK_SIGNAL_TRANSITS--> 
+  //    SignalProcessingChain --RK_SIGNAL_TRANSITS--> 
+  //        Transmitter --RK_SIGNAL_TRANSITS--> Antenna
+  //            |
+  //            |--RK_SUPPORTS--> CarrierConfiguration
+  string carrier_config_id = 10;
 
   // Transmit power in Watts.
   double power_w = 5;
 
   // Symbol rate in Megasymbols per second.
   double symbol_rate_msps = 6;
+  // The roll-off factor, which is a measure of the excess bandwidth of a 
+  // carrier’s pulse-shaping filter, as a decimal value. 
+  // Note: The channel bandwidth, symbol rate, and roll-off parameters hold 
+  // redundant information (since with any two of those parameters the third 
+  // value is computable), but all three can be provided to a client for clarity
+  // and convenience.
+  float roll_off_factor = 11;
 
   // Identifies the modulator associated with the carrier on this beam.
   // Must be present if beam-hopping is not used, otherwise it should be
