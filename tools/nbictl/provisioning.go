@@ -488,24 +488,31 @@ func deleteProvisioning(ctx context.Context, params deleteProvisioningParams) er
 	printMode := params.printMode
 	dryRunMode := params.dryRunMode
 
+	// Delete candidate paths before the policies, in case they need to be removed separately.
 	p := pool.New().WithErrors()
-	if len(params.p2pSrTePolicies) > 0 {
-		p.Go(func() error {
-			return errors.Join(deleteRemoteResources(
-				params.p2pSrTePolicies, printMode, dryRunMode, func(policy string) error {
-					_, err := client.DeleteP2PSrTePolicy(ctx, &provapipb.DeleteP2PSrTePolicyRequest{
-						Name: policy,
-					})
-					return err
-				})...)
-		})
-	}
 	if len(params.p2pSrTePolicyCandidatePaths) > 0 {
 		p.Go(func() error {
 			return errors.Join(deleteRemoteResources(
 				params.p2pSrTePolicyCandidatePaths, printMode, dryRunMode, func(path string) error {
 					_, err := client.DeleteP2PSrTePolicyCandidatePath(ctx, &provapipb.DeleteP2PSrTePolicyCandidatePathRequest{
 						Name: path,
+					})
+					return err
+				})...)
+		})
+	}
+	err := p.Wait()
+	if err != nil {
+		return err
+	}
+
+	p = pool.New().WithErrors()
+	if len(params.p2pSrTePolicies) > 0 {
+		p.Go(func() error {
+			return errors.Join(deleteRemoteResources(
+				params.p2pSrTePolicies, printMode, dryRunMode, func(policy string) error {
+					_, err := client.DeleteP2PSrTePolicy(ctx, &provapipb.DeleteP2PSrTePolicyRequest{
+						Name: policy,
 					})
 					return err
 				})...)
@@ -546,6 +553,39 @@ func deleteProvisioning(ctx context.Context, params deleteProvisioningParams) er
 	}
 
 	return p.Wait()
+}
+
+func ProvisioningDeleteAll(appCtx *cli.Context) error {
+	ctx := appCtx.Context
+	dryRunMode := !appCtx.Bool("execute")
+	verboseMode := appCtx.Bool("verbose")
+	printMode := dryRunMode || verboseMode
+
+	conn, err := openAPIConnection(appCtx, provisioningAPISubDomain)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	client := provapipb.NewProvisioningClient(conn)
+	remoteResources, err := ProvisioningResourcesFromRemote(ctx, client)
+	if err != nil {
+		return err
+	}
+
+	params := deleteProvisioningParams{
+		printMode:  printMode,
+		dryRunMode: dryRunMode,
+		client:     client,
+
+		p2pSrTePolicies:             lo.Keys(remoteResources.p2pSrTePolicies),
+		p2pSrTePolicyCandidatePaths: lo.Keys(remoteResources.p2pSrTePolicyCandidatePaths),
+		downtimes:                   lo.Keys(remoteResources.downtimes),
+		protectionAssociationGroups: lo.Keys(remoteResources.protectionAssociationGroups),
+		disjointAssociationGroups:   lo.Keys(remoteResources.disjointAssociationGroups),
+	}
+
+	return deleteProvisioning(appCtx.Context, params)
 }
 
 func ProvisioningDelete(appCtx *cli.Context) error {

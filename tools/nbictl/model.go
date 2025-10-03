@@ -20,8 +20,8 @@ import (
 	"io"
 	"os"
 
-	modelpb "aalyria.com/spacetime/api/model/v1"
 	set "github.com/deckarep/golang-set/v2"
+	"github.com/samber/lo"
 	"github.com/sourcegraph/conc/pool"
 	"github.com/urfave/cli/v2"
 	"google.golang.org/grpc/codes"
@@ -29,6 +29,8 @@ import (
 	"google.golang.org/protobuf/proto"
 	er "outernetcouncil.org/nmts/v1/lib/entityrelationship"
 	nmtspb "outernetcouncil.org/nmts/v1/proto"
+
+	modelpb "aalyria.com/spacetime/api/model/v1"
 )
 
 const modelAPISubDomain = "model-v1"
@@ -346,6 +348,97 @@ func isNotFoundError(err error) bool {
 
 	// Check if the code is NotFound (code 5)
 	return st.Code() == codes.NotFound
+}
+
+func ModelDeleteAll(appCtx *cli.Context) error {
+	dryRunMode := !appCtx.Bool("execute")
+	verboseMode := appCtx.Bool("verbose")
+	printMode := dryRunMode || verboseMode
+
+	conn, err := openAPIConnection(appCtx, modelAPISubDomain)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	modelClient := modelpb.NewModelClient(conn)
+
+	listPool := pool.New().WithErrors()
+
+	var entityIds []string
+	listPool.Go(func() error {
+		entityList, err := modelClient.ListEntities(appCtx.Context, &modelpb.ListEntitiesRequest{})
+		if err != nil {
+			return err
+		}
+
+		entityIds = lo.Map(entityList.Entities, func(item *nmtspb.Entity, _ int) string {
+			return item.GetId()
+		})
+
+		return nil
+	})
+	var relationships []*nmtspb.Relationship
+	listPool.Go(func() error {
+		relationshipList, err := modelClient.ListRelationships(appCtx.Context, &modelpb.ListRelationshipsRequest{})
+		if err != nil {
+			return err
+		}
+
+		relationships = relationshipList.GetRelationships()
+		return nil
+	})
+
+	errs := listPool.Wait()
+	if errs != nil {
+		return errors.Join(errs)
+	}
+
+	deleteRelationshipsPool := pool.New().WithErrors()
+	for _, relationship := range relationships {
+		deleteRelationshipsPool.Go(func() error {
+			if printMode {
+				fmt.Printf("delete relationship: %s\n", relationship)
+			}
+			var err error
+			if !dryRunMode {
+				_, err = modelClient.DeleteRelationship(appCtx.Context, &modelpb.DeleteRelationshipRequest{
+					Relationship: relationship,
+				})
+				if err != nil && isNotFoundError(err) {
+					err = nil
+				}
+			}
+			return err
+		})
+	}
+
+	errs = deleteRelationshipsPool.Wait()
+	if errs != nil {
+		return errors.Join(errs)
+	}
+
+	deleteEntitiesPool := pool.New().WithErrors()
+	for _, entityId := range entityIds {
+		deleteEntitiesPool.Go(func() error {
+			if printMode {
+				fmt.Printf("delete entity: %s\n", entityId)
+			}
+			var err error
+			if !dryRunMode {
+				_, err = modelClient.DeleteEntity(appCtx.Context, &modelpb.DeleteEntityRequest{
+					EntityId: entityId,
+				})
+				if err != nil && isNotFoundError(err) {
+					err = nil
+				}
+			}
+			return err
+		})
+	}
+
+	errs = deleteEntitiesPool.Wait()
+
+	return errors.Join(errs)
 }
 
 func ModelSync(appCtx *cli.Context) error {

@@ -235,6 +235,14 @@ Sync all model entities and relationships from file and directory arguments.
 
 **--verbose, -v**: increase verbosity
 
+### delete-all, clear
+
+Delete all model entities and relationships from remote.
+
+**--execute, -y, --no-dry-run**: execute command, skipping trial run that doesn't make any changes
+
+**--verbose, -v**: increase verbosity
+
 ## provisioning-v1alpha
 
 Subcommands for Provisioning API v1alpha, to manage the provisioned resources within the digital twin.
@@ -270,6 +278,14 @@ Delete provisioning resources from remote.
 **--dry-run, -n**: perform a trial run that doesn't make any changes
 
 **--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
+
+**--verbose, -v**: increase verbosity
+
+### delete-all, clear
+
+Delete all provisioning resources from remote.
+
+**--execute, -y, --no-dry-run**: execute command, skipping trial run that doesn't make any changes
 
 **--verbose, -v**: increase verbosity
 

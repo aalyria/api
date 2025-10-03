@@ -109,6 +109,13 @@ func App() *cli.App {
 		Usage:   "perform a trial run that doesn't make any changes",
 		Aliases: []string{"n"},
 	}
+	// Flag for when default should always be dry run
+	executeFlag := &cli.BoolFlag{
+		Name:    "execute",
+		Usage:   "execute command, skipping trial run that doesn't make any changes",
+		Aliases: []string{"y", "no-dry-run"},
+		Value:   false,
+	}
 	verboseFlag := &cli.BoolFlag{
 		Name:    "verbose",
 		Usage:   "increase verbosity",
@@ -538,6 +545,17 @@ func App() *cli.App {
 							},
 						},
 					},
+					{
+						Name:     "delete-all",
+						Aliases:  []string{"clear"},
+						Usage:    "Delete all model entities and relationships from remote.",
+						Category: "model entities and relationships",
+						Action:   ModelDeleteAll,
+						Flags: []cli.Flag{
+							executeFlag,
+							verboseFlag,
+						},
+					},
 				},
 			},
 			{
@@ -587,6 +605,17 @@ func App() *cli.App {
 						Flags: []cli.Flag{
 							formatFlag,
 							dryrunFlag,
+							verboseFlag,
+						},
+					},
+					{
+						Name:     "delete-all",
+						Aliases:  []string{"clear"},
+						Usage:    "Delete all provisioning resources from remote.",
+						Category: "provisioning resources",
+						Action:   ProvisioningDeleteAll,
+						Flags: []cli.Flag{
+							executeFlag,
 							verboseFlag,
 						},
 					},
