@@ -442,6 +442,11 @@ func ModelDeleteAll(appCtx *cli.Context) error {
 }
 
 func ModelSync(appCtx *cli.Context) error {
+	deleteMode := appCtx.Bool("delete")
+	dryRunMode := appCtx.Bool("dry-run")
+	verboseMode := appCtx.Bool("verbose")
+	printMode := dryRunMode || verboseMode
+
 	marshaller, err := marshallerForFormat(appCtx.String("format"))
 	if err != nil {
 		return err
@@ -537,12 +542,30 @@ func ModelSync(appCtx *cli.Context) error {
 	fmt.Fprintf(os.Stdout, "- %d NMTS Relationships\n", remoteRelationshipKeys.Cardinality())
 
 	// Step 3: compute and print/enact differences.
-	deleteMode := appCtx.Bool("delete")
-	dryRunMode := appCtx.Bool("dry-run")
-	verboseMode := appCtx.Bool("verbose")
-	printMode := dryRunMode || verboseMode
-
 	errs := []error{}
+
+	// Delete relationships before deleting entities.
+	deleteRelationshipsPool := pool.New().WithErrors()
+	if deleteMode {
+		relationshipsToBeDeleted := remoteRelationshipKeys.Difference(localRelationshipKeys)
+		for relationship := range relationshipsToBeDeleted.Iter() {
+			deleteRelationshipsPool.Go(func() error {
+				if printMode {
+					fmt.Printf("delete relationship: %s\n", relationship)
+				}
+				var err error
+				if !dryRunMode {
+					_, err = modelClient.DeleteRelationship(appCtx.Context, &modelpb.DeleteRelationshipRequest{
+						Relationship: relationship.ToProto(),
+					})
+				}
+				return err
+			})
+		}
+	}
+	// Wait for relationship deletes before adding entities and
+	// relationships that might create difficult-to-analyze graphs.
+	errs = append(errs, deleteRelationshipsPool.Wait())
 
 	// Update entities.
 	updatePool := pool.New().WithErrors()
@@ -583,9 +606,6 @@ func ModelSync(appCtx *cli.Context) error {
 					if err != nil && isNotFoundError(err) {
 						err = nil
 					}
-					// TODO: retrieve list of deleted relationships
-					// from DeleteEntityResponse and prune them from
-					// the relationshipsToBeDeleted set.
 				}
 				return err
 			})
@@ -594,29 +614,6 @@ func ModelSync(appCtx *cli.Context) error {
 
 	errs = append(errs, updatePool.Wait())
 	errs = append(errs, deleteEntitiesPool.Wait())
-
-	// Maybe delete relationships.
-	deleteRelationshipsPool := pool.New().WithErrors()
-	if deleteMode {
-		relationshipsToBeDeleted := remoteRelationshipKeys.Difference(localRelationshipKeys)
-		for relationship := range relationshipsToBeDeleted.Iter() {
-			deleteRelationshipsPool.Go(func() error {
-				if printMode {
-					fmt.Printf("delete relationship: %s\n", relationship)
-				}
-				var err error
-				if !dryRunMode {
-					_, err = modelClient.DeleteRelationship(appCtx.Context, &modelpb.DeleteRelationshipRequest{
-						Relationship: relationship.ToProto(),
-					})
-				}
-				return err
-			})
-		}
-	}
-	// Wait for relationship deletes before adding entities and
-	// relationships that might create difficult-to-analyze graphs.
-	errs = append(errs, deleteRelationshipsPool.Wait())
 
 	// Add entities.
 	addEntitiesPool := pool.New().WithErrors()
