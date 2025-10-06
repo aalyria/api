@@ -351,9 +351,8 @@ message ContactWindow {
   ];
 }
 
-// TODO: Update documentation once RFCs are defined.
 // A bearer is the required underlying connection for the provisioning of an attachment circuit. 
-// It is used as defined in the current draft draft-ietf-opsawg-teas-attachment-circuit-20. 
+// It is used as defined in RFC 9834.
 // Bearers must be defined within Contact Windows.
 message Bearer {
   option (google.api.resource) = {
@@ -400,14 +399,14 @@ message Bearer {
   ];
 }
 
-// TODO: Replace draft with RFC once they are out.
 // An attachment circuit is a means of attaching to a router.
 // Per Section 1.2 of RFC4364, it may be the sort of connection that is usually
 // thought of as a "data link", or it may be a tunnel of some sort; what matters
 // is that it be possible for two devices to be network layer peers over the
 // attachment circuit.
+//
 // The L2Connection and therefore the attachment circuit is attached to a bearer. 
-// This message is similar to section A.2. in draft-ietf-opsawg-teas-attachment-circuit-20.
+// This message is similar to section A.2. in RFC 9834.
 message AttachmentCircuit {
   option (google.api.resource) = {
     type: "interconnect.outernetcouncil.org/AttachmentCircuit"
