@@ -12,26 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel/java_format_rules:def.bzl", "java_format_test")
-load("//bazel/java_rules:def.bzl", "java_library")
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
 
 package(default_visibility = ["//visibility:public"])
 
-java_format_test(
-    name = "java_format_test",
-    srcs = glob(["*.java"]),
+go_binary(
+    name = "model_client",
+    embed = [":codesamples_lib"],
 )
 
-java_library(
-    name = "Authentication",
-    srcs = [
-        "JwtManager.java",
-        "SpacetimeCallCredentials.java",
-    ],
+go_library(
+    name = "codesamples_lib",
+    srcs = ["model_client.go"],
+    importpath = "aalyria.com/spacetime/github/go/codesamples/model",
     deps = [
-        "@maven//:com_google_code_gson_gson",
-        "@maven//:com_google_guava_guava",
-        "@maven//:io_grpc_grpc_api",
-        "@maven//:org_bouncycastle_bcprov_jdk15on",
+        "//api/model/v1:v1_go_proto",
+        "//auth",
+        "@com_github_jonboulle_clockwork//:clockwork",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//credentials",
+        "@org_golang_google_grpc//keepalive",
+        "@org_outernetcouncil_nmts//v1/proto:nmts_go_proto",
     ],
 )

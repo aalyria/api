@@ -1,4 +1,4 @@
-# Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+# Copyright (c) Aalyria Technologies, Inc., and its affiliates.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,10 +15,10 @@
 load("@rules_python//python:defs.bzl", "py_binary")
 
 py_binary(
-    name = "list_entities",
-    srcs = ["list_entities.py"],
+    name = "model_client",
+    srcs = ["model_client.py"],
     deps = [
-        "//api/nbi/v1alpha:nbi_python_grpc",
+        "//api/model/v1:model_python_grpc",
         "//py/authentication",
     ],
 )

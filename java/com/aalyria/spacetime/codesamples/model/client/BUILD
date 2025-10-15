@@ -1,4 +1,4 @@
-# Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+# Copyright (c) Aalyria Technologies, Inc., and its affiliates.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,13 +21,14 @@ java_format_test(
 )
 
 java_binary(
-    name = "ListEntities",
+    name = "ModelClient",
     srcs = [
-        "ListEntities.java",
+        "ModelClient.java",
     ],
     deps = [
-        "//api/nbi/v1alpha:nbi_java_grpc",
+        "//api/model/v1:model_java_grpc",
         "//java/com/aalyria/spacetime/authentication:Authentication",
         "@maven//:com_google_code_gson_gson",
+        "@org_outernetcouncil_nmts//v1/proto:nmts_java_proto",
     ],
 )
