@@ -1,0 +1,313 @@
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package aalyria.spacetime.api.telemetry.v1alpha;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "aalyria.com/spacetime/api/telemetry/v1alpha";
+option java_package = "com.aalyria.spacetime.api.telemetry.v1alpha";
+
+service Telemetry {
+  // Pushes metrics to the SDN controller.
+  rpc ExportMetrics(ExportMetricsRequest) returns (google.protobuf.Empty) {}
+}
+
+// The request for aalyria.spacetime.telemetry.v1alpha.Telemetry.ExportMetrics.
+message ExportMetricsRequest {
+  repeated InterfaceMetrics interface_metrics = 1;
+  repeated ModemMetrics modem_metrics = 2;
+}
+
+// A collection of metrics from a network interface.
+message InterfaceMetrics {
+  // Required. The interface producing telemetry.
+  optional string interface_id = 1;
+
+  // Data points describing the time-varying value of the interface's
+  // operational state.
+  repeated IfOperStatusDataPoint operational_state_data_points = 2;
+
+  // Data points describing the time-varying values of the interface's standard
+  // statistics.
+  repeated StandardInterfaceStatisticsDataPoint
+    standard_interface_statistics_data_points = 3;
+}
+
+// A data point in a timeseries that describes a network interface's time-
+// varying operational state.
+message IfOperStatusDataPoint {
+  // Required. When the value was captured.
+  google.protobuf.Timestamp time = 1;
+
+  optional IfOperStatus value = 2;
+}
+
+// Network interface operational state. 
+//
+// See [RFC 2863](https://www.rfc-editor.org/rfc/rfc2863.html).
+enum IfOperStatus {
+  IF_OPER_STATUS_UNSPECIFIED = 0;
+
+  // Ready to pass packets.
+  IF_OPER_STATUS_UP = 1;
+  
+  IF_OPER_STATUS_DOWN = 2;
+
+  // In some test mode.
+  IF_OPER_STATUS_TESTING = 3;
+
+  // Status can not be determined for some reason.
+  IF_OPER_STATUS_UNKNOWN = 4;
+
+  IF_OPER_STATUS_DORMANT = 5;
+
+  // Some component is missing.
+  IF_OPER_STATUS_NOT_PRESENT = 6;
+
+  // Down due to state of lower-layer interface(s).
+  IF_OPER_STATUS_LOWER_LAYER_DOWN = 7;
+}
+
+// A data point in a timeseries that describes the time-varying values of
+// a standard collection of network interface statistics.
+//
+// Specifically, the statistics are defined to mirror Linux's standard interface
+// the fields and their documentation are derived.
+message StandardInterfaceStatisticsDataPoint {
+  // The start time of the sums.
+  google.protobuf.Timestamp start_time = 1;
+
+  // Required. When the statistics were captured.
+  google.protobuf.Timestamp time = 2;
+
+  // Number of good packets received by the interface. For hardware interfaces
+  // counts all good packets received from the device by the host, including
+  // packets which host had to drop at various stages of processing (even in
+  // the driver).
+  optional int64 rx_packets = 3;
+
+  // Number of packets successfully transmitted. For hardware interfaces counts
+  // packets which host was able to successfully hand over to the device, which
+  // does not necessarily mean that packets had been successfully transmitted
+  // out of the device, only that device acknowledged it copied them out of
+  // host memory.
+  optional int64 tx_packets = 4;
+
+  // Number of good received bytes, corresponding to rx_packets.
+  //
+  // For IEEE 802.3 devices should count the length of Ethernet Frames
+  // excluding the FCS.
+  optional int64 rx_bytes = 5;
+
+  // Number of good transmitted bytes, corresponding to tx_packets.
+  //
+  // For IEEE 802.3 devices should count the length of Ethernet Frames
+  // excluding the FCS.
+  optional int64 tx_bytes = 6;
+
+  // Total number of bad packets received on this network device. This counter
+  // must include events counted by rx_length_errors, rx_crc_errors,
+  // rx_frame_errors and other errors not otherwise counted.
+  optional int64 rx_errors = 7;
+
+  // Total number of transmit problems. This counter must include events
+  // counter by tx_aborted_errors, tx_carrier_errors, tx_fifo_errors,
+  // tx_heartbeat_errors, tx_window_errors and other errors not otherwise
+  // counted.
+  optional int64 tx_errors = 8;
+
+  // Number of packets received but not processed, e.g. due to lack of
+  // resources or unsupported protocol. For hardware interfaces this counter
+  // may include packets discarded due to L2 address filtering but should not
+  // include packets dropped by the device due to buffer exhaustion which are
+  // counted separately in rx_missed_errors (since procfs folds those two
+  // counters together).
+  optional int64 rx_dropped = 9;
+
+  // Number of packets dropped on their way to transmission, e.g. due to lack
+  // of resources.
+  optional int64 tx_dropped = 10;
+
+  // Multicast packets received. For hardware interfaces this statistic is
+  // commonly calculated at the device level (unlike rx_packets) and therefore
+  // may include packets which did not reach the host.
+  //
+  // For IEEE 802.3 devices this counter may be equivalent to:
+  //  * 30.3.1.1.21 aMulticastFramesReceivedOK
+  optional int64 multicast = 11;
+
+  // Number of collisions during packet transmissions.
+  optional int64 collisions = 12;
+
+  // Number of packets dropped due to invalid length.
+  //
+  // For IEEE 802.3 devices this counter should be equivalent to a sum of the
+  // following attributes:
+  //  * 30.3.1.1.23 aInRangeLengthErrors
+  //  * 30.3.1.1.24 aOutOfRangeLengthField
+  //  * 30.3.1.1.25 aFrameTooLongErrors
+  optional int64 rx_length_errors = 13;
+
+  // Receiver FIFO overflow event counter.
+  //
+  // Historically the count of overflow events. Such events may be reported in
+  // the receive descriptors or via interrupts, and may not correspond one-to-
+  // one with dropped packets.
+  //
+  // The recommended interpretation for high speed interfaces is - number of
+  // packets dropped because they did not fit into buffers provided by the host,
+  // e.g. packets larger than MTU or next buffer in the ring was not available
+  // for a scatter transfer.
+  //
+  // This statistics was historically used interchangeably with rx_fifo_errors.
+  //
+  // This statistic corresponds to hardware events and is not commonly used on
+  // software devices.
+  optional int64 rx_over_errors = 14;
+
+  // Number of packets received with a CRC error.
+  //
+  // For IEEE 802.3 devices this counter must be equivalent to:
+  //  * 30.3.1.1.6 aFrameCheckSequenceErrors
+  optional int64 rx_crc_errors = 15;
+
+  // Receiver frame alignment errors.
+  //
+  // For IEEE 802.3 devices this counter should be equivalent to:
+  //  * 30.3.1.1.7 aAlignmentErrors
+  optional int64 rx_frame_errors = 16;
+
+  // Receiver FIFO error counter.
+  //
+  // Historically the count of overflow events. Those events may be reported in
+  // the receive descriptors or via interrupts, and may not correspond one-to-
+  // one with dropped packets.
+  //
+  // This statistics was used interchangeably with rx_over_errors. Not
+  // recommended for use in drivers for high speed interfaces.
+  //
+  // This statistic is used on software devices, e.g. to count software packet
+  // queue overflow (can) or sequencing errors (GRE).
+  optional int64 rx_fifo_errors = 17;
+
+  // Count of packets missed by the host.
+  //
+  // Counts number of packets dropped by the device due to lack of buffer space.
+  // This usually indicates that the host interface is slower than the network
+  // interface, or host is not keeping up with the receive packet rate.
+  //
+  // This statistic corresponds to hardware events and is not used on software
+  // devices.
+  optional int64 rx_missed_errors = 18;
+
+
+  // For IEEE 802.3 devices capable of half-duplex operation this counter must
+  // be equivalent to:
+  //  * 30.3.1.1.11 aFramesAbortedDueToXSColls
+  //
+  // High speed interfaces may use this counter as a general device discard
+  // counter.
+  optional int64 tx_aborted_errors = 19;
+
+  // Number of frame transmission errors due to loss of carrier during
+  // transmission.
+  //
+  // For IEEE 802.3 devices this counter must be equivalent to:
+  //  * 30.3.1.1.13 aCarrierSenseErrors
+  optional int64 tx_carrier_errors = 20;
+
+  // Number of frame transmission errors due to device FIFO underrun /
+  // underflow. This condition occurs when the device begins transmission of a
+  // frame but is unable to deliver the entire frame to the transmitter in time
+  // for transmission.
+  optional int64 tx_fifo_errors = 21;
+
+  // Number of Heartbeat / SQE Test errors for old half-duplex Ethernet.
+  //
+  // For IEEE 802.3 devices possibly equivalent to:
+  //  * 30.3.2.1.4 aSQETestErrors
+  optional int64 tx_heartbeat_errors = 22;
+
+  // Number of frame transmission errors due to late collisions (for Ethernet -
+  // after the first 64B of transmission).
+  //
+  // For IEEE 802.3 devices this counter must be equivalent to:
+  //  * 30.3.1.1.10 aLateCollisions
+  optional int64 tx_window_errors = 23;
+
+  // Number of correctly received compressed packets. This counters is only
+  // meaningful for interfaces which support packet compression (e.g. CSLIP,
+  // PPP).
+  optional int64 rx_compressed = 24;
+
+  //  Number of transmitted compressed packets. This counters is only meaningful
+  // for interfaces which support packet compression (e.g. CSLIP, PPP).
+  optional int64 tx_compressed = 25;
+
+  // Number of packets received on the interface but dropped by the networking
+  // stack because the device is not designated to receive packets (e.g. backup
+  // link in a bond).
+  optional int64 rx_nohandler = 26;
+
+  // Number of packets dropped due to mismatch in destination MAC address.
+  optional int64 rx_otherhost_dropped = 27;
+}
+
+// A collection of metrics from a modem.
+message ModemMetrics {
+  // Required. The modem producing telemetry.
+  optional string demodulator_id = 1;
+
+  // Data points describing the time-varying energy per symbol to noise power
+  // spectral density observed by the modem.
+  repeated Esn0DataPoint esn0_data_points = 4;
+
+  // Data points describing the time-varying signal-to-interference-plus-noise
+  // ratio observed by the modem.
+  repeated SinrDataPoint sinr_data_points = 5;
+
+  reserved 2;
+}
+
+// A data point in a timeseries that describes the time-varying energy per
+// symbol to noise power spectral density observed by a modem.
+message Esn0DataPoint {
+  // Required. When the value was captured.
+  google.protobuf.Timestamp time = 1;
+
+  // Required. The transmitting modem.
+  optional string modulator_id = 2;
+
+  // The energy per symbol to noise power spectral density, expressed in
+  // decibels.
+  optional double esn0_db = 3;
+}
+
+// A data point in a timeseries that describes time-varying
+// signal-to-interference-plus-noise ratio observed by a modem.
+message SinrDataPoint {
+  // Required. When the value was captured.
+  google.protobuf.Timestamp time = 1;
+
+  // Required. The transmitting modem.
+  optional string modulator_id = 2;
+
+  // The signal-to-interference-plus-noise ratio, expressed in decibels.
+  optional double sinr_db = 3;
+}
+
