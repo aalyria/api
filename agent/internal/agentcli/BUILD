@@ -45,7 +45,7 @@ go_library(
         "@io_opentelemetry_go_contrib_instrumentation_google_golang_org_grpc_otelgrpc//:otelgrpc",
         "@io_opentelemetry_go_otel//attribute",
         "@io_opentelemetry_go_otel//propagation",
-        "@io_opentelemetry_go_otel//semconv/v1.26.0:v1_26_0",
+        "@io_opentelemetry_go_otel//semconv/v1.34.0:v1_34_0",
         "@io_opentelemetry_go_otel_exporters_otlp_otlptrace_otlptracegrpc//:otlptracegrpc",
         "@io_opentelemetry_go_otel_sdk//resource",
         "@io_opentelemetry_go_otel_sdk//trace",
