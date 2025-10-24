@@ -1,6 +1,6 @@
 module aalyria.com/spacetime
 
-go 1.25.0
+go 1.25.3
 
 require (
 	github.com/bazelbuild/rules_go v0.57.0
