@@ -191,6 +191,7 @@ message Beam {
 
 message RxConfiguration {
   optional string demodulator_id = 6;
+  optional string receiver_id = 8;
 
   optional uint64 center_frequency_hz = 1;
   optional uint64 channel_bandwidth_hz = 2;
@@ -206,6 +207,7 @@ message RxConfiguration {
 
 message TxConfiguration {
   optional string modulator_id = 8;
+  optional string transmitter_id = 9;
 
   optional uint64 center_frequency_hz = 1;
   optional uint64 channel_bandwidth_hz = 2;

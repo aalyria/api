@@ -87,6 +87,7 @@ message Radio {
     optional BeamPower transmit_power = 1;
 
     optional string modulator_id = 2;
+    optional string transmitter_id = 5;
     optional string antenna_id = 4;
 
     enum ModulatorMode {
@@ -104,6 +105,7 @@ message Radio {
 
 message RxRadioConfiguration {
   optional string demodulator_id = 1;
+  optional string receiver_id = 5;
   optional string antenna_id = 3;
 
   enum DemodulatorMode {
