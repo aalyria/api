@@ -45,30 +45,16 @@ message GetMetricsRequest {
 // GetMetricsResponse contains all the metrics data 
 // using the standard OpenTelemetry format
 message GetMetricsResponse {
-  // Total number of service requests in the system 
-  optional opentelemetry.proto.metrics.v1.Gauge service_request = 1;
-
-  // Total number of platform types in the system 
+  // Total number of platform types in the system, broken down by:
+  // - `s7e.type`: 
+  //    (String) The type of the element as defined by the `catalog_type`
   optional opentelemetry.proto.metrics.v1.Gauge platform_types = 2;
 
-  // Current min for CIR in bit/s for a given service request
-  optional opentelemetry.proto.metrics.v1.Gauge cir_min_bps = 3;
-
-  // Current max for CIR in bit/s for a given service request
-  optional opentelemetry.proto.metrics.v1.Gauge cir_max_bps = 4;
-
-  // Current distribution for CIR in bit/s for a given service request
-  optional opentelemetry.proto.metrics.v1.Histogram cir_distribution_bps = 5;
-
-  // Current sum for CIR in bit/s for a given service request
-  optional opentelemetry.proto.metrics.v1.Gauge cir_sum_bps = 6;
-
-  // Number of updates for a CIR for a given service request
-  optional opentelemetry.proto.metrics.v1.Gauge cir_updates = 7;
-
-  // number of inbound messages sent from Aalyria or received by Aalyria.
+  // Number of inbound messages received by Aalyria.
+  // No expected attributes
   optional opentelemetry.proto.metrics.v1.Sum scheduling_inbound_count = 8;
 
-  // number of outbound messages sent from Aalyria or received by Aalyria.
+  // Number of outbound messages sent from Aalyria.
+  // No expected attributes
   optional opentelemetry.proto.metrics.v1.Sum scheduling_outbound_count = 9;
 }
