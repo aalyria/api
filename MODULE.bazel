@@ -179,4 +179,3 @@ http_archive(
     strip_prefix = "opentelemetry-proto-main",
     urls = ["https://github.com/open-telemetry/opentelemetry-proto/archive/main.zip"],
 )
-

@@ -356,7 +356,7 @@ type testFixture struct {
 	t     *testing.T
 	srv   *server
 	eb    *delegatingBackend
-	clock clockwork.FakeClock
+	clock *clockwork.FakeClock
 }
 
 type testNode struct {
