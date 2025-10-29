@@ -633,6 +633,14 @@ func App() *cli.App {
 							formatFlag,
 						},
 					},
+					{
+						Name:   "get-metrics",
+						Usage:  "Retrieve the insight metrics of this Spacetime instance.",
+						Action: StatusGetMetrics,
+						Flags: []cli.Flag{
+							formatFlag,
+						},
+					},
 				},
 			},
 			{

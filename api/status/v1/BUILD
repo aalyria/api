@@ -14,8 +14,6 @@
 
 load("@protobuf//bazel:proto_library.bzl", "proto_library")
 load("@rules_go//proto:def.bzl", "go_proto_library")
-load("@rules_proto_grpc_cpp//:defs.bzl", "cpp_grpc_library")
-load("@rules_proto_grpc_java//:defs.bzl", "java_grpc_library")
 load("@rules_proto_grpc_python//:defs.bzl", "python_grpc_library")
 
 package(default_visibility = ["//visibility:public"])
@@ -25,11 +23,9 @@ proto_library(
     srcs = [
         "status.proto",
     ],
-)
-
-cpp_grpc_library(
-    name = "status_cpp_grpc",
-    protos = [":status_proto"],
+    deps = [
+        "@opentelemetry_metrics//:metrics_proto",
+    ],
 )
 
 go_proto_library(
@@ -40,13 +36,8 @@ go_proto_library(
     ],
     importpath = "aalyria.com/spacetime/api/status/v1",
     proto = ":status_proto",
-)
-
-java_grpc_library(
-    name = "status_java_grpc",
-    protos = [":status_proto"],
     deps = [
-        "@googleapis//google/rpc:rpc_java_proto",
+        "@io_opentelemetry_go_proto_otlp//metrics/v1:metrics",
     ],
 )
 

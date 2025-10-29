@@ -299,6 +299,12 @@ Retrieve the version of this Spacetime instance.
 
 **--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
 
+### get-metrics
+
+Retrieve the insight metrics of this Spacetime instance.
+
+**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
+
 ## grpcurl
 
 Provides curl-like equivalents for interacting with the NBI.

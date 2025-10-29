@@ -50,3 +50,31 @@ func StatusGetVersion(appCtx *cli.Context) error {
 	fmt.Fprint(appCtx.App.Writer, string(marshalled))
 	return nil
 }
+
+func StatusGetMetrics(appCtx *cli.Context) error {
+	marshaller, err := marshallerForFormat(appCtx.String("format"))
+	if err != nil {
+		return err
+	}
+
+	conn, err := openAPIConnection(appCtx, statusAPISubDomain)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	statusClient := statuspb.NewStatusServiceClient(conn)
+
+	response, err := statusClient.GetMetrics(
+		appCtx.Context, &statuspb.GetMetricsRequest{})
+	if err != nil {
+		return err
+	}
+
+	marshalled, err := marshaller.marshal(response)
+	if err != nil {
+		return err
+	}
+	fmt.Fprint(appCtx.App.Writer, string(marshalled))
+	return nil
+}

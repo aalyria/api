@@ -22,6 +22,7 @@ bazel_dep(name = "rules_java", version = "8.3.2")
 bazel_dep(name = "rules_jvm_external", version = "6.3")
 bazel_dep(name = "rules_oci", version = "2.2.6")
 bazel_dep(name = "rules_pkg", version = "1.0.1")
+bazel_dep(name = "rules_proto", version = "5.3.0-21.7")
 bazel_dep(name = "rules_proto_grpc_cpp", version = "5.0.0")
 bazel_dep(name = "rules_proto_grpc_doc", version = "5.0.0")
 bazel_dep(name = "rules_proto_grpc_java", version = "5.0.0")
@@ -106,6 +107,7 @@ use_repo(
     "io_opentelemetry_go_otel_exporters_otlp_otlptrace_otlptracegrpc",
     "io_opentelemetry_go_otel_sdk",
     "io_opentelemetry_go_otel_trace",
+    "io_opentelemetry_go_proto_otlp",
     "org_golang_google_genproto",
     "org_golang_google_genproto_googleapis_api",
     "org_golang_google_genproto_googleapis_rpc",
@@ -152,3 +154,29 @@ archive_override(
     strip_prefix = "nmts-1.1.0",
     urls = "https://github.com/outernetcouncil/nmts/archive/refs/tags/v1.1.0.tar.gz",
 )
+
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "opentelemetry_common",
+    build_file = "//api/third_party/opentelemetry:common.BUILD",
+    strip_prefix = "opentelemetry-proto-main",
+    urls = ["https://github.com/open-telemetry/opentelemetry-proto/archive/main.zip"],
+)
+
+# Resource proto
+http_archive(
+    name = "opentelemetry_resource",
+    build_file = "//api/third_party/opentelemetry:resource.BUILD",
+    strip_prefix = "opentelemetry-proto-main",
+    urls = ["https://github.com/open-telemetry/opentelemetry-proto/archive/main.zip"],
+)
+
+# Metrics proto
+http_archive(
+    name = "opentelemetry_metrics",
+    build_file = "//api/third_party/opentelemetry:metrics.BUILD",
+    strip_prefix = "opentelemetry-proto-main",
+    urls = ["https://github.com/open-telemetry/opentelemetry-proto/archive/main.zip"],
+)
+
