@@ -668,7 +668,10 @@ message RxConfiguration {
   // the demodulators are identified in the beam hopping plan.
   string demodulator = 4;
 
-  ModemMode mode = 5;
+  // This value corresponds to the nmts.v1.ek.physical.Carrier.waveform of the
+  // carrier assigned to this beam. nmts.v1.ek.physical.Carriers are defined in
+  // nmts.v1.ek.physical.CarrierConfigurations.
+  string waveform = 5;
 }
 
 message TxConfiguration {
@@ -687,20 +690,16 @@ message TxConfiguration {
   // modulators are identified in the beam hopping plan.
   string modulator = 8;
 
-  ModemMode mode = 4;
+  // This value corresponds to the nmts.v1.ek.physical.Carrier.waveform of the
+  // carrier assigned to this beam. nmts.v1.ek.physical.Carriers are defined in
+  // nmts.v1.ek.physical.CarrierConfigurations.
+  string waveform = 4;
 }
 
 enum Polarization {
   POLARIZATION_UNSPECIFIED = 0;
   POLARIZATION_LHCP = 1;  // Left-handed circular polarization
   POLARIZATION_RHCP = 2;  // Right-handed circular polarization
-}
-
-enum ModemMode {
-  MODEM_MODE_UNSPECIFIED = 0;
-  MODEM_MODE_DVB_RCS2 = 1;
-  MODEM_MODE_DVB_S2X = 2;
-  MODEM_MODE_TRANSPARENT = 3;  // No modulation/demodulation is performed.
 }
 
 message Endpoint {

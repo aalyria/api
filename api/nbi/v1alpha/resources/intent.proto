@@ -200,7 +200,10 @@ message RxConfiguration {
   // Symbol rate in Megasymbols per second.
   optional double symbol_rate_msps = 5;
 
-  optional ModemMode mode = 4;
+  // This value corresponds to the nmts.v1.ek.physical.Carrier.waveform of the
+  // carrier assigned to this beam. nmts.v1.ek.physical.Carriers are defined in
+  // nmts.v1.ek.physical.CarrierConfigurations.
+  optional string waveform = 4;
 
   optional RxPower expected_rx_power = 7;
 }
@@ -219,7 +222,10 @@ message TxConfiguration {
   // Symbol rate in Megasymbols per second.
   optional double symbol_rate_msps = 6;
 
-  optional ModemMode mode = 4;
+  // This value corresponds to the nmts.v1.ek.physical.Carrier.waveform of the
+  // carrier assigned to this beam. nmts.v1.ek.physical.Carriers are defined in
+  // nmts.v1.ek.physical.CarrierConfigurations.
+  optional string waveform = 4;
 
   // The lowest MODCOD common among all endpoints.
   optional string lowest_common_modcod = 7;
@@ -229,12 +235,6 @@ enum Polarization {
   POLARIZATION_UNSPECIFIED = 0;
   POLARIZATION_LHCP = 1; // Left-handed circular polarization
   POLARIZATION_RHCP = 2; // Right-handed circular polarization
-}
-
-enum ModemMode {
-  MODEM_MODE_UNSPECIFIED = 0;
-  MODEM_MODE_DVB_RCS2 = 1;
-  MODEM_MODE_DVB_S2X = 2;
 }
 
 message Endpoint {
