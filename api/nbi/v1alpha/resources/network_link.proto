@@ -306,11 +306,12 @@ message WirelessLinkReport {
       enum PropagationModel {
         PROPAGATION_MODEL_UNSPECIFIED = 0;
         ATMOSPHERIC_ATTENUATION_MODEL_ITUR_P676 = 1;
-        DOPPLER_SHIFT_MODEL = 2;
         FREE_SPACE_PATH_LOSS_MODEL = 3;
         RAIN_ATTENUATION_MODEL_ITUR_P838 = 4;
         CLOUD_AND_FOG_MODEL_ITUR_P840 = 5;
         TROPOSPHERIC_SCINTILLATION_ATTENUATION_MODEL_ITUR_P1814 = 6;
+
+        reserved 2;
       }
 
       message PropagationLoss {
