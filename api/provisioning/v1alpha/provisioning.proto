@@ -87,6 +87,15 @@ service Provisioning {
   rpc UpdateDisjointAssociationGroup(UpdateDisjointAssociationGroupRequest) returns (DisjointAssociationGroup) {}
   rpc DeleteDisjointAssociationGroup(DeleteDisjointAssociationGroupRequest) returns (google.protobuf.Empty) {}
 
+  // Link provisioning.
+  //
+  // Manage resources under `links/{id}`.
+  rpc GetLink(GetLinkRequest) returns (Link) {}
+  rpc ListLinks(ListLinksRequest) returns (ListLinksResponse) {}
+  rpc CreateLink(CreateLinkRequest) returns (Link) {}
+  rpc UpdateLink(UpdateLinkRequest) returns (Link) {}
+  rpc DeleteLink(DeleteLinkRequest) returns (google.protobuf.Empty) {}
+
   // TODO: Consider RFC 8623 P2MP TE -like request
   // TODO: Consider PHY-layer requests (bent pipe, etc)
   // TODO: Add a DigitalTransparentService request (details TBD)
@@ -638,5 +647,133 @@ message DeleteDisjointAssociationGroupRequest{
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
       type: "provisioning.spacetimeapis.com/DisjointAssociationGroup"
+    }];
+}
+
+// A set of EK_PORT Entity IDs.
+//
+// Whether this set is interpretted as "all of" or "any of",
+// or applicable to originating or terminating another Entity,
+// MUST be defined by the context in which it appears.
+message PortSet {
+  repeated string port_ids = 1;
+}
+
+// A Link, typically PHY-layer.
+//
+// Describes a physical or logical link that connects one node to
+// another within the Spacetime-managed domain.
+//
+// Cf. RFC 9834's `Bearer`, without the emphasis on provider-customer
+// boundary, as this Link is within the Spacetime-operated network.
+message Link {
+  // The resource name of this Link.
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  // The priority field allows the requester to specify the order in
+  // which requests for Provisioning resources are satisfied relative
+  // to all other requests.
+  //
+  // A request will be treated as having a higher priority if the
+  // value of this field is arithmetically greater than that of
+  // another service request.
+  //
+  // Users may want to directly map this to some utility metric of
+  // relevance to their network operations, e.g. estimated revenue,
+  // number of customers served, etc.
+  //
+  // Cf. RFC 9256 S2.12's re-compute priority.
+  double priority = 2;
+
+  // The time interval over which this service is requested.
+  //
+  // If start_time is empty the service is requested to be provisioned
+  // at the earliest possible time it may be realized in the network.
+  //
+  // If end_time is empty the service is requested to be provisioned
+  // until this specific request is canceled or this interval field
+  // is updated with a non-empty end_time.
+  google.type.Interval interval = 3;
+
+  // A simple way to temporarily disable this request without deleting
+  // it from the store of requests. Requests that are disabled will
+  // not be provisioned by Spacetime, but evaluation of candidate
+  // links and topologies may still be performed (to improve rapidity
+  // of provisioning once re-enabled).
+  bool disabled = 4;
+
+  oneof origin_type {
+    PortSet any_of_originating_ports = 5;
+  }
+  oneof termination_type {
+    PortSet any_of_terminating_ports = 6;
+  }
+
+  // The minimum required and desired Metrics for any Links that will
+  // be provisioned as a result of this request.
+  Metrics metrics = 7;
+
+  // An operator-friendly name for this Link, useful as an alternative
+  // when resource names are created as UUIDs, for example.
+  string display_name = 8;
+}
+
+message GetLinkRequest{
+  // The resource name of the Link to retrieve.
+  // Format: `links/{link_id}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/Link"
+    }];
+}
+
+message ListLinksRequest{
+}
+
+message ListLinksResponse{
+  repeated Link links = 1;
+}
+
+message CreateLinkRequest{
+  // The ID to use for the Link, which will become the final component of
+  // the group's resource name, i.e. `links/{link_id}`.
+  //
+  // This value should be 1-63 characters, and valid characters
+  // are /[a-z][0-9]-/, specifically of the form
+  // "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$".
+  string link_id = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // The disjoint association group to create.
+  Link link = 3 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+}
+
+message UpdateLinkRequest{
+  // The Link to update.
+  //
+  // The Link's `name` field is used to identify the Link instance
+  // to be updated.
+  Link link  = 1 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+
+  // The list of fields to be updated.
+  google.protobuf.FieldMask update_mask = 2;
+
+  // If set to true, and the Link named above is not found, a new
+  // instance will be created. In this situation, `update_mask` is
+  // ignored.
+  bool allow_missing = 3;
+}
+
+message DeleteLinkRequest{
+  // The resource name of the Link to delete.
+  // Format: `links/{link_id}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/Link"
     }];
 }

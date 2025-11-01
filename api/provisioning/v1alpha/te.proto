@@ -37,7 +37,7 @@ message Metrics {
   // N.B.: these units DIFFER from those of RFC 8294's
   // bandwidth-ieee-float32 and RFC 8776's te-bandwidth.
   //
-  // Cf. draft-ietf-opsawg-teas-common-ac's bandwidth-parameters
+  // Cf. RFC 9833's `bandwidth-parameters`.
   uint64 cir_bps = 1;
 
   // Excess Information Rate (EIR) in bits per second.
@@ -45,7 +45,7 @@ message Metrics {
   // N.B.: these units DIFFER from those of RFC 8294's
   // bandwidth-ieee-float32 and RFC 8776's te-bandwidth.
   //
-  // Cf. draft-ietf-opsawg-teas-common-ac's bandwidth-parameters
+  // Cf. RFC 9833's `bandwidth-parameters`.
   uint64 eir_bps = 2;
 
   // Maximum latency (one way frame delay).
