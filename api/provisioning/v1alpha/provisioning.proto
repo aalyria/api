@@ -23,6 +23,7 @@ import "google/api/resource.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/field_mask.proto";
 import "google/type/interval.proto";
+import "nmts/v1/proto/types/physical/polarization.proto";
 
 
 option java_package = "com.aalyria.spacetime.api.provisioning.v1alpha";
@@ -95,6 +96,25 @@ service Provisioning {
   rpc CreateLink(CreateLinkRequest) returns (Link) {}
   rpc UpdateLink(UpdateLinkRequest) returns (Link) {}
   rpc DeleteLink(DeleteLinkRequest) returns (google.protobuf.Empty) {}
+
+
+  // Methods on GeographicRegions.
+  //
+  // Manage resources under `geographicRegions/{id}`.
+  rpc GetGeographicRegion(GetGeographicRegionRequest) returns (GeographicRegion) {}
+  rpc ListGeographicRegions(ListGeographicRegionsRequest) returns (ListGeographicRegionsResponse) {}
+  rpc CreateGeographicRegion(CreateGeographicRegionRequest) returns (GeographicRegion) {}
+  rpc UpdateGeographicRegion(UpdateGeographicRegionRequest) returns (GeographicRegion) {}
+  rpc DeleteGeographicRegion(DeleteGeographicRegionRequest) returns (google.protobuf.Empty) {}
+
+  // Methods on EmissionsLimits.
+  //
+  // Manage resources under `emissionsLimits/{id}`.
+  rpc GetEmissionsLimit(GetEmissionsLimitRequest) returns (EmissionsLimit) {}
+  rpc ListEmissionsLimits(ListEmissionsLimitsRequest) returns (ListEmissionsLimitsResponse) {}
+  rpc CreateEmissionsLimit(CreateEmissionsLimitRequest) returns (EmissionsLimit) {}
+  rpc UpdateEmissionsLimit(UpdateEmissionsLimitRequest) returns (EmissionsLimit) {}
+  rpc DeleteEmissionsLimit(DeleteEmissionsLimitRequest) returns (google.protobuf.Empty) {}
 
   // TODO: Consider RFC 8623 P2MP TE -like request
   // TODO: Consider PHY-layer requests (bent pipe, etc)
@@ -775,5 +795,198 @@ message DeleteLinkRequest{
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
       type: "provisioning.spacetimeapis.com/Link"
+    }];
+}
+
+// A representation of a region on the Earth's surace. May be non-contiguous.
+message GeographicRegion {
+  // The resource name of the geographic region.
+  // Format: geographicRegions/{region}
+  string name = 1;
+
+  // A GeoJSON representation of the region.
+  //
+  // The GeoJSON text must conform to the specification in RFC 7946 and must
+  // be either a Polygon type (representing a single contiguous region) or a
+  // MultiPolygon (representing a non-contiguous region).
+  //
+  // Example:
+  //
+  // {
+  //  "type": "Polygon",
+  //   "coordinates": [
+  //       [
+  //           [0.0, 0.0], [3.0, 6.0], [6.0, 1.0], [0.0, 0.0]
+  //       ]
+  //   ]
+  // }
+  //
+  // or:
+  //
+  // {
+  //  "type": "MultiPolygon",
+  //   "coordinates": [
+  //       [
+  //           [3.0, 2.0], [4.5, 4.0], [1.0, 4.0], [3.0, 2.0]
+  //       ],
+  //       [
+  //           [1.5, 0.5], [4.0, 1.0], [1.0, 2.0], [0.5, 1.0], [1.5, 0.5],
+  //       ]
+  //   ]
+  // }
+  string polygon = 2;
+}
+
+message GetGeographicRegionRequest{
+  // The resource name of the geographic region to retrieve.
+  // Format: `geographicRegions/{region}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/GeographicRegion"
+    }];
+}
+
+message ListGeographicRegionsRequest{
+}
+
+message ListGeographicRegionsResponse{
+  repeated GeographicRegion geographic_regions = 1;
+}
+
+message CreateGeographicRegionRequest{
+  // The ID to use for the region, which will become the final component of
+  // the region's resource name.
+  //
+  // This value should be 1-63 characters, and valid characters
+  // are /[a-z][0-9]-/, specifically of the form
+  // "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$".
+  string region_id = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // The geographic region to create.
+  GeographicRegion geographic_region = 3 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+}
+
+message UpdateGeographicRegionRequest{
+  // The GeographicRegion to update.
+  //
+  // The GeographicRegion's `name` field is used to identify the
+  // GeographicRegion instance to be updated.
+  GeographicRegion geographic_region  = 1 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+
+  // The list of fields to be updated.
+  google.protobuf.FieldMask update_mask = 2;
+
+  // If set to true, and the GeographicRegion named above is not found, a new
+  // instance will be created. In this situation, `update_mask` is ignored.
+  bool allow_missing = 3;
+}
+
+message DeleteGeographicRegionRequest{
+  // The resource name of the geographic region to delete.
+  // Format: `geographicRegions/{region_id}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/GeographicRegion"
+    }];
+}
+
+
+// A limit on the emissions that may be received at or emitted from an antenna.
+// The limit may be defined to be enforced only over certain frequencies,
+// polarizations, and geographical regions.
+message EmissionsLimit {
+  // The resource name of the emissions limit.
+  // Format: emissionsLimits/{limit}
+  string name = 1;
+
+  // The lower frequency (inclusive) to which this emissions limit applies.
+  int64 lower_frequency_hz = 2;
+
+  // The upper frequency (exclusive) to which this emissions limit applies.
+  int64 upper_frequency_hz = 3;
+
+  // The set of polarizations to which this emissions limit applies, if any.
+  repeated nmts.v1.types.physical.Polarization polarizations = 4;
+
+  // The geographic regions in which this emissions limit is to be enforced.
+  // If empty, the emissions limit is applied globally.
+  // Format: geographicRegions/{region}
+  repeated string geographic_regions = 5;
+
+  message Label {
+    string key = 1;
+    string value = 2;
+  }
+
+  // A list of NMTS entity labels to which this emissions limit applies. Any
+  // antenna having a label in its Entity.labels field whose key and value match
+  // a key-value pair in this list is subject to the emissions limit.
+  //
+  // If empty, the limit is applied to all antennas.
+  repeated Label subject_labels = 6;
+}
+
+message GetEmissionsLimitRequest{
+  // The resource name of the emissions limit to retrieve.
+  // Format: `emissionsLimits/{limit}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/EmissionsLimit"
+    }];
+}
+
+message ListEmissionsLimitsRequest{
+}
+
+message ListEmissionsLimitsResponse{
+  repeated EmissionsLimit emissions_limits = 1;
+}
+
+message CreateEmissionsLimitRequest{
+  // The ID to use for the emissions limit, which will become the final
+  // component of the emissions limit's resource name.
+  //
+  // This value should be 1-63 characters, and valid characters
+  // are /[a-z][0-9]-/, specifically of the form
+  // "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$".
+  string limit_id = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // The emissions limit to create.
+  EmissionsLimit emissions_limit = 3 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+}
+
+message UpdateEmissionsLimitRequest{
+  // The EmissionsLimit to update.
+  //
+  // The EmissionsLimit's `name` field is used to identify the EmissionsLimit
+  // instance to be updated.
+  EmissionsLimit emissions_limit  = 1 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+
+  // The list of fields to be updated.
+  google.protobuf.FieldMask update_mask = 2;
+
+  // If set to true, and the EmissionsLimit named above is not found, a new
+  // instance will be created. In this situation, `update_mask` is ignored.
+  bool allow_missing = 3;
+}
+
+message DeleteEmissionsLimitRequest{
+  // The resource name of the emissions limit to delete.
+  // Format: `emissionsLimits/{limit}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/EmissionsLimit"
     }];
 }
