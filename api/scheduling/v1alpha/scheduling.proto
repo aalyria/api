@@ -455,6 +455,12 @@ message TxConfiguration {
   // empty and the modulator IDs are found via the beam hopping plan.
   string modulator_id = 8;
 
+  // Identifies the port associated with the carrier on this beam. This
+  // corresponds to the NMTS entity ID of an nmts.v1.ek.physical.Port. In NMTS
+  // graphs, ports are related to modulators through an RK_ORIGINATES 
+  // relationship, e.g., Port --RK_ORIGINATES--> Modulator.
+  string port_id = 12;
+
   // This value corresponds to the nmts.v1.ek.physical.Carrier.waveform of the
   // carrier assigned to this beam. nmts.v1.ek.physical.Carriers are defined in
   // nmts.v1.ek.physical.CarrierConfigurations.
