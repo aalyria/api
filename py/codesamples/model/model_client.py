@@ -16,6 +16,7 @@ limitations under the License.
 
 import argparse
 import sys
+from io import BytesIO
 from pathlib import Path
 
 import api.model.v1.model_pb2 as model_pb2
@@ -23,8 +24,7 @@ import api.model.v1.model_pb2_grpc as model_pb2_grpc
 import grpc
 import nmts.v1.proto.nmts_pb2 as nmts_pb2
 
-from py.authentication.spacetime_call_credentials import \
-    SpacetimeCallCredentials
+from py.authentication import auth
 
 
 def list_entities(stub: model_pb2_grpc.ModelStub) -> list[nmts_pb2.Entity]:
@@ -35,14 +35,23 @@ def list_entities(stub: model_pb2_grpc.ModelStub) -> list[nmts_pb2.Entity]:
 
 def establish_connection(target: str, email: str, key_id: str,
                          private_key: str) -> model_pb2_grpc.ModelStub:
-  # Sets up the channel using the two signed JWTs for RPCs to the Model API.
-  credentials = grpc.metadata_call_credentials(
-      SpacetimeCallCredentials.create_from_private_key(target, email, key_id,
-                                                       private_key))
+  # Create auth config
+  config = auth.Config(
+      email=email,
+      private_key_id=key_id,
+      private_key=BytesIO(private_key.encode('utf-8'))
+  )
+
+  # Create call credentials
+  call_credentials = auth.new_credentials(config)
+
+  # Combine with SSL channel credentials
   channel = grpc.secure_channel(
       target,
-      grpc.composite_channel_credentials(grpc.ssl_channel_credentials(),
-                                         credentials),
+      grpc.composite_channel_credentials(
+          grpc.ssl_channel_credentials(),
+          call_credentials
+      ),
       [
           (
               "grpc.max_receive_message_length",

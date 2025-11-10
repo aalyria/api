@@ -13,17 +13,29 @@
 # limitations under the License.
 
 load("@python_deps//:requirements.bzl", "requirement")
-load("@rules_python//python:defs.bzl", "py_library")
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = ["//visibility:public"])
 
 py_library(
     name = "authentication",
     srcs = [
-        "jwt_manager.py",
-        "spacetime_call_credentials.py",
+        "auth.py",
     ],
     deps = [
         requirement("cryptography"),
+        requirement("grpcio"),
+        requirement("pyjwt"),
+    ],
+)
+
+py_test(
+    name = "auth_test",
+    srcs = ["auth_test.py"],
+    deps = [
+        ":authentication",
+        requirement("cryptography"),
+        requirement("grpcio"),
+        requirement("pyjwt"),
     ],
 )
