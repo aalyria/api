@@ -55,10 +55,6 @@ python_proto_library(
 
 go_proto_library(
     name = "provisioning_go_proto",
-    compilers = [
-        "@rules_go//proto:go_proto",
-        "@rules_go//proto:go_grpc_v2",
-    ],
     importpath = "aalyria.com/spacetime/tools/nbictl/provisioning",
     proto = ":provisioning_proto",
     deps = ["//api/provisioning/v1alpha:provisioning_go_grpc"],

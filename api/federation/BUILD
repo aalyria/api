@@ -30,8 +30,11 @@ proto_library(
 
 go_proto_library(
     name = "federation_go_proto",
-    compilers = ["@rules_go//proto:go_grpc"],
-    importpath = "aalyria.com/spacetime/api/federation",
+    compilers = [
+        "@rules_go//proto:go_grpc_v2",
+        "@rules_go//proto:go_proto",
+    ],
+    importpath = "aalyria.com/spacetime/api/fed/v1alpha",
     proto = ":federation_proto",
     visibility = ["//visibility:public"],
     deps = [

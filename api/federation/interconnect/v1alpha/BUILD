@@ -38,7 +38,10 @@ proto_library(
 
 go_proto_library(
     name = "interconnect_go_proto",
-    compilers = ["@rules_go//proto:go_grpc"],
+    compilers = [
+        "@rules_go//proto:go_proto",
+        "@rules_go//proto:go_grpc_v2",
+    ],
     importpath = "aalyria.com/spacetime/api/federation/interconnect/v1alpha",
     proto = ":interconnect_proto",
     visibility = ["//visibility:public"],
@@ -47,7 +50,6 @@ go_proto_library(
         "@org_golang_google_genproto_googleapis_api//annotations",
         "@org_outernetcouncil_nmts//v1/proto/ek/physical:physical_go_proto",
         "@org_outernetcouncil_nmts//v1/proto/types/geophys:geophys_go_proto",
-        "@org_outernetcouncil_nmts//v1/proto/types/ietf:ietf_go_proto",
     ],
 )
 

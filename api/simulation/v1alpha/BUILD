@@ -37,7 +37,10 @@ proto_library(
 
 go_proto_library(
     name = "simulation_go_proto",
-    compilers = ["@rules_go//proto:go_grpc"],
+    compilers = [
+        "@rules_go//proto:go_proto",
+        "@rules_go//proto:go_grpc_v2",
+    ],
     importpath = "aalyria.com/spacetime/api/simulation/v1alpha",
     proto = ":simulation_proto",
     deps = [
@@ -45,9 +48,6 @@ go_proto_library(
         "@com_google_cloud_go_longrunning//autogen/longrunningpb",
         "@org_golang_google_genproto//googleapis/type/interval",
         "@org_golang_google_genproto_googleapis_api//annotations",
-        "@org_golang_google_protobuf//types/known/timestamppb",
         "@org_outernetcouncil_nmts//v1/proto:nmts_go_proto",
-        "@org_outernetcouncil_nmts//v1/proto/ek/logical:logical_go_proto",
-        "@org_outernetcouncil_nmts//v1/proto/ek/physical:physical_go_proto",
     ],
 )

@@ -31,6 +31,7 @@ build --incompatible_strict_action_env
 build --cxxopt='-std=c++20'
 build --cxxopt='-Wall'
 build --cxxopt='-Werror'
+build --host_cxxopt='-std=c++20'
 
 # TODO: remove these flags when grpc builds without them.
 build --cxxopt='-Wno-comment'

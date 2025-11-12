@@ -32,7 +32,7 @@ import "nmts/v1/proto/ek/physical/signal_processing_chain.proto";
 import "nmts/v1/proto/ek/physical/transceiver.proto";
 import "nmts/v1/proto/types/geophys/motion.proto";
 
-option go_package = "github.com/outernetcouncil/federation/gen/go/federation/interconnect/v1alpha;interconnectpb";
+option go_package = "aalyria.com/spacetime/api/federation/interconnect/v1alpha";
 option java_outer_classname = "InterconnectProto";
 option java_multiple_files = true;
 option java_package = "com.github.outernet.federation.interconnect.v1alpha";

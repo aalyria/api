@@ -47,9 +47,7 @@ proto_library(
     srcs = ["beam_hopping.proto"],
     visibility = ["//visibility:public"],
     deps = [
-        "//api/common:common_proto",
         "//api/scheduling/v1alpha:scheduling_proto",
-        "//api/telemetry/v1alpha:telemetry_proto",
         "@protobuf//:timestamp_proto",
     ],
 )
@@ -85,11 +83,7 @@ go_proto_library(
     importpath = "aalyria.com/spacetime/api/beam_hopping/v1alpha",
     proto = ":beam_hopping_proto",
     visibility = ["//visibility:public"],
-    deps = [
-        "//api/common:common_go_proto",
-        "//api/scheduling/v1alpha:scheduling_go_grpc",
-        "//api/telemetry/v1alpha:telemetry_go_grpc",
-    ],
+    deps = ["//api/scheduling/v1alpha:scheduling_go_grpc"],
 )
 
 python_grpc_library(

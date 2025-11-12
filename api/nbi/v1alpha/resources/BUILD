@@ -40,7 +40,6 @@ proto_library(
         "@googleapis//google/rpc:code_proto",
         "@googleapis//google/type:interval_proto",
         "@googleapis//google/type:money_proto",
-        "@org_outernetcouncil_nmts//v1/proto/types/geophys:motion_proto",
         "@protobuf//:any_proto",
         "@protobuf//:duration_proto",
         "@protobuf//:timestamp_proto",
@@ -72,7 +71,6 @@ go_proto_library(
         "@org_golang_google_genproto//googleapis/type/interval",
         "@org_golang_google_genproto//googleapis/type/money",
         "@org_golang_google_genproto_googleapis_rpc//code",
-        "@org_outernetcouncil_nmts//v1/proto/types/geophys:geophys_go_proto",
     ],
 )
 

@@ -95,12 +95,10 @@ def java_test(javacopts = [], plugins = [], **kwargs):
 
 def _actual_javacopts(javacopts):
     return select({
-        "@scip_java//semanticdb-javac:is_enabled": ["'-Xplugin:semanticdb -build-tool:bazel'"] + javacopts,
         "//conditions:default": javacopts,
     })
 
 def _actual_plugins(plugins):
     return select({
-        "@scip_java//semanticdb-javac:is_enabled": ["@scip_java//semanticdb-javac:plugin"] + plugins,
         "//conditions:default": plugins,
     })
