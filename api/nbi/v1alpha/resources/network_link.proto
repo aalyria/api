@@ -1,0 +1,420 @@
+// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto2";
+
+package aalyria.spacetime.api.nbi.v1alpha.resources;
+
+import "api/common/control_radio.proto";
+import "api/common/coordinates.proto";
+import "api/common/network.proto";
+import "api/common/platform_antenna.proto";
+import "api/common/time.proto";
+import "api/common/wireless_transceiver.proto";
+import "google/protobuf/duration.proto";
+import "google/type/interval.proto";
+
+
+option java_package = "com.aalyria.spacetime.api.nbi.v1alpha.resources";
+option go_package = "aalyria.com/spacetime/api/nbi/v1alpha/resources";
+
+// Defines a directional link between two logical network interfaces.
+message NetworkLink {
+  optional aalyria.spacetime.api.common.NetworkInterfaceId 
+    src = 3 [deprecated = true];
+  optional aalyria.spacetime.api.common.NetworkInterfaceId 
+    dst = 4 [deprecated = true];
+
+  optional string src_network_node_id = 7;
+  optional string dst_network_node_id = 8;
+
+  optional string src_interface_id = 5;
+  optional string dst_interface_id = 6;
+
+  reserved 1, 2;
+}
+
+message RadioConfiguration {
+  optional aalyria.spacetime.api.common.NetworkInterfaceId interface_id = 1;
+
+  // Configures the transmitter properties.
+  optional aalyria.spacetime.api.common.TransmitterState tx_state = 2;
+
+  // Configures the receiver properties.
+  optional aalyria.spacetime.api.common.ReceiverState rx_state = 3;
+
+  // Identifies the adaptive data rate table id used to model the link between
+  // the transmitter and receiver. This is a required field.
+  optional string rate_table_id = 5;
+
+  // Configures the TDMA schedule, if applicable.
+  optional aalyria.spacetime.api.common.TdmaSchedule tdma_schedule = 4;
+  reserved 6 to max;  // Next IDs.
+}
+
+message Radio {
+  // Defines the center of the channel in Hz.
+  // For RF transceivers, this is the carrier frequency.
+  // For optical transceivers, this may be converted to wavelength.
+  optional uint64 center_frequency_hz = 1;
+  optional string band_profile_id = 2 [deprecated = true];
+  optional int64 channel_bandwidth_hz = 6;
+  optional aalyria.spacetime.api.common.Polarization polarization = 3;
+
+  message TxRadioConfiguration {
+
+    message BeamPower {
+      enum PowerType {
+        POWER_TYPE_UNSPECIFIED = 0;
+        POWER_TYPE_NADIR_EQUIVALENT_BEAM_PEAK_EIRP_PSD_DBW_PER_MHZ = 1;
+        POWER_TYPE_BEAM_PEAK_EIRP_PSD_DBW_PER_MHZ = 2;
+        POWER_TYPE_WATTS = 3;
+      }
+      optional PowerType power_type = 1;
+      optional double power_value = 2;
+    }
+    optional BeamPower transmit_power = 1;
+
+    optional string port_id = 6;
+    optional string modulator_id = 2;
+    optional string transmitter_id = 5;
+    optional string antenna_id = 4;
+
+    enum ModulatorMode {
+      MODULATOR_MODE_UNSPECIFIED = 0;
+      MODULATOR_MODE_DVB_S2X = 1;
+      MODULATOR_MODE_DIGITAL_TRANSPARENT = 2;
+    }
+    optional ModulatorMode modulator_mode = 3;
+  }
+
+  optional TxRadioConfiguration tx_radio = 4;
+
+  optional RxRadioConfiguration rx_radio = 5;
+}
+
+message RxRadioConfiguration {
+  optional string port_id = 6;
+  optional string demodulator_id = 1;
+  optional string receiver_id = 5;
+  optional string antenna_id = 3;
+
+  enum DemodulatorMode {
+    DEMODULATOR_MODE_UNSPECIFIED = 0;
+    DEMODULATOR_MODE_DVB_S2X = 1;
+    DEMODULATOR_MODE_DVB_RCS2_TDMA = 2;
+    DEMODULATOR_MODE_DIGITAL_TRANSPARENT = 3;
+  }
+  optional DemodulatorMode demodulator_mode = 2;
+
+  optional RxPower expected_rx_power = 4;
+}
+
+message LinkEnd {
+  optional aalyria.spacetime.api.common.NetworkInterfaceId id = 3;
+  reserved 1, 2, 4;
+}
+
+message GeodeticWgs84 {
+  optional double longitude_deg = 1;
+  optional double latitude_deg = 2;
+  optional double height_m = 3;
+}
+
+message BeamTarget {
+  oneof type {
+    string platform_id = 3;  // can hold the ID of an NMTS platform
+    GeodeticWgs84 geodetic_wgs84 = 5;
+  }
+  reserved 1, 2, 4;
+}
+
+// Defines a bidirectional network link. If necessary, asymmetric roles for the
+// endpoints may be specified.
+message BidirectionalLink {
+  optional LinkEnd a = 1 [deprecated = true];
+  optional LinkEnd b = 2 [deprecated = true];
+
+  optional string a_network_node_id = 5;
+  optional string b_network_node_id = 6;
+
+  optional string a_rx_interface_id = 7;
+  optional string a_tx_interface_id = 8;
+  optional string b_rx_interface_id = 9;
+  optional string b_tx_interface_id = 10;
+  optional string a_to_b_link_report_id = 11;
+  optional string b_to_a_link_report_id = 12;
+
+  // These fields are optional and may be omitted for wireless interfaces that
+  // do not require centralized orchestration of radio-related parameters.
+  // TODO: migrate RadioIntent usage to these fields instead.
+  optional Radio a_to_b_radio = 3;
+  optional Radio b_to_a_radio = 4;
+}
+
+// Configures a directional link. The link may be a point-to-multipoint link
+// between a transmitter and a list of receiving platforms, or a
+// point-to-point link between two transceivers.
+message DirectionalLink {
+  optional string network_node_id = 5;
+  optional string interface_id = 6;
+
+  // Identifies the wireless network interface.
+  optional aalyria.spacetime.api.common.NetworkInterfaceId id = 1;
+
+  // This field is optional and may be omitted for wireless interfaces that
+  // do not require centralized orchestration of radio-related parameters.
+  optional Radio radio_configuration = 2;
+
+  // This field is optional and may be omitted for wireless interfaces whose
+  // beams are fixed to the platform. It is required for steerable beams.
+  optional BeamTarget target = 3;
+
+  // Identifies the platforms that are on the receiving end of the
+  // point-to-multipoint link.
+  repeated RxPlatform rx_platforms = 4;
+}
+
+message RxPlatform {
+  optional aalyria.spacetime.api.common.NetworkInterfaceId id = 1;
+  optional string network_node_id = 3;
+  optional string interface_id = 4;
+  
+  // Identifies the link report from the transmitter to receiving platform
+  optional string link_report_id = 5;
+
+  // Defines the radio configuration to apply to the receiving platform.
+  optional RxRadioConfiguration rx_radio = 2;
+}
+
+message RxPower {
+  oneof value {
+    // Power Flux Density at receiver [dBW/m^2].
+    double pfd_dbw_per_m2 = 1;
+  }
+}
+
+// Defines whether or not a link is usable or possible.
+enum Accessibility {
+  ACCESS_UNKNOWN = 0;
+  ACCESS_EXISTS = 1;
+  ACCESS_MARGINAL = 3;
+  NO_ACCESS = 2;
+}
+
+// A modeled, physical-layer wireless link budget.
+message WirelessLinkBudget {
+  reserved 10 to 14, 17 to max;
+
+  // The transmitter antenna's gain in the link direction, in dB.
+  optional double transmitter_antenna_gain_in_link_direction_db = 1;
+
+  // The effective isotropic radiated power from the transmitter, in dBW.
+  optional double effective_isotropic_radiated_power_dbw = 2;
+
+  // Maps the name of each propagation loss model to the amount of propagation
+  // loss, in dB, that is attributable to that particular model.
+  map<string, double> component_propagation_loss_db = 15;
+
+  // The total amount of signal propagation loss, in dB.
+  optional double propagation_loss_db = 3;
+
+  // The power at the receiver antenna before receive antenna gain.
+  optional double received_isotropic_power_dbw = 4;
+
+  // The received power flux density, in dB(W/m2).
+  optional double received_power_flux_density_db_w_per_m2 = 5;
+
+  // The receiver antenna's gain in the link direction, in dB.
+  optional double receiver_antenna_gain_in_link_direction_db = 6;
+
+  // This is power at the receiver antenna facing into the rest of the receive
+  // chain (the output of the antenna, after Rx antenna gain).
+  optional double power_at_receiver_output_dbw = 7;
+
+  // The carrier to noise ratio.
+  optional double carrier_to_noise_db = 8;
+  
+  // The carrier to noise-plus-interference ratio (C / (N + I)),
+  // in dB.
+  optional double carrier_to_noise_plus_interference_db = 16;
+
+  // The carrier to noise density, in dB/Hz.
+  optional double carrier_to_noise_density_db_per_hz = 9;
+}
+
+// Describes expected changes to the accessibility of a link to a destination
+// on a particular channel.
+message WirelessLinkReport {
+  // The ID of the destination transceiver model described by this report.
+  optional aalyria.spacetime.api.common.TransceiverModelId dst = 1;  // required
+
+  optional string band_profile_id = 2;  // required
+  repeated uint64 center_frequencies_hz = 3;
+
+  // A series of non-overlapping time intervals that describe the predicted
+  // accessibility of the link -- and link metrics within accessible intervals.
+  message WirelessAccessInterval {
+    // The applicable time interval (may be open ended).
+    optional aalyria.spacetime.api.common.TimeInterval interval = 1;
+
+    // Whether or not the link is predicted/known to be accessible (usable).
+    optional Accessibility accessibility = 2;
+    repeated string no_access_reason = 3;
+
+    // Modeled link metric predictions.
+    message WirelessLinkMetrics {
+      // A timestamp.
+      optional aalyria.spacetime.api.common.DateTime timestamp = 1;
+
+      // The electromagnetic propagation delay.
+      optional aalyria.spacetime.api.common.Duration propagation_delay = 2;
+
+      // Incidence angles of the Tx and Rx beams.
+      // Observed from the point and orientation of the respective antenna.
+      optional aalyria.spacetime.api.common.PhiTheta tx_pointing_phi_theta = 3;
+      optional aalyria.spacetime.api.common.PhiTheta rx_pointing_phi_theta = 15;
+
+      // The link distance, in meters.
+      // This field is only applicable to wireless links.
+      optional double range_m = 4;
+
+      // The modeled data rate capacity, in layer 2 bits per second.
+      optional double data_rate_bps = 6;
+
+      // A human readable name (e.g. "QPSK-LDPC-2-3") describing the modulation
+      // and coding scheme associated with the modeled data rate capacity.
+      optional string mod_cod_scheme_name = 9;
+
+      // Additional LinkBudget data
+      optional double transmitter_antenna_gain_in_link_direction_db = 7;
+      optional double receiver_antenna_gain_in_link_direction_db = 8;
+      optional double propagation_loss_db = 10;
+      optional double received_isotropic_power_dbw = 11;
+      optional double power_at_receiver_output_dbw = 12;
+      optional double carrier_to_noise_plus_interference_db = 13;
+      optional double effective_isotropic_radiated_power_dbw = 16;
+      enum PropagationModel {
+        PROPAGATION_MODEL_UNSPECIFIED = 0;
+        ATMOSPHERIC_ATTENUATION_MODEL_ITUR_P676 = 1;
+        FREE_SPACE_PATH_LOSS_MODEL = 3;
+        RAIN_ATTENUATION_MODEL_ITUR_P838 = 4;
+        CLOUD_AND_FOG_MODEL_ITUR_P840 = 5;
+        TROPOSPHERIC_SCINTILLATION_ATTENUATION_MODEL_ITUR_P1814 = 6;
+        TROPOSPHERIC_SCINTILLATION_ATTENUATION_MODEL_ITUR_P618_V12 = 7;
+
+        reserved 2;
+      }
+
+      message PropagationLoss {
+        optional PropagationModel model = 1;
+        optional double loss_db = 2;
+      }
+
+      // At most 1 entry for each `PropagationModel` model type.
+      // Except for PROPAGATION_MODEL_UNSPECIFIED which
+      // could be used in multiple entries.
+      repeated PropagationLoss propagation_losses = 14;
+    }
+    repeated WirelessLinkMetrics sampled_metrics = 4;
+  }
+  repeated WirelessAccessInterval access_intervals = 4;
+}
+
+// Provides interface link report between `src` and `dst` interfaces,
+// at different `access_intervals`. 
+// It is the responsibility of some SDN application to insert link
+// reports corresponding to the physical availability of connections from each
+// source interface they manage to any other interfaces which should be
+// considered reachable.
+message InterfaceLinkReport {
+  reserved 1, 2, 3;
+  // The source interface.
+  optional aalyria.spacetime.api.common.NetworkInterfaceId src = 4;
+
+  // The destination interface.
+  optional aalyria.spacetime.api.common.NetworkInterfaceId dst = 5;
+
+  // A series of non-overlapping time intervals that describe the predicted
+  // accessibility of the link -- and link metrics within accessible intervals.
+  message AccessInterval {
+    // The applicable time interval (may be open ended).
+    optional aalyria.spacetime.api.common.TimeInterval interval = 1;
+
+    // Whether or not the link is predicted/known to be accessible (usable).
+    optional Accessibility accessibility = 2;
+
+    // Delay incurred by a data-frame when communicated over this link.
+    optional aalyria.spacetime.api.common.Duration frame_delay = 3;
+
+    // The modeled data rate capacity, in layer 2 bits per second.
+    optional double data_rate_bps = 4;
+  }
+  repeated AccessInterval access_intervals = 6;
+}
+
+// Provides transceiver link reports for all possible wireless links from a
+// source transceiver. It is the responsibility of some SDN application to
+// insert link reports corresponding to the physical availability of connections
+// from each source transceiver they manage to any other transceivers which
+// should be considered reachable. For example, wireless transmitters may have
+// these reports updated for each reachable receiver as a result of the link
+// evaluation model.
+message TransceiverLinkReport {
+  // The source transceiver for all of the reported possible wireless links.
+  optional aalyria.spacetime.api.common.TransceiverModelId src = 1;
+  // A set of possible wireless links that this source transceiver could
+  // participate in.
+  repeated WirelessLinkReport links = 2;
+}
+
+// BeamCandidate defines the modeled link evaluation of a potential
+// point-to-multipoint link. The candidate can model either the downlink
+// direction, from the beam to a set of receiving platforms,
+// or the uplink, from a set of platforms to the beam.
+message BeamCandidate {
+  // Beam Candidate ID. Stable across entities that describe
+  // different AccessIntervals for the same BeamCandidate.
+  optional string id  = 4;
+
+  optional aalyria.spacetime.api.common.TransceiverModelId transceiver_id = 1;
+
+  // The coordinates at which the beam is pointed.
+  optional aalyria.spacetime.api.common.Motion target = 2;
+
+  optional google.type.Interval interval = 5;
+  optional google.protobuf.Duration sampling_resolution = 6;
+
+  // Incidence angle of the beam over time,
+  // observed from the point and orientation of the antenna.
+  // Each field contains (interval / sampling_resolution) data points.
+  repeated double beam_pointing_phi_rad = 7 [packed=true];
+  repeated double beam_pointing_theta_rad = 8 [packed=true];
+
+  // AccessibilityInterval defines a link evaluation interval and the
+  // corresponding groups of platforms and their modeled data.
+  message AccessibilityInterval {
+
+    // GainGroup defines the modeled gain between the beam
+    // and a set of transceivers and/or Earth Fixed H3 cells.
+    message GainGroup {
+      optional double gain_db = 1;
+      repeated string platform_ids = 2;
+      repeated fixed64 h3_cells = 3;
+    }
+    repeated GainGroup gain_groups = 1;
+    optional google.type.Interval interval = 2;
+  }
+  repeated AccessibilityInterval accessibility_intervals = 3;
+}

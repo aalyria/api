@@ -1,0 +1,990 @@
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package aalyria.spacetime.api.provisioning.v1alpha;
+
+import "api/provisioning/v1alpha/p2p_sr_te_policy_request.proto";
+import "api/provisioning/v1alpha/te.proto";
+import "google/api/field_behavior.proto";
+import "google/api/resource.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/field_mask.proto";
+import "google/type/interval.proto";
+import "nmts/v1/proto/types/physical/polarization.proto";
+
+
+option java_package = "com.aalyria.spacetime.api.provisioning.v1alpha";
+option go_package = "aalyria.com/spacetime/api/provisioning/v1alpha";
+
+// The Provisioning API is the primary interface whereby requests are
+// made of Spacetime.
+//
+// Each type of provisioning request has its own set of methods.
+service Provisioning {
+
+  // P2P SR-TE Policy provisioning.
+  //
+  // RFC 9522 S5.1.1.3; RFC 9256 SR Policy.
+  //
+  // Manage resources under `p2pSrTePolicy/{policy_id}`.
+  rpc GetP2pSrTePolicy(GetP2pSrTePolicyRequest) returns (P2pSrTePolicy) {}
+  rpc ListP2pSrTePolicies(ListP2pSrTePoliciesRequest) returns (ListP2pSrTePoliciesResponse) {}
+  rpc CreateP2pSrTePolicy(CreateP2pSrTePolicyRequest) returns (P2pSrTePolicy) {}
+  rpc UpdateP2pSrTePolicy(UpdateP2pSrTePolicyRequest) returns (P2pSrTePolicy) {}
+  rpc DeleteP2pSrTePolicy(DeleteP2pSrTePolicyRequest) returns (google.protobuf.Empty) {}
+
+  // P2P SR TE Policy dynamic candidate path provisioning.
+  //
+  // RFC 9256 section 2.2, SR Policy dynamic candidate paths.
+  //
+  // Manage subresources under
+  //     `p2pSrTePolicy/{policy_id}/candidatePath/{path_id}`.
+  rpc GetP2pSrTePolicyCandidatePath(GetP2pSrTePolicyCandidatePathRequest) returns (P2pSrTePolicyCandidatePath) {}
+  rpc ListP2pSrTePolicyCandidatePaths(ListP2pSrTePolicyCandidatePathsRequest) returns (ListP2pSrTePolicyCandidatePathsResponse) {}
+  rpc CreateP2pSrTePolicyCandidatePath(CreateP2pSrTePolicyCandidatePathRequest) returns (P2pSrTePolicyCandidatePath) {}
+  rpc UpdateP2pSrTePolicyCandidatePath(UpdateP2pSrTePolicyCandidatePathRequest) returns (P2pSrTePolicyCandidatePath) {}
+  rpc DeleteP2pSrTePolicyCandidatePath(DeleteP2pSrTePolicyCandidatePathRequest) returns (google.protobuf.Empty) {}
+
+  // Downtime provisioning.
+  //
+  // Inform Spacetime when elements of the network will be, or should
+  // be considered, offline.
+  //
+  // Manage resources under `downtimes/{id}`.
+  rpc GetDowntime(GetDowntimeRequest) returns (Downtime) {}
+  rpc ListDowntimes(ListDowntimesRequest) returns (ListDowntimesResponse) {}
+  rpc CreateDowntime(CreateDowntimeRequest) returns (Downtime) {}
+  rpc UpdateDowntime(UpdateDowntimeRequest) returns (Downtime) {}
+  rpc DeleteDowntime(DeleteDowntimeRequest) returns (google.protobuf.Empty) {}
+
+  // Protection Association Group provisioning.
+  //
+  // Manage resources under `protectionAssociationGroups/{id}`.
+  rpc GetProtectionAssociationGroup(GetProtectionAssociationGroupRequest) returns (ProtectionAssociationGroup) {}
+  rpc ListProtectionAssociationGroups(ListProtectionAssociationGroupsRequest) returns (ListProtectionAssociationGroupsResponse) {}
+  rpc CreateProtectionAssociationGroup(CreateProtectionAssociationGroupRequest) returns (ProtectionAssociationGroup) {}
+  rpc UpdateProtectionAssociationGroup(UpdateProtectionAssociationGroupRequest) returns (ProtectionAssociationGroup) {}
+  rpc DeleteProtectionAssociationGroup(DeleteProtectionAssociationGroupRequest) returns (google.protobuf.Empty) {}
+
+  // Disjoint Association Group provisioning.
+  //
+  // Manage resources under `disjointAssociationGroups/{id}`.
+  rpc GetDisjointAssociationGroup(GetDisjointAssociationGroupRequest) returns (DisjointAssociationGroup) {}
+  rpc ListDisjointAssociationGroups(ListDisjointAssociationGroupsRequest) returns (ListDisjointAssociationGroupsResponse) {}
+  rpc CreateDisjointAssociationGroup(CreateDisjointAssociationGroupRequest) returns (DisjointAssociationGroup) {}
+  rpc UpdateDisjointAssociationGroup(UpdateDisjointAssociationGroupRequest) returns (DisjointAssociationGroup) {}
+  rpc DeleteDisjointAssociationGroup(DeleteDisjointAssociationGroupRequest) returns (google.protobuf.Empty) {}
+
+  // Link provisioning.
+  //
+  // Manage resources under `links/{id}`.
+  rpc GetLink(GetLinkRequest) returns (Link) {}
+  rpc ListLinks(ListLinksRequest) returns (ListLinksResponse) {}
+  rpc CreateLink(CreateLinkRequest) returns (Link) {}
+  rpc UpdateLink(UpdateLinkRequest) returns (Link) {}
+  rpc DeleteLink(DeleteLinkRequest) returns (google.protobuf.Empty) {}
+
+
+  // Methods on GeographicRegions.
+  //
+  // Manage resources under `geographicRegions/{id}`.
+  rpc GetGeographicRegion(GetGeographicRegionRequest) returns (GeographicRegion) {}
+  rpc ListGeographicRegions(ListGeographicRegionsRequest) returns (ListGeographicRegionsResponse) {}
+  rpc CreateGeographicRegion(CreateGeographicRegionRequest) returns (GeographicRegion) {}
+  rpc UpdateGeographicRegion(UpdateGeographicRegionRequest) returns (GeographicRegion) {}
+  rpc DeleteGeographicRegion(DeleteGeographicRegionRequest) returns (google.protobuf.Empty) {}
+
+  // Methods on EmissionsLimits.
+  //
+  // Manage resources under `emissionsLimits/{id}`.
+  rpc GetEmissionsLimit(GetEmissionsLimitRequest) returns (EmissionsLimit) {}
+  rpc ListEmissionsLimits(ListEmissionsLimitsRequest) returns (ListEmissionsLimitsResponse) {}
+  rpc CreateEmissionsLimit(CreateEmissionsLimitRequest) returns (EmissionsLimit) {}
+  rpc UpdateEmissionsLimit(UpdateEmissionsLimitRequest) returns (EmissionsLimit) {}
+  rpc DeleteEmissionsLimit(DeleteEmissionsLimitRequest) returns (google.protobuf.Empty) {}
+
+  // TODO: Consider RFC 8623 P2MP TE -like request
+  // TODO: Consider PHY-layer requests (bent pipe, etc)
+  // TODO: Add a DigitalTransparentService request (details TBD)
+  // TODO: NativeIpForwardingRequest
+  // TODO: BundleProtocolServiceRequest
+  // TODO: MEF E-{Line,Tree,LAN} services
+  // TODO: 3GPP services
+}
+
+
+// A Point-to-Point (P2P) Segment Routing (SR) Traffic Engineering (TE)
+// Policy.
+//
+// Describes one SR TE policy between two EK_ROUTE_FN entities in the
+// data model.
+//
+// See also:
+//   - RFC 9256
+//   - draft-ietf-pce-segment-routing-policy-cp
+//   - draft-ietf-spring-sr-policy-yang
+message P2pSrTePolicy {
+  // The resource name of this policy.
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  // The priority field allows the requester to specify the order in
+  // which requests for Provisioning resources are satisfied relative
+  // to all other requests.
+  //
+  // A request will be treated as having a higher priority if the
+  // value of this field is arithmetically greater than that of
+  // another service request.
+  //
+  // Users may want to directly map this to some utility metric of
+  // relevance to their network operations, e.g. estimated revenue,
+  // number of customers served, etc.
+  //
+  // Cf. RFC 9256 S2.12's re-compute priority.
+  double priority = 2;
+
+  // The time interval over which this service is requested.
+  //
+  // If start_time is empty the service is requested to be provisioned
+  // at the earliest possible time it may be realized in the network.
+  //
+  // If end_time is empty the service is requested to be provisioned
+  // until this specific request is canceled or this interval field
+  // is updated with a non-empty end_time.
+  google.type.Interval interval = 3;
+
+  // A simple way to temporarily disable this request without deleting
+  // it from the store of requests. Requests that are disabled will
+  // not be provisioned by Spacetime, but evaluation of candidate
+  // links and topologies may still be performed (to improve rapidity
+  // of provisioning once re-enabled).
+  bool disabled = 4;
+
+  // NMTS Entity IDs corresponding to the source and destination
+  // EK_ROUTE_FN Entity elements already created within the network
+  // data model.
+  //
+  // RFC 9256 S2.1 SR Policy identifying tuple; "[a]n SR Policy MUST
+  // be identified through the tuple <Headend, Color, Endpoint>."
+  //
+  // Note: "The color is an unsigned non-zero 32-bit integer value..."
+  string headend = 5;
+  uint32 color = 6;
+  string endpoint = 7;
+
+  // RFC 9256 S2.1; "[a]n implementation MAY allow the assignment
+  // of a symbolic name..."
+  string symbolic_name = 8;
+}
+
+message GetP2pSrTePolicyRequest {
+  // The resource name of the policy to retrieve.
+  // Format: `p2pSrTePolicies/{policy_id}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/P2pSrTePolicy"
+    }];
+}
+
+message ListP2pSrTePoliciesRequest{
+}
+
+message ListP2pSrTePoliciesResponse{
+  repeated P2pSrTePolicy p2p_sr_te_policies = 1;
+}
+
+message CreateP2pSrTePolicyRequest{
+  // The ID to use for the policy, which will become the final component of
+  // the policy's resource name, i.e. `p2pSrTePolicies/{policy_id}`.
+  //
+  // This value should be 1-63 characters, and valid characters
+  // are /[a-z][0-9]-/, specifically of the form
+  // "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$".
+  string policy_id = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // The policy to create.
+  P2pSrTePolicy policy = 3 [(google.api.field_behavior) = REQUIRED];
+}
+
+message UpdateP2pSrTePolicyRequest{
+  // The policy to update.
+  //
+  // The policy's `name` field is used to identify the policy to be updated.
+  // Format: `p2pSrTePolicies/{policy_id}`
+  P2pSrTePolicy policy = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // The list of fields to be updated.
+  google.protobuf.FieldMask update_mask = 2;
+
+  // If set to true, and the policy is not found, a new instance will be
+  // created. In this situation, `update_mask` is ignored.
+  bool allow_missing = 3;
+}
+
+message DeleteP2pSrTePolicyRequest{
+  // The resource name of the policy to delete.
+  // Format: `p2pSrTePolicies/{policy_id}`
+  //
+  // Deleting a P2P SR-TE Policy also deletes all its Candidate Paths.
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/P2pSrTePolicy"
+    }];
+}
+
+message P2pSrTePolicyCandidatePath {
+  // The resource name of this candidate path.
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  // Candidate Paths inherit the scheduling parameters of their
+  // parent P2P SR-TE Policy.
+
+  // RFC 9256 S2.5 Discriminator; used to associate a candidate path
+  // with this specific SR Policy's path request.
+  uint32 discriminator = 2;
+  // RFC 9256 S2.6 optional symbolic name.
+  string symbolic_name = 3;
+  // RFC 9256 S2.7 Preference. An indication of this requested
+  // candidate path's priority relative to others in the same
+  // SR policy.
+  uint32 preference = 4;
+
+  // Quantitative path metrics.
+  Metrics metrics = 5;
+}
+
+message GetP2pSrTePolicyCandidatePathRequest{
+  // The resource name of the candidate path to retrieve.
+  // Format: `p2pSrTePolicies/{policy_id}/candidatePaths/{path_id}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/P2pSrTePolicyCandidatePath"
+    }];
+}
+
+message ListP2pSrTePolicyCandidatePathsRequest{
+  // The parent policy for which to list candidate paths.
+  // Format: `p2pSrTePolicies/{policy_id}`
+  string parent = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      child_type: "provisioning.spacetimeapis.com/P2pSrTePolicyCandidatePath"
+    }];
+}
+
+message ListP2pSrTePolicyCandidatePathsResponse{
+  repeated P2pSrTePolicyCandidatePath p2p_sr_te_policy_candidate_paths = 1;
+}
+
+message CreateP2pSrTePolicyCandidatePathRequest{
+  // The parent policy for which this candidate path will be created.
+  // Format: `p2pSrTePolicies/{policy_id}`
+  string parent = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      child_type: "provisioning.spacetimeapis.com/P2pSrTePolicyCandidatePath"
+    }];
+
+  // The ID to use for the path, which will become the final component of
+  // the path's resource name, i.e.
+  // `p2pSrTePolicies/{policy_id}/candidatePaths/{path_id}`
+  //
+  // This value should be 1-63 characters, and valid characters
+  // are /[a-z][0-9]-/, specifically of the form
+  // "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$".
+  string path_id = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // The Candidate Path to create.
+  P2pSrTePolicyCandidatePath path = 3 [(google.api.field_behavior) = REQUIRED];
+}
+
+message UpdateP2pSrTePolicyCandidatePathRequest{
+  // The candidate path to update.
+  //
+  // The candidate path's `name` field is used to identify the candidate
+  // path to be updated.
+  // `p2pSrTePolicies/{policy_id}/candidatePaths/{path_id}`
+  P2pSrTePolicyCandidatePath path = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // The list of fields to be updated.
+  google.protobuf.FieldMask update_mask = 2;
+
+  // If set to true, and the candidate path is not found, a new instance will
+  // be created, subject to the existence the parent SR-TE Policy. In this
+  // situation, `update_mask` is ignored.
+  bool allow_missing = 3;
+}
+
+message DeleteP2pSrTePolicyCandidatePathRequest{
+  // The resource name of the candidate path to delete.
+  // Format: `p2pSrTePolicies/{policy_id}/candidatePaths/{path_id}`
+  //
+  // Delete all Candidate Paths associated with a P2P SR-TE Policy
+  // DOES NOT delete the policy itself.
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/P2pSrTePolicyCandidatePath"
+    }];
+}
+
+// A notification to Spacetime of downtime for specified network elements.
+//
+// This resource informs Spacetime of elements in the network scheduled
+// to be down, or currently down depending on the contents of `interval`.
+// Spacetime will exclude these elements from any solutions it computes
+// for other provisioning requests.
+message Downtime {
+  // The resource name of this Downtime request.
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  // The time interval over which this downtime applies.
+  //
+  // If `start_time` is empty the downtime is requested to be provisioned
+  // at the earliest possible time it may be realized in the network.
+  //
+  // If `end_time` is empty the downtime is requested to be provisioned
+  // until this specific request is canceled or this interval field is
+  // updated with a non-empty `end_time`.
+  google.type.Interval interval = 2;
+
+  // A simple way to temporarily disable this request without deleting
+  // it from the store of requests.
+  bool disabled = 3;
+
+  // A freeform description of this downtime which my be rendered for
+  // users in certain contexts, e.g. in a UI.
+  //
+  // This field is not examined by Spacetime; no requirements are placed
+  // upon its presence or contents.
+  string reason = 4;
+
+  // A list of a NMTS Entity IDs affected during the downtime interval,
+  // i.e. which elements are to be considered by Spacetime as offline.
+  //
+  // For Entities that RK_CONTAINS other Entities, all "contained"
+  // elements will be considerd offline, i.e. listing an EK_PLATFORM
+  // Entity ID in `affected_entity_ids` implies that all contained
+  // EK_PORTs and/or EK_NETWORK_NODEs are also to be considered offline.
+  //
+  // For Entities that are RK_TRAVERSES'd by other Entities, all
+  // "traversing" Entities will also be considered offline, i.e.
+  // listing an EK_PORT Entity ID in `affected_entity_ids` implies that
+  // all EK_INTERFACEs that ultimately traverse the port are also
+  // to be considered offline. Similar consideration would apply to
+  // any associated RK_ORIGINATES and RK_TERMINATES elements.
+  repeated string affected_entity_ids = 5;
+
+  // A list of transitively affected NMTS Entity IDs that are assessed
+  // to be affected during the downtime interval. This contains the
+  // Entity IDs expected to be affected according to the constraints
+  // documented above but DOES NOT include any of the
+  // affected_entity_ids given above (no need for repetition).
+  //
+  // The Entity IDs here are those evaluated as affected given the
+  // data model graph at the instant this specific Downtime message is
+  // generated. Changes in the model between a call to CreateDowntime()
+  // and call to GetDowntime() could result in a different list of
+  // computed affected Entity IDs.
+  //
+  // This field is OUTPUT_ONLY. Its contents are cleared when input
+  // to the Provisioning API (e.g. in CreateDowntime() and
+  // UpdateDowntime() calls).
+  repeated string transitively_affected_entity_ids = 6 [
+    (google.api.field_behavior) = OUTPUT_ONLY];
+}
+
+message GetDowntimeRequest{
+  // The resource name of the Downtime instance to retrieve.
+  // Format: `downtimes/{id}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/Downtime"
+    }];
+}
+
+message ListDowntimesRequest{
+}
+
+message ListDowntimesResponse{
+  repeated Downtime downtimes = 1;
+}
+
+message CreateDowntimeRequest{
+  // The ID to use for the Downtime, which will become the final
+  // component of the Downtime's resource name, i.e. `downtimes/{id}`.
+  //
+  // This value should be 1-63 characters, and valid characters
+  // are /[a-z][0-9]-/, specifically of the form
+  // "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$".
+  string id = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // The Downtime resource to create.
+  Downtime downtime = 3 [(google.api.field_behavior) = REQUIRED];
+}
+
+message UpdateDowntimeRequest{
+  // The Downtime to update.
+  //
+  // The Downtime's `name` field is used to identify the Downtime
+  // instance to be updated.
+  Downtime downtime = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // The list of fields to be updated.
+  google.protobuf.FieldMask update_mask = 2;
+
+  // If set to true, and the Downtime named above is not found, a new
+  // Downtime will be created. In this situation, `update_mask` is
+  // ignored.
+  bool allow_missing = 3;
+}
+
+message DeleteDowntimeRequest{
+  // The resource name of the Downtime instance to delete.
+  // Format: `downtimes/{id}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/Downtime"
+    }];
+}
+
+// RFC 8745 -style Protection Association Group
+message ProtectionAssociationGroup {
+  // The resource name of this Protection Association Group.
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  message ProtectionResource {
+    ///
+    //
+    // RFC 8745 -style Protection Association Type information.
+    ProtectionRole role = 1;
+
+    // N.B.: RFC 4872 "Protection Type" for `protecting` (and `secondary`)
+    // resources is not included at this time.
+    //
+    // As a variant of the active stateful PCE model (see RFC 8051 S2),
+    // Spacetime provisioning requests default to pre-computed protection
+    // resources.
+    //
+    ///
+
+    // MUST be the full resource name of a TE path or resource created
+    // previously via this API, e.g. a P2pSrTePolicyCandidatePath.
+    string resource = 2;
+  }
+  // A list of Protection Association Group members with corresponding
+  // TE Protection roles. It is a configuration error if no association
+  // group member has a Protection role of `working`.
+  repeated ProtectionResource members = 2;
+}
+
+message GetProtectionAssociationGroupRequest{
+  // The resource name of the protection association group to retrieve.
+  // Format: `protectionAssociationGroups/{group_id}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/ProtectionAssociationGroup"
+    }];
+}
+
+message ListProtectionAssociationGroupsRequest{
+}
+
+message ListProtectionAssociationGroupsResponse{
+  repeated ProtectionAssociationGroup protection_association_groups = 1;
+}
+
+message CreateProtectionAssociationGroupRequest{
+  // The ID to use for the group, which will become the final component of
+  // the group's resource name, i.e. `protectionAssociationGroups/{group_id}`.
+  //
+  // This value should be 1-63 characters, and valid characters
+  // are /[a-z][0-9]-/, specifically of the form
+  // "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$".
+  string group_id = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // The protection association group to create.
+  ProtectionAssociationGroup protection_association_group = 3 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+}
+
+message UpdateProtectionAssociationGroupRequest{
+  // The ProtectionAssociationGroup to update.
+  //
+  // The ProtectionAssociationGroup's `name` field is used to identify the
+  // ProtectionAssociationGroup instance to be updated.
+  ProtectionAssociationGroup protection_association_group  = 1 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+
+  // The list of fields to be updated.
+  google.protobuf.FieldMask update_mask = 2;
+
+  // If set to true, and the ProtectionAssociation named above is not found,
+  // a new instance will be created. In this situation, `update_mask` is
+  // ignored.
+  bool allow_missing = 3;
+}
+
+message DeleteProtectionAssociationGroupRequest{
+  // The resource name of the protection association group to delete.
+  // Format: `protectionAssociationGroups/{group_id}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/ProtectionAssociationGroup"
+    }];
+}
+
+message DisjointAssociationGroup {
+  // The resource name of this Disjoint Association Group.
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  ///
+  // RFC 8800 -style Disjoint Association Type information.
+  //
+  // As per RFC 8800 S5.1, "[a]ll LSPs in a particular Disjoint
+  // Association Group MUST use the same combination of [...] flags."
+  // Note also that "[a] particular LSP MAY be associated to multiple
+  // Disjoint Association Groups."
+
+  // Equivalent to the Disjoint Association Group TLV's T bit; see
+  // RFC 8800 Section 5.6. Paraphrasing:
+  //   * when `true` Spacetime will NOT provision any TE paths or
+  //     resources for which the requested diversities below cannot
+  //     be ensured
+  //   * when `false` Spacetime MAY provision a TE path or resource
+  //     by relaxing the diversities requested below as necessary.
+  bool strict = 2;
+
+  // Standard bits indicating desired Link, Node, and/or Shared Risk
+  // Link Group (SRLG) diversities desired.
+  bool link_diverse = 3;
+  bool node_diverse = 4;
+  bool srlg_diverse = 5;
+
+  // An extension that, when true, augments the diversity constraint
+  // to REQUIRE changing a path origin's bearer (and therefore perhaps
+  // its attachment circuit) to a candidate bearer not already
+  // instantiated in the network topology.
+  //
+  // (The term "bearer" is used here to mean the "underlying link" of
+  // an Attachment Circuit [AC]; see
+  // draft-ietf-opsawg-teas-attachment-circuit.)
+  //
+  // This principally useful for paths originating at nodes like
+  // User Terminals that can be commanded to instantiate new bearers.
+  //
+  // For a `link_diverse` constraint a candidate bearer MAY be, for
+  // example, a newly formable wireless link to the same access node
+  // (e.g. the same satellite or HAPS platform).
+  //
+  // For a `node_diverse` constraint a candidate bearer MAY be, for
+  // example, a newly formable wireless link to a different access
+  // node (e.g. different satellite or HAPS platform).
+  bool use_alternate_bearer = 6;
+  //
+  ///
+
+  // MUST be the full resource name of a TE path or resource created
+  // previously via this API, e.g. a P2pSrTePolicyCandidatePath.
+  repeated string resources = 7;
+}
+
+message GetDisjointAssociationGroupRequest{
+  // The resource name of the disjoint association group to retrieve.
+  // Format: `disjointAssociationGroups/{group_id}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/DisjointAssociationGroup"
+    }];
+}
+
+message ListDisjointAssociationGroupsRequest{
+}
+
+message ListDisjointAssociationGroupsResponse{
+  repeated DisjointAssociationGroup disjoint_association_groups = 1;
+}
+
+message CreateDisjointAssociationGroupRequest{
+  // The ID to use for the group, which will become the final component of
+  // the group's resource name, i.e. `disjointAssociationGroups/{group_id}`.
+  //
+  // This value should be 1-63 characters, and valid characters
+  // are /[a-z][0-9]-/, specifically of the form
+  // "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$".
+  string group_id = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // The disjoint association group to create.
+  DisjointAssociationGroup disjoint_association_group = 3 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+}
+
+message UpdateDisjointAssociationGroupRequest{
+  // The DisjointAssociationGroup to update.
+  //
+  // The DisjointAssociationGroup's `name` field is used to identify the
+  // DisjointAssociationGroup instance to be updated.
+  DisjointAssociationGroup disjoint_association_group  = 1 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+
+  // The list of fields to be updated.
+  google.protobuf.FieldMask update_mask = 2;
+
+  // If set to true, and the DisjointAssociation named above is not found,
+  // a new instance will be created. In this situation, `update_mask` is
+  // ignored.
+  bool allow_missing = 3;
+}
+
+message DeleteDisjointAssociationGroupRequest{
+  // The resource name of the disjoint association group to delete.
+  // Format: `disjointAssociationGroups/{group_id}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/DisjointAssociationGroup"
+    }];
+}
+
+// A set of EK_PORT Entity IDs.
+//
+// Whether this set is interpretted as "all of" or "any of",
+// or applicable to originating or terminating another Entity,
+// MUST be defined by the context in which it appears.
+message PortSet {
+  repeated string port_ids = 1;
+}
+
+// A Link, typically PHY-layer.
+//
+// Describes a physical or logical link that connects one node to
+// another within the Spacetime-managed domain.
+//
+// Cf. RFC 9834's `Bearer`, without the emphasis on provider-customer
+// boundary, as this Link is within the Spacetime-operated network.
+message Link {
+  // The resource name of this Link.
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  // The priority field allows the requester to specify the order in
+  // which requests for Provisioning resources are satisfied relative
+  // to all other requests.
+  //
+  // A request will be treated as having a higher priority if the
+  // value of this field is arithmetically greater than that of
+  // another service request.
+  //
+  // Users may want to directly map this to some utility metric of
+  // relevance to their network operations, e.g. estimated revenue,
+  // number of customers served, etc.
+  //
+  // Cf. RFC 9256 S2.12's re-compute priority.
+  double priority = 2;
+
+  // The time interval over which this service is requested.
+  //
+  // If start_time is empty the service is requested to be provisioned
+  // at the earliest possible time it may be realized in the network.
+  //
+  // If end_time is empty the service is requested to be provisioned
+  // until this specific request is canceled or this interval field
+  // is updated with a non-empty end_time.
+  google.type.Interval interval = 3;
+
+  // A simple way to temporarily disable this request without deleting
+  // it from the store of requests. Requests that are disabled will
+  // not be provisioned by Spacetime, but evaluation of candidate
+  // links and topologies may still be performed (to improve rapidity
+  // of provisioning once re-enabled).
+  bool disabled = 4;
+
+  oneof origin_type {
+    PortSet any_of_originating_ports = 5;
+  }
+  oneof termination_type {
+    PortSet any_of_terminating_ports = 6;
+  }
+
+  // The minimum required and desired Metrics for any Links that will
+  // be provisioned as a result of this request.
+  Metrics metrics = 7;
+
+  // An operator-friendly name for this Link, useful as an alternative
+  // when resource names are created as UUIDs, for example.
+  string display_name = 8;
+}
+
+message GetLinkRequest{
+  // The resource name of the Link to retrieve.
+  // Format: `links/{link_id}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/Link"
+    }];
+}
+
+message ListLinksRequest{
+}
+
+message ListLinksResponse{
+  repeated Link links = 1;
+}
+
+message CreateLinkRequest{
+  // The ID to use for the Link, which will become the final component of
+  // the group's resource name, i.e. `links/{link_id}`.
+  //
+  // This value should be 1-63 characters, and valid characters
+  // are /[a-z][0-9]-/, specifically of the form
+  // "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$".
+  string link_id = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // The disjoint association group to create.
+  Link link = 3 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+}
+
+message UpdateLinkRequest{
+  // The Link to update.
+  //
+  // The Link's `name` field is used to identify the Link instance
+  // to be updated.
+  Link link  = 1 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+
+  // The list of fields to be updated.
+  google.protobuf.FieldMask update_mask = 2;
+
+  // If set to true, and the Link named above is not found, a new
+  // instance will be created. In this situation, `update_mask` is
+  // ignored.
+  bool allow_missing = 3;
+}
+
+message DeleteLinkRequest{
+  // The resource name of the Link to delete.
+  // Format: `links/{link_id}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/Link"
+    }];
+}
+
+// A representation of a region on the Earth's surace. May be non-contiguous.
+message GeographicRegion {
+  // The resource name of the geographic region.
+  // Format: geographicRegions/{region}
+  string name = 1;
+
+  // A GeoJSON representation of the region.
+  //
+  // The GeoJSON text must conform to the specification in RFC 7946 and must
+  // be either a Polygon type (representing a single contiguous region) or a
+  // MultiPolygon (representing a non-contiguous region).
+  //
+  // Example:
+  //
+  // {
+  //  "type": "Polygon",
+  //   "coordinates": [
+  //       [ [0.0, 0.0], [3.0, 6.0], [6.0, 1.0], [0.0, 0.0] ]
+  //   ]
+  // }
+  //
+  // or:
+  //
+  // {
+  //  "type": "MultiPolygon",
+  //   "coordinates": [
+  //       [
+  //           [ [3.0, 2.0], [4.5, 4.0], [1.0, 4.0], [3.0, 2.0] ]
+  //       ],
+  //       [
+  //           [ [1.5, 0.5], [4.0, 1.0], [1.0, 2.0], [0.5, 1.0], [1.5, 0.5] ]
+  //       ]
+  //   ]
+  // }
+  string polygon = 2;
+}
+
+message GetGeographicRegionRequest{
+  // The resource name of the geographic region to retrieve.
+  // Format: `geographicRegions/{region}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/GeographicRegion"
+    }];
+}
+
+message ListGeographicRegionsRequest{
+}
+
+message ListGeographicRegionsResponse{
+  repeated GeographicRegion geographic_regions = 1;
+}
+
+message CreateGeographicRegionRequest{
+  // The ID to use for the region, which will become the final component of
+  // the region's resource name.
+  //
+  // This value should be 1-63 characters, and valid characters
+  // are /[a-z][0-9]-/, specifically of the form
+  // "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$".
+  string region_id = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // The geographic region to create.
+  GeographicRegion geographic_region = 3 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+}
+
+message UpdateGeographicRegionRequest{
+  // The GeographicRegion to update.
+  //
+  // The GeographicRegion's `name` field is used to identify the
+  // GeographicRegion instance to be updated.
+  GeographicRegion geographic_region  = 1 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+
+  // The list of fields to be updated.
+  google.protobuf.FieldMask update_mask = 2;
+
+  // If set to true, and the GeographicRegion named above is not found, a new
+  // instance will be created. In this situation, `update_mask` is ignored.
+  bool allow_missing = 3;
+}
+
+message DeleteGeographicRegionRequest{
+  // The resource name of the geographic region to delete.
+  // Format: `geographicRegions/{region_id}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/GeographicRegion"
+    }];
+}
+
+
+// A limit on the emissions that may be received at or emitted from an antenna.
+// The limit may be defined to be enforced only over certain frequencies,
+// polarizations, and geographical regions.
+message EmissionsLimit {
+  // The resource name of the emissions limit.
+  // Format: emissionsLimits/{limit}
+  string name = 1;
+
+  // The lower frequency (inclusive) to which this emissions limit applies.
+  int64 lower_frequency_hz = 2;
+
+  // The upper frequency (exclusive) to which this emissions limit applies.
+  int64 upper_frequency_hz = 3;
+
+  // The set of polarizations to which this emissions limit applies, if any.
+  repeated nmts.v1.types.physical.Polarization polarizations = 4;
+
+  // The geographic regions in which this emissions limit is to be enforced.
+  // If empty, the emissions limit is applied globally.
+  // Format: geographicRegions/{region}
+  repeated string geographic_regions = 5;
+
+  message Label {
+    string key = 1;
+    string value = 2;
+  }
+
+  // A list of NMTS entity labels to which this emissions limit applies. Any
+  // antenna having a label in its Entity.labels field whose key and value match
+  // a key-value pair in this list is subject to the emissions limit.
+  //
+  // If empty, the limit is applied to all antennas.
+  repeated Label subject_labels = 6;
+}
+
+message GetEmissionsLimitRequest{
+  // The resource name of the emissions limit to retrieve.
+  // Format: `emissionsLimits/{limit}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/EmissionsLimit"
+    }];
+}
+
+message ListEmissionsLimitsRequest{
+}
+
+message ListEmissionsLimitsResponse{
+  repeated EmissionsLimit emissions_limits = 1;
+}
+
+message CreateEmissionsLimitRequest{
+  // The ID to use for the emissions limit, which will become the final
+  // component of the emissions limit's resource name.
+  //
+  // This value should be 1-63 characters, and valid characters
+  // are /[a-z][0-9]-/, specifically of the form
+  // "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$".
+  string limit_id = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // The emissions limit to create.
+  EmissionsLimit emissions_limit = 3 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+}
+
+message UpdateEmissionsLimitRequest{
+  // The EmissionsLimit to update.
+  //
+  // The EmissionsLimit's `name` field is used to identify the EmissionsLimit
+  // instance to be updated.
+  EmissionsLimit emissions_limit  = 1 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+
+  // The list of fields to be updated.
+  google.protobuf.FieldMask update_mask = 2;
+
+  // If set to true, and the EmissionsLimit named above is not found, a new
+  // instance will be created. In this situation, `update_mask` is ignored.
+  bool allow_missing = 3;
+}
+
+message DeleteEmissionsLimitRequest{
+  // The resource name of the emissions limit to delete.
+  // Format: `emissionsLimits/{limit}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/EmissionsLimit"
+    }];
+}
