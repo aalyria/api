@@ -190,6 +190,7 @@ message Beam {
 }
 
 message RxConfiguration {
+  optional string port_id = 9;
   optional string demodulator_id = 6;
   optional string receiver_id = 8;
 
@@ -209,6 +210,7 @@ message RxConfiguration {
 }
 
 message TxConfiguration {
+  optional string port_id = 10;
   optional string modulator_id = 8;
   optional string transmitter_id = 9;
 
