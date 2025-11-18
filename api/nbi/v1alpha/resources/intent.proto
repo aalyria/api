@@ -1,0 +1,337 @@
+// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// An Intent describes an application's request to the Spacetime core to alter
+// the network's behavior.  It specifies policy rather than mechanism.
+
+syntax = "proto2";
+
+package aalyria.spacetime.api.nbi.v1alpha.resources;
+
+import "api/common/control.proto";
+import "api/common/network.proto";
+import "api/common/time.proto";
+import "api/nbi/v1alpha/resources/network_link.proto";
+import "google/protobuf/timestamp.proto";
+import "google/rpc/code.proto";
+import "google/type/interval.proto";
+
+option java_package = "com.aalyria.spacetime.api.nbi.v1alpha.resources";
+option go_package = "aalyria.com/spacetime/api/nbi/v1alpha/resources";
+
+// Intent states are based on the ONOS intent framework,
+// see https://goo.gl/aO4ivn, but with more granularity.
+enum IntentState {
+  UNKNOWN = 0;
+  INSTALL_REQ = 1;
+  SCHEDULED = 10;
+  SCHEDULING = 12;
+  INSTALLING = 3;  // In process of being deprecated.
+  INSTALLED = 4;
+  WITHDRAW_REQ = 5;
+
+  // TODO: Subdivide WITHDRAWING state as was done for the
+  // INSTALLING state.
+  WITHDRAWING = 6;
+  FAILED = 8;
+
+  reserved 2, 7, 9, 11;
+}
+
+// Specifies a policy that reserves the use of a network resource.
+// Once the controller has started compiling an intent, Network Applications
+// must treat all fields except 'state' as immutable.  To modify the resource
+// reserved by an intent, submit a new intent and withdraw the existing intent
+// if necessary.
+message Intent {
+  // TODO: Replace the use of this field with app_id in EntityGroup
+  // and remove it.
+  optional string app_id = 1 [deprecated = true];
+
+  // Determines what time the install request should be enacted.
+  // If left blank, the intent compiler will request that the changes be made at
+  // the earliest time that it believes it can deliver the messages to the
+  // affected agents (that is, the maximum control plane latency to all affected
+  // agents.
+  optional google.protobuf.Timestamp time_to_enact = 3;
+  oneof value {
+    LinkIntent link = 4;
+    RadioIntent radio = 5;
+    PathIntent route = 6;
+    ModemIntent modem = 18;
+    BearerIntent bearer = 19;
+  }
+  optional IntentState state = 7 [default = INSTALL_REQ];
+
+  // This field is only set after the intent enters the INSTALLING or
+  // WITHDRAWING phases. It holds a timestamp indicating when the request was
+  // made.
+  optional int64 request_timestamp_us = 11;
+
+  // This field is only set after a successful compile phase.
+  // The field contains the updates necessary for intent installation.
+  repeated aalyria.spacetime.api.common.ScheduledControlUpdate
+    compiled_updates = 8;
+
+  // This field is set and defined if state = FAILED.
+  optional IntentFailure failure = 9;
+
+  // This field is set in the WITHDRAW_REQ state, and only defined in
+  // WITHDRAW_REQ, WITHDRAWING, and WITHDRAWN states.
+  optional IntentWithdrawal withdrawal = 14;
+
+  // Determines what time the intent should be withdrawn.
+  // If left blank, the intent will remain in the INSTALLED state until it is
+  // updated to WITHDRAW_REQ or the intent fails.
+  //
+  // TODO: replace with google.protobuf.Timestamp.
+  optional aalyria.spacetime.api.common.DateTime time_to_withdraw = 15;
+
+  message ServiceRequestAndIntervals {
+    optional string service_request_id = 1;
+    repeated google.type.Interval interval = 2;
+  }
+
+  // An annotation indicating the service requests that the intent supports over
+  // time.
+  repeated ServiceRequestAndIntervals dependent_service_requests = 16;
+
+  // This field is only set after a successful compile phase.
+  // The field contains the updates necessary for intent withdrawal.
+  repeated aalyria.spacetime.api.common.ScheduledControlUpdate
+    compiled_withdrawal_updates = 17;
+
+  reserved 2, 10, 12, 20 to max;  // Next IDs.
+}
+
+// Models an intent to configure steerable beams and/or radio resources.
+message LinkIntent {
+  oneof link_type {
+    // Configures a single wireless interface.
+    DirectionalLink directional_link = 3;
+
+    // Configures a point-to-point link between a pair of wireless interfaces.
+    BidirectionalLink bidirectional_link = 2;
+  }
+
+  reserved 1;
+  reserved 4 to max;  // Next IDs.
+}
+
+// Models an intent to change the radio parameters of one or more radios.
+// In practice, apps are advised to only use repeated entries if the changes
+// are related (for example, to set the transmiter and receiver participating
+// in the same wireless link to use the same radio channel).
+message RadioIntent {
+  repeated RadioConfiguration configurations = 2;
+
+  reserved 1;
+  reserved 3 to max;  // Next IDs.
+}
+
+// Models a route/path through the network.
+message PathIntent {
+  reserved 4 to 8;
+  // The network node/element that is the source of the network path.
+  optional string src_element_id = 1 [deprecated = true];
+
+  // The network node/element that is the destination of the network path.
+  optional string dst_element_id = 2 [deprecated = true];
+
+  // Defines rules for matching flows that should be forwarded along the path..
+  optional aalyria.spacetime.api.common.FlowClassifier classifier = 10;
+
+  // The path segments that comprise the route.
+  repeated NetworkLink path_segments = 3;
+
+  reserved 11 to max;  // Next IDs.
+}
+
+message ModemIntent {
+  optional aalyria.spacetime.api.common.NetworkInterfaceId interface_id = 1;
+
+  // The collection of beams to be illuminated. The beams are to be illuminated
+  // one-at-a-time in a repeating sequence determined by the
+  // beam_hopping_time_slots.
+  repeated Beam beams = 2;
+
+  // A collection of beam-hopping time slots representing a beam-hopping frame.
+  // Each slot consists of a zero-based index into the collection of beams,
+  // representing the beam to be illuminated during that time slot. A value of
+  // -1 represents that no beam should be illuminated during that time slot.
+  repeated int32 beam_hopping_time_slots = 3;
+}
+
+message Beam {
+  // The ID of the NMTS EK_ANTENNA transmitting and/or receiving via the beam.
+  optional string antenna = 5;
+
+  optional BeamTarget target = 1;
+
+  optional RxConfiguration rx = 2;
+  optional TxConfiguration tx = 3;
+
+  // The collection of endpoints served by the beam.
+  // For example, a collection of user terminals (UTs) served.
+  //
+  // Each endpoint is the ID of a network node in Spacetime's network model.
+  repeated Endpoint endpoints = 4;
+}
+
+message RxConfiguration {
+  optional string port_id = 9;
+  optional string demodulator_id = 6;
+  optional string receiver_id = 8;
+
+  optional uint64 center_frequency_hz = 1;
+  optional uint64 channel_bandwidth_hz = 2;
+  optional Polarization polarization = 3;
+
+  // Symbol rate in Megasymbols per second.
+  optional double symbol_rate_msps = 5;
+
+  // This value corresponds to the nmts.v1.ek.physical.Carrier.waveform of the
+  // carrier assigned to this beam. nmts.v1.ek.physical.Carriers are defined in
+  // nmts.v1.ek.physical.CarrierConfigurations.
+  optional string waveform = 4;
+
+  optional RxPower expected_rx_power = 7;
+}
+
+message TxConfiguration {
+  optional string port_id = 10;
+  optional string modulator_id = 8;
+  optional string transmitter_id = 9;
+
+  optional uint64 center_frequency_hz = 1;
+  optional uint64 channel_bandwidth_hz = 2;
+  optional Polarization polarization = 3;
+
+  // Transmit power in Watts.
+  optional double power_w = 5;
+
+  // Symbol rate in Megasymbols per second.
+  optional double symbol_rate_msps = 6;
+
+  // This value corresponds to the nmts.v1.ek.physical.Carrier.waveform of the
+  // carrier assigned to this beam. nmts.v1.ek.physical.Carriers are defined in
+  // nmts.v1.ek.physical.CarrierConfigurations.
+  optional string waveform = 4;
+
+  // The lowest MODCOD common among all endpoints.
+  optional string lowest_common_modcod = 7;
+}
+
+enum Polarization {
+  POLARIZATION_UNSPECIFIED = 0;
+  POLARIZATION_LHCP = 1; // Left-handed circular polarization
+  POLARIZATION_RHCP = 2; // Right-handed circular polarization
+}
+
+message Endpoint {
+  optional string id = 1;
+  optional string lowest_supported_rx_modcod = 2;
+  optional double rx_reference_throughput_bps = 3;
+  optional double tx_reference_throughput_bps = 4;
+}
+
+// IntentFailure provides context on the failure of an intent. It's purpose is
+// to allow apps to make better decision when faced with failures.
+message IntentFailure {
+  enum IntentFailureType {
+    UNKNOWN = 0;
+    COMPILATION_FAILURE = 1;
+    AGENT_INSTALLATION_FAILURE = 2;
+    UNREACHABLE_AGENT = 3;
+    // An intent in the INSTALLING or INSTALLED state failed because of a CDPI
+    // report with unexpected state (e.g. due to loss of antenna tracking, bug
+    // in the agent, etc). An intent in the INSTALLING state can also report
+    // this failure if another intent concurrently modified control plane state
+    // after compiled updates have been acked by agents, but before the compiler
+    // had a chance to observe the desired control plane state.
+    UNEXPECTED_CDPI_STATE_CHANGE = 4;
+    PRECONDITION_FAILED = 5;
+    DEADLINE_EXCEEDED = 6;
+    // The precondition is in WITHDRAW_REQ, WITHDRAWING or WITHDRAWN state.
+    PRECONDITION_EXPIRED = 7;
+
+    SDN_INTERNAL_ERROR = 9;
+
+    reserved 8, 10 to max;  // Next IDs.
+  }
+
+  // Failure type is set if the state = FAILED.
+  optional IntentFailureType type = 1;
+  // This field is set if type = PRECONDITION_FAILED.
+  optional IntentFailure precondition_failure = 2;
+  // Human readable description of the failure.
+  optional string description = 3;
+  // This field is set if failure_type = AGENT_INSTALLATION_FAILURE,
+  // UNREACHABLE_AGENT, UNEXPECTED_CDPI_STATE_CHANGE, or SDN_INTERNAL_ERROR.
+  repeated string agent_ids = 4;
+  // This field is set if failure_type = AGENT_INSTALLATION_FAILURE.
+  optional google.rpc.Code agent_failure_code = 5;
+
+  reserved 6 to max;  // Next IDs.
+}
+
+// IntentWithdrawal can expose more information about why an app chose to
+// withdraw an intent. It is designed to surface decision making information to
+// administrators to explain the SDN behavior.
+message IntentWithdrawal {
+  enum WithdrawType {
+    UNKNOWN = 0;
+    INACCESSIBLE = 1;
+    NOT_REQUIRED = 2;
+    reserved 3 to max;  // Next IDs.
+  }
+
+  optional WithdrawType type = 1;
+
+  // Human readable details of the withdraw reason.
+  optional string description = 2;
+
+  reserved 3 to max;  // Next IDs.
+}
+
+// A bearer intent represents an intent to establish a bearer towards a
+// connectivity service provider's network via an Interconnect API.
+message BearerIntent {
+  optional string provider_id = 1;
+
+  // The modulator that is to connect with a demodulator in the provider's
+  // network.
+  optional string modulator_id = 2;
+
+  // The demodulator that is to connect with a modulator in the provider's
+  // network.
+  optional string demodulator_id = 3;
+
+  // The ID of the network node associated with the modulator and demodulator
+  // above.
+  optional string network_node_id = 10;
+
+  // For non-NMTS environments, the interface that is to connect with the
+  // provider's network.
+  optional aalyria.spacetime.api.common.NetworkInterfaceId transceiver = 4;
+
+  // The ID of the InterconectTarget through which the connection is to be
+  // established.
+  optional string target_id = 5;
+
+  optional int64 rx_center_frequency_hz = 6;
+  optional int64 rx_bandwidth_hz = 7;
+  optional int64 tx_center_frequency_hz = 8;
+  optional int64 tx_bandwidth_hz = 9;
+}
