@@ -1,0 +1,123 @@
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package aalyria.spacetime.api.model.v1;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/field_mask.proto";
+import "nmts/v1/proto/nmts.proto";
+
+option java_package = "com.aalyria.spacetime.api.model.v1";
+option go_package = "aalyria.com/spacetime/api/model/v1";
+
+service Model {
+  // Create an nmts.Entity.
+  //
+  // Returns a gRPC error whenver:
+  //   - the supplied nmts.Entity's Id is already used
+  //   - the supplied nmts.Entity's Id is missing or ill-formed
+  rpc CreateEntity(CreateEntityRequest) returns (nmts.v1.Entity) {}
+
+  // Change a portion of an nmts.Entity.
+  rpc UpdateEntity(UpdateEntityRequest) returns (nmts.v1.Entity) {}
+
+  // Delete an nmts.Entity.
+  //
+  // Also deletes any nmts.Relationships in which the nmts.Entity
+  // participates; if so, these are listed in the DeleteEntityResponse.
+  //
+  // Returns a gRPC NotFound error if an Entity with the supplied Id
+  // is not in the model.
+  rpc DeleteEntity(DeleteEntityRequest) returns (DeleteEntityResponse) {}
+
+  // Insert an nmts.Relationship.
+  //
+  // Returns a gRPC error if any of the preconditions for a valid
+  // Relationship are not met (see NMTS's //lib/validation).
+  //
+  // Note: If the requested relationship kind between the same two entities
+  // already exists, then this has no real effect.  No duplicate is created.
+  rpc CreateRelationship(CreateRelationshipRequest)
+      returns (nmts.v1.Relationship) {}
+
+  // Delete an nmts.Relationship.
+  //
+  // Returns a gRPC NotFound error if the Relationship is not in the model.
+  rpc DeleteRelationship(DeleteRelationshipRequest)
+      returns (google.protobuf.Empty) {}
+
+  // Retrieve an nmts.Entity
+  //
+  // Returns a gRPC NotFound error if an Entity with the supplied Id
+  // is not in the model.
+  rpc GetEntity(GetEntityRequest) returns (nmts.v1.Entity) {}
+
+  rpc ListEntities(ListEntitiesRequest) returns (ListEntitiesResponse) {}
+
+  rpc ListRelationships(ListRelationshipsRequest)
+    returns (ListRelationshipsResponse) {}
+}
+
+message CreateEntityRequest {
+  nmts.v1.Entity entity = 1;
+}
+
+message UpdateEntityRequest {
+  nmts.v1.Entity entity = 1;
+
+  // If provided, update only fields included in the update_mask.
+  google.protobuf.FieldMask update_mask = 2;
+
+  // If set to true, and the entity named above is not found, a new
+  // instance will be created. In this situation, `update_mask` is
+  // ignored.
+  bool allow_missing = 3;
+}
+
+message DeleteEntityRequest {
+  string entity_id = 1;
+}
+message DeleteEntityResponse {
+  repeated nmts.v1.Relationship deleted_relationships = 1;
+}
+
+message CreateRelationshipRequest {
+  nmts.v1.Relationship relationship = 1;
+}
+
+message DeleteRelationshipRequest {
+  nmts.v1.Relationship relationship = 1;
+}
+
+message GetEntityRequest {
+  string entity_id = 1;
+}
+
+message ListEntitiesRequest {
+}
+
+message ListEntitiesResponse {
+  repeated nmts.v1.Entity entities = 1;
+}
+
+message ListRelationshipsRequest {
+  // Filter the relationships using Common Expression Language (CEL).
+  string filter = 1;
+}
+
+message ListRelationshipsResponse {
+  repeated nmts.v1.Relationship relationships = 1;
+}
