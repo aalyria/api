@@ -239,7 +239,7 @@ message WiredDevice {
 // Spacetime's Link Evaluator services will write InterfaceLinkReports for
 // all possible wireless links based on models if real metrics are unavailable.
 message WirelessDevice {
-  reserved 1, 2, 4, 17 to max;
+  reserved 1, 2, 4, 19 to max;
   // Identifies a physical transceiver model from the SDN Store.
   optional aalyria.spacetime.api.common.TransceiverModelId 
     transceiver_model_id = 5;
@@ -257,9 +257,11 @@ message WirelessDevice {
   repeated string tx_signal_processing_chains = 10;
   optional string transmitter = 11;
   optional string tx_antenna = 12;
+  optional string tx_carrier_config = 17;
   // RX
   optional string demodulator = 13;
   repeated string rx_signal_processing_chains = 14;
   optional string receiver = 15;
   optional string rx_antenna = 16;
+  optional string rx_carrier_config = 18;
 }
