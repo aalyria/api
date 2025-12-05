@@ -63,6 +63,11 @@ message RadioConfiguration {
   reserved 6 to max;  // Next IDs.
 }
 
+message DvbS2Params {
+  optional uint32 payload_pl_scrambling_code = 1;
+  optional uint32 pilot_pl_scrambling_code = 2;
+}
+
 message Radio {
   // Defines the center of the channel in Hz.
   // For RF transceivers, this is the carrier frequency.
@@ -71,6 +76,10 @@ message Radio {
   optional string band_profile_id = 2 [deprecated = true];
   optional int64 channel_bandwidth_hz = 6;
   optional aalyria.spacetime.api.common.Polarization polarization = 3;
+
+  oneof other_parameters {
+    DvbS2Params dvbs2_params = 7;
+  }
 
   message TxRadioConfiguration {
 

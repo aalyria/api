@@ -207,6 +207,10 @@ message RxConfiguration {
   optional string waveform = 4;
 
   optional RxPower expected_rx_power = 7;
+
+  oneof other_parameters {
+    DvbS2Params dvbs2_params = 10;
+  }
 }
 
 message TxConfiguration {
@@ -231,6 +235,10 @@ message TxConfiguration {
 
   // The lowest MODCOD common among all endpoints.
   optional string lowest_common_modcod = 7;
+
+  oneof other_parameters {
+    DvbS2Params dvbs2_params = 11;
+  }
 }
 
 enum Polarization {
