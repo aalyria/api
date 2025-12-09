@@ -1,0 +1,140 @@
+# Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Bazel
+
+on:
+  pull_request: {}
+  push: {}
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: "Create GitHub release"
+        type: boolean
+        default: false
+      ref:
+        description: "Release version ref"
+        required: false
+        type: string
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/bazelisk
+            ~/.cache/bazel
+          key: bazel-${{ hashFiles('common.bazelrc', '.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
+          restore-keys: bazel-
+      - run: bazelisk test //...
+
+  build-and-upload-tools:
+    needs: [build-and-test]
+    strategy:
+      matrix:
+        os: [linux, windows, darwin]
+        arch: [amd64, arm64]
+
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/bazelisk
+            ~/.cache/bazel
+          key: bazel-${{ hashFiles('common.bazelrc', '.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
+          restore-keys: bazel-
+      - run: bazel/tools/update_version_bzl.sh version.bzl
+      - run: bazelisk build --stamp "--platforms=@rules_go//go/toolchain:${{ matrix.os }}_${{ matrix.arch }}" //agent/cmd/agent //tools/nbictl/cmd/nbictl
+
+      - name: Package binary
+        if: ${{ matrix.os != 'windows' }}
+        run: |
+          zip -j nbictl-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl
+          zip -j agent-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/agent/cmd/agent/agent_/agent
+
+      - name: Package binary - Windows
+        if: ${{ matrix.os == 'windows' }}
+        run: |
+          zip -j nbictl-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl.exe
+          zip -j agent-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/agent/cmd/agent/agent_/agent.exe
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: tools-${{ matrix.os }}-${{ matrix.arch }}
+          path: "*.zip"
+
+  build-and-upload-docs:
+    needs: [build-and-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/bazelisk
+            ~/.cache/bazel
+          key: bazel-${{ hashFiles('common.bazelrc', '.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
+          restore-keys: bazel-
+      - run: bazelisk build "//api:api.html"
+      - name: Upload API docs
+        uses: actions/upload-artifact@v4
+        with:
+          name: api.html
+          path: |
+            bazel-bin/api/api.html/api.html
+
+  create-release:
+    needs: [build-and-upload-tools]
+    runs-on: ubuntu-latest
+    if: |
+      startsWith( github.ref, 'refs/heads/release-' ) ||
+      (github.event_name == 'workflow_dispatch' && inputs.create_release == true && inputs.ref != '')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: tools-*
+
+      - run: bazel/tools/update_version_bzl.sh version.bzl
+      - name: Read version
+        id: version
+        run: echo "value=$(bazelisk run //:version)" >> $GITHUB_OUTPUT
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.value }}
+          name: Release v${{ steps.version.outputs.value }}
+          target_commitish: ${{ github.event.inputs.ref || github.ref }}
+          make_latest: legacy # determined based on the release creation date and higher semantic version
+          draft: false
+          files: |
+            tools-*/*.zip
+          generate_release_notes: true
