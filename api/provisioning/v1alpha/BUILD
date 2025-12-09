@@ -31,6 +31,7 @@ proto_library(
         "@googleapis//google/api:field_behavior_proto",
         "@googleapis//google/api:resource_proto",
         "@googleapis//google/type:interval_proto",
+        "@org_outernetcouncil_nmts//v1/proto/types/physical:emissions_proto",
         "@org_outernetcouncil_nmts//v1/proto/types/physical:polarization_proto",
         "@protobuf//:duration_proto",
         "@protobuf//:empty_proto",

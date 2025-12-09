@@ -23,6 +23,7 @@ import "google/api/resource.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/field_mask.proto";
 import "google/type/interval.proto";
+import "nmts/v1/proto/types/physical/emissions.proto";
 import "nmts/v1/proto/types/physical/polarization.proto";
 
 
@@ -115,6 +116,15 @@ service Provisioning {
   rpc CreateEmissionsLimit(CreateEmissionsLimitRequest) returns (EmissionsLimit) {}
   rpc UpdateEmissionsLimit(UpdateEmissionsLimitRequest) returns (EmissionsLimit) {}
   rpc DeleteEmissionsLimit(DeleteEmissionsLimitRequest) returns (google.protobuf.Empty) {}
+
+  // Methods on EmissionsTargets.
+  //
+  // Manage resources under `emissionsTargets/{id}`.
+  rpc GetEmissionsTarget(GetEmissionsTargetRequest) returns (EmissionsTarget) {}
+  rpc ListEmissionsTargets(ListEmissionsTargetsRequest) returns (ListEmissionsTargetsResponse) {}
+  rpc CreateEmissionsTarget(CreateEmissionsTargetRequest) returns (EmissionsTarget) {}
+  rpc UpdateEmissionsTarget(UpdateEmissionsTargetRequest) returns (EmissionsTarget) {}
+  rpc DeleteEmissionsTarget(DeleteEmissionsTargetRequest) returns (google.protobuf.Empty) {}
 
   // TODO: Consider RFC 8623 P2MP TE -like request
   // TODO: Consider PHY-layer requests (bent pipe, etc)
@@ -986,5 +996,93 @@ message DeleteEmissionsLimitRequest{
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
       type: "provisioning.spacetimeapis.com/EmissionsLimit"
+    }];
+}
+
+// A target on the emissions that may be emitted from an antenna.
+// The target may be defined to be enforced only over certain frequencies,
+// polarizations, and geographical regions.
+message EmissionsTarget {
+  // The resource name of the emissions target.
+  // Format: emissionsTargets/{target}
+  string name = 1;
+
+  // The geographic regions in which this emissions target is to be enforced.
+  // If empty, the emissions target is applied globally.
+  // Format: geographicRegions/{region}
+  repeated string geographic_regions = 2;
+
+  message Label {
+    string key = 1;
+    string value = 2;
+  }
+
+  // A list of NMTS entity labels to which this emissions target applies. Any
+  // antenna having a label in its Entity.labels field whose key and value match
+  // a key-value pair in this list is subject to the emissions target.
+  //
+  // If empty, the target is applied to all antennas.
+  repeated Label subject_labels = 3;
+
+  // The desired power flux density (PFD) to apply to the target.
+  nmts.v1.types.physical.PowerFluxDensity power_flux_density = 4;
+}
+
+message GetEmissionsTargetRequest{
+  // The resource name of the emissions target to retrieve.
+  // Format: `emissionsTargets/{target}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/EmissionsTarget"
+    }];
+}
+
+message ListEmissionsTargetsRequest{
+}
+
+message ListEmissionsTargetsResponse{
+  repeated EmissionsTarget emissions_targets = 1;
+}
+
+message CreateEmissionsTargetRequest{
+  // The ID to use for the emissions target, which will become the final
+  // component of the emissions target's resource name.
+  //
+  // This value should be 1-63 characters, and valid characters
+  // are /[a-z][0-9]-/, specifically of the form
+  // "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$".
+  string target_id = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // The emissions target to create.
+  EmissionsTarget emissions_target = 3 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+}
+
+message UpdateEmissionsTargetRequest{
+  // The EmissionsTarget to update.
+  //
+  // The EmissionsTarget's `name` field is used to identify the EmissionsTarget
+  // instance to be updated.
+  EmissionsTarget emissions_target  = 1 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+
+  // The list of fields to be updated.
+  google.protobuf.FieldMask update_mask = 2;
+
+  // If set to true, and the EmissionsTarget named above is not found, a new
+  // instance will be created. In this situation, `update_mask` is ignored.
+  bool allow_missing = 3;
+}
+
+message DeleteEmissionsTargetRequest{
+  // The resource name of the emissions target to delete.
+  // Format: `emissionsTargets/{target}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/EmissionsTarget"
     }];
 }
