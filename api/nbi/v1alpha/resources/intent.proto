@@ -107,12 +107,21 @@ message Intent {
   // time.
   repeated ServiceRequestAndIntervals dependent_service_requests = 16;
 
+  message LinkRequestAndIntervals {
+    optional string link_request_id = 1;
+    repeated google.type.Interval interval = 2;
+  }
+
+  // An annotation indicating the link requests that the intent supports over
+  // time.
+  repeated LinkRequestAndIntervals dependent_link_requests = 20;
+
   // This field is only set after a successful compile phase.
   // The field contains the updates necessary for intent withdrawal.
   repeated aalyria.spacetime.api.common.ScheduledControlUpdate
     compiled_withdrawal_updates = 17;
 
-  reserved 2, 10, 12, 20 to max;  // Next IDs.
+  reserved 2, 10, 12, 21 to max;  // Next IDs.
 }
 
 // Models an intent to configure steerable beams and/or radio resources.
