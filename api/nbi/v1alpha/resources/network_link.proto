@@ -25,9 +25,8 @@ import "api/common/wireless_transceiver.proto";
 import "google/protobuf/duration.proto";
 import "google/type/interval.proto";
 
-
-option java_package = "com.aalyria.spacetime.api.nbi.v1alpha.resources";
 option go_package = "aalyria.com/spacetime/api/nbi/v1alpha/resources";
+option java_package = "com.aalyria.spacetime.api.nbi.v1alpha.resources";
 
 // Defines a directional link between two logical network interfaces.
 message NetworkLink {
@@ -35,6 +34,7 @@ message NetworkLink {
     src = 3 [deprecated = true];
   optional aalyria.spacetime.api.common.NetworkInterfaceId 
     dst = 4 [deprecated = true];
+
 
   optional string src_network_node_id = 7;
   optional string dst_network_node_id = 8;
@@ -60,7 +60,7 @@ message RadioConfiguration {
 
   // Configures the TDMA schedule, if applicable.
   optional aalyria.spacetime.api.common.TdmaSchedule tdma_schedule = 4;
-  reserved 6 to max;  // Next IDs.
+  reserved 6 to max; // Next IDs.
 }
 
 message DvbS2Params {
@@ -76,6 +76,7 @@ message Radio {
   optional string band_profile_id = 2 [deprecated = true];
   optional int64 channel_bandwidth_hz = 6;
   optional aalyria.spacetime.api.common.Polarization polarization = 3;
+  optional double symbol_rate_msps = 9; // Megasymbols per second
   optional string waveform = 8;
 
   oneof other_parameters {
@@ -83,7 +84,6 @@ message Radio {
   }
 
   message TxRadioConfiguration {
-
     message BeamPower {
       enum PowerType {
         POWER_TYPE_UNSPECIFIED = 0;
@@ -113,7 +113,7 @@ message Radio {
 
   optional RxRadioConfiguration rx_radio = 5;
 
-  reserved 9 to max;
+  reserved 10 to max;
 }
 
 message RxRadioConfiguration {
@@ -146,7 +146,7 @@ message GeodeticWgs84 {
 
 message BeamTarget {
   oneof type {
-    string platform_id = 3;  // can hold the ID of an NMTS platform
+    string platform_id = 3; // can hold the ID of an NMTS platform
     GeodeticWgs84 geodetic_wgs84 = 5;
   }
   reserved 1, 2, 4;
@@ -202,7 +202,7 @@ message RxPlatform {
   optional aalyria.spacetime.api.common.NetworkInterfaceId id = 1;
   optional string network_node_id = 3;
   optional string interface_id = 4;
-  
+
   // Identifies the link report from the transmitter to receiving platform
   optional string link_report_id = 5;
 
@@ -257,7 +257,7 @@ message WirelessLinkBudget {
 
   // The carrier to noise ratio.
   optional double carrier_to_noise_db = 8;
-  
+
   // The carrier to noise-plus-interference ratio (C / (N + I)),
   // in dB.
   optional double carrier_to_noise_plus_interference_db = 16;
@@ -270,9 +270,9 @@ message WirelessLinkBudget {
 // on a particular channel.
 message WirelessLinkReport {
   // The ID of the destination transceiver model described by this report.
-  optional aalyria.spacetime.api.common.TransceiverModelId dst = 1;  // required
+  optional aalyria.spacetime.api.common.TransceiverModelId dst = 1; // required
 
-  optional string band_profile_id = 2;  // required
+  optional string band_profile_id = 2; // required
   repeated uint64 center_frequencies_hz = 3;
 
   // A series of non-overlapping time intervals that describe the predicted
@@ -345,7 +345,7 @@ message WirelessLinkReport {
 }
 
 // Provides interface link report between `src` and `dst` interfaces,
-// at different `access_intervals`. 
+// at different `access_intervals`.
 // It is the responsibility of some SDN application to insert link
 // reports corresponding to the physical availability of connections from each
 // source interface they manage to any other interfaces which should be
@@ -398,7 +398,7 @@ message TransceiverLinkReport {
 message BeamCandidate {
   // Beam Candidate ID. Stable across entities that describe
   // different AccessIntervals for the same BeamCandidate.
-  optional string id  = 4;
+  optional string id = 4;
 
   optional aalyria.spacetime.api.common.TransceiverModelId transceiver_id = 1;
 
@@ -411,13 +411,12 @@ message BeamCandidate {
   // Incidence angle of the beam over time,
   // observed from the point and orientation of the antenna.
   // Each field contains (interval / sampling_resolution) data points.
-  repeated double beam_pointing_phi_rad = 7 [packed=true];
-  repeated double beam_pointing_theta_rad = 8 [packed=true];
+  repeated double beam_pointing_phi_rad = 7 [packed = true];
+  repeated double beam_pointing_theta_rad = 8 [packed = true];
 
   // AccessibilityInterval defines a link evaluation interval and the
   // corresponding groups of platforms and their modeled data.
   message AccessibilityInterval {
-
     // GainGroup defines the modeled gain between the beam
     // and a set of transceivers and/or Earth Fixed H3 cells.
     message GainGroup {
