@@ -76,6 +76,7 @@ message Radio {
   optional string band_profile_id = 2 [deprecated = true];
   optional int64 channel_bandwidth_hz = 6;
   optional aalyria.spacetime.api.common.Polarization polarization = 3;
+  optional string waveform = 8;
 
   oneof other_parameters {
     DvbS2Params dvbs2_params = 7;
@@ -111,6 +112,8 @@ message Radio {
   optional TxRadioConfiguration tx_radio = 4;
 
   optional RxRadioConfiguration rx_radio = 5;
+
+  reserved 9 to max;
 }
 
 message RxRadioConfiguration {
