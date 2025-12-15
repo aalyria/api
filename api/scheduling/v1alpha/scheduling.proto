@@ -398,8 +398,10 @@ message RxConfiguration {
 
   // Symbol rate in Megasymbols per second.
   double symbol_rate_msps = 5;
+
   // The roll-off factor, which is a measure of the excess bandwidth of a 
-  // carrier’s pulse-shaping filter, as a decimal value. 
+  // carrier’s pulse-shaping filter, as a decimal value, calculated according to
+  // bandwidth_hz = symbol_rate_sps * (1 + roll_off_factor).
   // Note: The channel bandwidth, symbol rate, and roll-off parameters hold 
   // redundant information (since with any two of those parameters the third 
   // value is computable), but all three can be provided to a client for clarity
@@ -443,7 +445,8 @@ message TxConfiguration {
   // Symbol rate in Megasymbols per second.
   double symbol_rate_msps = 6;
   // The roll-off factor, which is a measure of the excess bandwidth of a 
-  // carrier’s pulse-shaping filter, as a decimal value. 
+  // carrier’s pulse-shaping filter, as a decimal value, calculated according to
+  // bandwidth_hz = symbol_rate_sps * (1 + roll_off_factor).
   // Note: The channel bandwidth, symbol rate, and roll-off parameters hold 
   // redundant information (since with any two of those parameters the third 
   // value is computable), but all three can be provided to a client for clarity
