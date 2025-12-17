@@ -20,9 +20,11 @@ syntax = "proto2";
 package aalyria.spacetime.api.nbi.v1alpha.resources;
 
 import "api/common/control.proto";
+import "api/common/coordinates.proto";
 import "api/common/network.proto";
 import "api/common/time.proto";
 import "api/nbi/v1alpha/resources/network_link.proto";
+import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 import "google/rpc/code.proto";
 import "google/type/interval.proto";
@@ -71,6 +73,7 @@ message Intent {
     PathIntent route = 6;
     ModemIntent modem = 18;
     BearerIntent bearer = 19;
+    MobilityIntent mobility = 21;
   }
   optional IntentState state = 7 [default = INSTALL_REQ];
 
@@ -121,7 +124,7 @@ message Intent {
   repeated aalyria.spacetime.api.common.ScheduledControlUpdate
     compiled_withdrawal_updates = 17;
 
-  reserved 2, 10, 12, 21 to max;  // Next IDs.
+  reserved 2, 10, 12, 22 to max;  // Next IDs.
 }
 
 // Models an intent to configure steerable beams and/or radio resources.
@@ -351,4 +354,140 @@ message BearerIntent {
   optional int64 rx_bandwidth_hz = 7;
   optional int64 tx_center_frequency_hz = 8;
   optional int64 tx_bandwidth_hz = 9;
+}
+
+// A Mobility Intent carries information indicating that a user, a group of
+// users or an entire coverage region (with all constituent users) is to be
+// handed over from one network entity (source) to another (target) at a
+// given moment in time.
+message MobilityIntent {
+  // Mobility signaling for networks adopting one of the Digital Video
+  // Broadcasting (DVB) family of access networks, e.g. DVB-S, DVB-S2,
+  // DVB-S2X, etc. There are no exact standards which define what mobility
+  // procedures in DVB based networks requires as input information, so it is
+  // for now being defined to include a source and target EK_NETWORK_NODE ID. 
+  message Dvb {
+    optional string source_network_node_id = 1;
+    optional string target_network_node_id = 2;
+  }
+
+  // Mobility signaling for networks adopting the 5G New Radio (NR) Radio
+  // Access Technology (RAT).
+  message Nr {
+    // Legacy, network-initiated L3 Handover 
+    message L3HO {
+    }
+
+    // Time-based Conditional Handover (CHO).
+    // See condEventT1-r17 in TS 38.331 Release 18.
+    // Ref: https://www.etsi.org/deliver/etsi_ts/138300_138399/138331/18.02.00_60/ts_138331v180200p.pdf
+    message T1CHO {
+      // "The field counts the number of UTC seconds in 10 ms units since 
+      // 00:00:00 on Gregorian calendar date 1 January, 1900 (midnight between
+      // Sunday, December 31, 1899 and Monday, January 1, 1900)."
+      optional uint64 t1_threshold_10ms = 1;
+
+      // "This field is used for defining the leaving condition T1-2 for 
+      // conditional HO event condEventT1. 
+      // Each step represents 100ms"
+      optional uint32 duration_100ms = 2;
+    }
+
+    // Distance-based Conditional Handover (CHO).
+    // See condEventD1-r17 in TS 38.331 Release 18
+    // Ref: https://www.etsi.org/deliver/etsi_ts/138300_138399/138331/18.02.00_60/ts_138331v180200p.pdf
+    message D1CHO {
+      // As per 3GPP TS 38.331 
+      // "The IE TimeToTrigger specifies the value range used for time to 
+      // trigger parameter, which concerns the time during which specific
+      // criteria for the event needs to be met in order to trigger a
+      // measurement report. Value ms0 corresponds to 0 ms and behaviour
+      // as specified in 7.1.2 applies, value ms40 corresponds to 40 ms,
+      // and so on."
+      enum TimeToTrigger {
+        MS0 = 0;
+        MS40 = 1;
+        MS64 = 2;
+        MS80 = 3;
+        MS100 = 4;
+        MS128 = 5;
+        MS160 = 6;
+        MS256 = 7;
+        MS320 = 8;
+        MS480 = 9;
+        MS512 = 10;
+        MS640 = 11;
+        MS1024 = 12;
+        MS1280 = 13;
+        MS2560 = 14;
+        MS5120 = 15;
+      }
+
+      // As per 3GPP TS 38.331 
+      // Distance from a fixed reference location configured with
+      // referenceLocation1 or referenceLocation2 or a moving reference location
+      // determined by the UE based on the serving cell movingReferenceLocation
+      // broadcast in SIB19 or referenceLocation2 and their corresponding
+      // satellite ephemeris and epoch time. Each step represents 50m.
+      optional uint32 distance_thresh_from_reference_1_50m = 1;
+      optional uint32 distance_thresh_from_reference_2_50m = 2;
+
+      // Defined in TS 38.331 as a ReferenceLocation-r17 IE, of type OCTET
+      // STRING. The OCTET STRING represents an ASN.1 APER encoded
+      // representation of the Ellipsoid-Point from TS 37.355, which itself
+      // has the following structure
+      // -- ASN1START
+      // Ellipsoid-Point ::= SEQUENCE {
+      //  latitudeSign ENUMERATED {north, south},
+      //  degreesLatitude INTEGER (0..8388607), -- 23 bit field
+      //  degreesLongitude INTEGER (-8388608..8388607) -- 24 bit field
+      // }
+      // -- ASN1STOP
+      optional aalyria.spacetime.api.common.GeodeticWgs84 reference_location_1 = 3;
+      optional aalyria.spacetime.api.common.GeodeticWgs84 reference_location_2 = 4;
+      optional TimeToTrigger time_to_trigger = 5;
+    }
+
+    // Satellite Switch with Resynchronization.
+    // See SatSwitchWithReSync-r17 in TS 38.331 Release 18
+    // Ref: https://www.etsi.org/deliver/etsi_ts/138300_138399/138331/18.02.00_60/ts_138331v180200p.pdf
+    message SatSwitchWithReSync {
+      optional uint64 t_service_start_10ms = 1;
+      optional uint32 ssb_time_offset = 2;
+    }
+
+
+    // Source and Target NR Cell Global IDs.
+    optional string source_nr_cgi = 1;
+    optional string target_nr_cgi = 2;
+
+    oneof handoverType {
+      L3HO l3_ho = 3;
+      T1CHO t1_cho = 4;
+      D1CHO d1_cho = 5;
+      SatSwitchWithReSync sat_switch_with_re_sync = 6; 
+    }
+  }
+
+  message EndpointList {
+    repeated Endpoint endpoints = 1; 
+  }
+
+  oneof accessType {
+    Dvb dvb = 1;
+    Nr nr = 2;
+  }
+
+  // Other subjects TBD.
+  oneof subject {
+    BeamTarget target = 3;
+    EndpointList endpoint_list = 4;
+  }
+
+  // The amount of time before the handover event at which the MobilityIntent
+  // should be enacted to prepare the network. For example, if a handover will
+  // occur at time T and the handover_lead_time is 2 seconds, the mobility
+  // procedures should begin at T-2 seconds to ensure the network is ready
+  // when the handover actually occurs.
+  optional google.protobuf.Duration handover_lead_time = 5;
 }
