@@ -318,8 +318,8 @@ func getDialOpts(ctx context.Context, connParams *configpb.ConnectionParams, clo
 	tracerProvider, _ := task.ExtractTracerProvider(ctx)
 
 	dialOpts := []grpc.DialOption{
-		grpc.WithStreamInterceptor(
-			otelgrpc.StreamClientInterceptor(
+		grpc.WithStatsHandler(
+			otelgrpc.NewClientHandler(
 				otelgrpc.WithTracerProvider(tracerProvider),
 				otelgrpc.WithPropagators(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{})),
 			)),
@@ -561,8 +561,7 @@ func runChannelzServer(ctx context.Context, params *configpb.AgentParams) error 
 	}
 
 	srv := grpc.NewServer(
-		grpc.StreamInterceptor(otelgrpc.StreamServerInterceptor()),
-		grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
+		grpc.StatsHandler(otelgrpc.NewServerHandler()),
 	)
 	channelz.RegisterChannelzServiceToServer(srv)
 
