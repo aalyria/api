@@ -739,6 +739,18 @@ message Link {
     PortSet any_of_terminating_ports = 6;
   }
 
+  // The set of EK_PLATFORM entity IDs that contain the originating entities.
+  // These IDs are only computed during a CreateLink or UpdateLink request.
+  // If the model changes afterwards, this field may no longer be accurate.
+  repeated string computed_originating_platform_ids = 9 [
+    (google.api.field_behavior) = OUTPUT_ONLY];
+
+  // The set of EK_PLATFORM entity IDs that contain the terminating entities.
+  // These IDs are only computed during a CreateLink or UpdateLink request.
+  // If the model changes afterwards, this field may no longer be accurate.
+  repeated string computed_terminating_platform_ids = 10 [
+    (google.api.field_behavior) = OUTPUT_ONLY];
+
   // The minimum required and desired Metrics for any Links that will
   // be provisioned as a result of this request.
   Metrics metrics = 7;
