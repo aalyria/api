@@ -160,6 +160,8 @@ message BidirectionalLink {
 
   optional string a_network_node_id = 5;
   optional string b_network_node_id = 6;
+  optional string a_platform_id = 13;
+  optional string b_platform_id = 14;
 
   optional string a_rx_interface_id = 7;
   optional string a_tx_interface_id = 8;
