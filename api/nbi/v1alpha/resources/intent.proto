@@ -388,17 +388,15 @@ message MobilityIntent {
       //
       // As per above definition from 3GPP TS 38.331, the value is to be
       // quantised into units of 10ms when being provided to the NTN RAN.
-      optional google.protobuf.Timestamp t1_threshold = 3;
+      optional google.protobuf.Timestamp t1_threshold = 1;
 
       // "This field is used for defining the leaving condition T1-2 for 
       // conditional HO event condEventT1. 
       // Each step represents 100ms"
       //
       // As per above definition from 3GPP TS 38.331, the value is to be 
-      // quanitsed into units of 100ms when being provided to the NTN RAN.
-      optional google.protobuf.Duration duration = 4;
-
-      reserved 1, 2;
+      // quantised into units of 100ms when being provided to the NTN RAN.
+      optional google.protobuf.Duration duration = 2;
     }
 
     // Distance-based Conditional Handover (CHO).
@@ -411,8 +409,8 @@ message MobilityIntent {
       // determined by the UE based on the serving cell movingReferenceLocation
       // broadcast in SIB19 or referenceLocation2 and their corresponding
       // satellite ephemeris and epoch time. Each step represents 50m.
-      optional uint32 distance_thresh_from_reference_1_50m = 1;
-      optional uint32 distance_thresh_from_reference_2_50m = 2;
+      optional int32 distance_thresh_from_reference_1_50m = 1;
+      optional int32 distance_thresh_from_reference_2_50m = 2;
 
       // Defined in TS 38.331 as a ReferenceLocation-r17 IE, of type OCTET
       // STRING. The OCTET STRING represents an ASN.1 APER encoded
@@ -432,7 +430,7 @@ message MobilityIntent {
       // "The IE HysteresisLocation is a parameter used within entry and leave
       // condition of a location based event triggered reporting condition.
       // The actual value is field value * 10 meters."
-      optional uint32 hysteresis_location_10m = 6;
+      optional int32 hysteresis_location_10m = 5;
 
       // As per 3GPP TS 38.331
       // "The IE TimeToTrigger specifies the value range used for time to
@@ -445,9 +443,7 @@ message MobilityIntent {
       // The possible valid values are the following:
       // ms0, ms40, ms64, ms80, ms100, ms128, ms160, ms256, ms320, ms480, ms512,
       // ms640, ms1024, ms1280, ms2560, ms5120
-      optional google.protobuf.Duration time_to_trigger = 7;
-
-      reserved 5;
+      optional google.protobuf.Duration time_to_trigger = 6;
     }
 
     // Satellite Switch with Resynchronization.
@@ -466,16 +462,13 @@ message MobilityIntent {
       //
       // As per above definition from 3GPP TS 38.331, the value is to be
       // quantised into units of 10ms when being provided to the NTN RAN.
-      optional google.protobuf.Timestamp t_service_start = 3;
+      optional google.protobuf.Timestamp t_service_start = 1;
 
       // "Indicates the time offset between the SSB from source and target
       // satellite at the uplink time synchronization reference point. It is
       // given in number of subframes."
-      optional int32 ssb_time_offset_count = 4;
-
-      reserved 1, 2;
+      optional int32 ssb_time_offset_count = 2;
     }
-
 
     // Source and Target NR Cell Global IDs.
     optional string source_nr_cgi = 1;
