@@ -385,44 +385,26 @@ message MobilityIntent {
       // "The field counts the number of UTC seconds in 10 ms units since 
       // 00:00:00 on Gregorian calendar date 1 January, 1900 (midnight between
       // Sunday, December 31, 1899 and Monday, January 1, 1900)."
-      optional uint64 t1_threshold_10ms = 1;
+      //
+      // As per above definition from 3GPP TS 38.331, the value is to be
+      // quantised into units of 10ms when being provided to the NTN RAN.
+      optional google.protobuf.Timestamp t1_threshold = 3;
 
       // "This field is used for defining the leaving condition T1-2 for 
       // conditional HO event condEventT1. 
       // Each step represents 100ms"
-      optional uint32 duration_100ms = 2;
+      //
+      // As per above definition from 3GPP TS 38.331, the value is to be 
+      // quanitsed into units of 100ms when being provided to the NTN RAN.
+      optional google.protobuf.Duration duration = 4;
+
+      reserved 1, 2;
     }
 
     // Distance-based Conditional Handover (CHO).
     // See condEventD1-r17 in TS 38.331 Release 18
     // Ref: https://www.etsi.org/deliver/etsi_ts/138300_138399/138331/18.02.00_60/ts_138331v180200p.pdf
     message D1CHO {
-      // As per 3GPP TS 38.331 
-      // "The IE TimeToTrigger specifies the value range used for time to 
-      // trigger parameter, which concerns the time during which specific
-      // criteria for the event needs to be met in order to trigger a
-      // measurement report. Value ms0 corresponds to 0 ms and behaviour
-      // as specified in 7.1.2 applies, value ms40 corresponds to 40 ms,
-      // and so on."
-      enum TimeToTrigger {
-        MS0 = 0;
-        MS40 = 1;
-        MS64 = 2;
-        MS80 = 3;
-        MS100 = 4;
-        MS128 = 5;
-        MS160 = 6;
-        MS256 = 7;
-        MS320 = 8;
-        MS480 = 9;
-        MS512 = 10;
-        MS640 = 11;
-        MS1024 = 12;
-        MS1280 = 13;
-        MS2560 = 14;
-        MS5120 = 15;
-      }
-
       // As per 3GPP TS 38.331 
       // Distance from a fixed reference location configured with
       // referenceLocation1 or referenceLocation2 or a moving reference location
@@ -445,15 +427,53 @@ message MobilityIntent {
       // -- ASN1STOP
       optional aalyria.spacetime.api.common.GeodeticWgs84 reference_location_1 = 3;
       optional aalyria.spacetime.api.common.GeodeticWgs84 reference_location_2 = 4;
-      optional TimeToTrigger time_to_trigger = 5;
+
+      // As per 3GPP TS 38.331
+      // "The IE HysteresisLocation is a parameter used within entry and leave
+      // condition of a location based event triggered reporting condition.
+      // The actual value is field value * 10 meters."
+      optional uint32 hysteresis_location_10m = 6;
+
+      // As per 3GPP TS 38.331
+      // "The IE TimeToTrigger specifies the value range used for time to
+      // trigger parameter, which concerns the time during which specific
+      // criteria for the event needs to be met in order to trigger a
+      // measurement report. Value ms0 corresponds to 0 ms and behaviour as
+      // specified in 7.1.2 applies, value ms40 corresponds to 40 ms, and so
+      // on." 
+      //
+      // The possible valid values are the following:
+      // ms0, ms40, ms64, ms80, ms100, ms128, ms160, ms256, ms320, ms480, ms512,
+      // ms640, ms1024, ms1280, ms2560, ms5120
+      optional google.protobuf.Duration time_to_trigger = 7;
+
+      reserved 5;
     }
 
     // Satellite Switch with Resynchronization.
     // See SatSwitchWithReSync-r17 in TS 38.331 Release 18
     // Ref: https://www.etsi.org/deliver/etsi_ts/138300_138399/138331/18.02.00_60/ts_138331v180200p.pdf
     message SatSwitchWithReSync {
-      optional uint64 t_service_start_10ms = 1;
-      optional uint32 ssb_time_offset = 2;
+      // "Indicates the time information on when the target satellite is going
+      // to start serving the area currently covered by the serving satellite.
+      // The field indicates a time in multiples of 10ms after 00:00:00 on
+      // Gregorian calendar date 1st January 1900 (midnight between Sunday,
+      // December 31, 1899, and Monday, January 1, 1900). The exact start time
+      // is between the time indicated by the value of this field minus 1 and
+      // the time indicated by the value of this field. The reference point for
+      // t-ServiceStart is the uplink time synchronization reference point of
+      // the serving satellite.
+      //
+      // As per above definition from 3GPP TS 38.331, the value is to be
+      // quantised into units of 10ms when being provided to the NTN RAN.
+      optional google.protobuf.Timestamp t_service_start = 3;
+
+      // "Indicates the time offset between the SSB from source and target
+      // satellite at the uplink time synchronization reference point. It is
+      // given in number of subframes."
+      optional int32 ssb_time_offset_count = 4;
+
+      reserved 1, 2;
     }
 
 
