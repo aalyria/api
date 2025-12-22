@@ -144,7 +144,7 @@ service Provisioning {
 //
 // See also:
 //   - RFC 9256
-//   - draft-ietf-pce-segment-routing-policy-cp
+//   - RFC 9862
 //   - draft-ietf-spring-sr-policy-yang
 message P2pSrTePolicy {
   // The resource name of this policy.
@@ -598,8 +598,7 @@ message DisjointAssociationGroup {
   // instantiated in the network topology.
   //
   // (The term "bearer" is used here to mean the "underlying link" of
-  // an Attachment Circuit [AC]; see
-  // draft-ietf-opsawg-teas-attachment-circuit.)
+  // an Attachment Circuit [AC]; see RFC 9834.)
   //
   // This principally useful for paths originating at nodes like
   // User Terminals that can be commanded to instantiate new bearers.

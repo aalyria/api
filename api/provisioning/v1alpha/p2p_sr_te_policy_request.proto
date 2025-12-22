@@ -29,7 +29,7 @@ option go_package = "aalyria.com/spacetime/api/provisioning/v1alpha";
 //
 // See also:
 //   - RFC 9256
-//   - draft-ietf-pce-segment-routing-policy-cp
+//   - RFC 9862
 message P2pSrTePolicyRequest {
   // NMTS Entity IDs corresponding to the source and destination
   // EK_ROUTE_FN Entity elements already created within the network
