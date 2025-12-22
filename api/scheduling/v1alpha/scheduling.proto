@@ -440,7 +440,16 @@ message TxConfiguration {
   string carrier_config_id = 10;
 
   // Transmit power in Watts.
-  double power_w = 5;
+  //
+  // Deprecated in favor of the more specific tx power fields below.
+  double power_w = 5 [deprecated = true];
+
+  // The initial transmit power for the beam.
+  TxPower initial_tx_power = 13;
+
+  // The transmit power the transmitter must not exceed to avoid violating
+  // interference or received power constraints.
+  TxPower max_tx_power = 14;
 
   // Symbol rate in Megasymbols per second.
   double symbol_rate_msps = 6;
@@ -476,6 +485,8 @@ message TxConfiguration {
   oneof other_parameters {
     DvbS2Params dvbs2_params = 9;
   }
+
+  reserved 15 to max;
 }
 
 enum Polarization {
@@ -488,6 +499,13 @@ message RxPower {
   oneof value {
     // Power Flux Density at receiver [dBW/m^2].
     double pfd_dbw_per_m2 = 1;
+  }
+}
+
+message TxPower {
+  oneof value {
+    // Beam Peak Effective Isotropic Radiated Power Spectral Density [dBW/MHz].
+    double beam_peak_eirpsd_dbw_per_mhz = 1;
   }
 }
 
