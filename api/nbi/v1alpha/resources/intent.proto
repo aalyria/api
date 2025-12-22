@@ -39,7 +39,7 @@ enum IntentState {
   INSTALL_REQ = 1;
   SCHEDULED = 10;
   SCHEDULING = 12;
-  INSTALLING = 3;  // In process of being deprecated.
+  INSTALLING = 3; // In process of being deprecated.
   INSTALLED = 4;
   WITHDRAW_REQ = 5;
 
@@ -472,7 +472,9 @@ message MobilityIntent {
 
     // Source and Target NR Cell Global IDs.
     optional string source_nr_cgi = 1;
+    optional string source_access_fn_id = 7;
     optional string target_nr_cgi = 2;
+    optional string target_access_fn_id = 8;
 
     oneof handoverType {
       L3HO l3_ho = 3;
