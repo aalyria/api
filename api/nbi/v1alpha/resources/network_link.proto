@@ -30,9 +30,9 @@ option java_package = "com.aalyria.spacetime.api.nbi.v1alpha.resources";
 
 // Defines a directional link between two logical network interfaces.
 message NetworkLink {
-  optional aalyria.spacetime.api.common.NetworkInterfaceId 
+  optional aalyria.spacetime.api.common.NetworkInterfaceId
     src = 3 [deprecated = true];
-  optional aalyria.spacetime.api.common.NetworkInterfaceId 
+  optional aalyria.spacetime.api.common.NetworkInterfaceId
     dst = 4 [deprecated = true];
 
 
@@ -108,14 +108,16 @@ message Radio {
     }
     optional ModulatorMode modulator_mode = 3;
 
-    optional string lowest_supported_rx_modcod = 10;
+    optional string lowest_supported_rx_modcod = 7;
+
+    reserved 8 to max;
   }
 
   optional TxRadioConfiguration tx_radio = 4;
 
   optional RxRadioConfiguration rx_radio = 5;
 
-  reserved 11 to max;
+  reserved 10 to max;
 }
 
 message RxRadioConfiguration {
