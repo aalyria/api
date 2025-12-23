@@ -107,13 +107,15 @@ message Radio {
       MODULATOR_MODE_DIGITAL_TRANSPARENT = 2;
     }
     optional ModulatorMode modulator_mode = 3;
+
+    optional string lowest_supported_rx_modcod = 10;
   }
 
   optional TxRadioConfiguration tx_radio = 4;
 
   optional RxRadioConfiguration rx_radio = 5;
 
-  reserved 10 to max;
+  reserved 11 to max;
 }
 
 message RxRadioConfiguration {
