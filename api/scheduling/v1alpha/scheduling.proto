@@ -16,6 +16,7 @@ syntax = "proto3";
 
 package aalyria.spacetime.scheduling.v1alpha;
 
+import "api/common/coordinates.proto";
 import "api/common/field_mask.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
@@ -141,6 +142,7 @@ message CreateEntryRequest {
     DeleteRoute delete_route = 6;
     SetSrPolicy set_sr_policy = 9;
     DeleteSrPolicy delete_sr_policy = 10;
+    TriggerHandover trigger_handover = 17;
   }
 
   reserved 7, 8, 11, 13, 14;
@@ -620,6 +622,145 @@ message SrSegment {
 
 message DeleteSrPolicy {
   string id = 1;
+}
+
+message TriggerHandover {
+  // Mobility signaling for networks adopting one of the Digital Video
+  // Broadcasting (DVB) family of access networks, e.g. DVB-S, DVB-S2,
+  // DVB-S2X, etc. There are no exact standards which define what mobility
+  // procedures in DVB based networks requires as input information, so it is
+  // for now being defined to include a source and target EK_NETWORK_NODE ID. 
+  message Dvb {
+    string source_network_node_id = 1;
+    string target_network_node_id = 2;
+  }
+
+  // Mobility signaling for networks adopting the 5G New Radio (NR) Radio
+  // Access Technology (RAT).
+  message Nr {
+    // Legacy, network-initiated L3 Handover 
+    message L3HO {
+    }
+
+    // Time-based Conditional Handover (CHO).
+    // See condEventT1-r17 in TS 38.331 Release 18.
+    // Ref: https://www.etsi.org/deliver/etsi_ts/138300_138399/138331/18.02.00_60/ts_138331v180200p.pdf
+    message T1CHO {
+      // "The field counts the number of UTC seconds in 10 ms units since 
+      // 00:00:00 on Gregorian calendar date 1 January, 1900 (midnight between
+      // Sunday, December 31, 1899 and Monday, January 1, 1900)."
+      //
+      // As per above definition from 3GPP TS 38.331, the value is to be
+      // quantised into units of 10ms when being provided to the NTN RAN.
+      google.protobuf.Timestamp t1_threshold = 1;
+
+      // "This field is used for defining the leaving condition T1-2 for 
+      // conditional HO event condEventT1. 
+      // Each step represents 100ms"
+      //
+      // As per above definition from 3GPP TS 38.331, the value is to be 
+      // quanitsed into units of 100ms when being provided to the NTN RAN.
+      google.protobuf.Duration duration = 2;
+    }
+
+    // Distance-based Conditional Handover (CHO).
+    // See condEventD1-r17 in TS 38.331 Release 18
+    // Ref: https://www.etsi.org/deliver/etsi_ts/138300_138399/138331/18.02.00_60/ts_138331v180200p.pdf
+    message D1CHO {
+      // As per 3GPP TS 38.331
+      // Distance from a fixed reference location configured with
+      // referenceLocation1 or referenceLocation2 or a moving reference location
+      // determined by the UE based on the serving cell movingReferenceLocation
+      // broadcast in SIB19 or referenceLocation2 and their corresponding
+      // satellite ephemeris and epoch time. Each step represents 50m.
+      int32 distance_thresh_from_reference_1_50m = 1;
+      int32 distance_thresh_from_reference_2_50m = 2;
+
+      // Defined in TS 38.331 as a ReferenceLocation-r17 IE, of type OCTET
+      // STRING. The OCTET STRING represents an ASN.1 APER encoded
+      // representation of the Ellipsoid-Point from TS 37.355, which itself
+      // has the following structure
+      // -- ASN1START
+      // Ellipsoid-Point ::= SEQUENCE {
+      //  latitudeSign ENUMERATED {north, south},
+      //  degreesLatitude INTEGER (0..8388607), -- 23 bit field
+      //  degreesLongitude INTEGER (-8388608..8388607) -- 24 bit field
+      // }
+      // -- ASN1STOP
+      aalyria.spacetime.api.common.GeodeticWgs84 reference_location_1 = 3;
+      aalyria.spacetime.api.common.GeodeticWgs84 reference_location_2 = 4;
+
+      // As per 3GPP TS 38.331
+      // "The IE HysteresisLocation is a parameter used within entry and leave
+      // condition of a location based event triggered reporting condition.
+      // The actual value is field value * 10 meters."
+      int32 hysteresis_location_10m = 6;
+
+      // As per 3GPP TS 38.331
+      // "The IE TimeToTrigger specifies the value range used for time to
+      // trigger parameter, which concerns the time during which specific
+      // criteria for the event needs to be met in order to trigger a
+      // measurement report. Value ms0 corresponds to 0 ms and behaviour as
+      // specified in 7.1.2 applies, value ms40 corresponds to 40 ms, and so
+      // on." 
+      //
+      // The possible valid values are the following:
+      // ms0, ms40, ms64, ms80, ms100, ms128, ms160, ms256, ms320, ms480, ms512,
+      // ms640, ms1024, ms1280, ms2560, ms5120
+      google.protobuf.Duration time_to_trigger = 5;
+    }
+
+    // Satellite Switch with Resynchronization.
+    // See SatSwitchWithReSync-r17 in TS 38.331 Release 18
+    // Ref: https://www.etsi.org/deliver/etsi_ts/138300_138399/138331/18.02.00_60/ts_138331v180200p.pdf
+    message SatSwitchWithReSync {
+      // "Indicates the time information on when the target satellite is going
+      // to start serving the area currently covered by the serving satellite.
+      // The field indicates a time in multiples of 10ms after 00:00:00 on
+      // Gregorian calendar date 1st January 1900 (midnight between Sunday,
+      // December 31, 1899, and Monday, January 1, 1900). The exact start time
+      // is between the time indicated by the value of this field minus 1 and
+      // the time indicated by the value of this field. The reference point for
+      // t-ServiceStart is the uplink time synchronization reference point of
+      // the serving satellite.
+      //
+      // As per above definition from 3GPP TS 38.331, the value is to be
+      // quantised into units of 10ms when being provided to the NTN RAN.
+      google.protobuf.Timestamp t_service_start = 1;
+
+      // "Indicates the time offset between the SSB from source and target
+      // satellite at the uplink time synchronization reference point. It is
+      // given in number of subframes."
+      int32 ssb_time_offset_count = 2;
+    }
+
+
+    // Source and Target NR Cell Global IDs.
+    string source_nr_cgi = 1;
+    string target_nr_cgi = 2;
+
+    oneof handoverType {
+      L3HO l3_ho = 3;
+      T1CHO t1_cho = 4;
+      D1CHO d1_cho = 5;
+      SatSwitchWithReSync sat_switch_with_re_sync = 6; 
+    }
+  }
+
+  message EndpointList {
+    repeated string endpoint_ids = 1;
+  }
+
+  oneof accessType {
+    Dvb dvb = 1;
+    Nr nr = 2;
+  }
+
+  // Other subjects TBD.
+  oneof subject {
+    BeamTarget target = 3;
+    EndpointList endpoint_list = 4;
+  }
 }
 
 message DeleteEntryRequest {
