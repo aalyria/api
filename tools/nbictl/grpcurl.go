@@ -29,9 +29,9 @@ import (
 
 	fedpb "aalyria.com/spacetime/api/federation/interconnect/v1alpha"
 	modelpb "aalyria.com/spacetime/api/model/v1"
-	nbipb "aalyria.com/spacetime/api/nbi/v1alpha"
 	provpb "aalyria.com/spacetime/api/provisioning/v1alpha"
 	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
+	statuspb "aalyria.com/spacetime/api/status/v1"
 	telemetrypb "aalyria.com/spacetime/api/telemetry/v1alpha"
 )
 
@@ -214,7 +214,7 @@ func GRPCCall(appCtx *cli.Context) error {
 		r = rdr
 	}
 
-	conn, err := openAPIConnection(appCtx, appCtx.String("subdomain"))
+	conn, err := openAPIConnection(appCtx, appCtx.String("api"))
 	if err != nil {
 		return err
 	}
@@ -223,11 +223,10 @@ func GRPCCall(appCtx *cli.Context) error {
 	svcDescriptors, err := desc.WrapFiles([]protoreflect.FileDescriptor{
 		fedpb.File_api_federation_interconnect_v1alpha_interconnect_proto,
 		modelpb.File_api_model_v1_model_proto,
-		nbipb.File_api_nbi_v1alpha_nbi_proto,
-		nbipb.File_api_nbi_v1alpha_signal_propagation_proto,
 		provpb.File_api_provisioning_v1alpha_provisioning_proto,
 		schedpb.File_api_scheduling_v1alpha_scheduling_proto,
 		telemetrypb.File_api_telemetry_v1alpha_telemetry_proto,
+		statuspb.File_api_status_v1_status_proto,
 	})
 	if err != nil {
 		return err

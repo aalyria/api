@@ -17,27 +17,34 @@ package nbictl
 import (
 	"context"
 	"net"
+	"sync/atomic"
 
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	modelpb "aalyria.com/spacetime/api/model/v1"
 	nmtspb "outernetcouncil.org/nmts/v1/proto"
+
+	modelpb "aalyria.com/spacetime/api/model/v1"
 )
 
 type FakeModelServer struct {
 	listener net.Listener
 
 	modelpb.UnimplementedModelServer
-	ResponseError   error
-	ResponseMessage proto.Message
-	RequestMessage  proto.Message
+	ResponseError        error
+	ResponseMessage      proto.Message
+	RequestMessage       proto.Message
+	IncomingMetadata     []metadata.MD
+	NumCallsListEntities *atomic.Int64
 }
 
 func (s *FakeModelServer) Reset() {
+	s.IncomingMetadata = make([]metadata.MD, 0)
+	s.NumCallsListEntities = &atomic.Int64{}
 	s.ResponseError = nil
 	s.ResponseMessage = nil
 	s.RequestMessage = nil
@@ -51,10 +58,17 @@ func (s *FakeModelServer) Reset() {
 func handleCall[RespT proto.Message](s *FakeModelServer, ctx context.Context, req proto.Message) (RespT, error) {
 	var nilRespT RespT
 
+	md := make(metadata.MD)
+	md, _ = metadata.FromIncomingContext(ctx)
+	s.IncomingMetadata = append(s.IncomingMetadata, md)
 	s.RequestMessage = req
+
 	if s.ResponseError != nil {
 		return nilRespT, s.ResponseError
 	} else {
+		if s.ResponseMessage == nil {
+			return nilRespT, nil
+		}
 		resp := s.ResponseMessage.(RespT)
 		return resp, nil
 	}
@@ -91,6 +105,7 @@ func (s *FakeModelServer) GetEntity(ctx context.Context, req *modelpb.GetEntityR
 }
 
 func (s *FakeModelServer) ListEntities(ctx context.Context, req *modelpb.ListEntitiesRequest) (*modelpb.ListEntitiesResponse, error) {
+	s.NumCallsListEntities.Add(1)
 	return handleCall[*modelpb.ListEntitiesResponse](s, ctx, req)
 }
 

@@ -5,7 +5,7 @@ Run `nbictl readme > README.md` to update it.
 
 # NAME
 
-nbictl - Interact with the Spacetime NBI service from the command line.
+nbictl - Interact with the Spacetime APIs from the command line.
 
 # SYNOPSIS
 
@@ -24,102 +24,6 @@ nbictl [--profile=value] [--context=value] [--config_dir=value] [--help] [-h] [-
 **--version, -v**: print the version
 
 # COMMANDS
-
-## get
-
-Gets the entity with the given type and ID.
-
-**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
-
-**--id**="": [REQUIRED] ID of entity to delete.
-
-**--type, -t**="": [REQUIRED] Type of entity to delete. Allowed values: [ANTENNA_PATTERN, BAND_PROFILE, COMPUTED_MOTION, DEVICES_IN_REGION, INTENT, INTERFACE_LINK_REPORT, INTERFERENCE_CONSTRAINT, NETWORK_NODE, NETWORK_STATS_REPORT, PLATFORM_DEFINITION, SERVICE_REQUEST, STATION_SET, SURFACE_REGION, TRANSCEIVER_LINK_REPORT]
-
-## create
-
-Create one or more entities described in a file tree.
-
-**--files, -f**="": [REQUIRED] Glob of files containing serialized Entity messages. Use - to read from stdin.
-
-**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
-
-## edit
-
-Opens the specified entity in $EDITOR, then updates the NBI's version with any changes made.
-
-**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
-
-**--id**="": [REQUIRED] ID of entity to edit.
-
-**--type, -t**="": [REQUIRED] Type of entity to edit. Allowed values: [ANTENNA_PATTERN, BAND_PROFILE, COMPUTED_MOTION, DEVICES_IN_REGION, INTENT, INTERFACE_LINK_REPORT, INTERFERENCE_CONSTRAINT, NETWORK_NODE, NETWORK_STATS_REPORT, PLATFORM_DEFINITION, SERVICE_REQUEST, STATION_SET, SURFACE_REGION, TRANSCEIVER_LINK_REPORT]
-
-## update
-
-Updates, or creates if missing, one or more entities described in a file tree.
-
-**--files, -f**="": [REQUIRED] Glob of files containing serialized Entity messages. Use - to read from stdin.
-
-**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
-
-**--ignore_consistency_check**: Always update or create the entity, without verifying that the provided `commit_timestamp` matches the currently stored entity.
-
-## list
-
-Lists all entities of a given type.
-
-**--field_masks**="": Comma-separated allow-list of fields to include in the response; see the aalyria.spacetime.api.nbi.v1alpha.EntityFilter.field_masks documentation for usage details.
-
-**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
-
-**--type, -t**="": [REQUIRED] Type of entities to query. Allowed values: [ANTENNA_PATTERN, BAND_PROFILE, COMPUTED_MOTION, DEVICES_IN_REGION, INTENT, INTERFACE_LINK_REPORT, INTERFERENCE_CONSTRAINT, NETWORK_NODE, NETWORK_STATS_REPORT, PLATFORM_DEFINITION, SERVICE_REQUEST, STATION_SET, SURFACE_REGION, TRANSCEIVER_LINK_REPORT]
-
-## delete
-
-Deletes one or more entities. Provide the type and ID to delete a single entity, or a directory of files containing serialized Entity messages to delete multiple entities.
-
-**--files, -f**="": Glob of serialized protobuf files that represent one or more Entity messages. Use - to read from stdin.
-
-**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
-
-**--id**="": ID of entity to delete.
-
-**--ignore_consistency_check**: Always update or create the entity, without verifying that the provided `commit_timestamp` matches the value in the currently stored entity.
-
-**--last_commit_timestamp**="": Delete the entity only if `last_commit_timestamp` matches the `commit_timestamp` of the currently stored entity. (default: 0)
-
-**--type, -t**="": Type of entity to delete. Allowed values: [ANTENNA_PATTERN, BAND_PROFILE, COMPUTED_MOTION, DEVICES_IN_REGION, INTENT, INTERFACE_LINK_REPORT, INTERFERENCE_CONSTRAINT, NETWORK_NODE, NETWORK_STATS_REPORT, PLATFORM_DEFINITION, SERVICE_REQUEST, STATION_SET, SURFACE_REGION, TRANSCEIVER_LINK_REPORT]
-
-## get-link-budget
-
-Gets link budget details
-
-**--analysis_end_timestamp**="": An RFC3339 formatted timestamp for the end of the interval to evaluate the signal propagation. If unset, the signal propagation is evaluated at the instant of the `analysis_start_timestamp.`
-
-**--analysis_start_timestamp**="": An RFC3339 formatted timestamp for the beginning of the interval to evaluate the signal propagation. Defaults to the current local timestamp.
-
-**--band_profile_id**="": The Entity ID of the BandProfile used for this link.
-
-**--explain_inaccessibility**: If true, the server will spend additional computational time determining the specific set of access constraints that were not satisfied and including these reasons in the response.
-
-**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
-
-**--input_file**="": A path to a file containing a serialized SignalPropagationRequest message. If set, it will be used as the request to the SignalPropagation service. If unset, the request will be built from the other flags.
-
-**--output_file**="": Path to a file to write the response. If unset, defaults to stdout. (default: /dev/stdout)
-
-**--reference_data_timestamp**="": An RFC3339 formatted timestamp for the instant at which to reference the versions of the platforms. Defaults to `analysis_start_timestamp`. (default: analysis_start_timestamp)
-
-**--spatial_propagation_step_size**="": The analysis step size for spatial propagation metrics. (default: 1m)
-
-**--step_size**="": The analysis step size and the temporal resolution of the response. (default: 1m)
-
-**--target_platform_id**="": The Entity ID of the PlatformDefinition that represents the target. Leave unset if the antenna is fixed or non-steerable, in which case coverage calculations will be returned.
-
-**--target_transceiver_model_id**="": The ID of the transceiver model on the target.Leave unset if the antenna is fixed or non-steerable, in which case coverage calculations will be returned.
-
-**--tx_platform_id**="": The Entity ID of the PlatformDefinition that represents the transmitter.
-
-**--tx_transceiver_model_id**="": The ID of the transceiver model on the transmitter.
 
 ## generate-keys
 
@@ -157,9 +61,9 @@ Sets or updates a configuration profile settings. You can create multiple profil
 
 **--priv_key**="": Path to the private key to use for authentication.
 
-**--transport_security**="": Transport security to use when connecting to the NBI service. Allowed values: [insecure, system_cert_pool]
+**--transport_security**="": Transport security to use when connecting to the API endpoints. Allowed values: [insecure, system_cert_pool]
 
-**--url**="": Spacetime endpoint specified as `host[:port]` (port is optional and defaults to 443). MUST NOT include any scheme (e.g. `https://` or `dns:///`) nor any API-specific prefix (e.g. `nbi.` or `model-v1.`).
+**--url**="": Spacetime endpoint specified as `host[:port]` (port is optional and defaults to 443). MUST NOT include any scheme (e.g. `https://` or `dns:///`) nor any API-specific prefix (e.g. `model-v1.`).
 
 **--user_id**="": User ID associated with the private key provided by Aalyria.
 
@@ -307,9 +211,9 @@ Retrieve the insight metrics of this Spacetime instance.
 
 ## grpcurl
 
-Provides curl-like equivalents for interacting with the NBI.
+Provides curl-like equivalents for interacting with the Spacetime APIs.
 
-**--subdomain**="": The subdomain to connect to (e.g. 'model', 'provisioning', ...).
+**--api**="": The API endpoint to connect to (e.g. 'model-v1', 'provisioning-v1alpha').
 
 ### describe
 
