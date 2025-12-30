@@ -33,4 +33,8 @@ message ProvisioningResources {
   repeated aalyria.spacetime.api.provisioning.v1alpha.Downtime downtimes = 3;
   repeated aalyria.spacetime.api.provisioning.v1alpha.ProtectionAssociationGroup protection_association_groups = 4;
   repeated aalyria.spacetime.api.provisioning.v1alpha.DisjointAssociationGroup disjoint_association_groups = 5;
+  repeated aalyria.spacetime.api.provisioning.v1alpha.Link links = 6;
+  repeated aalyria.spacetime.api.provisioning.v1alpha.GeographicRegion geographic_regions = 7;
+  repeated aalyria.spacetime.api.provisioning.v1alpha.EmissionsLimit emissions_limits = 8;
+  repeated aalyria.spacetime.api.provisioning.v1alpha.EmissionsTarget emissions_targets = 9;
 }
