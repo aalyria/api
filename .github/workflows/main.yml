@@ -66,18 +66,21 @@ jobs:
           key: bazel-${{ hashFiles('common.bazelrc', '.bazelrc', '.bazelversion', 'WORKSPACE', 'MODULE.bazel', 'requirements.txt') }}
           restore-keys: bazel-
       - run: bazel/tools/update_version_bzl.sh version.bzl
-      - run: bazelisk build --stamp "--platforms=@rules_go//go/toolchain:${{ matrix.os }}_${{ matrix.arch }}" //agent/cmd/agent //tools/nbictl/cmd/nbictl
 
-      - name: Package binary
+      - name: Build artifacts
         if: ${{ matrix.os != 'windows' }}
         run: |
+          bazelisk build --stamp "--platforms=@rules_go//go/toolchain:${{ matrix.os }}_${{ matrix.arch }}" //tools/nbictl/cmd/nbictl
           zip -j nbictl-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl
+          bazelisk build --stamp "--platforms=@rules_go//go/toolchain:${{ matrix.os }}_${{ matrix.arch }}" //agent/cmd/agent
           zip -j agent-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/agent/cmd/agent/agent_/agent
 
-      - name: Package binary - Windows
+      - name: Build artifacts - Windows
         if: ${{ matrix.os == 'windows' }}
         run: |
+          bazelisk build --stamp "--platforms=@rules_go//go/toolchain:${{ matrix.os }}_${{ matrix.arch }}" //tools/nbictl/cmd/nbictl
           zip -j nbictl-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/tools/nbictl/cmd/nbictl/nbictl_/nbictl.exe
+          bazelisk build --stamp "--platforms=@rules_go//go/toolchain:${{ matrix.os }}_${{ matrix.arch }}" //agent/cmd/agent          
           zip -j agent-${{ matrix.os }}-${{ matrix.arch }}.zip bazel-bin/agent/cmd/agent/agent_/agent.exe
 
       - name: Upload binary
