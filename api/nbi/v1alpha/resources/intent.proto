@@ -234,8 +234,10 @@ message TxConfiguration {
   optional uint64 channel_bandwidth_hz = 2;
   optional Polarization polarization = 3;
 
-  // Transmit power in Watts.
-  optional double power_w = 5;
+  // Initial transmit power in Watts.
+  optional double initial_power_w = 12;
+  // Transmit power the transmitter must not exceed in Watts.
+  optional double max_power_w = 13;
 
   // Symbol rate in Megasymbols per second.
   optional double symbol_rate_msps = 6;
@@ -251,6 +253,8 @@ message TxConfiguration {
   oneof other_parameters {
     DvbS2Params dvbs2_params = 11;
   }
+
+  reserved 14 to max;
 }
 
 enum Polarization {

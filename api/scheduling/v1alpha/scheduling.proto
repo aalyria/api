@@ -441,11 +441,6 @@ message TxConfiguration {
   //            |--RK_SUPPORTS--> CarrierConfiguration
   string carrier_config_id = 10;
 
-  // Transmit power in Watts.
-  //
-  // Deprecated in favor of the more specific tx power fields below.
-  double power_w = 5 [deprecated = true];
-
   // The initial transmit power for the beam.
   TxPower initial_tx_power = 13;
 

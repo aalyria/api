@@ -94,7 +94,11 @@ message Radio {
       optional PowerType power_type = 1;
       optional double power_value = 2;
     }
-    optional BeamPower transmit_power = 1;
+
+    // Initial transmit power in Watts.
+    optional double initial_power_w = 8;
+    // Transmit power the transmitter must not exceed in Watts.
+    optional double max_power_w = 9;
 
     optional string port_id = 6;
     optional string modulator_id = 2;
@@ -110,7 +114,7 @@ message Radio {
 
     optional string lowest_supported_rx_modcod = 7;
 
-    reserved 8 to max;
+    reserved 10 to max;
   }
 
   optional TxRadioConfiguration tx_radio = 4;
