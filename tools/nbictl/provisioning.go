@@ -40,10 +40,6 @@ type ProvisioningResources struct {
 	downtimes                   map[string]*provapipb.Downtime
 	protectionAssociationGroups map[string]*provapipb.ProtectionAssociationGroup
 	disjointAssociationGroups   map[string]*provapipb.DisjointAssociationGroup
-	links                       map[string]*provapipb.Link
-	geographicRegions           map[string]*provapipb.GeographicRegion
-	emissionsLimits             map[string]*provapipb.EmissionsLimit
-	emissionsTargets            map[string]*provapipb.EmissionsTarget
 }
 
 func (pr *ProvisioningResources) String() string {
@@ -53,10 +49,6 @@ func (pr *ProvisioningResources) String() string {
 		lo.Keys(pr.downtimes),
 		lo.Keys(pr.protectionAssociationGroups),
 		lo.Keys(pr.disjointAssociationGroups),
-		lo.Keys(pr.links),
-		lo.Keys(pr.geographicRegions),
-		lo.Keys(pr.emissionsLimits),
-		lo.Keys(pr.emissionsTargets),
 	)
 
 	if len(keys) == 0 {
@@ -81,10 +73,6 @@ func (pr *ProvisioningResources) MarshalledString(marshaller protoFormat) string
 		lo.Entries(marshalMap(pr.downtimes, marshaller)),
 		lo.Entries(marshalMap(pr.protectionAssociationGroups, marshaller)),
 		lo.Entries(marshalMap(pr.disjointAssociationGroups, marshaller)),
-		lo.Entries(marshalMap(pr.links, marshaller)),
-		lo.Entries(marshalMap(pr.geographicRegions, marshaller)),
-		lo.Entries(marshalMap(pr.emissionsLimits, marshaller)),
-		lo.Entries(marshalMap(pr.emissionsTargets, marshaller)),
 	)
 	slices.SortFunc(entries, func(e1, e2 lo.Entry[string, string]) int { return strings.Compare(e1.Key, e2.Key) })
 
@@ -101,10 +89,6 @@ func NewProvisioningResources() *ProvisioningResources {
 		downtimes:                   map[string]*provapipb.Downtime{},
 		protectionAssociationGroups: map[string]*provapipb.ProtectionAssociationGroup{},
 		disjointAssociationGroups:   map[string]*provapipb.DisjointAssociationGroup{},
-		links:                       map[string]*provapipb.Link{},
-		geographicRegions:           map[string]*provapipb.GeographicRegion{},
-		emissionsLimits:             map[string]*provapipb.EmissionsLimit{},
-		emissionsTargets:            map[string]*provapipb.EmissionsTarget{},
 	}
 }
 
@@ -113,11 +97,7 @@ func (pr *ProvisioningResources) ResourceCount() int {
 		len(pr.p2pSrTePolicyCandidatePaths) +
 		len(pr.downtimes) +
 		len(pr.protectionAssociationGroups) +
-		len(pr.disjointAssociationGroups) +
-		len(pr.links) +
-		len(pr.geographicRegions) +
-		len(pr.emissionsLimits) +
-		len(pr.emissionsTargets)
+		len(pr.disjointAssociationGroups)
 }
 
 func (pr *ProvisioningResources) InsertProvisioningResources(resources *provnbipb.ProvisioningResources) {
@@ -126,10 +106,6 @@ func (pr *ProvisioningResources) InsertProvisioningResources(resources *provnbip
 	pr.insertDowntimes(resources.GetDowntimes())
 	pr.insertProtectionAssociationGroups(resources.GetProtectionAssociationGroups())
 	pr.insertDisjointAssociationGroups(resources.GetDisjointAssociationGroups())
-	pr.insertLinks(resources.GetLinks())
-	pr.insertGeographicRegions(resources.GetGeographicRegions())
-	pr.insertEmissionsLimits(resources.GetEmissionsLimits())
-	pr.insertEmissionsTargets(resources.GetEmissionsTargets())
 }
 
 func ProvisioningResourcesFromRemote(ctx context.Context, client provapipb.ProvisioningClient) (*ProvisioningResources, error) {
@@ -167,46 +143,6 @@ func ProvisioningResourcesFromRemote(ctx context.Context, client provapipb.Provi
 		return nil
 	})
 
-	var links []*provapipb.Link
-	p.Go(func() error {
-		result, err := client.ListLinks(ctx, &provapipb.ListLinksRequest{})
-		if err != nil {
-			return err
-		}
-		links = result.GetLinks()
-		return nil
-	})
-
-	var geographicRegions []*provapipb.GeographicRegion
-	p.Go(func() error {
-		result, err := client.ListGeographicRegions(ctx, &provapipb.ListGeographicRegionsRequest{})
-		if err != nil {
-			return err
-		}
-		geographicRegions = result.GetGeographicRegions()
-		return nil
-	})
-
-	var emissionsLimits []*provapipb.EmissionsLimit
-	p.Go(func() error {
-		result, err := client.ListEmissionsLimits(ctx, &provapipb.ListEmissionsLimitsRequest{})
-		if err != nil {
-			return err
-		}
-		emissionsLimits = result.GetEmissionsLimits()
-		return nil
-	})
-
-	var emissionsTargets []*provapipb.EmissionsTarget
-	p.Go(func() error {
-		result, err := client.ListEmissionsTargets(ctx, &provapipb.ListEmissionsTargetsRequest{})
-		if err != nil {
-			return err
-		}
-		emissionsTargets = result.GetEmissionsTargets()
-		return nil
-	})
-
 	result, err := client.ListP2PSrTePolicies(ctx, &provapipb.ListP2PSrTePoliciesRequest{})
 	if err != nil {
 		return nil, err
@@ -240,10 +176,6 @@ func ProvisioningResourcesFromRemote(ctx context.Context, client provapipb.Provi
 	pr.insertDowntimes(downtimes)
 	pr.insertProtectionAssociationGroups(protectionAssociationGroups)
 	pr.insertDisjointAssociationGroups(disjointAssociationGroups)
-	pr.insertLinks(links)
-	pr.insertGeographicRegions(geographicRegions)
-	pr.insertEmissionsLimits(emissionsLimits)
-	pr.insertEmissionsTargets(emissionsTargets)
 
 	return pr, nil
 }
@@ -275,30 +207,6 @@ func (pr *ProvisioningResources) insertProtectionAssociationGroups(entries []*pr
 func (pr *ProvisioningResources) insertDisjointAssociationGroups(entries []*provapipb.DisjointAssociationGroup) {
 	for _, entry := range entries {
 		pr.disjointAssociationGroups[entry.GetName()] = entry
-	}
-}
-
-func (pr *ProvisioningResources) insertLinks(entries []*provapipb.Link) {
-	for _, entry := range entries {
-		pr.links[entry.GetName()] = entry
-	}
-}
-
-func (pr *ProvisioningResources) insertGeographicRegions(entries []*provapipb.GeographicRegion) {
-	for _, entry := range entries {
-		pr.geographicRegions[entry.GetName()] = entry
-	}
-}
-
-func (pr *ProvisioningResources) insertEmissionsLimits(entries []*provapipb.EmissionsLimit) {
-	for _, entry := range entries {
-		pr.emissionsLimits[entry.GetName()] = entry
-	}
-}
-
-func (pr *ProvisioningResources) insertEmissionsTargets(entries []*provapipb.EmissionsTarget) {
-	for _, entry := range entries {
-		pr.emissionsTargets[entry.GetName()] = entry
 	}
 }
 
@@ -382,10 +290,6 @@ func ProvisioningSync(appCtx *cli.Context) error {
 		"downtimes":                   lo.Without(lo.Keys(localResources.downtimes), lo.Keys(remoteResources.downtimes)...),
 		"protectionAssociationGroups": lo.Without(lo.Keys(localResources.protectionAssociationGroups), lo.Keys(remoteResources.protectionAssociationGroups)...),
 		"disjointAssociationGroups":   lo.Without(lo.Keys(localResources.disjointAssociationGroups), lo.Keys(remoteResources.disjointAssociationGroups)...),
-		"links":                       lo.Without(lo.Keys(localResources.links), lo.Keys(remoteResources.links)...),
-		"geographicRegions":           lo.Without(lo.Keys(localResources.geographicRegions), lo.Keys(remoteResources.geographicRegions)...),
-		"emissionsLimits":             lo.Without(lo.Keys(localResources.emissionsLimits), lo.Keys(remoteResources.emissionsLimits)...),
-		"emissionsTargets":            lo.Without(lo.Keys(localResources.emissionsTargets), lo.Keys(remoteResources.emissionsTargets)...),
 	}
 
 	resourcesInCommon := map[string][]string{
@@ -394,10 +298,6 @@ func ProvisioningSync(appCtx *cli.Context) error {
 		"downtimes":                   lo.Intersect(lo.Keys(localResources.downtimes), lo.Keys(remoteResources.downtimes)),
 		"protectionAssociationGroups": lo.Intersect(lo.Keys(localResources.protectionAssociationGroups), lo.Keys(remoteResources.protectionAssociationGroups)),
 		"disjointAssociationGroups":   lo.Intersect(lo.Keys(localResources.disjointAssociationGroups), lo.Keys(remoteResources.disjointAssociationGroups)),
-		"links":                       lo.Intersect(lo.Keys(localResources.links), lo.Keys(remoteResources.links)),
-		"geographicRegions":           lo.Intersect(lo.Keys(localResources.geographicRegions), lo.Keys(remoteResources.geographicRegions)),
-		"emissionsLimits":             lo.Intersect(lo.Keys(localResources.emissionsLimits), lo.Keys(remoteResources.emissionsLimits)),
-		"emissionsTargets":            lo.Intersect(lo.Keys(localResources.emissionsTargets), lo.Keys(remoteResources.emissionsTargets)),
 	}
 
 	fmt.Println("\ncomparing local and remote resources:")
@@ -415,10 +315,6 @@ func ProvisioningSync(appCtx *cli.Context) error {
 			downtimes:                   lo.Without(lo.Keys(remoteResources.downtimes), lo.Keys(localResources.downtimes)...),
 			protectionAssociationGroups: lo.Without(lo.Keys(remoteResources.protectionAssociationGroups), lo.Keys(localResources.protectionAssociationGroups)...),
 			disjointAssociationGroups:   lo.Without(lo.Keys(remoteResources.disjointAssociationGroups), lo.Keys(localResources.disjointAssociationGroups)...),
-			links:                       lo.Without(lo.Keys(remoteResources.links), lo.Keys(localResources.links)...),
-			geographicRegions:           lo.Without(lo.Keys(remoteResources.geographicRegions), lo.Keys(localResources.geographicRegions)...),
-			emissionsLimits:             lo.Without(lo.Keys(remoteResources.emissionsLimits), lo.Keys(localResources.emissionsLimits)...),
-			emissionsTargets:            lo.Without(lo.Keys(remoteResources.emissionsTargets), lo.Keys(localResources.emissionsTargets)...),
 
 			printMode:  printMode,
 			dryRunMode: dryRunMode,
@@ -431,10 +327,6 @@ func ProvisioningSync(appCtx *cli.Context) error {
 			deleteParams.downtimes,
 			deleteParams.protectionAssociationGroups,
 			deleteParams.disjointAssociationGroups,
-			deleteParams.links,
-			deleteParams.geographicRegions,
-			deleteParams.emissionsLimits,
-			deleteParams.emissionsTargets,
 		)))
 
 		err := deleteProvisioning(ctx, deleteParams)
@@ -495,46 +387,6 @@ func ProvisioningSync(appCtx *cli.Context) error {
 				return err
 			})...)
 	})
-	p.Go(func() error {
-		return errors.Join(updateRemoteResources[*provapipb.Link](
-			resourcesInCommon["links"], localResources.links, remoteResources.links, printMode, dryRunMode, func(link *provapipb.Link) error {
-				_, err := provisioningClient.UpdateLink(ctx, &provapipb.UpdateLinkRequest{
-					Link:         link,
-					AllowMissing: false,
-				})
-				return err
-			})...)
-	})
-	p.Go(func() error {
-		return errors.Join(updateRemoteResources[*provapipb.GeographicRegion](
-			resourcesInCommon["geographicRegions"], localResources.geographicRegions, remoteResources.geographicRegions, printMode, dryRunMode, func(geographicRegion *provapipb.GeographicRegion) error {
-				_, err := provisioningClient.UpdateGeographicRegion(ctx, &provapipb.UpdateGeographicRegionRequest{
-					GeographicRegion: geographicRegion,
-					AllowMissing:     false,
-				})
-				return err
-			})...)
-	})
-	p.Go(func() error {
-		return errors.Join(updateRemoteResources[*provapipb.EmissionsLimit](
-			resourcesInCommon["emissionsLimits"], localResources.emissionsLimits, remoteResources.emissionsLimits, printMode, dryRunMode, func(emissionsLimit *provapipb.EmissionsLimit) error {
-				_, err := provisioningClient.UpdateEmissionsLimit(ctx, &provapipb.UpdateEmissionsLimitRequest{
-					EmissionsLimit: emissionsLimit,
-					AllowMissing:   false,
-				})
-				return err
-			})...)
-	})
-	p.Go(func() error {
-		return errors.Join(updateRemoteResources[*provapipb.EmissionsTarget](
-			resourcesInCommon["emissionsTargets"], localResources.emissionsTargets, remoteResources.emissionsTargets, printMode, dryRunMode, func(emissionsTarget *provapipb.EmissionsTarget) error {
-				_, err := provisioningClient.UpdateEmissionsTarget(ctx, &provapipb.UpdateEmissionsTargetRequest{
-					EmissionsTarget: emissionsTarget,
-					AllowMissing:    false,
-				})
-				return err
-			})...)
-	})
 
 	///
 	// Add resources.
@@ -591,46 +443,6 @@ func ProvisioningSync(appCtx *cli.Context) error {
 				return err
 			})...)
 	})
-	p.Go(func() error {
-		return errors.Join(createRemoteResources[*provapipb.Link](
-			resourcesToBeAdded["links"], localResources.links, printMode, dryRunMode, func(link *provapipb.Link) error {
-				_, err := provisioningClient.UpdateLink(ctx, &provapipb.UpdateLinkRequest{
-					Link:         link,
-					AllowMissing: true,
-				})
-				return err
-			})...)
-	})
-	p.Go(func() error {
-		return errors.Join(createRemoteResources[*provapipb.GeographicRegion](
-			resourcesToBeAdded["geographicRegions"], localResources.geographicRegions, printMode, dryRunMode, func(geographicRegion *provapipb.GeographicRegion) error {
-				_, err := provisioningClient.UpdateGeographicRegion(ctx, &provapipb.UpdateGeographicRegionRequest{
-					GeographicRegion: geographicRegion,
-					AllowMissing:     true,
-				})
-				return err
-			})...)
-	})
-	p.Go(func() error {
-		return errors.Join(createRemoteResources[*provapipb.EmissionsLimit](
-			resourcesToBeAdded["emissionsLimits"], localResources.emissionsLimits, printMode, dryRunMode, func(emissionsLimit *provapipb.EmissionsLimit) error {
-				_, err := provisioningClient.UpdateEmissionsLimit(ctx, &provapipb.UpdateEmissionsLimitRequest{
-					EmissionsLimit: emissionsLimit,
-					AllowMissing:   true,
-				})
-				return err
-			})...)
-	})
-	p.Go(func() error {
-		return errors.Join(createRemoteResources[*provapipb.EmissionsTarget](
-			resourcesToBeAdded["emissionsTargets"], localResources.emissionsTargets, printMode, dryRunMode, func(emissionsTarget *provapipb.EmissionsTarget) error {
-				_, err := provisioningClient.UpdateEmissionsTarget(ctx, &provapipb.UpdateEmissionsTargetRequest{
-					EmissionsTarget: emissionsTarget,
-					AllowMissing:    true,
-				})
-				return err
-			})...)
-	})
 
 	errs = append(errs, p.Wait())
 	return errors.Join(errs...)
@@ -665,10 +477,6 @@ type deleteProvisioningParams struct {
 	downtimes                   []string
 	protectionAssociationGroups []string
 	disjointAssociationGroups   []string
-	links                       []string
-	geographicRegions           []string
-	emissionsLimits             []string
-	emissionsTargets            []string
 
 	printMode  bool
 	dryRunMode bool
@@ -743,50 +551,6 @@ func deleteProvisioning(ctx context.Context, params deleteProvisioningParams) er
 				})...)
 		})
 	}
-	if len(params.links) > 0 {
-		p.Go(func() error {
-			return errors.Join(deleteRemoteResources(
-				params.links, printMode, dryRunMode, func(link string) error {
-					_, err := client.DeleteLink(ctx, &provapipb.DeleteLinkRequest{
-						Name: link,
-					})
-					return err
-				})...)
-		})
-	}
-	if len(params.geographicRegions) > 0 {
-		p.Go(func() error {
-			return errors.Join(deleteRemoteResources(
-				params.geographicRegions, printMode, dryRunMode, func(geographicRegion string) error {
-					_, err := client.DeleteGeographicRegion(ctx, &provapipb.DeleteGeographicRegionRequest{
-						Name: geographicRegion,
-					})
-					return err
-				})...)
-		})
-	}
-	if len(params.emissionsLimits) > 0 {
-		p.Go(func() error {
-			return errors.Join(deleteRemoteResources(
-				params.emissionsLimits, printMode, dryRunMode, func(emissionsLimit string) error {
-					_, err := client.DeleteEmissionsLimit(ctx, &provapipb.DeleteEmissionsLimitRequest{
-						Name: emissionsLimit,
-					})
-					return err
-				})...)
-		})
-	}
-	if len(params.emissionsTargets) > 0 {
-		p.Go(func() error {
-			return errors.Join(deleteRemoteResources(
-				params.emissionsTargets, printMode, dryRunMode, func(emissionsTarget string) error {
-					_, err := client.DeleteEmissionsTarget(ctx, &provapipb.DeleteEmissionsTargetRequest{
-						Name: emissionsTarget,
-					})
-					return err
-				})...)
-		})
-	}
 
 	return p.Wait()
 }
@@ -819,10 +583,6 @@ func ProvisioningDeleteAll(appCtx *cli.Context) error {
 		downtimes:                   lo.Keys(remoteResources.downtimes),
 		protectionAssociationGroups: lo.Keys(remoteResources.protectionAssociationGroups),
 		disjointAssociationGroups:   lo.Keys(remoteResources.disjointAssociationGroups),
-		links:                       lo.Keys(remoteResources.links),
-		geographicRegions:           lo.Keys(remoteResources.geographicRegions),
-		emissionsLimits:             lo.Keys(remoteResources.emissionsLimits),
-		emissionsTargets:            lo.Keys(remoteResources.emissionsTargets),
 	}
 
 	return deleteProvisioning(appCtx.Context, params)
@@ -861,10 +621,6 @@ func ProvisioningDelete(appCtx *cli.Context) error {
 	params.downtimes = lo.Intersect(resourceNames, lo.Keys(remoteResources.downtimes))
 	params.protectionAssociationGroups = lo.Intersect(resourceNames, lo.Keys(remoteResources.protectionAssociationGroups))
 	params.disjointAssociationGroups = lo.Intersect(resourceNames, lo.Keys(remoteResources.disjointAssociationGroups))
-	params.links = lo.Intersect(resourceNames, lo.Keys(remoteResources.links))
-	params.geographicRegions = lo.Intersect(resourceNames, lo.Keys(remoteResources.geographicRegions))
-	params.emissionsLimits = lo.Intersect(resourceNames, lo.Keys(remoteResources.emissionsLimits))
-	params.emissionsTargets = lo.Intersect(resourceNames, lo.Keys(remoteResources.emissionsTargets))
 
 	deleteResourceNameSet := slices.Concat(
 		params.p2pSrTePolicies,
@@ -872,10 +628,6 @@ func ProvisioningDelete(appCtx *cli.Context) error {
 		params.downtimes,
 		params.protectionAssociationGroups,
 		params.disjointAssociationGroups,
-		params.links,
-		params.geographicRegions,
-		params.emissionsLimits,
-		params.emissionsTargets,
 	)
 
 	notFoundNames := lo.Without(resourceNames, deleteResourceNameSet...)
