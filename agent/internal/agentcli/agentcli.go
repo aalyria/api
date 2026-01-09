@@ -426,7 +426,8 @@ enactmentSwitch:
 		nodeOpts = append(nodeOpts, agent.WithEnactmentDriver(node.GetEnactmentDriver().GetConnectionParams().EndpointUri, ed, dialOpts...))
 
 	case *configpb.SdnAgent_EnactmentDriver_Snmp:
-		fmt.Print("TODO: SdnAgent_EnactmentDriver_Snmp")
+		// TODO implement SdnAgent_EnactmentDriver_Snmp
+		return nil, fmt.Errorf("SNMP enactment driver not implemented")
 
 	case *configpb.SdnAgent_EnactmentDriver_Dynamic:
 		dialOpts, err := getDialOpts(ctx, node.EnactmentDriver.GetConnectionParams(), clock)
