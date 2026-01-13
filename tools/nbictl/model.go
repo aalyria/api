@@ -445,6 +445,7 @@ func ModelSync(appCtx *cli.Context) error {
 	deleteMode := appCtx.Bool("delete")
 	dryRunMode := appCtx.Bool("dry-run")
 	verboseMode := appCtx.Bool("verbose")
+	maxConcurrency := appCtx.Int("max-concurrency")
 	printMode := dryRunMode || verboseMode
 
 	marshaller, err := marshallerForFormat(appCtx.String("format"))
@@ -545,7 +546,7 @@ func ModelSync(appCtx *cli.Context) error {
 	errs := []error{}
 
 	// Delete relationships before deleting entities.
-	deleteRelationshipsPool := pool.New().WithErrors()
+	deleteRelationshipsPool := pool.New().WithErrors().WithMaxGoroutines(maxConcurrency)
 	if deleteMode {
 		relationshipsToBeDeleted := remoteRelationshipKeys.Difference(localRelationshipKeys)
 		for relationship := range relationshipsToBeDeleted.Iter() {
@@ -568,7 +569,7 @@ func ModelSync(appCtx *cli.Context) error {
 	errs = append(errs, deleteRelationshipsPool.Wait())
 
 	// Update entities.
-	updatePool := pool.New().WithErrors()
+	updatePool := pool.New().WithErrors().WithMaxGoroutines(maxConcurrency)
 	entitiesInCommon := localEntityKeys.Intersect(remoteEntityKeys)
 	for entity := range entitiesInCommon.Iter() {
 		updatePool.Go(func() error {
@@ -589,12 +590,11 @@ func ModelSync(appCtx *cli.Context) error {
 	}
 
 	// Maybe delete entities (and prune collaterally deleted relationships)
-	deleteEntitiesPool := pool.New().WithErrors()
 	if deleteMode {
 		entitiesToBeDeleted := remoteEntityKeys.Difference(localEntityKeys)
 
 		for entity := range entitiesToBeDeleted.Iter() {
-			deleteEntitiesPool.Go(func() error {
+			updatePool.Go(func() error {
 				if printMode {
 					fmt.Printf("delete entity: %s\n", entity)
 				}
@@ -613,10 +613,9 @@ func ModelSync(appCtx *cli.Context) error {
 	}
 
 	errs = append(errs, updatePool.Wait())
-	errs = append(errs, deleteEntitiesPool.Wait())
 
 	// Add entities.
-	addEntitiesPool := pool.New().WithErrors()
+	addEntitiesPool := pool.New().WithErrors().WithMaxGoroutines(maxConcurrency)
 	entitiesToBeAdded := localEntityKeys.Difference(remoteEntityKeys)
 	for entity := range entitiesToBeAdded.Iter() {
 		addEntitiesPool.Go(func() error {
@@ -637,7 +636,7 @@ func ModelSync(appCtx *cli.Context) error {
 	errs = append(errs, addEntitiesPool.Wait())
 
 	// Add relationships.
-	addRelationshipsPool := pool.New().WithErrors()
+	addRelationshipsPool := pool.New().WithErrors().WithMaxGoroutines(maxConcurrency)
 	relationshipsToBeAdded := localRelationshipKeys.Difference(remoteRelationshipKeys)
 	for relationship := range relationshipsToBeAdded.Iter() {
 		addRelationshipsPool.Go(func() error {

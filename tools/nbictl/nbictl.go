@@ -102,6 +102,12 @@ func App() *cli.App {
 		Usage:   "increase verbosity",
 		Aliases: []string{"v"},
 	}
+	concurrencyFlag := &cli.IntFlag{
+		Name:    "max-concurrency",
+		Aliases: []string{"j", "max_concurrency"},
+		Value:   100,
+		Usage:   "Limit the number of in-flight requests at once.",
+	}
 
 	return &cli.App{
 		Name:                 appName,
@@ -315,6 +321,7 @@ func App() *cli.App {
 							formatFlag,
 							dryrunFlag,
 							verboseFlag,
+							concurrencyFlag,
 							&cli.BoolFlag{
 								Name:    "delete",
 								Usage:   "delete entities and relationships from remote instance not present in local sources",
@@ -354,6 +361,7 @@ func App() *cli.App {
 							formatFlag,
 							dryrunFlag,
 							verboseFlag,
+							concurrencyFlag,
 							&cli.BoolFlag{
 								Name:    "delete",
 								Usage:   "delete resources from remote instance not present in local sources",

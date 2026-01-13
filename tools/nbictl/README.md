@@ -135,6 +135,8 @@ Sync all model entities and relationships from file and directory arguments.
 
 **--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
 
+**--max-concurrency, -j, --max_concurrency**="": Limit the number of in-flight requests at once. (default: 100)
+
 **--recursive, -r**: descend recursively into directory arguments
 
 **--verbose, -v**: increase verbosity
@@ -160,6 +162,8 @@ Sync all provisioning resources from file and directory arguments.
 **--dry-run, -n**: perform a trial run that doesn't make any changes
 
 **--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
+
+**--max-concurrency, -j, --max_concurrency**="": Limit the number of in-flight requests at once. (default: 100)
 
 **--recursive, -r**: descend recursively into directory arguments
 

@@ -436,6 +436,7 @@ func ProvisioningSync(appCtx *cli.Context) error {
 	deleteMode := appCtx.Bool("delete")
 	dryRunMode := appCtx.Bool("dry-run")
 	verboseMode := appCtx.Bool("verbose")
+	maxConcurrency := appCtx.Int("max-concurrency")
 	printMode := dryRunMode || verboseMode
 
 	// TODO: restructure these computations for scalability.
@@ -504,7 +505,7 @@ func ProvisioningSync(appCtx *cli.Context) error {
 		errs = append(errs, err)
 	}
 
-	p := pool.New().WithErrors()
+	p := pool.New().WithErrors().WithMaxGoroutines(maxConcurrency)
 
 	///
 	// Update resources.
