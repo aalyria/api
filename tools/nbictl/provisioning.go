@@ -35,21 +35,25 @@ import (
 const provisioningAPISubDomain = "provisioning-v1alpha"
 
 type ProvisioningResources struct {
-	p2pSrTePolicies             map[string]*provapipb.P2PSrTePolicy
-	p2pSrTePolicyCandidatePaths map[string]*provapipb.P2PSrTePolicyCandidatePath
-	downtimes                   map[string]*provapipb.Downtime
-	protectionAssociationGroups map[string]*provapipb.ProtectionAssociationGroup
-	disjointAssociationGroups   map[string]*provapipb.DisjointAssociationGroup
-	links                       map[string]*provapipb.Link
-	geographicRegions           map[string]*provapipb.GeographicRegion
-	emissionsLimits             map[string]*provapipb.EmissionsLimit
-	emissionsTargets            map[string]*provapipb.EmissionsTarget
+	p2pSrTePolicies              map[string]*provapipb.P2PSrTePolicy
+	p2pSrTePolicyCandidatePaths  map[string]*provapipb.P2PSrTePolicyCandidatePath
+	p2mpSrTePolicies             map[string]*provapipb.P2MpSrTePolicy
+	p2mpSrTePolicyCandidatePaths map[string]*provapipb.P2MpSrTePolicyCandidatePath
+	downtimes                    map[string]*provapipb.Downtime
+	protectionAssociationGroups  map[string]*provapipb.ProtectionAssociationGroup
+	disjointAssociationGroups    map[string]*provapipb.DisjointAssociationGroup
+	links                        map[string]*provapipb.Link
+	geographicRegions            map[string]*provapipb.GeographicRegion
+	emissionsLimits              map[string]*provapipb.EmissionsLimit
+	emissionsTargets             map[string]*provapipb.EmissionsTarget
 }
 
 func (pr *ProvisioningResources) String() string {
 	keys := slices.Concat(
 		lo.Keys(pr.p2pSrTePolicies),
 		lo.Keys(pr.p2pSrTePolicyCandidatePaths),
+		lo.Keys(pr.p2mpSrTePolicies),
+		lo.Keys(pr.p2mpSrTePolicyCandidatePaths),
 		lo.Keys(pr.downtimes),
 		lo.Keys(pr.protectionAssociationGroups),
 		lo.Keys(pr.disjointAssociationGroups),
@@ -78,6 +82,8 @@ func (pr *ProvisioningResources) MarshalledString(marshaller protoFormat) string
 	entries := slices.Concat(
 		lo.Entries(marshalMap(pr.p2pSrTePolicies, marshaller)),
 		lo.Entries(marshalMap(pr.p2pSrTePolicyCandidatePaths, marshaller)),
+		lo.Entries(marshalMap(pr.p2mpSrTePolicies, marshaller)),
+		lo.Entries(marshalMap(pr.p2mpSrTePolicyCandidatePaths, marshaller)),
 		lo.Entries(marshalMap(pr.downtimes, marshaller)),
 		lo.Entries(marshalMap(pr.protectionAssociationGroups, marshaller)),
 		lo.Entries(marshalMap(pr.disjointAssociationGroups, marshaller)),
@@ -96,21 +102,25 @@ func (pr *ProvisioningResources) MarshalledString(marshaller protoFormat) string
 
 func NewProvisioningResources() *ProvisioningResources {
 	return &ProvisioningResources{
-		p2pSrTePolicies:             map[string]*provapipb.P2PSrTePolicy{},
-		p2pSrTePolicyCandidatePaths: map[string]*provapipb.P2PSrTePolicyCandidatePath{},
-		downtimes:                   map[string]*provapipb.Downtime{},
-		protectionAssociationGroups: map[string]*provapipb.ProtectionAssociationGroup{},
-		disjointAssociationGroups:   map[string]*provapipb.DisjointAssociationGroup{},
-		links:                       map[string]*provapipb.Link{},
-		geographicRegions:           map[string]*provapipb.GeographicRegion{},
-		emissionsLimits:             map[string]*provapipb.EmissionsLimit{},
-		emissionsTargets:            map[string]*provapipb.EmissionsTarget{},
+		p2pSrTePolicies:              map[string]*provapipb.P2PSrTePolicy{},
+		p2pSrTePolicyCandidatePaths:  map[string]*provapipb.P2PSrTePolicyCandidatePath{},
+		p2mpSrTePolicies:             map[string]*provapipb.P2MpSrTePolicy{},
+		p2mpSrTePolicyCandidatePaths: map[string]*provapipb.P2MpSrTePolicyCandidatePath{},
+		downtimes:                    map[string]*provapipb.Downtime{},
+		protectionAssociationGroups:  map[string]*provapipb.ProtectionAssociationGroup{},
+		disjointAssociationGroups:    map[string]*provapipb.DisjointAssociationGroup{},
+		links:                        map[string]*provapipb.Link{},
+		geographicRegions:            map[string]*provapipb.GeographicRegion{},
+		emissionsLimits:              map[string]*provapipb.EmissionsLimit{},
+		emissionsTargets:             map[string]*provapipb.EmissionsTarget{},
 	}
 }
 
 func (pr *ProvisioningResources) ResourceCount() int {
 	return len(pr.p2pSrTePolicies) +
 		len(pr.p2pSrTePolicyCandidatePaths) +
+		len(pr.p2mpSrTePolicies) +
+		len(pr.p2mpSrTePolicyCandidatePaths) +
 		len(pr.downtimes) +
 		len(pr.protectionAssociationGroups) +
 		len(pr.disjointAssociationGroups) +
@@ -123,6 +133,8 @@ func (pr *ProvisioningResources) ResourceCount() int {
 func (pr *ProvisioningResources) InsertProvisioningResources(resources *provnbipb.ProvisioningResources) {
 	pr.insertP2PSrTePolicies(resources.GetP2PSrTePolicies())
 	pr.insertP2PSrTePolicyCandidatePaths(resources.GetP2PSrTePolicyCandidatePaths())
+	pr.insertP2MpSrTePolicies(resources.GetP2MpSrTePolicies())
+	pr.insertP2MpSrTePolicyCandidatePaths(resources.GetP2MpSrTePolicyCandidatePaths())
 	pr.insertDowntimes(resources.GetDowntimes())
 	pr.insertProtectionAssociationGroups(resources.GetProtectionAssociationGroups())
 	pr.insertDisjointAssociationGroups(resources.GetDisjointAssociationGroups())
@@ -207,36 +219,11 @@ func ProvisioningResourcesFromRemote(ctx context.Context, client provapipb.Provi
 		return nil
 	})
 
-	result, err := client.ListP2PSrTePolicies(ctx, &provapipb.ListP2PSrTePoliciesRequest{})
+	err := p.Wait()
 	if err != nil {
 		return nil, err
 	}
 
-	p2PSrTePolicies := result.GetP2PSrTePolicies()
-	pr.insertP2PSrTePolicies(p2PSrTePolicies)
-
-	keys := lo.Keys(pr.p2pSrTePolicies)
-	sort.Strings(keys)
-
-	candidatePathResults := make([][]*provapipb.P2PSrTePolicyCandidatePath, len(keys))
-	for i, key := range keys {
-		p.Go(func() error {
-			result, err := client.ListP2PSrTePolicyCandidatePaths(ctx, &provapipb.ListP2PSrTePolicyCandidatePathsRequest{
-				Parent: key,
-			})
-			if err != nil {
-				return err
-			}
-			candidatePathResults[i] = result.GetP2PSrTePolicyCandidatePaths()
-			return nil
-		})
-	}
-	err = p.Wait()
-	if err != nil {
-		return nil, err
-	}
-
-	pr.insertP2PSrTePolicyCandidatePaths(slices.Concat(candidatePathResults...))
 	pr.insertDowntimes(downtimes)
 	pr.insertProtectionAssociationGroups(protectionAssociationGroups)
 	pr.insertDisjointAssociationGroups(disjointAssociationGroups)
@@ -244,6 +231,70 @@ func ProvisioningResourcesFromRemote(ctx context.Context, client provapipb.Provi
 	pr.insertGeographicRegions(geographicRegions)
 	pr.insertEmissionsLimits(emissionsLimits)
 	pr.insertEmissionsTargets(emissionsTargets)
+
+	{
+		result, err := client.ListP2PSrTePolicies(ctx, &provapipb.ListP2PSrTePoliciesRequest{})
+		if err != nil {
+			return nil, err
+		}
+		p2PSrTePolicies := result.GetP2PSrTePolicies()
+		pr.insertP2PSrTePolicies(p2PSrTePolicies)
+
+		keys := lo.Keys(pr.p2pSrTePolicies)
+		sort.Strings(keys)
+
+		candidatePathResults := make([][]*provapipb.P2PSrTePolicyCandidatePath, len(keys))
+		p := pool.New().WithErrors()
+		for i, key := range keys {
+			p.Go(func() error {
+				result, err := client.ListP2PSrTePolicyCandidatePaths(ctx, &provapipb.ListP2PSrTePolicyCandidatePathsRequest{
+					Parent: key,
+				})
+				if err != nil {
+					return err
+				}
+				candidatePathResults[i] = result.GetP2PSrTePolicyCandidatePaths()
+				return nil
+			})
+		}
+		err = p.Wait()
+		if err != nil {
+			return nil, err
+		}
+		pr.insertP2PSrTePolicyCandidatePaths(slices.Concat(candidatePathResults...))
+	}
+
+	{
+		result, err := client.ListP2MpSrTePolicies(ctx, &provapipb.ListP2MpSrTePoliciesRequest{})
+		if err != nil {
+			return nil, err
+		}
+		p2mpSrTePolicies := result.GetP2MpSrTePolicies()
+		pr.insertP2MpSrTePolicies(p2mpSrTePolicies)
+
+		keys := lo.Keys(pr.p2mpSrTePolicies)
+		sort.Strings(keys)
+
+		candidatePathResults := make([][]*provapipb.P2MpSrTePolicyCandidatePath, len(keys))
+		p := pool.New().WithErrors()
+		for i, key := range keys {
+			p.Go(func() error {
+				result, err := client.ListP2MpSrTePolicyCandidatePaths(ctx, &provapipb.ListP2MpSrTePolicyCandidatePathsRequest{
+					Parent: key,
+				})
+				if err != nil {
+					return err
+				}
+				candidatePathResults[i] = result.GetP2MpSrTePolicyCandidatePaths()
+				return nil
+			})
+		}
+		err = p.Wait()
+		if err != nil {
+			return nil, err
+		}
+		pr.insertP2MpSrTePolicyCandidatePaths(slices.Concat(candidatePathResults...))
+	}
 
 	return pr, nil
 }
@@ -257,6 +308,18 @@ func (pr *ProvisioningResources) insertP2PSrTePolicies(entries []*provapipb.P2PS
 func (pr *ProvisioningResources) insertP2PSrTePolicyCandidatePaths(entries []*provapipb.P2PSrTePolicyCandidatePath) {
 	for _, entry := range entries {
 		pr.p2pSrTePolicyCandidatePaths[entry.GetName()] = entry
+	}
+}
+
+func (pr *ProvisioningResources) insertP2MpSrTePolicies(entries []*provapipb.P2MpSrTePolicy) {
+	for _, entry := range entries {
+		pr.p2mpSrTePolicies[entry.GetName()] = entry
+	}
+}
+
+func (pr *ProvisioningResources) insertP2MpSrTePolicyCandidatePaths(entries []*provapipb.P2MpSrTePolicyCandidatePath) {
+	for _, entry := range entries {
+		pr.p2mpSrTePolicyCandidatePaths[entry.GetName()] = entry
 	}
 }
 

@@ -38,7 +38,7 @@ service Provisioning {
 
   // P2P SR-TE Policy provisioning.
   //
-  // RFC 9522 S5.1.1.3; RFC 9256 SR Policy.
+  // RFC 9522 S5.1.1.3; RFC 9256 P2P SR Policy.
   //
   // Manage resources under `p2pSrTePolicy/{policy_id}`.
   rpc GetP2pSrTePolicy(GetP2pSrTePolicyRequest) returns (P2pSrTePolicy) {}
@@ -49,7 +49,7 @@ service Provisioning {
 
   // P2P SR TE Policy dynamic candidate path provisioning.
   //
-  // RFC 9256 section 2.2, SR Policy dynamic candidate paths.
+  // RFC 9256 section 2.2, P2P SR Policy dynamic candidate paths.
   //
   // Manage subresources under
   //     `p2pSrTePolicy/{policy_id}/candidatePath/{path_id}`.
@@ -58,6 +58,29 @@ service Provisioning {
   rpc CreateP2pSrTePolicyCandidatePath(CreateP2pSrTePolicyCandidatePathRequest) returns (P2pSrTePolicyCandidatePath) {}
   rpc UpdateP2pSrTePolicyCandidatePath(UpdateP2pSrTePolicyCandidatePathRequest) returns (P2pSrTePolicyCandidatePath) {}
   rpc DeleteP2pSrTePolicyCandidatePath(DeleteP2pSrTePolicyCandidatePathRequest) returns (google.protobuf.Empty) {}
+
+  // P2MP SR-TE Policy provisioning.
+  //
+  // RFC 9522 S5.1.1.3; draft-ietf-pim-sr-p2mp-policy P2MP SR Policy
+  //
+  // Manage resources under `p2mpSrTePolicy/{policy_id}`.
+  rpc GetP2mpSrTePolicy(GetP2mpSrTePolicyRequest) returns (P2mpSrTePolicy) {}
+  rpc ListP2mpSrTePolicies(ListP2mpSrTePoliciesRequest) returns (ListP2mpSrTePoliciesResponse) {}
+  rpc CreateP2mpSrTePolicy(CreateP2mpSrTePolicyRequest) returns (P2mpSrTePolicy) {}
+  rpc UpdateP2mpSrTePolicy(UpdateP2mpSrTePolicyRequest) returns (P2mpSrTePolicy) {}
+  rpc DeleteP2mpSrTePolicy(DeleteP2mpSrTePolicyRequest) returns (google.protobuf.Empty) {}
+
+  // P2MP SR TE Policy dynamic candidate path provisioning.
+  //
+  // draft-ietf-pim-sr-p2mp-policy-22 S2.3 P2MP SR Policy candidate paths.
+  //
+  // Manage subresources under
+  //     `p2mpSrTePolicy/{policy_id}/candidatePath/{path_id}`.
+  rpc GetP2mpSrTePolicyCandidatePath(GetP2mpSrTePolicyCandidatePathRequest) returns (P2mpSrTePolicyCandidatePath) {}
+  rpc ListP2mpSrTePolicyCandidatePaths(ListP2mpSrTePolicyCandidatePathsRequest) returns (ListP2mpSrTePolicyCandidatePathsResponse) {}
+  rpc CreateP2mpSrTePolicyCandidatePath(CreateP2mpSrTePolicyCandidatePathRequest) returns (P2mpSrTePolicyCandidatePath) {}
+  rpc UpdateP2mpSrTePolicyCandidatePath(UpdateP2mpSrTePolicyCandidatePathRequest) returns (P2mpSrTePolicyCandidatePath) {}
+  rpc DeleteP2mpSrTePolicyCandidatePath(DeleteP2mpSrTePolicyCandidatePathRequest) returns (google.protobuf.Empty) {}
 
   // Downtime provisioning.
   //
@@ -350,6 +373,224 @@ message DeleteP2pSrTePolicyCandidatePathRequest{
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
       type: "provisioning.spacetimeapis.com/P2pSrTePolicyCandidatePath"
+    }];
+}
+
+// A Point-to-MultiPoint (P2MP) Segment Routing (SR) Traffic Engineering (TE)
+// Policy.
+//
+// Describes one SR TE policy from one root EK_ROUTE_FN entity in the
+// data model to the set of EK_ROUTE_FN entities in the list of leaves.
+//
+// See also:
+//   - draft-ietf-pim-sr-p2mp-policy
+message P2mpSrTePolicy {
+  // The resource name of this policy.
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  // The priority field allows the requester to specify the order in
+  // which requests for Provisioning resources are satisfied relative
+  // to all other requests.
+  //
+  // A request will be treated as having a higher priority if the
+  // value of this field is arithmetically greater than that of
+  // another service request.
+  //
+  // Users may want to directly map this to some utility metric of
+  // relevance to their network operations, e.g. estimated revenue,
+  // number of customers served, etc.
+  //
+  // Cf. RFC 9256 S2.12's re-compute priority.
+  double priority = 2;
+
+  // The time interval over which this service is requested.
+  //
+  // If start_time is empty the service is requested to be provisioned
+  // at the earliest possible time it may be realized in the network.
+  //
+  // If end_time is empty the service is requested to be provisioned
+  // until this specific request is canceled or this interval field
+  // is updated with a non-empty end_time.
+  google.type.Interval interval = 3;
+
+  // A simple way to temporarily disable this request without deleting
+  // it from the store of requests. Requests that are disabled will
+  // not be provisioned by Spacetime, but evaluation of candidate
+  // links and topologies may still be performed (to improve rapidity
+  // of provisioning once re-enabled).
+  bool disabled = 4;
+
+  // NMTS Entity ID corresponding to the source EK_ROUTE_FN Entity
+  // element already created within the network data model.
+  //
+  // draft-ietf-pim-sr-p2mp-policy S2.1 SR P2MP Policy identifying
+  // tuple; "[a]n SR P2MP Policy is uniquely identified by the tuple
+  // <Root, Tree-ID>".
+  //
+  // Note: SR P2P Policy color-like differentiation can be implemented
+  // via tree_id values.
+  string root = 5;
+  int64 tree_id = 6;  // restricted to uint32 values
+
+  // NMTS Entity IDs corresponding to the destination EK_ROUTE_FN
+  // Entity elements already created within the network data model.
+  repeated string leaves = 7;
+
+  // RFC 9256 S2.1; "[a]n implementation MAY allow the assignment
+  // of a symbolic name..."
+  string symbolic_name = 8;
+}
+
+message GetP2mpSrTePolicyRequest {
+  // The resource name of the policy to retrieve.
+  // Format: `p2mpSrTePolicies/{policy_id}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/P2mpSrTePolicy"
+    }];
+}
+
+message ListP2mpSrTePoliciesRequest{
+}
+
+message ListP2mpSrTePoliciesResponse{
+  repeated P2mpSrTePolicy p2mp_sr_te_policies = 1;
+}
+
+message CreateP2mpSrTePolicyRequest{
+  // The ID to use for the policy, which will become the final component of
+  // the policy's resource name, i.e. `p2mpSrTePolicies/{policy_id}`.
+  //
+  // This value should be 1-63 characters, and valid characters
+  // are /[a-z][0-9]-/, specifically of the form
+  // "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$".
+  string policy_id = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // The policy to create.
+  P2mpSrTePolicy policy = 3 [(google.api.field_behavior) = REQUIRED];
+}
+
+message UpdateP2mpSrTePolicyRequest{
+  // The policy to update.
+  //
+  // The policy's `name` field is used to identify the policy to be updated.
+  // Format: `p2mpSrTePolicies/{policy_id}`
+  P2mpSrTePolicy policy = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // The list of fields to be updated.
+  google.protobuf.FieldMask update_mask = 2;
+
+  // If set to true, and the policy is not found, a new instance will be
+  // created. In this situation, `update_mask` is ignored.
+  bool allow_missing = 3;
+}
+
+message DeleteP2mpSrTePolicyRequest{
+  // The resource name of the policy to delete.
+  // Format: `p2mpSrTePolicies/{policy_id}`
+  //
+  // Deleting a P2MP SR-TE Policy also deletes all its Candidate Paths.
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/P2mpSrTePolicy"
+    }];
+}
+
+message P2mpSrTePolicyCandidatePath {
+  // The resource name of this candidate path.
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  // Candidate Paths inherit the scheduling parameters of their
+  // parent P2MP SR-TE Policy.
+
+  // RFC 9256 S2.5 Discriminator; used to associate a candidate path
+  // with this specific SR Policy's path request.
+  uint32 discriminator = 2;
+  // RFC 9256 S2.6 optional symbolic name.
+  string symbolic_name = 3;
+  // draft-ietf-pim-sr-p2mp-policy-22 does not have a field corresponding
+  // to the RFC 9256 S2.7 Preference. This can be added later, should the
+  // specification change or the need arise.
+
+  // Quantitative path metrics.
+  Metrics metrics = 4;
+}
+
+message GetP2mpSrTePolicyCandidatePathRequest{
+  // The resource name of the candidate path to retrieve.
+  // Format: `p2mpSrTePolicies/{policy_id}/candidatePaths/{path_id}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/P2mpSrTePolicyCandidatePath"
+    }];
+}
+
+message ListP2mpSrTePolicyCandidatePathsRequest{
+  // The parent policy for which to list candidate paths.
+  // Format: `p2mpSrTePolicies/{policy_id}`
+  string parent = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      child_type: "provisioning.spacetimeapis.com/P2mpSrTePolicyCandidatePath"
+    }];
+}
+
+message ListP2mpSrTePolicyCandidatePathsResponse{
+  repeated P2mpSrTePolicyCandidatePath p2mp_sr_te_policy_candidate_paths = 1;
+}
+
+message CreateP2mpSrTePolicyCandidatePathRequest{
+  // The parent policy for which this candidate path will be created.
+  // Format: `p2mpSrTePolicies/{policy_id}`
+  string parent = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      child_type: "provisioning.spacetimeapis.com/P2mpSrTePolicyCandidatePath"
+    }];
+
+  // The ID to use for the path, which will become the final component of
+  // the path's resource name, i.e.
+  // `p2mpSrTePolicies/{policy_id}/candidatePaths/{path_id}`
+  //
+  // This value should be 1-63 characters, and valid characters
+  // are /[a-z][0-9]-/, specifically of the form
+  // "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$".
+  string path_id = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // The Candidate Path to create.
+  P2mpSrTePolicyCandidatePath path = 3 [(google.api.field_behavior) = REQUIRED];
+}
+
+message UpdateP2mpSrTePolicyCandidatePathRequest{
+  // The candidate path to update.
+  //
+  // The candidate path's `name` field is used to identify the candidate
+  // path to be updated.
+  // `p2mpSrTePolicies/{policy_id}/candidatePaths/{path_id}`
+  P2mpSrTePolicyCandidatePath path = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // The list of fields to be updated.
+  google.protobuf.FieldMask update_mask = 2;
+
+  // If set to true, and the candidate path is not found, a new instance will
+  // be created, subject to the existence the parent SR-TE Policy. In this
+  // situation, `update_mask` is ignored.
+  bool allow_missing = 3;
+}
+
+message DeleteP2mpSrTePolicyCandidatePathRequest{
+  // The resource name of the candidate path to delete.
+  // Format: `p2mpSrTePolicies/{policy_id}/candidatePaths/{path_id}`
+  //
+  // Delete all Candidate Paths associated with a P2MP SR-TE Policy
+  // DOES NOT delete the policy itself.
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/P2mpSrTePolicyCandidatePath"
     }];
 }
 

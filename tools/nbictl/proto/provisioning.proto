@@ -30,6 +30,8 @@ option go_package = "aalyria.com/spacetime/tools/nbictl/provisioning";
 message ProvisioningResources {
   repeated aalyria.spacetime.api.provisioning.v1alpha.P2pSrTePolicy p2p_sr_te_policies = 1;
   repeated aalyria.spacetime.api.provisioning.v1alpha.P2pSrTePolicyCandidatePath p2p_sr_te_policy_candidate_paths = 2;
+  repeated aalyria.spacetime.api.provisioning.v1alpha.P2mpSrTePolicy p2mp_sr_te_policies = 10;
+  repeated aalyria.spacetime.api.provisioning.v1alpha.P2mpSrTePolicyCandidatePath p2mp_sr_te_policy_candidate_paths = 11;
   repeated aalyria.spacetime.api.provisioning.v1alpha.Downtime downtimes = 3;
   repeated aalyria.spacetime.api.provisioning.v1alpha.ProtectionAssociationGroup protection_association_groups = 4;
   repeated aalyria.spacetime.api.provisioning.v1alpha.DisjointAssociationGroup disjoint_association_groups = 5;
