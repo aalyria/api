@@ -19,7 +19,7 @@
 # - Incompatible changes to APIs that can break depending projects code or expectations.
 # - Incompatible changes in how data is written or read from config files or DBs.
 # - Changes requiring manual enviroment adjustments before the new version can be used.
-MAJOR = 19
+MAJOR = 20
 
 # Increment after releasing a public version.
 # -------------------------------------------------------------
