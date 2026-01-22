@@ -16,7 +16,6 @@ syntax = "proto3";
 
 package aalyria.spacetime.scheduling.v1alpha;
 
-import "api/common/coordinates.proto";
 import "api/common/field_mask.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
@@ -24,6 +23,7 @@ import "google/protobuf/timestamp.proto";
 import "google/rpc/status.proto";
 import "google/type/interval.proto";
 import "nmts/v1/proto/types/geophys/coordinates.proto";
+import "nmts/v1/proto/types/geophys/geodesy.proto";
 
 option go_package = "aalyria.com/spacetime/api/scheduling/v1alpha";
 option java_package = "com.aalyria.spacetime.scheduling.v1alpha";
@@ -196,7 +196,7 @@ message Beam {
   BeamTarget target = 2;
 
   // Identifies the location of the origin of the beam (local platform).
-  // Note:  origin is currently supported in the API only and is not 
+  // Note:  origin is currently supported in the API only and is not
   // yet implemented.
   BeamOrigin origin = 10;
 
@@ -297,7 +297,7 @@ message BeamTarget {
 // motion.  This may diverge from the actual position of the spacecraft
 // and is not intended to be guidance or to influence the vehicle motion
 // in any way.  This can be used to compute beam pointing vectors (origin
-// to target) in agents that are not aware of the local platform position 
+// to target) in agents that are not aware of the local platform position
 // via other means.
 //
 // BeamOrigin type will be populated according to the Antenna.pointing_format
@@ -319,13 +319,13 @@ message ChebyshevCoefficients {
   nmts.v1.types.geophys.CoordinateFrame reference_frame = 1;
 
   // Lists of coefficients.
-  // Note: length of list implies the degree of the polynomial 
+  // Note: length of list implies the degree of the polynomial
   // (e.g. len(coefficient) = Degree of Polynomial + 1)
   //
-  // In each list, the value at idx i is the coefficient of the 
-  // Chebyshev Polynomial of order i.  
-  // 
-  // Note:  this uses the convention where the first coefficient is 
+  // In each list, the value at idx i is the coefficient of the
+  // Chebyshev Polynomial of order i.
+  //
+  // Note:  this uses the convention where the first coefficient is
   // multiplied by 1/2 (i.e. p(x) = c_0 / 2.0 + \sum_{n=1}{c_n*T_n(x)}).
   // See:  https://www.gnu.org/software/gsl/doc/html/cheb.html
   //
@@ -338,8 +338,8 @@ message ChebyshevCoefficients {
   repeated double x_dot_m_per_s_coefficients = 5;
   repeated double y_dot_m_per_s_coefficients = 6;
   repeated double z_dot_m_per_s_coefficients = 7;
-  
-  // The period of time over which these coefficients are valid. The 
+
+  // The period of time over which these coefficients are valid. The
   // start and end times can be defined in UTC and/or GPS timestamps.
   // `_gpst` below as a Duration from the GPS Epoch (GPST time scale; see
   // https://gssc.esa.int/navipedia/index.php/Time_References_in_GNSS).
@@ -389,8 +389,8 @@ message RxConfiguration {
   // Corresponds to an nmts.v1.ek.physical.Carrier.config_id of a carrier within
   // an nmts.v1.ek.physical.CarrierConfiguration. In NMTS graphs, demodulators
   // are associated with CarrierConfigurations through receivers, e.g.,
-  // Demodulator <--RK_SIGNAL_TRANSITS-- 
-  //    SignalProcessingChain <--RK_SIGNAL_TRANSITS-- 
+  // Demodulator <--RK_SIGNAL_TRANSITS--
+  //    SignalProcessingChain <--RK_SIGNAL_TRANSITS--
   //        Receiver <--RK_SIGNAL_TRANSITS-- Antenna
   //            |
   //            |--RK_SUPPORTS--> CarrierConfiguration
@@ -401,11 +401,11 @@ message RxConfiguration {
   // Symbol rate in Megasymbols per second.
   double symbol_rate_msps = 5;
 
-  // The roll-off factor, which is a measure of the excess bandwidth of a 
+  // The roll-off factor, which is a measure of the excess bandwidth of a
   // carrier’s pulse-shaping filter, as a decimal value, calculated according to
   // bandwidth_hz = symbol_rate_sps * (1 + roll_off_factor).
-  // Note: The channel bandwidth, symbol rate, and roll-off parameters hold 
-  // redundant information (since with any two of those parameters the third 
+  // Note: The channel bandwidth, symbol rate, and roll-off parameters hold
+  // redundant information (since with any two of those parameters the third
   // value is computable), but all three can be provided to a client for clarity
   // and convenience.
   float roll_off_factor = 10;
@@ -434,8 +434,8 @@ message TxConfiguration {
   // Corresponds to an nmts.v1.ek.physical.Carrier.config_id of a carrier within
   // an nmts.v1.ek.physical.CarrierConfiguration. In NMTS graphs, modulators are
   // associated with CarrierConfigurations through transmitters, e.g.,
-  // Modulator --RK_SIGNAL_TRANSITS--> 
-  //    SignalProcessingChain --RK_SIGNAL_TRANSITS--> 
+  // Modulator --RK_SIGNAL_TRANSITS-->
+  //    SignalProcessingChain --RK_SIGNAL_TRANSITS-->
   //        Transmitter --RK_SIGNAL_TRANSITS--> Antenna
   //            |
   //            |--RK_SUPPORTS--> CarrierConfiguration
@@ -450,11 +450,11 @@ message TxConfiguration {
 
   // Symbol rate in Megasymbols per second.
   double symbol_rate_msps = 6;
-  // The roll-off factor, which is a measure of the excess bandwidth of a 
+  // The roll-off factor, which is a measure of the excess bandwidth of a
   // carrier’s pulse-shaping filter, as a decimal value, calculated according to
   // bandwidth_hz = symbol_rate_sps * (1 + roll_off_factor).
-  // Note: The channel bandwidth, symbol rate, and roll-off parameters hold 
-  // redundant information (since with any two of those parameters the third 
+  // Note: The channel bandwidth, symbol rate, and roll-off parameters hold
+  // redundant information (since with any two of those parameters the third
   // value is computable), but all three can be provided to a client for clarity
   // and convenience.
   float roll_off_factor = 11;
@@ -466,13 +466,13 @@ message TxConfiguration {
 
   // Identifies the port associated with the carrier on this beam. This
   // corresponds to the NMTS entity ID of an nmts.v1.ek.physical.Port. In NMTS
-  // graphs, ports are related to modulators through an RK_ORIGINATES 
+  // graphs, ports are related to modulators through an RK_ORIGINATES
   // relationship, e.g., Port --RK_ORIGINATES--> Modulator.
   string port_id = 12;
 
   // This value corresponds to the nmts.v1.ek.physical.Carrier.waveform of the
   // carrier assigned to this beam. nmts.v1.ek.physical.Carriers are defined in
-  // nmts.v1.ek.physical.CarrierConfigurations.
+  // aalyria.spacetime.api.common.nmts.v1.ek.physical.CarrierConfigurations.
   string waveform = 4;
 
   string initial_modcod = 7;
@@ -511,7 +511,7 @@ message DvbS2Params {
   // Identifies the physical layer scrambling codes used for payload data and
   // pilot symbols.  Mapping to particular sequences may be user-defined.
   uint32 payload_pl_scrambling_code = 1;
-  uint32 pilot_pl_scrambling_code = 2; 
+  uint32 pilot_pl_scrambling_code = 2;
 }
 
 message Endpoint {
@@ -624,7 +624,7 @@ message TriggerHandover {
   // Broadcasting (DVB) family of access networks, e.g. DVB-S, DVB-S2,
   // DVB-S2X, etc. There are no exact standards which define what mobility
   // procedures in DVB based networks requires as input information, so it is
-  // for now being defined to include a source and target EK_NETWORK_NODE ID. 
+  // for now being defined to include a source and target EK_NETWORK_NODE ID.
   message Dvb {
     string source_network_node_id = 1;
     string target_network_node_id = 2;
@@ -633,7 +633,7 @@ message TriggerHandover {
   // Mobility signaling for networks adopting the 5G New Radio (NR) Radio
   // Access Technology (RAT).
   message Nr {
-    // Legacy, network-initiated L3 Handover 
+    // Legacy, network-initiated L3 Handover
     message L3HO {
     }
 
@@ -641,7 +641,7 @@ message TriggerHandover {
     // See condEventT1-r17 in TS 38.331 Release 18.
     // Ref: https://www.etsi.org/deliver/etsi_ts/138300_138399/138331/18.02.00_60/ts_138331v180200p.pdf
     message T1CHO {
-      // "The field counts the number of UTC seconds in 10 ms units since 
+      // "The field counts the number of UTC seconds in 10 ms units since
       // 00:00:00 on Gregorian calendar date 1 January, 1900 (midnight between
       // Sunday, December 31, 1899 and Monday, January 1, 1900)."
       //
@@ -649,11 +649,11 @@ message TriggerHandover {
       // quantised into units of 10ms when being provided to the NTN RAN.
       google.protobuf.Timestamp t1_threshold = 1;
 
-      // "This field is used for defining the leaving condition T1-2 for 
-      // conditional HO event condEventT1. 
+      // "This field is used for defining the leaving condition T1-2 for
+      // conditional HO event condEventT1.
       // Each step represents 100ms"
       //
-      // As per above definition from 3GPP TS 38.331, the value is to be 
+      // As per above definition from 3GPP TS 38.331, the value is to be
       // quanitsed into units of 100ms when being provided to the NTN RAN.
       google.protobuf.Duration duration = 2;
     }
@@ -682,8 +682,8 @@ message TriggerHandover {
       //  degreesLongitude INTEGER (-8388608..8388607) -- 24 bit field
       // }
       // -- ASN1STOP
-      aalyria.spacetime.api.common.GeodeticWgs84 reference_location_1 = 3;
-      aalyria.spacetime.api.common.GeodeticWgs84 reference_location_2 = 4;
+      nmts.v1.types.geophys.GeodeticWgs84 reference_location_1 = 3;
+      nmts.v1.types.geophys.GeodeticWgs84 reference_location_2 = 4;
 
       // As per 3GPP TS 38.331
       // "The IE HysteresisLocation is a parameter used within entry and leave
@@ -697,7 +697,7 @@ message TriggerHandover {
       // criteria for the event needs to be met in order to trigger a
       // measurement report. Value ms0 corresponds to 0 ms and behaviour as
       // specified in 7.1.2 applies, value ms40 corresponds to 40 ms, and so
-      // on." 
+      // on."
       //
       // The possible valid values are the following:
       // ms0, ms40, ms64, ms80, ms100, ms128, ms160, ms256, ms320, ms480, ms512,
@@ -738,7 +738,7 @@ message TriggerHandover {
       L3HO l3_ho = 3;
       T1CHO t1_cho = 4;
       D1CHO d1_cho = 5;
-      SatSwitchWithReSync sat_switch_with_re_sync = 6; 
+      SatSwitchWithReSync sat_switch_with_re_sync = 6;
     }
   }
 

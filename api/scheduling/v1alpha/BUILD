@@ -30,6 +30,7 @@ proto_library(
         "@googleapis//google/rpc:status_proto",
         "@googleapis//google/type:interval_proto",
         "@org_outernetcouncil_nmts//v1/proto/types/geophys:coordinates_proto",
+        "@org_outernetcouncil_nmts//v1/proto/types/geophys:geodesy_proto",
         "@protobuf//:duration_proto",
         "@protobuf//:empty_proto",
         "@protobuf//:timestamp_proto",
