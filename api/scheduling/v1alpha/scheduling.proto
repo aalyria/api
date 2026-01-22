@@ -420,11 +420,15 @@ message RxConfiguration {
   // nmts.v1.ek.physical.CarrierConfigurations.
   string waveform = 4;
 
+  string initial_modcod = 11;
+
   // Includes technology-specific parameters needed for particular link and
   // physical layer technology standards, such as DVB-S2X, etc.
   oneof other_parameters {
     DvbS2Params dvbs2_params = 7;
   }
+
+  reserved 12 to max;
 }
 
 message TxConfiguration {

@@ -138,7 +138,11 @@ message RxRadioConfiguration {
   }
   optional DemodulatorMode demodulator_mode = 2;
 
+  optional string initial_modcod = 7;
+
   optional RxPower expected_rx_power = 4;
+
+  reserved 8 to max;
 }
 
 message LinkEnd {
