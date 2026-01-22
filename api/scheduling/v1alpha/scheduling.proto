@@ -278,6 +278,9 @@ message DeleteBeam {
 
 // BeamTarget type will be populated according to the Antenna.pointing_format
 // field specified in the relevant Model entities.
+//
+// This message will not be populated when the antenna's pointing format is 
+// unset.
 message BeamTarget {
   oneof target {
     Cartesian cartesian = 4;
