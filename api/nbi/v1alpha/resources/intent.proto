@@ -247,8 +247,7 @@ message TxConfiguration {
   // nmts.v1.ek.physical.CarrierConfigurations.
   optional string waveform = 4;
 
-  // The lowest MODCOD common among all endpoints.
-  optional string lowest_common_modcod = 7;
+  optional string initial_modcod = 7;
 
   oneof other_parameters {
     DvbS2Params dvbs2_params = 11;
