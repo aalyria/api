@@ -179,8 +179,10 @@ message BidirectionalLink {
   optional string a_tx_interface_id = 8;
   optional string b_rx_interface_id = 9;
   optional string b_tx_interface_id = 10;
-  optional string a_to_b_link_report_id = 11;
-  optional string b_to_a_link_report_id = 12;
+  optional string a_to_b_link_report_id = 11 [deprecated = true];
+  optional string b_to_a_link_report_id = 12 [deprecated = true];
+  optional string a_to_b_propagation_vector_id = 15;
+  optional string b_to_a_propagation_vector_id = 16;
 
   // These fields are optional and may be omitted for wireless interfaces that
   // do not require centralized orchestration of radio-related parameters.
@@ -218,7 +220,10 @@ message RxPlatform {
   optional string interface_id = 4;
 
   // Identifies the link report from the transmitter to receiving platform
-  optional string link_report_id = 5;
+  optional string link_report_id = 5 [deprecated = true];
+
+  // Identifies the propagation vector from the transmitter to rx platform
+  optional string propagation_vector_id = 6;
 
   // Defines the radio configuration to apply to the receiving platform.
   optional RxRadioConfiguration rx_radio = 2;
