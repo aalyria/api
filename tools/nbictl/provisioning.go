@@ -26,11 +26,22 @@ import (
 	"github.com/samber/lo"
 	"github.com/sourcegraph/conc/pool"
 	"github.com/urfave/cli/v2"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 
 	provapipb "aalyria.com/spacetime/api/provisioning/v1alpha"
 	provnbipb "aalyria.com/spacetime/tools/nbictl/provisioning"
 )
+
+// isUnimplementedError returns true if the error is a gRPC Unimplemented error.
+func isUnimplementedError(err error) bool {
+	st, ok := status.FromError(err)
+	if !ok {
+		return false
+	}
+	return st.Code() == codes.Unimplemented
+}
 
 const provisioningAPISubDomain = "provisioning-v1alpha"
 
@@ -153,6 +164,9 @@ func ProvisioningResourcesFromRemote(ctx context.Context, client provapipb.Provi
 	p.Go(func() error {
 		result, err := client.ListDowntimes(ctx, &provapipb.ListDowntimesRequest{})
 		if err != nil {
+			if isUnimplementedError(err) {
+				return nil
+			}
 			return err
 		}
 		downtimes = result.GetDowntimes()
@@ -163,6 +177,9 @@ func ProvisioningResourcesFromRemote(ctx context.Context, client provapipb.Provi
 	p.Go(func() error {
 		result, err := client.ListProtectionAssociationGroups(ctx, &provapipb.ListProtectionAssociationGroupsRequest{})
 		if err != nil {
+			if isUnimplementedError(err) {
+				return nil
+			}
 			return err
 		}
 		protectionAssociationGroups = result.GetProtectionAssociationGroups()
@@ -173,6 +190,9 @@ func ProvisioningResourcesFromRemote(ctx context.Context, client provapipb.Provi
 	p.Go(func() error {
 		result, err := client.ListDisjointAssociationGroups(ctx, &provapipb.ListDisjointAssociationGroupsRequest{})
 		if err != nil {
+			if isUnimplementedError(err) {
+				return nil
+			}
 			return err
 		}
 		disjointAssociationGroups = result.GetDisjointAssociationGroups()
@@ -183,6 +203,9 @@ func ProvisioningResourcesFromRemote(ctx context.Context, client provapipb.Provi
 	p.Go(func() error {
 		result, err := client.ListLinks(ctx, &provapipb.ListLinksRequest{})
 		if err != nil {
+			if isUnimplementedError(err) {
+				return nil
+			}
 			return err
 		}
 		links = result.GetLinks()
@@ -193,6 +216,9 @@ func ProvisioningResourcesFromRemote(ctx context.Context, client provapipb.Provi
 	p.Go(func() error {
 		result, err := client.ListGeographicRegions(ctx, &provapipb.ListGeographicRegionsRequest{})
 		if err != nil {
+			if isUnimplementedError(err) {
+				return nil
+			}
 			return err
 		}
 		geographicRegions = result.GetGeographicRegions()
@@ -203,6 +229,9 @@ func ProvisioningResourcesFromRemote(ctx context.Context, client provapipb.Provi
 	p.Go(func() error {
 		result, err := client.ListEmissionsLimits(ctx, &provapipb.ListEmissionsLimitsRequest{})
 		if err != nil {
+			if isUnimplementedError(err) {
+				return nil
+			}
 			return err
 		}
 		emissionsLimits = result.GetEmissionsLimits()
@@ -213,6 +242,9 @@ func ProvisioningResourcesFromRemote(ctx context.Context, client provapipb.Provi
 	p.Go(func() error {
 		result, err := client.ListEmissionsTargets(ctx, &provapipb.ListEmissionsTargetsRequest{})
 		if err != nil {
+			if isUnimplementedError(err) {
+				return nil
+			}
 			return err
 		}
 		emissionsTargets = result.GetEmissionsTargets()
@@ -235,65 +267,77 @@ func ProvisioningResourcesFromRemote(ctx context.Context, client provapipb.Provi
 	{
 		result, err := client.ListP2PSrTePolicies(ctx, &provapipb.ListP2PSrTePoliciesRequest{})
 		if err != nil {
-			return nil, err
-		}
-		p2PSrTePolicies := result.GetP2PSrTePolicies()
-		pr.insertP2PSrTePolicies(p2PSrTePolicies)
+			if !isUnimplementedError(err) {
+				return nil, err
+			}
+		} else {
+			p2PSrTePolicies := result.GetP2PSrTePolicies()
+			pr.insertP2PSrTePolicies(p2PSrTePolicies)
 
-		keys := lo.Keys(pr.p2pSrTePolicies)
-		sort.Strings(keys)
+			keys := lo.Keys(pr.p2pSrTePolicies)
+			sort.Strings(keys)
 
-		candidatePathResults := make([][]*provapipb.P2PSrTePolicyCandidatePath, len(keys))
-		p := pool.New().WithErrors()
-		for i, key := range keys {
-			p.Go(func() error {
-				result, err := client.ListP2PSrTePolicyCandidatePaths(ctx, &provapipb.ListP2PSrTePolicyCandidatePathsRequest{
-					Parent: key,
+			candidatePathResults := make([][]*provapipb.P2PSrTePolicyCandidatePath, len(keys))
+			p := pool.New().WithErrors()
+			for i, key := range keys {
+				p.Go(func() error {
+					result, err := client.ListP2PSrTePolicyCandidatePaths(ctx, &provapipb.ListP2PSrTePolicyCandidatePathsRequest{
+						Parent: key,
+					})
+					if err != nil {
+						if isUnimplementedError(err) {
+							return nil
+						}
+						return err
+					}
+					candidatePathResults[i] = result.GetP2PSrTePolicyCandidatePaths()
+					return nil
 				})
-				if err != nil {
-					return err
-				}
-				candidatePathResults[i] = result.GetP2PSrTePolicyCandidatePaths()
-				return nil
-			})
+			}
+			err = p.Wait()
+			if err != nil {
+				return nil, err
+			}
+			pr.insertP2PSrTePolicyCandidatePaths(slices.Concat(candidatePathResults...))
 		}
-		err = p.Wait()
-		if err != nil {
-			return nil, err
-		}
-		pr.insertP2PSrTePolicyCandidatePaths(slices.Concat(candidatePathResults...))
 	}
 
 	{
 		result, err := client.ListP2MpSrTePolicies(ctx, &provapipb.ListP2MpSrTePoliciesRequest{})
 		if err != nil {
-			return nil, err
-		}
-		p2mpSrTePolicies := result.GetP2MpSrTePolicies()
-		pr.insertP2MpSrTePolicies(p2mpSrTePolicies)
+			if !isUnimplementedError(err) {
+				return nil, err
+			}
+		} else {
+			p2mpSrTePolicies := result.GetP2MpSrTePolicies()
+			pr.insertP2MpSrTePolicies(p2mpSrTePolicies)
 
-		keys := lo.Keys(pr.p2mpSrTePolicies)
-		sort.Strings(keys)
+			keys := lo.Keys(pr.p2mpSrTePolicies)
+			sort.Strings(keys)
 
-		candidatePathResults := make([][]*provapipb.P2MpSrTePolicyCandidatePath, len(keys))
-		p := pool.New().WithErrors()
-		for i, key := range keys {
-			p.Go(func() error {
-				result, err := client.ListP2MpSrTePolicyCandidatePaths(ctx, &provapipb.ListP2MpSrTePolicyCandidatePathsRequest{
-					Parent: key,
+			candidatePathResults := make([][]*provapipb.P2MpSrTePolicyCandidatePath, len(keys))
+			p := pool.New().WithErrors()
+			for i, key := range keys {
+				p.Go(func() error {
+					result, err := client.ListP2MpSrTePolicyCandidatePaths(ctx, &provapipb.ListP2MpSrTePolicyCandidatePathsRequest{
+						Parent: key,
+					})
+					if err != nil {
+						if isUnimplementedError(err) {
+							return nil
+						}
+						return err
+					}
+					candidatePathResults[i] = result.GetP2MpSrTePolicyCandidatePaths()
+					return nil
 				})
-				if err != nil {
-					return err
-				}
-				candidatePathResults[i] = result.GetP2MpSrTePolicyCandidatePaths()
-				return nil
-			})
+			}
+			err = p.Wait()
+			if err != nil {
+				return nil, err
+			}
+			pr.insertP2MpSrTePolicyCandidatePaths(slices.Concat(candidatePathResults...))
 		}
-		err = p.Wait()
-		if err != nil {
-			return nil, err
-		}
-		pr.insertP2MpSrTePolicyCandidatePaths(slices.Concat(candidatePathResults...))
 	}
 
 	return pr, nil
