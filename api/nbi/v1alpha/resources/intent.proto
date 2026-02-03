@@ -29,6 +29,7 @@ import "google/protobuf/timestamp.proto";
 import "google/rpc/code.proto";
 import "google/type/interval.proto";
 
+
 option java_package = "com.aalyria.spacetime.api.nbi.v1alpha.resources";
 option go_package = "aalyria.com/spacetime/api/nbi/v1alpha/resources";
 
@@ -124,7 +125,7 @@ message Intent {
   repeated aalyria.spacetime.api.common.ScheduledControlUpdate
     compiled_withdrawal_updates = 17;
 
-  reserved 2, 10, 12, 22 to max;  // Next IDs.
+  reserved 2, 10, 12, 23 to max;  // Next IDs.
 }
 
 // Models an intent to configure steerable beams and/or radio resources.
@@ -473,10 +474,30 @@ message MobilityIntent {
       optional int32 ssb_time_offset_count = 2;
     }
 
+    message NewRadioCellGlobalId {
+      // Mobile Country Code (MCC) - 3 digits
+      optional uint32 mcc = 1;
+
+      // Mobile Network Code (MNC) - 2 or 3 digits
+      optional uint32 mnc = 2;
+
+      // gNodeB ID
+      // equivalent to 22-32 binary bits (w/ cell_local_id totals 36 bits)
+      optional uint32 gnb_id = 3;
+
+      // gNodeB ID Length in bits
+      // 22-32
+      optional uint32 gnb_id_length = 4;
+ 
+      // Cell Local ID 
+      // equivalent to 4-14 binary bits (w/ gnb_id totals 36 bits)
+      optional uint32 cell_local_id = 5;
+    }
+
     // Source and Target NR Cell Global IDs.
-    optional string source_nr_cgi = 1;
+    optional NewRadioCellGlobalId source_nr_cgi = 1;
     optional string source_access_fn_id = 7;
-    optional string target_nr_cgi = 2;
+    optional NewRadioCellGlobalId target_nr_cgi = 2;
     optional string target_access_fn_id = 8;
 
     oneof handoverType {
@@ -509,3 +530,5 @@ message MobilityIntent {
   // when the handover actually occurs.
   optional google.protobuf.Duration handover_lead_time = 5;
 }
+
+

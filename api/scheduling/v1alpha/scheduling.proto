@@ -25,6 +25,7 @@ import "google/type/interval.proto";
 import "nmts/v1/proto/types/geophys/coordinates.proto";
 import "nmts/v1/proto/types/geophys/geodesy.proto";
 
+
 option go_package = "aalyria.com/spacetime/api/scheduling/v1alpha";
 option java_package = "com.aalyria.spacetime.scheduling.v1alpha";
 
@@ -276,6 +277,7 @@ message DeleteBeam {
   string id = 1;
 }
 
+
 // BeamTarget type will be populated according to the Antenna.pointing_format
 // field specified in the relevant Model entities.
 //
@@ -518,7 +520,7 @@ message DvbS2Params {
   // Identifies the physical layer scrambling codes used for payload data and
   // pilot symbols.  Mapping to particular sequences may be user-defined.
   uint32 payload_pl_scrambling_code = 1;
-  uint32 pilot_pl_scrambling_code = 2;
+  uint32 pilot_pl_scrambling_code = 2; 
 }
 
 message Endpoint {
@@ -736,10 +738,29 @@ message TriggerHandover {
       int32 ssb_time_offset_count = 2;
     }
 
+    message NewRadioCellGlobalId {
+      // Mobile Country Code (MCC) - 3 digits
+      uint32 mcc = 1;
+
+      // Mobile Network Code (MNC) - 2 or 3 digits
+      uint32 mnc = 2;
+
+      // gNodeB ID
+      // equivalent to 22-32 binary bits (w/ cell_local_id totals 36 bits)
+      uint32 gnb_id = 3;
+
+      // gNodeB ID Length in bits
+      // 22-32
+      uint32 gnb_id_length = 4;
+
+      // Cell Local ID - 4-14 bits (w/ gnb_id totals 36 bits)
+      // equivalent to 4-14 binary bits (w/ gnb_id totals 36 bits)
+      uint32 cell_local_id = 5;
+    }
 
     // Source and Target NR Cell Global IDs.
-    string source_nr_cgi = 1;
-    string target_nr_cgi = 2;
+    NewRadioCellGlobalId source_nr_cgi = 1;
+    NewRadioCellGlobalId target_nr_cgi = 2;
 
     oneof handoverType {
       L3HO l3_ho = 3;

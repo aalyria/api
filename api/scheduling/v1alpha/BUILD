@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# gazelle:resolve proto nmts/v1/proto/types/threegpp/nrm.proto @org_outernetcouncil_nmts//v1/proto/types/threegpp:nrm_proto
+# gazelle:resolve proto go nmts/v1/proto/types/threegpp/nrm.proto @org_outernetcouncil_nmts//v1/proto/types/threegpp:threegpp_go_proto
+
 load("@protobuf//bazel:proto_library.bzl", "proto_library")
 load("@rules_go//proto:def.bzl", "go_proto_library")
 load("@rules_proto_grpc_cpp//:defs.bzl", "cpp_grpc_library")
