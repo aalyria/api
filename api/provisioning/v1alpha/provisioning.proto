@@ -936,6 +936,15 @@ message PortSet {
 //
 // Cf. RFC 9834's `Bearer`, without the emphasis on provider-customer
 // boundary, as this Link is within the Spacetime-operated network.
+//
+// This resource describes a request to:
+//  1) Point the antennas of the endpoints towards each other (if the antennas
+//     are steerable).
+//  2) Assign a channel and choose a transmit power that maximizes link 
+//     capacity.
+//
+// The request is satisfied if any link can be scheduled between the
+// endpoints.
 message Link {
   // The resource name of this Link.
   string name = 1 [(google.api.field_behavior) = IDENTIFIER];
@@ -991,13 +1000,11 @@ message Link {
   repeated string computed_terminating_platform_ids = 10 [
     (google.api.field_behavior) = OUTPUT_ONLY];
 
-  // The minimum required and desired Metrics for any Links that will
-  // be provisioned as a result of this request.
-  Metrics metrics = 7;
-
   // An operator-friendly name for this Link, useful as an alternative
   // when resource names are created as UUIDs, for example.
   string display_name = 8;
+
+  reserved 7;
 }
 
 message GetLinkRequest{
