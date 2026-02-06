@@ -1,6 +1,6 @@
 module aalyria.com/spacetime
 
-go 1.25.3
+go 1.25.7
 
 require (
 	cloud.google.com/go/longrunning v0.6.4
