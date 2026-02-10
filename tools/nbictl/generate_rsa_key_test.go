@@ -191,7 +191,7 @@ func TestGenerateKey_DirPermision(t *testing.T) {
 
 	tmpDir, err := bazel.NewTmpDir("nbictl")
 	checkErr(t, err)
-	checkErr(t, os.Chmod(tmpDir, 0755))
+	checkErr(t, os.Chmod(tmpDir, 0o755))
 
 	if err := newTestApp().Run([]string{"nbictl", "generate-keys", "--dir", tmpDir, "--org", exampleCertOrganization}); err == nil {
 		t.Fatal("unable to detect wrong directory permission (expected non-nil error, got nil)")

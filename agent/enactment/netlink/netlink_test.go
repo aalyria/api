@@ -50,7 +50,7 @@ func TestNetlink(t *testing.T) {
 		err    error
 	}
 
-	var EMPTY_ROUTE_TABLE = routesError{routes: []vnl.Route{}, err: nil}
+	EMPTY_ROUTE_TABLE := routesError{routes: []vnl.Route{}, err: nil}
 
 	type routeError struct {
 		route vnl.Route

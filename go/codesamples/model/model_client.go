@@ -61,12 +61,12 @@ func NewCredentialsFromPrivateKey(email, privateKeyID, privateKey string) (crede
 // listEntities calls the Model API to list entities.
 func listEntities(ctx context.Context, client model.ModelClient) ([]*nmts.Entity, error) {
 	req := &model.ListEntitiesRequest{}
-	
+
 	resp, err := client.ListEntities(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list entities: %w", err)
 	}
-	
+
 	return resp.GetEntities(), nil
 }
 

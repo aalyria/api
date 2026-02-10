@@ -31,7 +31,7 @@ import (
 	"aalyria.com/spacetime/agent/internal/snmp"
 	"aalyria.com/spacetime/agent/telemetry"
 	apipb "aalyria.com/spacetime/api/common"
-  telemetrypb "aalyria.com/spacetime/api/telemetry/v1alpha"
+	telemetrypb "aalyria.com/spacetime/api/telemetry/v1alpha"
 
 	gosnmp "github.com/gosnmp/gosnmp"
 	"github.com/iancoleman/strcase"
@@ -46,20 +46,21 @@ import (
 )
 
 var (
-	errEmptyReport 				= errors.New("command generated an empty response")
-	promMetrics    				= make(map[string]*prometheus.Gauge)
+	errEmptyReport = errors.New("command generated an empty response")
+	promMetrics    = make(map[string]*prometheus.Gauge)
 )
 
 type reportGenerator struct {
-	clock       		clockwork.Clock
-	snmpStruct  		*gosnmp.GoSNMP
-	snmpMetrics 		[]snmp.Metric
-	operStatusMap 	map[string]*telemetrypb.IfOperStatus
-	ctx 						context.Context
+	clock         clockwork.Clock
+	snmpStruct    *gosnmp.GoSNMP
+	snmpMetrics   []snmp.Metric
+	operStatusMap map[string]*telemetrypb.IfOperStatus
+	ctx           context.Context
 }
 
-func NewDriver(ctx context.Context, snmpStruct *gosnmp.GoSNMP, snmpMetrics []snmp.Metric, collectionPeriod time.Duration, 
-			prometheusPort int32, deviceName string) (telemetry.Driver, error) {
+func NewDriver(ctx context.Context, snmpStruct *gosnmp.GoSNMP, snmpMetrics []snmp.Metric, collectionPeriod time.Duration,
+	prometheusPort int32, deviceName string,
+) (telemetry.Driver, error) {
 	go func() {
 		// Builds out the map of Prometheus Gauges from the contents of snmpMetrics
 		// TODO: Check whether the metric should be a Counter, Gauge, etc.
@@ -79,11 +80,11 @@ func NewDriver(ctx context.Context, snmpStruct *gosnmp.GoSNMP, snmpMetrics []snm
 
 	clock := clockwork.NewRealClock()
 	return telemetry.NewPeriodicDriver(&reportGenerator{
-		clock:       		clock,
-		snmpStruct:  		snmpStruct,
-		snmpMetrics: 		snmpMetrics,
-		operStatusMap: 	make(map[string]*telemetrypb.IfOperStatus),
-		ctx:						ctx,
+		clock:         clock,
+		snmpStruct:    snmpStruct,
+		snmpMetrics:   snmpMetrics,
+		operStatusMap: make(map[string]*telemetrypb.IfOperStatus),
+		ctx:           ctx,
 	}, clock, collectionPeriod)
 }
 
@@ -152,10 +153,11 @@ func (rg *reportGenerator) getMetrics(log *zerolog.Logger) (metricResults map[st
 	return metricResults, nil
 }
 
-func setFloatMetric(floatValue float64, metricValue *snmp.MetricValue, promMetric *prometheus.Gauge, 
-		log *zerolog.Logger) {
+func setFloatMetric(floatValue float64, metricValue *snmp.MetricValue, promMetric *prometheus.Gauge,
+	log *zerolog.Logger,
+) {
 	if metricValue.AlertConstraint != nil && metricValue.AlertConstraint.ShiftMetric != nil {
-		log.Info().Msgf("Shift %s value %v by %v", metricValue.DisplayName, floatValue, 
+		log.Info().Msgf("Shift %s value %v by %v", metricValue.DisplayName, floatValue,
 			*metricValue.AlertConstraint.ShiftMetric)
 		floatValue += *metricValue.AlertConstraint.ShiftMetric
 	}
@@ -165,13 +167,13 @@ func setFloatMetric(floatValue float64, metricValue *snmp.MetricValue, promMetri
 
 // shiftMetric is used in development/debug situations where we want to manually shift
 // the value of a given metric.
-func shiftMetric (metricValue *snmp.MetricValue, log *zerolog.Logger) {
+func shiftMetric(metricValue *snmp.MetricValue, log *zerolog.Logger) {
 	if metricValue.AlertConstraint != nil && metricValue.AlertConstraint.ShiftMetric != nil {
-		log.Info().Msgf("Shift %s value %v by %v", metricValue.DisplayName, metricValue.Value, 
+		log.Info().Msgf("Shift %s value %v by %v", metricValue.DisplayName, metricValue.Value,
 			*metricValue.AlertConstraint.ShiftMetric)
 		metricValue.Value += *metricValue.AlertConstraint.ShiftMetric
 	} else {
-		log.Info().Msgf("NOT shift %s value %v. Constraint: %v", metricValue.DisplayName, metricValue.Value, 
+		log.Info().Msgf("NOT shift %s value %v. Constraint: %v", metricValue.DisplayName, metricValue.Value,
 			metricValue.AlertConstraint)
 	}
 }
@@ -189,8 +191,8 @@ func convertStringMetric(stringValue string) float64 {
 	// Some SNMP device OIDs report numeric values as strings with units, like "26.4 C deg" or
 	// "1200 milliVolts". Assuming that the units never change (i.e. a given OID always reports the
 	// same units instead of for ex switching from milliVolts to Volts when > 1000), then we can simply
-	// strip the non-numeric values and assume that the units are the default.  
-	// If the above proves not true, we'll need to add some logic to do some conversions, such as 
+	// strip the non-numeric values and assume that the units are the default.
+	// If the above proves not true, we'll need to add some logic to do some conversions, such as
 	// dividing by 1000 if we see "milli", for ex.  The problem there though is that some manufacturers
 	// might use "mV" and others "milliVolt", so this would lead to many permutations. Hopefully, the units
 	// stay consistent.
@@ -223,7 +225,7 @@ func (rg *reportGenerator) GenerateReport(ctx context.Context, nodeID string) (*
 	log.Debug().Msgf("running telemetry command for node %s", nodeID)
 
 	// This function is called periodically by the agent, and so the SNMP metrics are retrieved from the network device(s) anew
-	// Calling this manually triggers the prometheus gauges to be updated so when the /metric endpoints are later scraped, 
+	// Calling this manually triggers the prometheus gauges to be updated so when the /metric endpoints are later scraped,
 	// metrics data has been updated.
 	metricResults := rg.Stats().(map[string]*snmp.MetricValue)
 	operStatus := telemetrypb.IfOperStatus_IF_OPER_STATUS_UNKNOWN.Enum()
@@ -243,7 +245,7 @@ func (rg *reportGenerator) GenerateReport(ctx context.Context, nodeID string) (*
 			constraintInterfaceID = metricValue.AlertConstraint.InterfaceID
 			constraintNodeID = metricValue.AlertConstraint.NodeID
 
-			// This node key is later parsed by TelemtryFE to extract the constraint node ID and the 
+			// This node key is later parsed by TelemtryFE to extract the constraint node ID and the
 			// node ID that comes from sdn_agent (which is passed into this function).
 			nodeKey := getNodeKey(constraintNodeID, nodeID)
 
@@ -251,7 +253,7 @@ func (rg *reportGenerator) GenerateReport(ctx context.Context, nodeID string) (*
 			// values for each constraintNodeID (e.g. midland_gw) and interface (e.g. FEEDER_GS_0)
 			nodeInterfaceKey := getNodeInterfaceKey(constraintNodeID, constraintInterfaceID)
 
-			log.Debug().Msgf("%s: MIN nil %v, MAX nil %v", metricName, constraint.Min==nil, constraint.Max==nil)
+			log.Debug().Msgf("%s: MIN nil %v, MAX nil %v", metricName, constraint.Min == nil, constraint.Max == nil)
 
 			if constraint.Min != nil && *constraint.Min > metricValue.Value {
 				log.Warn().Msgf("%s: min value %v but is %v", metricName, *constraint.Min, metricValue.Value)
@@ -259,7 +261,7 @@ func (rg *reportGenerator) GenerateReport(ctx context.Context, nodeID string) (*
 			} else if constraint.Max != nil && *constraint.Max < metricValue.Value {
 				log.Warn().Msgf("%s: max value %v but is %v", metricName, *constraint.Max, metricValue.Value)
 				operStatus = telemetrypb.IfOperStatus_IF_OPER_STATUS_DOWN.Enum()
-			}	else {
+			} else {
 				log.Info().Msgf("%s: value %v passes constraints", metricName, metricValue.Value)
 				operStatus = telemetrypb.IfOperStatus_IF_OPER_STATUS_UP.Enum()
 			}
@@ -268,7 +270,7 @@ func (rg *reportGenerator) GenerateReport(ctx context.Context, nodeID string) (*
 			log.Debug().Msgf("last status %v ; new status  %v", oldOperStatus, operStatus)
 
 			if constraint.TriggerIfUnchanged || oldOperStatus == nil || *operStatus != *oldOperStatus {
-				log.Debug().Msgf("%s: sending status. constraint.TriggerIfUnchanged: %v, oldStatus: %v, newStatus: %v ", 
+				log.Debug().Msgf("%s: sending status. constraint.TriggerIfUnchanged: %v, oldStatus: %v, newStatus: %v ",
 					metricName, constraint.TriggerIfUnchanged, oldOperStatus, operStatus)
 				rg.operStatusMap[metricOid] = operStatus
 
@@ -280,7 +282,7 @@ func (rg *reportGenerator) GenerateReport(ctx context.Context, nodeID string) (*
 				addNewInterfaceMetrics := true
 				if ok {
 					previousStatus := previousInterfaceMetrics.GetOperationalStateDataPoints()[0].GetValue()
-			  	log.Info().Msgf("%s: nodeInterfaceKey %s: previous %s latest %s", 
+					log.Info().Msgf("%s: nodeInterfaceKey %s: previous %s latest %s",
 						metricName, nodeInterfaceKey, previousStatus, *operStatus)
 					operStatus = combineStatuses(&previousStatus, operStatus)
 					log.Info().Msgf("%s: ===> the above reduced to: %s", metricName, *operStatus)
@@ -296,7 +298,7 @@ func (rg *reportGenerator) GenerateReport(ctx context.Context, nodeID string) (*
 				if addNewInterfaceMetrics {
 					textNetIfaceID, err := prototext.Marshal(&apipb.NetworkInterfaceId{
 						NodeId:      proto.String(nodeKey),
-						InterfaceId: proto.String(constraintInterfaceID),  
+						InterfaceId: proto.String(constraintInterfaceID),
 					})
 					if err != nil {
 						log.Err(err).Msg("marshalling textproto interface ID")
@@ -313,7 +315,7 @@ func (rg *reportGenerator) GenerateReport(ctx context.Context, nodeID string) (*
 					}
 				}
 			} else {
-				log.Info().Msgf("%s: NOT sending status. constraint.TriggerIfUnchanged: %v, oldStatus: %v, newStatus: %v ", 
+				log.Info().Msgf("%s: NOT sending status. constraint.TriggerIfUnchanged: %v, oldStatus: %v, newStatus: %v ",
 					metricName, constraint.TriggerIfUnchanged, *oldOperStatus, *operStatus)
 			}
 		}
@@ -323,15 +325,14 @@ func (rg *reportGenerator) GenerateReport(ctx context.Context, nodeID string) (*
 	if len(nodeInterfaceKeyToInterfaceMetricsMap) == 0 {
 		return nil, nil
 	}
-	
+
 	for _, value := range nodeInterfaceKeyToInterfaceMetricsMap {
-			log.Info().Msgf("**** SENDING STATUS **** %v", value)
+		log.Info().Msgf("**** SENDING STATUS **** %v", value)
 	}
 
 	return &telemetrypb.ExportMetricsRequest{
 		InterfaceMetrics: slices.Collect(maps.Values(nodeInterfaceKeyToInterfaceMetricsMap)),
 	}, nil
-
 }
 
 func getNodeKey(constraintNodeID, sdnAgentNodeID string) string {
@@ -363,7 +364,7 @@ func combineStatuses(status1, status2 *telemetrypb.IfOperStatus) *telemetrypb.If
 		return status2
 	}
 
-	// So both statuses are either UP, UNSPECIFIED, or UNKNOWN. Let's consider the status to 
+	// So both statuses are either UP, UNSPECIFIED, or UNKNOWN. Let's consider the status to
 	// be UP if either is UP.
 	if *status1 == telemetrypb.IfOperStatus_IF_OPER_STATUS_UP {
 		return status1

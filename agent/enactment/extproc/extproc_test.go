@@ -18,8 +18,8 @@ import (
 	"context"
 	"testing"
 
-	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
 	"aalyria.com/spacetime/agent/internal/protofmt"
+	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
 )
 
 func TestDispatchEmptyOutput(t *testing.T) {

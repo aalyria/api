@@ -19,7 +19,6 @@ import (
 
 	"aalyria.com/spacetime/agent/internal/configpb"
 	"aalyria.com/spacetime/agent/internal/protofmt"
-
 )
 
 func TestGetProtoFmtUnspecified(t *testing.T) {

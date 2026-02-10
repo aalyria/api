@@ -31,10 +31,10 @@ import (
 	"fmt"
 	"os/exec"
 
-	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
 	"aalyria.com/spacetime/agent/enactment"
 	"aalyria.com/spacetime/agent/internal/extprocs"
 	"aalyria.com/spacetime/agent/internal/protofmt"
+	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
 	"github.com/rs/zerolog"
 )
 

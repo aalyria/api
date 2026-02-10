@@ -37,24 +37,24 @@ const (
 )
 
 type Metric struct {
-	Oid         			string
-	DisplayName 			string
-	MetricType  			MetricType
-	AlertConstraint		*MetricAlertConstraint
+	Oid             string
+	DisplayName     string
+	MetricType      MetricType
+	AlertConstraint *MetricAlertConstraint
 }
 
 type MetricAlertConstraint struct {
-	InterfaceID					string
-	NodeID							string
-	Min									*float64
-	Max									*float64
-	TriggerIfUnchanged	bool
-	ShiftMetric				  *float64
+	InterfaceID        string
+	NodeID             string
+	Min                *float64
+	Max                *float64
+	TriggerIfUnchanged bool
+	ShiftMetric        *float64
 }
 
 type MetricValue struct {
 	Metric
-	Value   float64
+	Value float64
 }
 
 func CreateSnmpStruct(ctx context.Context, config *configpb.SnmpConfig) *snmp.GoSNMP {
@@ -62,7 +62,7 @@ func CreateSnmpStruct(ctx context.Context, config *configpb.SnmpConfig) *snmp.Go
 	snmpStruct.Target = config.TargetUrl
 	snmpStruct.Retries = int(config.Retries)
 	// commenting this out turns off SNMP logging
-	//snmpStruct.Logger = snmp.NewLogger(nlog.New(os.Stdout, "", 0)) // TODO : see how to use with zerolog
+	// snmpStruct.Logger = snmp.NewLogger(nlog.New(os.Stdout, "", 0)) // TODO : see how to use with zerolog
 
 	if config.TargetPort != 0 {
 		snmpStruct.Port = uint16(config.TargetPort)
@@ -177,12 +177,12 @@ func CreateMetrics(ctx context.Context, snmpObjects []*configpb.SnmpObject) []Me
 
 		if snmpObject.AlertConstraint != nil {
 			snmpMetric.AlertConstraint = &MetricAlertConstraint{
-				InterfaceID: snmpObject.AlertConstraint.InterfaceId,
-				NodeID: snmpObject.AlertConstraint.NodeId,
-				Min: snmpObject.AlertConstraint.Min,
-				Max: snmpObject.AlertConstraint.Max,
+				InterfaceID:        snmpObject.AlertConstraint.InterfaceId,
+				NodeID:             snmpObject.AlertConstraint.NodeId,
+				Min:                snmpObject.AlertConstraint.Min,
+				Max:                snmpObject.AlertConstraint.Max,
 				TriggerIfUnchanged: snmpObject.AlertConstraint.TriggerIfUnchanged,
-				ShiftMetric: snmpObject.AlertConstraint.ShiftMetric,
+				ShiftMetric:        snmpObject.AlertConstraint.ShiftMetric,
 			}
 		}
 

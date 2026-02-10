@@ -39,9 +39,9 @@ const (
 	generatedKeysDirDefault  = "keys"
 	defaultExpirationInYears = 1
 	lenKeyFileName           = 12
-	generatedKeysDirPerm     = os.FileMode(0700)
-	privateKeysFilePerm      = os.FileMode(0600)
-	pubCertFilePerm          = os.FileMode(0644)
+	generatedKeysDirPerm     = os.FileMode(0o700)
+	privateKeysFilePerm      = os.FileMode(0o600)
+	pubCertFilePerm          = os.FileMode(0o644)
 )
 
 type RSAKeyPath struct {

@@ -24,10 +24,12 @@ import (
 	"github.com/rs/zerolog"
 )
 
-type Source[T any] <-chan T
-type Sink[T any] chan<- T
-type Receiver[T any] func() (T, error)
-type Sender[T any] func(T) error
+type (
+	Source[T any]   <-chan T
+	Sink[T any]     chan<- T
+	Receiver[T any] func() (T, error)
+	Sender[T any]   func(T) error
+)
 
 // NewSource takes a readable channel and returns a Source, which can be used
 // to chain common transformations fluently.

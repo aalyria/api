@@ -65,7 +65,7 @@ func (tc *testCaseStatusApi) Run(t *testing.T) {
 			checkErr(t, err)
 			_, err = filepath.Rel(tmpDir, absFile)
 			checkErr(t, err)
-			checkErr(t, os.WriteFile(absFile, []byte(value), 0644))
+			checkErr(t, os.WriteFile(absFile, []byte(value), 0o644))
 		}
 	}
 

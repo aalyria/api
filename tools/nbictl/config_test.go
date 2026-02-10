@@ -105,7 +105,7 @@ func TestReadConfig_WithFileWithNoPermission(t *testing.T) {
 	checkErr(t, err)
 	defer file.Close()
 
-	checkErr(t, os.Chmod(confFile, 0000))
+	checkErr(t, os.Chmod(confFile, 0o000))
 
 	if _, err = readConfigs(confFile); err == nil {
 		t.Fatal("unable to detect that issues with selected config file")
