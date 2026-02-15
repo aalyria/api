@@ -40,7 +40,7 @@ service Provisioning {
   //
   // RFC 9522 S5.1.1.3; RFC 9256 P2P SR Policy.
   //
-  // Manage resources under `p2pSrTePolicy/{policy_id}`.
+  // Manage resources under `p2pSrTePolicies/{policy_id}`.
   rpc GetP2pSrTePolicy(GetP2pSrTePolicyRequest) returns (P2pSrTePolicy) {}
   rpc ListP2pSrTePolicies(ListP2pSrTePoliciesRequest) returns (ListP2pSrTePoliciesResponse) {}
   rpc CreateP2pSrTePolicy(CreateP2pSrTePolicyRequest) returns (P2pSrTePolicy) {}
@@ -52,7 +52,7 @@ service Provisioning {
   // RFC 9256 section 2.2, P2P SR Policy dynamic candidate paths.
   //
   // Manage subresources under
-  //     `p2pSrTePolicy/{policy_id}/candidatePath/{path_id}`.
+  //     `p2pSrTePolicies/{policy_id}/candidatePaths/{path_id}`.
   rpc GetP2pSrTePolicyCandidatePath(GetP2pSrTePolicyCandidatePathRequest) returns (P2pSrTePolicyCandidatePath) {}
   rpc ListP2pSrTePolicyCandidatePaths(ListP2pSrTePolicyCandidatePathsRequest) returns (ListP2pSrTePolicyCandidatePathsResponse) {}
   rpc CreateP2pSrTePolicyCandidatePath(CreateP2pSrTePolicyCandidatePathRequest) returns (P2pSrTePolicyCandidatePath) {}
@@ -63,7 +63,7 @@ service Provisioning {
   //
   // RFC 9522 S5.1.1.3; draft-ietf-pim-sr-p2mp-policy P2MP SR Policy
   //
-  // Manage resources under `p2mpSrTePolicy/{policy_id}`.
+  // Manage resources under `p2mpSrTePolicies/{policy_id}`.
   rpc GetP2mpSrTePolicy(GetP2mpSrTePolicyRequest) returns (P2mpSrTePolicy) {}
   rpc ListP2mpSrTePolicies(ListP2mpSrTePoliciesRequest) returns (ListP2mpSrTePoliciesResponse) {}
   rpc CreateP2mpSrTePolicy(CreateP2mpSrTePolicyRequest) returns (P2mpSrTePolicy) {}
@@ -75,7 +75,7 @@ service Provisioning {
   // draft-ietf-pim-sr-p2mp-policy-22 S2.3 P2MP SR Policy candidate paths.
   //
   // Manage subresources under
-  //     `p2mpSrTePolicy/{policy_id}/candidatePath/{path_id}`.
+  //     `p2mpSrTePolicies/{policy_id}/candidatePaths/{path_id}`.
   rpc GetP2mpSrTePolicyCandidatePath(GetP2mpSrTePolicyCandidatePathRequest) returns (P2mpSrTePolicyCandidatePath) {}
   rpc ListP2mpSrTePolicyCandidatePaths(ListP2mpSrTePolicyCandidatePathsRequest) returns (ListP2mpSrTePolicyCandidatePathsResponse) {}
   rpc CreateP2mpSrTePolicyCandidatePath(CreateP2mpSrTePolicyCandidatePathRequest) returns (P2mpSrTePolicyCandidatePath) {}
