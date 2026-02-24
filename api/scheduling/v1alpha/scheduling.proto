@@ -289,9 +289,6 @@ message BeamTarget {
     string ccsds_oem_file_content = 2;
     AzEl az_el = 3;
     StateVector state_vector = 5;
-
-    // Note:  Chebyshev Coefficients are currently only supported in the API,
-    // they are not currently implemented.
     ChebyshevCoefficients chebyshev_coefficients = 6;
   }
 
