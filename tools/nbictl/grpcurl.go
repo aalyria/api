@@ -27,6 +27,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
 
+	auditpb "aalyria.com/spacetime/api/audit/v1alpha"
 	fedpb "aalyria.com/spacetime/api/federation/interconnect/v1alpha"
 	modelpb "aalyria.com/spacetime/api/model/v1"
 	provpb "aalyria.com/spacetime/api/provisioning/v1alpha"
@@ -227,6 +228,7 @@ func GRPCCall(appCtx *cli.Context) error {
 		schedpb.File_api_scheduling_v1alpha_scheduling_proto,
 		telemetrypb.File_api_telemetry_v1alpha_telemetry_proto,
 		statuspb.File_api_status_v1_status_proto,
+		auditpb.File_api_audit_v1alpha_audit_logs_proto,
 	})
 	if err != nil {
 		return err
