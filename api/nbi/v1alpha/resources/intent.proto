@@ -74,6 +74,7 @@ message Intent {
     PathIntent route = 6;
     ModemIntent modem = 18;
     BearerIntent bearer = 19;
+    ContractIntent contract = 23;
     MobilityIntent mobility = 21;
   }
   optional IntentState state = 7 [default = INSTALL_REQ];
@@ -125,7 +126,7 @@ message Intent {
   repeated aalyria.spacetime.api.common.ScheduledControlUpdate
     compiled_withdrawal_updates = 17;
 
-  reserved 2, 10, 12, 23 to max;  // Next IDs.
+  reserved 2, 10, 12, 24 to max;  // Next IDs.
 }
 
 // Models an intent to configure steerable beams and/or radio resources.
@@ -327,6 +328,22 @@ message IntentWithdrawal {
   optional string description = 2;
 
   reserved 3 to max;  // Next IDs.
+}
+
+// A contract intent represents an intent to manage connectivity towards
+// a service provider's network via a Contract API.
+message ContractIntent {
+  // NMTS entity IDs identifying the provider and terminal network nodes.
+  optional string provider_id = 1;
+  optional string network_node_id = 2;
+
+  // The fields below are opaque, provider-assigned identifiers passed
+  // through to the provider's Contract API. They do not correspond to
+  // NMTS entity IDs (e.g., modem_id is not an EkModulator/EkDemodulator).
+  optional string terminal_id = 3;
+  optional string service_plan_id = 5;
+  optional string modem_id = 8;
+  optional string region = 9;
 }
 
 // A bearer intent represents an intent to establish a bearer towards a
