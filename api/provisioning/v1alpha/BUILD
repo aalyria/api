@@ -23,7 +23,6 @@ package(default_visibility = ["//visibility:public"])
 proto_library(
     name = "provisioning_proto",
     srcs = [
-        "p2p_sr_te_policy_request.proto",
         "provisioning.proto",
         "te.proto",
     ],
