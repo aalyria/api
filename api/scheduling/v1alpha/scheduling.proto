@@ -331,6 +331,10 @@ message ChebyshevCoefficients {
   // multiplied by 1/2 (i.e. p(x) = c_0 / 2.0 + \sum_{n=1}{c_n*T_n(x)}).
   // See:  https://www.gnu.org/software/gsl/doc/html/cheb.html
   //
+  // The evaluation domain is [-1, 1]. To evaluate at a time t within the
+  // validity period [t_start, t_end], normalize as:
+  //   x = 2 * (t - t_start) / (t_end - t_start) - 1
+  //
   // Coefficients for X,Y,Z Position (in meters).
   repeated double x_m_coefficients = 2;
   repeated double y_m_coefficients = 3;
