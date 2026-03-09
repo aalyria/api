@@ -1,0 +1,138 @@
+// Copyright 2024 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// This file defines the SolutionIngester service, which allows clients to solve
+// the allocation of system and radio resources within the network instead of 
+// Spacetime's native solving engine.
+//
+// Clients should use the Spacetime Model API RPCs to fetch the state of the
+// network, and the Provisioning API RPCs for the network requests needing to
+// be solved.
+// TODO: Add a tailored RPC to this service to allow clients to stream 
+// the state of the network and requests. 
+// 
+// Clients are expected to analyze the wireless signal propagation from the
+// devices in the network and accordingly, compute an allocation of system 
+// resources (e.g. assigning satellites to ground stations, user terminals to 
+// satellites, ISL resources, transmit power levels) and radio resources (e.g.
+// assigning carriers to links, beam hopping plans). The RPCs in the 
+// SolutionIngester service allow clients to send these allocations to
+// Spacetime, and in turn, Spacetime will distribute messages to each network
+// element across the Southbound interface in order to configure the resources
+// in the network.
+//
+// Solvers may want to use up-to-date network telemetry reported by each
+// network element as an input.
+// TODO: Add an RPC to allow clients to retrieve telemetry from netowrk
+// elements.
+//
+// Spacetime uses INTENT entities to describe intended changes to the network,
+// so each resource allocation is defined by an INTENT entity.
+// TODO: Add an RPC to alloc clients to retrieve the current or previous
+// system and radio resource allocation decisions.
+
+syntax = "proto3";
+
+package aalyria.spacetime.api.solver.v1alpha;
+
+import "api/nbi/v1alpha/resources/intent.proto";
+import "google/type/interval.proto";
+
+option java_package = "com.aalyria.spacetime.api.solver.v1alpha";
+option go_package = "aalyria.com/spacetime/api/solver/v1alpha";
+
+// Used to represent the requests for connectivity across the network that each
+// resource allocation serves to fulfill over time. The requests for 
+// connectivity are represented as SERVICE_REQUEST entities in Spacetime's data
+// model. 
+message ServiceRequestAndIntervals {
+  // A SERVICE_REQUEST entity's ID.
+  // Required.
+  string service_request_id = 1;
+
+  // Required.
+  repeated google.type.Interval intervals = 2;
+}
+
+// SystemAndRadioResource and Path messages should be treated as being 
+// immutable. To modify a previously submitted resource, clients should submit 
+// the updated resources, each with a unique ID, in a new request with the same 
+// ApplySystemAndRadioResourceAllocationRequest.interval. This will delete the
+// previous allocation (e.g. the corresponding INTENT entities in Spacetime) and
+// submit the updated version.
+
+// Models a list of system and radio resource allocations.
+// When submitted to Spacetime, each SystemAndRadioResource is used to 
+// initialize an INTENT entity, and its ID is set to a UUID.  
+message SystemAndRadioResource {
+  // The interval over which this resource allocation exists.
+  // Required. 
+  google.type.Interval interval = 1;
+
+  // Defines the resource allocation.
+  // Required.
+  aalyria.spacetime.api.nbi.v1alpha.resources.ModemIntent resource = 2;
+
+  // The requests for service that this resource serves to fulfill over time.
+  // Required.
+  repeated ServiceRequestAndIntervals dependent_service_requests = 3;
+
+  // TODO: Consider refactoring this message into separate
+  // SystemResource and RadioResource messages to more clearly delineate the 
+  // differences between the two resource types.
+}
+
+// Models a list of paths that represent routing solutions to the network flows
+// specified by SERVICE_REQUEST entities.
+// When submitted to Spacetime, each Path is used to initialize an INTENT 
+// entity, and its ID is set to a UUID. 
+message Path {
+  // The interval over which this path exists.
+  // Required. 
+  google.type.Interval interval = 1;
+
+  // Defines the path.
+  // Required.
+  aalyria.spacetime.api.nbi.v1alpha.resources.PathIntent path = 2;
+  
+  // The requests for service that this path serves to fulfill over time.
+  // Required.
+  repeated ServiceRequestAndIntervals dependent_service_requests = 3;
+}
+
+message ApplySystemAndRadioResourceAllocationRequest {
+  // The total interval covered by the resource allocation plan in the request.
+  // Any previous resource allocations for this interval will be deleted.
+  // Required. 
+  google.type.Interval interval = 1;
+
+  // The allocation of system and radio resources.
+  repeated SystemAndRadioResource system_and_radio_resources = 2; 
+  
+  // The network paths that correspond to the resource allocations.
+  repeated Path paths = 3;
+}
+
+message ApplySystemAndRadioResourceAllocationResponse {
+  // The RPC will succeed when all resource allocations were successfully 
+  // written to Spacetime. Otherwise, the RPC will fail with an error.
+}
+  
+service SolutionIngester {
+  // Issues a request to submit the allocation of system and radio resources
+  // over an interval.
+  rpc ApplySystemAndRadioResourceAllocation(
+      ApplySystemAndRadioResourceAllocationRequest) returns 
+          (ApplySystemAndRadioResourceAllocationResponse) {}
+}

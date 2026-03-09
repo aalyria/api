@@ -1,0 +1,123 @@
+// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto2";
+
+package aalyria.spacetime.api.nbi.v1alpha.resources;
+
+import "api/nbi/v1alpha/resources/coverage.proto";
+
+option go_package = "aalyria.com/spacetime/api/nbi/v1alpha/resources";
+
+// The Loon SDN controller needs to understand several different types of
+// interference avoidance criteria.  The InterferenceConstraint message is used
+// to describe these.  Use cases include:
+// - Loon's E-band interference avoidance.
+// - Avoiding ground stations tracking HAPS or NGSOs from interfering with
+//   GSO victims; policy may require the whole GSO arc to be masked.
+// - Avoiding ground stations tracking HAPS or NGSOs from interfering with other
+//   HAPS or NGSO victims.
+// - Geofencing to limit spectrum occupancy within specific areas.
+//
+// Some users have policies that are based on simply avoiding pointing within
+// certain angles of potential victims.  Others have needs that require actual
+// evaluation of the PFD versus a spectral mask at victim receivers.  Advanced
+// cases of dynamic spectrum access can require evaluation of effective power
+// spectral density levels across a range of frequencies.
+message InterferenceConstraint {
+  // Human-readable description of the purpose for this InterferenceConstraint.
+  optional string description = 1;
+
+  // A set of coordinates for the possible victims of interference. This may be
+  // derived by referencing an array of transceivers, platforms, or a spatial
+  // surface region.
+  repeated CoordinateArray victims = 2;
+
+  // The set of transceivers that must satisfy the interference constraint;
+  // this set may be filtered based on predicates, like transceiver location.
+  repeated StationSubset interferers = 3;
+
+  // PfdConstraints can be checked against interference predictions using the
+  // structures in coverage.proto (e.g. PfdOverGeoArcCell, PfdOverS2Region,
+  // etc.), and PointingConstraints against TargetAcquisitionInfo in a potential
+  // network configuration plan phase.
+  oneof constraints {
+    PfdConstraints pfd_constraints = 4;
+    // Effective PFD should be evaluated by including the receiver model.  This
+    // allows users to put in the reference receivers and EPFD levels from ITU
+    // regulations.
+    PfdConstraints epfd_constraints = 5;
+    // Aggregate PFD is evaluated against the sum of PFDs.
+    PfdConstraints apfd_constraints = 6;
+    // Describes underlay mask for power spectral density.
+    PsdConstraint psd_constraint = 7;
+    // Describes a simple pointing mask angle.
+    PointingConstraint pointing_constraint = 8;
+  }
+
+  // Constraints are generally evaluated without regard to the relative
+  // direction of the receiver, since this is not generally known or able to be
+  // used for satellite cases.  However for system self-interference, or other
+  // advanced dynamic spectrum access coordination, it may be included.
+  // If not included, false is assumed.
+  optional bool use_receiver_orientation = 9;
+}
+
+message PfdConstraint {
+  // The band definition matches IEEE 1900.5.2.
+  message Band {
+    required double start_frequency_mhz = 1;  // in MHz.
+    required double end_frequency_mhz = 2;    // in MHz.
+  }
+  optional Band band = 1;
+  // Power Flux Density (PFD) computed in dBW / m^2
+  optional double received_pfd_dbw_per_sqm = 2;
+  optional double resolution_bw_mhz = 3;  // in MHz.
+
+  optional double time_fraction = 4;  // Should be 0..1.
+}
+
+message PfdConstraints {
+  repeated PfdConstraint pfd_constraints = 1;
+}
+
+// The PsdConstraint relates to the basic usage of a reference power and
+// underlay mask in an IEEE 1900.5.2 RxModel.  It does not reflect several
+// unneeded parts of IEEE 1900.5.2, like hopping model or "confidence" levels.
+message PsdConstraint {
+  // The ScmMask definition is from IEEE 1900.5.2.
+  // SCM = Spectrum Consumption Message, used elsewhere in IEEE 1900.5.2.
+  message ScmMask {
+    // The reference frequency is typically the center frequency of the mask.
+    required double ref_frequency_mhz = 1;
+    // Control points should be ordered in non-decreasing frequency order.
+    repeated ControlPoint control_points = 2;  // At least 2 should be present.
+  }
+  message ControlPoint {
+    // Frequency of control points is in MHz delta from the reference frequency.
+    required double frequency_mhz = 1;
+    // relative_power is in dB from the reference power.
+    required double relative_power_db = 2;
+  }
+  // Reference power is in dBW per IEEE 1900.5.2.
+  optional double reference_power_dbw = 1;
+  optional ScmMask psd_mask = 2;
+  // Resolution bandwidth is in MHz per IEEE 1900.5.2.
+  optional double resolution_bw_mhz = 3;
+}
+
+message PointingConstraint {
+  // Minimum angle in degrees allowed between a beam center and victim.
+  optional double min_angle_deg = 1;
+}
