@@ -1,0 +1,212 @@
+// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Protobuf messages used to model antennas and optical pointing elements.
+
+syntax = "proto2";
+
+package aalyria.spacetime.api.common;
+
+import "api/common/coordinates.proto";
+import "google/protobuf/empty.proto";
+
+option java_package = "com.aalyria.spacetime.api.common";
+option go_package = "aalyria.com/spacetime/api/common";
+
+// Models an aperture (RF or optical) with a certain signal gain pattern.
+// It may optionally be oriented independently of its platform to track objects.
+message AntennaDefinition {
+  reserved 1, 4, 5, 7, 8, 19 to max;
+
+  // An optional friendly, human-readable string.
+  optional string name = 2;
+
+  // Antenna coordinates may be specified using a fixed offset from their
+  // parent platform.  If this field is not used, the antenna will share the
+  // coordinates of its parent platform.
+  optional PointAxes fixed_coordinate_offset = 3;
+
+  // Parameters relevant to antenna steering and target acquisition.
+  // This field should be omitted when modeling a non-steerable beam.
+  optional Targeting targeting = 18;
+
+  // Identifies the antenna's gain pattern.
+  optional string antenna_pattern_id = 10;
+
+  // Defines the polarization over time, if any. This field is optional.
+  optional Polarization polarization = 17;
+
+  // Optional. Defines the unobstructed field of regard (FOR) for steerable
+  // antennas. If this field is set for a fixed antenna, it will instead act to
+  // further constrain the field of view (FOV) that is otherwise defined by the
+  // antenna gain pattern.
+  optional Projection field_of_regard = 11;
+
+  // Specifies obstructions that subtract from the accessible field-of-regard.
+  repeated Projection obstructions = 12;
+
+  // An Azimuth-Elevation Mask describes how the horizon looks to a steerable
+  // antenna or aperature that is fixed on the surface of a planet.  It
+  // specifies the maximum obscured elevation angle in each sampled direction
+  // from the stationary object. Note that the definition of an azimuth
+  // elevation mask does not constrain link accessibility unless the
+  // minimum_azimuth_elevation_mask_separation_deg constraint is also set.
+  message ElevationMask {
+    // The azimuth angle in degrees measured from North toward East.
+    optional double azimuth_deg = 1;
+
+    // The maximum obscured elevation angle, in degrees.
+    // Set to 90 deg if links in this azimuth direction are always inaccessible.
+    // Negative values are also allowed (for antennas above terrain).
+    optional double maximum_obscured_elevation_deg = 2;
+
+    // When needing to describe a richer variation in obscured elevation angle
+    // along a given azimuth than may be permitted by the "maximum obscured
+    // elevation angle" alone, a sequence of ElevationRise elements may be used.
+    // Taken together in order of increasing distance they describe how the
+    // angle of obscuration changes as a function of distance along the ray
+    // indicated by the azimuth.
+    //
+    // Nonsensical values are silently discarded: negative distances as well as
+    // elevation angles lower than -90 degrees or higher than 90 degrees.
+    //
+    // Additionally, elements may be inserted at distance = 0.0m or appended to
+    // the end to complete the described curve from the origin point up to the
+    // above specified maximum_obscured_elevation_deg value.
+    message ElevationRise {
+      // Distance from the fixed antenna/aperature to the start of obscuration,
+      // in meters. If this field is absent the obscured_elevation_deg is used
+      // to create an ElevationRise at 0.0m distance.
+      optional double distance = 1;
+
+      // The obscured elevation angle, in degrees, at this distance.
+      // Negative values are also allowed (for antennas above terrain).
+      optional double obscured_elevation_deg = 2;
+    }
+    repeated ElevationRise elevation_rise = 3;
+  }
+  repeated ElevationMask azimuth_elevation_mask = 9;
+
+  // Factors that constrain the accessibility of links that use the antenna.
+  optional AntennaConstraints constraints = 6;
+}
+
+message AntennaConstraints {
+  reserved 8 to max;
+
+  message LinkRangeConstraint {
+    optional double minimum_range = 1;
+    optional double maximum_range = 2;
+  }
+  optional LinkRangeConstraint link_range = 1;
+
+  // AzimuthAngleRateConstraint is relative to the plane tangent to the surface
+  // of the central body (Earth).  This is appropriate for ground stations or
+  // other vehicles on the surface of the central body; but, for aerospace
+  // platforms, it's usually better to use the TotalAngularRateConstraint.
+  message AzimuthAngleRateConstraint {
+    optional double minimum_rate_deg_per_sec = 1;
+    optional double maximum_rate_deg_per_sec = 2;
+  }
+  optional AzimuthAngleRateConstraint azimuth_angle_rate = 3;
+
+  message ElevationAngleRateConstraint {
+    optional double minimum_rate_deg_per_sec = 1;
+    optional double maximum_rate_deg_per_sec = 2;
+  }
+  optional ElevationAngleRateConstraint elevation_angle_rate = 4;
+
+  message TotalAngularRateConstraint {
+    optional double minimum_rate_deg_per_sec = 1;
+    optional double maximum_rate_deg_per_sec = 2;
+  }
+  optional TotalAngularRateConstraint total_angular_rate = 5;
+
+  // Link accessibility will be constrained when the angle between the sun's
+  // center of mass and a receiving antenna's boresight is less than this
+  // threshold (in degrees).
+  // The sun is ~32 arcminutes in diameter when viewed from the Earth's surface,
+  // and margin for that should be built into the configured value, if it is
+  // significant to the user.
+  optional double minimum_sun_angle_deg = 6;
+
+  // Link accessibility will be constrained when the angle between the boresight
+  // and any AzimuthElevationMask associated with the antenna is less than this
+  // threshold (in degrees). The is measured as the angular separation in the
+  // positive (vertical) direction from the maximum obscured elevation in the
+  // azimuth direction of the link vector.
+  optional double minimum_azimuth_elevation_mask_separation_deg = 7;
+}
+
+message Projection {
+  // Defines a conical projection.
+  message Conic {
+    // Angle between the positive Z-axis and the external boundary of the
+    // volume. If omitted, the volume is a sphere less any interior exclusion.
+    optional double outer_half_angle_deg = 1;
+
+    // Angle between the positive Z-axis and an optional, interior conical
+    // volume of exclusion. Used to optionally restrict the volume.
+    optional double inner_half_angle_deg = 2;
+  }
+
+  // Defines a rectangular projection
+  message Rectangular {
+    // Measured from the principal direction and in the direction of the X-axis.
+    optional double x_half_angle_deg = 1;
+
+    // Measured from the principal direction and in the direction of the Y-axis.
+    optional double y_half_angle_deg = 2;
+  }
+
+  // Defines a custom projection.
+  message Custom {
+    // A list of directions defining the outer perimeter of the projection.
+    // Azimuth is the angle in the XY plane measured from the positive X-axis
+    // towards the positive Y-axes. Elevation is measured from the XY-plane
+    // and toward the negative z-axis.
+    repeated PointingVector directions = 1;
+  }
+
+  oneof shape_type {
+    Conic conic = 1;
+    Rectangular rectangular = 2;
+    Custom custom = 3;
+  }
+}
+
+message Polarization {
+  // Constant polarization over time.
+  message Constant {
+    message Linear {
+      // The tilt angle, in degrees, relative to the X axis.
+      optional double tilt_angle_deg = 1;
+    }
+
+    oneof polarization {
+      google.protobuf.Empty left_hand_circular = 1;
+      google.protobuf.Empty right_hand_circular = 2;
+      Linear linear = 3;
+    }
+  }
+
+  oneof source {
+    Constant constant = 1;
+  }
+}
+
+message Targeting {
+  // The format to use when providing the antenna with target acquisition info.
+  optional Motion.Type motion_format = 1;
+}

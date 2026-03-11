@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+
+# Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+set -euo pipefail
+
+WORKSPACE="@@WORKSPACE@@"
+SRCS=(@@SRCS@@)
+GOOGLE_JAVA_FORMAT=@@GOOGLE_JAVA_FORMAT@@
+GOOGLE_JAVA_FORMAT="$(readlink "$GOOGLE_JAVA_FORMAT")"
+
+main() {
+  if [[ ${#SRCS[@]} -gt 0 ]]
+  then
+    check_srcs
+  else
+    check_repo
+  fi
+}
+
+check_srcs() {
+  # the bulk of the time spent checking formatting is in the jvm startup time,
+  # but the full batch output is difficult to read and generate diffs off. To
+  # get a mix of speed and helpful error messages, we run the tool once against
+  # all the files with --dry-run set (which prints the list of files that are
+  # incorrectly formatted) then we loop over those if necessary to generate the
+  # human-friendly diffs
+  local unformatted_files=()
+  mapfile -t unformatted_files < <("$GOOGLE_JAVA_FORMAT" --dry-run "${SRCS[@]}")
+
+  for src in "${unformatted_files[@]}";
+  do
+    "$GOOGLE_JAVA_FORMAT" "$src" | diff -u3 "$src" - || true
+  done
+
+  [[ "${#unformatted_files[@]}" -eq 0 ]]
+}
+
+check_repo() {
+  # Use TEST_WORKSPACE to determine if the script is being ran under a test
+  if [[ ! -z "${TEST_WORKSPACE+x}" && -z "${BUILD_WORKSPACE_DIRECTORY+x}" ]]; then
+    FIND_FILE_TYPE="l"
+    # If WORKSPACE was provided, then the script is being run under a test in no_sandbox mode
+    # cd to the directory containing the WORKSPACE file
+    if [[ ! -z "${WORKSPACE+x}" ]]; then
+      FIND_FILE_TYPE="f"
+      WORKSPACE_PATH="$(dirname "$(realpath ${WORKSPACE})")"
+      if ! cd "$WORKSPACE_PATH" ; then
+        echo "Unable to change to workspace (WORKSPACE_PATH: ${WORKSPACE_PATH})"
+      fi
+    fi
+  else
+    # Change into the workspace directory if this is _not_ a test
+    if ! cd "$BUILD_WORKSPACE_DIRECTORY"; then
+      echo "Unable to change to workspace (BUILD_WORKSPACE_DIRECTORY: ${BUILD_WORKSPACE_DIRECTORY})"
+      exit 1
+    fi
+  fi
+
+  find . \
+    -type "${FIND_FILE_TYPE:-f}" \
+    \( -name '*.java' \
+    \) -print0 | xargs -0 "$GOOGLE_JAVA_FORMAT" --set-exit-if-changed --dry-run
+
+}
+
+main "$@"

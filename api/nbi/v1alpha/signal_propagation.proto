@@ -1,0 +1,102 @@
+// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto2";
+
+package aalyria.spacetime.api.nbi.v1alpha;
+
+import "api/nbi/v1alpha/resources/coverage.proto";
+import "api/nbi/v1alpha/resources/wireless_evaluation.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+import "google/type/interval.proto";
+
+option java_package = "com.aalyria.spacetime.api.nbi.v1alpha";
+option go_package = "aalyria.com/spacetime/api/nbi/v1alpha";
+
+// A service that evaluates the time-dynamic geometric accessibility and
+// coverage of a wireless signal propagated from a transmitter towards
+// some target location.
+service SignalPropagation {
+  // Returns the link budget during the intervals in which this link
+  // is accessible.
+  rpc Evaluate(SignalPropagationRequest) returns (SignalPropagationResponse) {}
+}
+
+message SignalPropagationRequest {
+  // Identifies the transmitting transceiver model.
+  optional aalyria.spacetime.api.nbi.v1alpha.resources.TransceiverProvider
+    transmitter_model = 1;
+
+  // This string should correspond to the `id` field of an
+  // Entity message that contains a aalyria.spacetime.api.common.BandProfile
+  // message.
+  optional string band_profile_id = 2;
+
+  // Identifies the time-dynamic target of a steerable beam.
+  // This field may only be omitted if the beam is fixed / non-steerable.
+  // If this field is omitted, the `accessibility` field in each
+  // `access_interval` within the SignalPropagationResponse will be
+  // omitted, and the access interval will match the request interval.
+  // Only coverage calculations will be completed. The link budget from
+  // the transmitter to target will not be computed.
+  optional aalyria.spacetime.api.nbi.v1alpha.resources.TransceiverProvider
+    target = 3;
+
+  // This field is useful for interference analysis.
+  // Omitting this field causes 'coverage' to be omitted from the response.
+  optional aalyria.spacetime.api.nbi.v1alpha.resources.CoordinateArray
+    coverage = 4;
+
+  oneof analysis_time {
+    // The interval of time to evaluate signal propagation. This must be a
+    // closed interval with both a start and end time.
+    google.type.Interval analysis_interval = 6;
+
+    // The instant in time to evaluate signal propagation.
+    google.protobuf.Timestamp analysis_instant = 10;
+  }
+
+  // Sets the analysis step size and the temporal resolution of the response.
+  // This step size determines the rate at which constraints of link
+  // accessibility (such as the link being obstructed by terrain) are
+  // sampled with respect to time.
+  optional google.protobuf.Duration step_size = 7;
+
+  // Sets the analysis step size for spatial propagation metrics.
+  // This step size determines the rate at which propagation loss
+  // metrics are sampled in order to compute the access intervals in
+  // the response. If the step is set to 0, then spatial propagation
+  // will not be calculated.
+  optional google.protobuf.Duration spatial_propagation_step_size = 9;
+
+  // If explain_inaccessibility is true, the server will spend additional
+  // computational time determining the specific set of access constraints
+  // that were not satisfied and including these reasons in the response.
+  // Set this to false to optimize performance.
+  optional bool explain_inaccessibility = 8;
+
+  // If past/historic reference data should be used (e.g. platform motion,
+  // weather, etc) rather than current / most-recent data, this
+  // field indicates the time for retrieving that reference data.
+  optional google.protobuf.Timestamp reference_data_time = 11;
+}
+
+message SignalPropagationResponse {
+  // A timeline of target accessibility (subject to geometric constraints).
+  // Accessible intervals contain the modeled temporospatial signal propagation.
+  // Access intervals are non-overlapping.
+  repeated aalyria.spacetime.api.nbi.v1alpha.resources.AccessInterval
+    access_interval = 1;
+}
