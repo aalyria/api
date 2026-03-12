@@ -23,9 +23,9 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 
-import com.aalyria.spacetime.api.nbi.v1alpha.Nbi.ListEntitiesRequest;
-import com.aalyria.spacetime.api.nbi.v1alpha.Nbi.ListEntitiesResponse;
-import com.aalyria.spacetime.api.nbi.v1alpha.NetOpsGrpc;
+import com.aalyria.spacetime.api.model.v1.ModelGrpc;
+import com.aalyria.spacetime.api.model.v1.ModelOuterClass.ListEntitiesRequest;
+import com.aalyria.spacetime.api.model.v1.ModelOuterClass.ListEntitiesResponse;
 import com.google.common.io.Resources;
 import com.google.gson.Gson;
 import com.sun.net.httpserver.HttpExchange;
@@ -64,9 +64,9 @@ public class SpacetimeCallCredentialsTest {
   @Rule
   public final MockOidcTokenHttpServer oidcTokenServer = new MockOidcTokenHttpServer(/* port= */ 0);
 
-  // Mocks the NBI server with a no-op implementation.
-  NetOpsGrpc.NetOpsImplBase netOpsServiceImpl =
-      mock(NetOpsGrpc.NetOpsImplBase.class, delegatesTo(new NetOpsGrpc.NetOpsImplBase() {}));
+  // Mocks the Model server with a no-op implementation.
+  ModelGrpc.ModelImplBase modelServiceImpl =
+      mock(ModelGrpc.ModelImplBase.class, delegatesTo(new ModelGrpc.ModelImplBase() {}));
 
   private static final String HOST = "nbi.example.spacetime.aalyria.com";
   private static final String AGENT_EMAIL = "some@example.com";
@@ -75,7 +75,7 @@ public class SpacetimeCallCredentialsTest {
       "eyJhbGciOiJSUzI1NiIsImtpZCI6IjcyMTk0YjI2MzU0YzIzYzBiYTU5YTZkNzUxZGZmYWEyNTg2NTkwNGUiLCJ0eXAiOiJKV1QifQ.eyJhdWQiOiJodHRwczovL3d3dy5nb29nbGVhcGlzLmNvbS9vYXV0aDIvdjQvdG9rZW4iLCJleHAiOjE2ODE3OTIzMTksImlhdCI6MTY4MTc4ODcxOSwiaXNzIjoiY2RwaS1hZ2VudEBhNWEtc3BhY2V0aW1lLWdrZS1iYWNrLWRldi5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSIsInN1YiI6ImNkcGktYWdlbnRAYTVhLXNwYWNldGltZS1na2UtYmFjay1kZXYuaWFtLmdzZXJ2aWNlYWNjb3VudC5jb20iLCJ0YXJnZXRfYXVkaWVuY2UiOiI2MDI5MjQwMzEzOS1tZTY4dGpnYWpsNWRjZGJwbmxtMmVrODMwbHZzbnNscS5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSJ9.QyOi7vkFCwdmjT4ChT3_yVY4ZObUJkZkYC0q7alF_thiotdJKRiSo1ZHp_XnS0nM4WSWcQYLGHUDdAMPS0R22brFGzCl8ndgNjqI38yp_LDL8QVTqnLBGUj-m3xB5wH17Q_Dt8riBB4IE-mSS8FB-R6sqSwn-seMfMDydScC0FrtOF3-2BCYpIAlf1AQKN083QdtKgNEVDi72npPr2MmsWV3tct6ydXHWNbxG423kfSD6vCZSUTvWXAuVjuOwnbc2LHZS04U-jiLpvHxu06OwHOQ5LoGVPyd69o8Ny_Bapd2m0YCX2xJr8_HH2nw1jH7EplFf-owbBYz9ZtQoQ2YTA";
   private static final String PATH_TO_PRIVATE_KEY =
       "com/aalyria/spacetime/authentication/resources/test_private_key.pem";
-  private static final String MOCK_NBI_SERVER_NAME = "mockNbiServer";
+  private static final String MOCK_NBI_SERVER_NAME = "mockModelServer";
   // The number of threads to spawn in order to test the synchronization logic.
   private static final int NUM_THREADS = 100;
 
@@ -124,13 +124,13 @@ public class SpacetimeCallCredentialsTest {
 
   @Test
   public void testCustomCallCredentials() throws Exception {
-    // Creates a mock gRPC server for the NBI with an interceptor to verify
+    // Creates a mock gRPC server with an interceptor to verify
     // requests' metadata.
     AtomicInteger numVerifiedOidcTokensReceived = new AtomicInteger(0);
     grpcCleanup.register(
         InProcessServerBuilder.forName(MOCK_NBI_SERVER_NAME)
             .directExecutor()
-            .addService(netOpsServiceImpl)
+            .addService(modelServiceImpl)
             .intercept(
                 new ServerInterceptor() {
                   @Override
@@ -152,7 +152,7 @@ public class SpacetimeCallCredentialsTest {
         grpcCleanup.register(
             InProcessChannelBuilder.forName(MOCK_NBI_SERVER_NAME).directExecutor().build());
 
-    // Mocks the listEntities method in the NBI to return an empty response when invoked.
+    // Mocks the listEntities method to return an empty response when invoked.
     doAnswer(
             invocation -> {
               var streamObserver =
@@ -160,7 +160,7 @@ public class SpacetimeCallCredentialsTest {
               ResponseHelper.complete(streamObserver, ListEntitiesResponse.newBuilder().build());
               return null;
             })
-        .when(netOpsServiceImpl)
+        .when(modelServiceImpl)
         .listEntities(any(ListEntitiesRequest.class), any(StreamObserver.class));
 
     String privateKey = Resources.toString(Resources.getResource(PATH_TO_PRIVATE_KEY), UTF_8);
@@ -180,7 +180,7 @@ public class SpacetimeCallCredentialsTest {
     for (int i = 0; i < NUM_THREADS; ++i) {
       executor.submit(
           () -> {
-            NetOpsGrpc.newBlockingStub(channel)
+            ModelGrpc.newBlockingStub(channel)
                 .withCallCredentials(callCredentials)
                 .listEntities(ListEntitiesRequest.newBuilder().build());
           });
@@ -192,7 +192,7 @@ public class SpacetimeCallCredentialsTest {
     // Verifies that each thread successfully received a token from the OIDC Token
     // Service.
     assertEquals(NUM_THREADS, oidcTokenServer.numCalls.get());
-    // Verifies that each thread passed a valid token to the mock NBI gRPC Server.
+    // Verifies that each thread passed a valid token to the mock gRPC Server.
     assertEquals(NUM_THREADS, numVerifiedOidcTokensReceived.get());
   }
 
@@ -202,15 +202,14 @@ public class SpacetimeCallCredentialsTest {
     grpcCleanup.register(
         InProcessServerBuilder.forName(MOCK_NBI_SERVER_NAME)
             .directExecutor()
-            .addService(netOpsServiceImpl)
+            .addService(modelServiceImpl)
             .build()
             .start());
     ManagedChannel channel =
         grpcCleanup.register(
             InProcessChannelBuilder.forName(MOCK_NBI_SERVER_NAME).directExecutor().build());
 
-    // Mocks the listEntities method in the NBI to return an empty response when
-    // invoked.
+    // Mocks the listEntities method to return an empty response when invoked.
     doAnswer(
             invocation -> {
               var streamObserver =
@@ -218,7 +217,7 @@ public class SpacetimeCallCredentialsTest {
               ResponseHelper.complete(streamObserver, ListEntitiesResponse.newBuilder().build());
               return null;
             })
-        .when(netOpsServiceImpl)
+        .when(modelServiceImpl)
         .listEntities(any(ListEntitiesRequest.class), any(StreamObserver.class));
 
     String privateKey = Resources.toString(Resources.getResource(PATH_TO_PRIVATE_KEY), UTF_8);
@@ -239,7 +238,7 @@ public class SpacetimeCallCredentialsTest {
             fakeClock);
 
     // Calls ListEntities so that an initial OIDC token is created.
-    NetOpsGrpc.newBlockingStub(channel)
+    ModelGrpc.newBlockingStub(channel)
         .withCallCredentials(callCredentials)
         .listEntities(ListEntitiesRequest.newBuilder().build());
 
@@ -257,7 +256,7 @@ public class SpacetimeCallCredentialsTest {
     for (int i = 0; i < NUM_THREADS; ++i) {
       executor.submit(
           () -> {
-            NetOpsGrpc.newBlockingStub(channel)
+            ModelGrpc.newBlockingStub(channel)
                 .withCallCredentials(callCredentials)
                 .listEntities(ListEntitiesRequest.newBuilder().build());
           });

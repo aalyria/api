@@ -29,7 +29,7 @@ java_test(
         "resources/test_private_key.pem",
     ],
     deps = [
-        "//api/nbi/v1alpha:nbi_java_grpc",
+        "//api/model/v1:model_java_grpc",
         "//java/com/aalyria/spacetime/authentication:Authentication",
         "@maven//:com_google_code_gson_gson",
         "@maven//:io_grpc_grpc_api",
