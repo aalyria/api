@@ -235,18 +235,11 @@ message ListEntitiesOverTimeResponse {
 }
 
 message EntityFilter {
-  // If one or more node IDs are given, only return entities that reference one
-  // or more of the node IDs.
-  repeated string references_node = 1;
+  reserved 1, 3;
 
   // If one or more service request IDs are given, only return entities that
   // reference one or more of the service request IDs.
   repeated string references_service_request = 2;
-
-  // If one or more intent states are given, only return intent entities whose
-  // states are included in the given list.
-  repeated aalyria.spacetime.api.nbi.v1alpha.resources.IntentState
-      include_intent_states = 3;
 
   // If one or more field paths are given, only return entities with at least
   // one of the fields set and remove all other fields from the message except
