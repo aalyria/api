@@ -185,6 +185,13 @@ message DeleteRoute {
   string to = 2;
 }
 
+// A transmit and/or receive beam of RF energy operating on a set of channels,
+// whether formed by a single antenna or a beamforming array.
+//
+// The time associated with a revision of a Beam resource in a schedule dictates
+// the earliest time at which the beam may be utilized for transmission and
+// receiving on its configured channels. It is expected that the beam has been
+// oriented toward its target by that time.
 message Beam {
   reserved 7;
 
