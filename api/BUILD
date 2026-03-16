@@ -18,7 +18,6 @@ load("@rules_proto_grpc_doc//:defs.bzl", "doc_markdown_compile", "doc_template_c
 _all_protos = [
     "//api/common:common_proto",
     "//api/federation/interconnect/v1alpha:interconnect_proto",
-    "//api/nbi/v1alpha:nbi_proto",
     "//api/nbi/v1alpha/resources:resources_proto",
     "//api/types:types_proto",
 ]
