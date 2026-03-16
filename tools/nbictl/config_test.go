@@ -21,11 +21,12 @@ import (
 	"strings"
 	"testing"
 
-	"aalyria.com/spacetime/tools/nbictl/nbictlpb"
 	"github.com/bazelbuild/rules_go/go/tools/bazel"
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
+
+	"aalyria.com/spacetime/tools/nbictl/nbictlpb"
 )
 
 var (
@@ -205,7 +206,7 @@ func TestSetConfig_UpdatePrivateKey(t *testing.T) {
 	checkErr(t, err)
 
 	// check that the private key is updated
-	updatedContext := proto.Clone(testConfig).(*nbictlpb.Config)
+	updatedContext := proto.CloneOf(testConfig)
 	updatedContext.PrivKey = "private_key.updated"
 	wantContexts := &nbictlpb.AppConfig{
 		Configs: []*nbictlpb.Config{updatedContext, testConfigForUpdate},
@@ -233,7 +234,7 @@ func TestSetConfig_UpdateKeyId(t *testing.T) {
 	checkErr(t, err)
 
 	// check that the key id is updated
-	updatedContext := proto.Clone(testConfigForUpdate).(*nbictlpb.Config)
+	updatedContext := proto.CloneOf(testConfigForUpdate)
 	updatedContext.KeyId = "key_id.updated"
 	wantContexts := &nbictlpb.AppConfig{
 		Configs: []*nbictlpb.Config{testConfig, updatedContext},
@@ -261,7 +262,7 @@ func TestSetConfig_UpdateUserID(t *testing.T) {
 	checkErr(t, err)
 
 	// check that the user id is updated
-	updatedContext := proto.Clone(testConfig).(*nbictlpb.Config)
+	updatedContext := proto.CloneOf(testConfig)
 	updatedContext.Email = "email.updated"
 	wantContexts := &nbictlpb.AppConfig{
 		Configs: []*nbictlpb.Config{updatedContext, testConfigForUpdate},
@@ -287,7 +288,7 @@ func TestSetConfig_UpdateUrl(t *testing.T) {
 	checkErr(t, err)
 
 	// check that the url is updated
-	updatedContext := proto.Clone(testConfig).(*nbictlpb.Config)
+	updatedContext := proto.CloneOf(testConfig)
 	updatedContext.Url = "url.updated"
 	wantContexts := &nbictlpb.AppConfig{
 		Configs: []*nbictlpb.Config{updatedContext, testConfigForUpdate},
