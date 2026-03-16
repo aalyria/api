@@ -544,6 +544,13 @@ message Endpoint {
   EndpointSecurity security = 7;
   EndpointRouting routing = 8;
 
+  // The IDs of all beams that are transmitting to this endpoint and managed by
+  // the same agent that manages this beam.
+  //
+  // Note that, for any transmit beam, all of that beam's endpoints' tx_beams
+  // fields will contain that beam's own ID.
+  repeated string tx_beams = 9;
+
   reserved 1;
 }
 
