@@ -16,8 +16,9 @@
 
 load("@container_structure_test//:defs.bzl", "container_structure_test")
 load("@rules_go//go:def.bzl", "go_binary", "go_library")
-load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load")
-load("@rules_pkg//:pkg.bzl", "pkg_tar")
+load("@rules_img//img:image.bzl", "image_manifest")
+load("@rules_img//img:layer.bzl", "image_layer")
+load("@rules_img//img:load.bzl", "image_load")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -40,26 +41,31 @@ go_library(
     ],
 )
 
-pkg_tar(
-    name = "netlink_exercise_tar",
-    srcs = [
-        ":debug.sh",
-        ":netlink_exercise",
-    ],
+image_layer(
+    name = "netlink_exercise_layer",
+    srcs = {
+        "/debug.sh": ":debug.sh",
+        "/netlink_exercise": ":netlink_exercise",
+    },
 )
 
-oci_image(
+image_manifest(
     name = "netlink_exercise_image",
     base = "@alpine_base",
-    tars = [":netlink_exercise_tar"],
+    layers = [":netlink_exercise_layer"],
     user = "root",
 )
 
-oci_load(
+image_load(
     name = "netlink_exercise_image.docker.tar",
-    format = "docker",
     image = ":netlink_exercise_image",
-    repo_tags = ["netlink_exercise_image:latest"],
+    tag = "netlink_exercise_image:latest",
+)
+
+filegroup(
+    name = "netlink_exercise_image_layout",
+    srcs = [":netlink_exercise_image"],
+    output_group = "oci_layout",
 )
 
 # To make this work in cloudtop (due to docker socket permissions errors) I had to:
@@ -69,7 +75,7 @@ container_structure_test(
     name = "netlink_exercise_tests",
     configs = [":netlink_exercise_tests.yaml"],
     driver = "docker",
-    image = ":netlink_exercise_image",
+    image = ":netlink_exercise_image_layout",
     tags = [
         "manual",
         "no_ci_pipeline",

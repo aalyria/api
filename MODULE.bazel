@@ -23,7 +23,7 @@ bazel_dep(name = "googleapis-cc", version = "1.0.0")
 bazel_dep(name = "rules_go", version = "0.58.3")
 bazel_dep(name = "rules_java", version = "8.15.1")
 bazel_dep(name = "rules_jvm_external", version = "6.8")
-bazel_dep(name = "rules_oci", version = "2.2.6")
+bazel_dep(name = "rules_img", version = "0.3.4")
 bazel_dep(name = "rules_pkg", version = "1.1.0")
 bazel_dep(name = "rules_proto", version = "5.3.0-21.7")
 bazel_dep(name = "rules_proto_grpc_cpp", version = "5.6.0")
@@ -31,6 +31,7 @@ bazel_dep(name = "rules_proto_grpc_doc", version = "5.6.0")
 bazel_dep(name = "rules_proto_grpc_java", version = "5.6.0")
 bazel_dep(name = "rules_proto_grpc_python", version = "5.6.0")
 bazel_dep(name = "rules_python", version = "1.6.3")
+bazel_dep(name = "aspect_rules_py", version = "1.8.4")
 bazel_dep(name = "toolchains_protoc", version = "0.4.3")
 
 # Configure the protoc toolchain used by rules_proto_grpc to use protoc v31.1.
@@ -120,23 +121,29 @@ python.toolchain(
     python_version = "3.11",
 )
 
-pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
-pip.parse(
+uv = use_extension("@aspect_rules_py//uv/unstable:extension.bzl", "uv")
+uv.declare_hub(hub_name = "python_deps")
+uv.declare_venv(
     hub_name = "python_deps",
-    python_version = "3.11",
-    requirements_lock = "//:requirements.txt",
+    venv_name = "default",
 )
-use_repo(pip, "python_deps")
+uv.lockfile(
+    src = "//:uv.lock",
+    hub_name = "python_deps",
+    venv_name = "default",
+)
+use_repo(uv, "python_deps")
 
-oci = use_extension("@rules_oci//oci:extensions.bzl", "oci")
-oci.pull(
+pull = use_repo_rule("@rules_img//img:pull.bzl", "pull")
+
+pull(
     name = "alpine_base",
     # docker.io/library/alpine:3.19.1
     digest = "sha256:c5b1261d6d3e43071626931fc004f70149baeba2c8ec672bd4f27761f8e1ad6b",  # 3.19.1 2024-01-26
-    image = "docker.io/library/alpine",
-    platforms = ["linux/amd64"],
+    layer_handling = "lazy",
+    registry = "docker.io",
+    repository = "library/alpine",
 )
-use_repo(oci, "alpine_base", "alpine_base_linux_amd64")
 
 bazel_dep(name = "org_outernetcouncil_nmts")
 archive_override(
@@ -148,24 +155,8 @@ archive_override(
 http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
-    name = "opentelemetry_common",
-    build_file = "//api/third_party/opentelemetry:common.BUILD",
-    strip_prefix = "opentelemetry-proto-main",
-    urls = ["https://github.com/open-telemetry/opentelemetry-proto/archive/main.zip"],
-)
-
-# Resource proto
-http_archive(
-    name = "opentelemetry_resource",
-    build_file = "//api/third_party/opentelemetry:resource.BUILD",
-    strip_prefix = "opentelemetry-proto-main",
-    urls = ["https://github.com/open-telemetry/opentelemetry-proto/archive/main.zip"],
-)
-
-# Metrics proto
-http_archive(
-    name = "opentelemetry_metrics",
-    build_file = "//api/third_party/opentelemetry:metrics.BUILD",
+    name = "opentelemetry_proto",
+    build_file = "//api/third_party/opentelemetry:otel.BUILD",
     strip_prefix = "opentelemetry-proto-main",
     urls = ["https://github.com/open-telemetry/opentelemetry-proto/archive/main.zip"],
 )

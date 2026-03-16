@@ -20,12 +20,11 @@ README_PATH=tools/nbictl/README.md
 
 main() {
   local nbictl
-  nbictl=$(readlink tools/nbictl/cmd/nbictl/nbictl_/nbictl)
+  nbictl=$(readlink -f tools/nbictl/cmd/nbictl/nbictl_/nbictl)
   local readme
-  readme=$(readlink "$README_PATH")
+  readme=$(readlink -f "$README_PATH")
 
-  if ! "$nbictl" readme | diff - "$readme";
-  then
+  if ! "$nbictl" readme | diff - "$readme"; then
     echo >&2 "$README_PATH doesn't match the generated output from the nbictl."
     echo >&2 "Run the following command to regenerate:"
     echo >&2 "bazel run //tools/nbictl/cmd/nbictl -- readme > \$PWD/$README_PATH"

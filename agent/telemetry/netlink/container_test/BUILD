@@ -14,8 +14,8 @@
 
 load("@container_structure_test//:defs.bzl", "container_structure_test")
 load("@rules_go//go:def.bzl", "go_binary", "go_library")
-load("@rules_oci//oci:defs.bzl", "oci_image")
-load("@rules_pkg//:pkg.bzl", "pkg_tar")
+load("@rules_img//img:image.bzl", "image_manifest")
+load("@rules_img//img:layer.bzl", "image_layer")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -39,18 +39,24 @@ go_library(
     ],
 )
 
-pkg_tar(
-    name = "netlink_telemetry_tar",
-    srcs = [
-        ":netlink_telemetry",
-    ],
+image_layer(
+    name = "netlink_telemetry_layer",
+    srcs = {
+        "/netlink_telemetry": ":netlink_telemetry",
+    },
 )
 
-oci_image(
+image_manifest(
     name = "netlink_telemetry_image",
     base = "@alpine_base",
-    tars = [":netlink_telemetry_tar"],
+    layers = [":netlink_telemetry_layer"],
     user = "root",
+)
+
+filegroup(
+    name = "netlink_telemetry_image_layout",
+    srcs = [":netlink_telemetry_image"],
+    output_group = "oci_layout",
 )
 
 # You'll need sudoless docker to run this:
@@ -59,7 +65,7 @@ container_structure_test(
     name = "netlink_telemetry_tests",
     configs = [":netlink_telemetry_tests.yaml"],
     driver = "docker",
-    image = ":netlink_telemetry_image",
+    image = ":netlink_telemetry_image_layout",
     tags = [
         "manual",
         "no_ci_pipeline",

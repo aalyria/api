@@ -18,3 +18,20 @@ proto_library(
     srcs = ["opentelemetry/proto/common/v1/common.proto"],
     visibility = ["//visibility:public"],
 )
+
+proto_library(
+    name = "resource_proto",
+    srcs = ["opentelemetry/proto/resource/v1/resource.proto"],
+    visibility = ["//visibility:public"],
+    deps = [":common_proto"],
+)
+
+proto_library(
+    name = "metrics_proto",
+    srcs = ["opentelemetry/proto/metrics/v1/metrics.proto"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":common_proto",
+        ":resource_proto",
+    ],
+)

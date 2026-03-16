@@ -24,7 +24,7 @@ proto_library(
         "status.proto",
     ],
     deps = [
-        "@opentelemetry_metrics//:metrics_proto",
+        "@opentelemetry_proto//:metrics_proto",
     ],
 )
 

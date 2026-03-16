@@ -19,11 +19,10 @@ set -euo pipefail
 WORKSPACE="@@WORKSPACE@@"
 SRCS=(@@SRCS@@)
 GOOGLE_JAVA_FORMAT=@@GOOGLE_JAVA_FORMAT@@
-GOOGLE_JAVA_FORMAT="$(readlink "$GOOGLE_JAVA_FORMAT")"
+GOOGLE_JAVA_FORMAT="$(realpath "$GOOGLE_JAVA_FORMAT")"
 
 main() {
-  if [[ ${#SRCS[@]} -gt 0 ]]
-  then
+  if [[ ${#SRCS[@]} -gt 0 ]]; then
     check_srcs
   else
     check_repo
@@ -40,8 +39,7 @@ check_srcs() {
   local unformatted_files=()
   mapfile -t unformatted_files < <("$GOOGLE_JAVA_FORMAT" --dry-run "${SRCS[@]}")
 
-  for src in "${unformatted_files[@]}";
-  do
+  for src in "${unformatted_files[@]}"; do
     "$GOOGLE_JAVA_FORMAT" "$src" | diff -u3 "$src" - || true
   done
 
@@ -57,7 +55,7 @@ check_repo() {
     if [[ ! -z "${WORKSPACE+x}" ]]; then
       FIND_FILE_TYPE="f"
       WORKSPACE_PATH="$(dirname "$(realpath ${WORKSPACE})")"
-      if ! cd "$WORKSPACE_PATH" ; then
+      if ! cd "$WORKSPACE_PATH"; then
         echo "Unable to change to workspace (WORKSPACE_PATH: ${WORKSPACE_PATH})"
       fi
     fi

@@ -21,3 +21,7 @@ try-import %workspace%/cache.bazelrc
 # Enable bzlmod, which is the new system of managing external dependencies
 # using a MODULE.bazel file instead of the legacy WORKSPACE system.
 common --enable_bzlmod
+
+# Select the default venv for the aspect_rules_py uv hub.
+# This must be set globally because venv selection is a Bazel config flag.
+common --@python_deps//venv=default
