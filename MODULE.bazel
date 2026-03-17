@@ -138,10 +138,10 @@ pull = use_repo_rule("@rules_img//img:pull.bzl", "pull")
 
 pull(
     name = "alpine_base",
-    # docker.io/library/alpine:3.19.1
+    # mirror.gcr.io/library/alpine:3.19.1 (pull-through cache for docker.io)
     digest = "sha256:c5b1261d6d3e43071626931fc004f70149baeba2c8ec672bd4f27761f8e1ad6b",  # 3.19.1 2024-01-26
     layer_handling = "lazy",
-    registry = "docker.io",
+    registry = "mirror.gcr.io",
     repository = "library/alpine",
 )
 
