@@ -1,0 +1,115 @@
+// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package aalyria.spacetime.api.common;
+
+import "api/common/platform_antenna.proto";
+import "api/common/wireless.proto";
+import "api/common/wireless_receiver.proto";
+import "api/common/wireless_transmitter.proto";
+
+option java_package = "com.aalyria.spacetime.api.common";
+option go_package = "aalyria.com/spacetime/api/common";
+
+// A model for a payload in a bent pipe architecture.
+// 
+// This message can be used to represent payloads in which 
+// the channel bandwidths, center frequencies, polarizations, etc. 
+// are either fixed or configurable by the SDN (for example, for
+// digital transparent processors).
+//
+// In order to represent a payload in which some channels are
+// configurable and others are fixed, define both a `FixedPayload` and a 
+// `DigitalPayload`. 
+message BentPipePayload {
+  // An ID for this payload that must be unique only within the 
+  // `aalyria.spacetime.api.common.PlatformDefinition` to which
+  // this payload is attached.
+  string id = 1;
+
+  message AntennaAndSignalProcessors {
+    // An ID that must be unique only within this `BentPipePayload`.
+    string id = 1;
+    AntennaDefinition antenna = 2;
+    repeated TransmitSignalProcessor transmit_signal_processors = 3;
+    repeated ReceiveSignalProcessor receive_signal_processors = 4;
+
+    // This field is used for a `DigitalPayload`. The SDN controller
+    // will create channel configurations between an input channel
+    // with an antenna of Direction.A and an output channel with
+    // an antenna of Direction.B or vice versa. For example,
+    // this field could be used to distinguish feeder versus access
+    // antennas.
+    enum Direction {
+      DIRECTION_UNSPECIFIED = 0;
+      A = 1;
+      B = 2;
+    }
+    Direction direction = 5;
+  }
+  repeated AntennaAndSignalProcessors antennas = 2;
+
+  // A payload in which the configuration is fixed.
+  message FixedPayload {
+    // Definitions of the input and output channels. 
+    //
+    // As an example, for a forward link, the input channel could
+    // correspond to the feeder link and the output channel
+    // could correspond to the access link. For a return link,
+    // the input channel could correspond to the access link
+    // and the output channel could correspond to the feeder link.
+    message Channel {
+      string id = 1;
+      Signal signal = 2;
+      // The ID of an `AntennaAndSignalProcessors` message.
+      string antenna_and_signal_processors_id = 3;
+    } 
+    repeated Channel channels = 1;
+
+    message ChannelConfiguration {
+      // An ID of a `Channel` message that represents the
+      // input channel.
+      string input_channel_id = 1;
+      // An ID of a `Channel` message that represents the
+      // output channel.
+      string output_channel_id = 2;
+      double bandwidth_hz = 3;
+    }
+    repeated ChannelConfiguration channel_configurations = 3;
+  }
+  FixedPayload fixed_payload = 3;
+
+  // A payload which is configurable by the SDN controller,
+  // for example, a digital transparent processor.
+  message DigitalPayload {
+    // Spacetime will configure the channels’ center frequencies,
+    // bandwidths, and which input channels are connected to which 
+    // output channels. These fields constrain the channel 
+    // configuration.
+    uint64 min_input_frequency_hz = 1;
+    uint64 max_input_frequency_hz = 2;
+    uint64 min_output_frequency_hz = 3;
+    uint64 max_output_frequency_hz = 4;
+
+    uint64 min_channel_bandwidth_hz = 5;
+    uint64 max_channel_bandwidth_hz = 6;
+  }
+  DigitalPayload digital_payload = 4;
+  
+  // Limits the number of flows through this payload.
+  uint32 max_processed_bandwidth_hz = 5;
+  uint32 max_channels = 6;
+}
