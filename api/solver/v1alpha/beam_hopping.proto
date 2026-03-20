@@ -1,0 +1,181 @@
+// Copyright 2024 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// This file defines the BeamHoppingSolver service, which allows clients to
+// query for real-time, dynamically computed, beam hopping schedules for a
+// satellite payload.
+
+// The BeamHoppingSolver is a stateless service. Clients are expected to
+// include all network state necessary for the computation of a satellite's
+// beam hopping schedule. This includes user link signal quality telemetry,
+// user demand telemetry, user CIR and EIR, modem bank configuration, etc.
+
+// WARNING: This proto is under development and may be subject to change
+// in the future.
+syntax = "proto3";
+
+package aalyria.spacetime.api.beam_hopping.v1alpha;
+
+import "api/scheduling/v1alpha/scheduling.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_package = "com.aalyria.spacetime.api.beam_hopping.v1alpha";
+option go_package = "aalyria.com/spacetime/api/beam_hopping/v1alpha";
+
+service BeamHoppingSolver {
+  // Issues a request to compute an optimal schedule of satellite beam
+  // dwell times, taking into account real time link quality and user
+  // demand.
+  rpc GetBeamHoppingPlans(GetBeamHoppingPlansRequest)
+    returns (GetBeamHoppingPlansResponse) {}
+}
+
+// The request for aalyria.spacetime.api.beam_hopping.v1alpha.BeamHoppingSolver
+// .GetBeamHoppingPlans
+message GetBeamHoppingPlansRequest {
+  // Required. Identifies the satellite node whose beam hopping plans are
+  // to be computed.
+  string node_id = 1;
+
+  enum Direction {
+    DIRECTION_UNSPECIFIED = 0;
+    DIRECTION_DOWNLINK = 1;
+    DIRECTION_UPLINK = 2;
+  }
+
+  // Required. The connectivity direction of the beam hopping plan.
+  Direction direction = 2;
+
+  // Models a satellite user link beam and its associated real-time state.
+  message UserLinkBeam {
+    // Required. Uniquely identifies a specific beam on the satellite payload.
+    string beam_id = 1;
+
+    // Required. Identifies the beam's assigned modem bank. Note that if the
+    // modem bank contains multiple modems, the beam may utilize more than one
+    // modem over the duration of its beam hopping plan.
+    string modem_bank_id = 2;
+
+    // A collection of metrics from a modem.
+    message ModemMetrics {
+      // Required. The modem producing telemetry.
+      optional string modem_id = 1;
+
+      // A data point in a timeseries that describes the time-varying values of
+      // a link's metrics.
+      message LinkMetricsDataPoint {
+        // Required. When the values were captured.
+        google.protobuf.Timestamp time = 1;
+
+        // The transmitting modem.
+        optional string tx_modem_id = 2;
+
+        // The data rate in bits per second.
+        optional double data_rate_bps = 3;
+
+        // The energy per symbol to noise power spectral density, expressed in
+        // decibels.
+        optional double esn0_db = 4;
+
+        // The signal-to-interference-plus-noise ratio, expressed in decibels.
+        optional double sinr_db = 5;
+      }
+
+      // Data points describing the time-varying properties of the modem's
+      // links.
+      repeated LinkMetricsDataPoint link_metrics_data_points = 2;
+    }
+
+    // Required. A list of recent modem metrics between the beam and its users.
+    // This field is used to derive the beam's total capacity. The client must
+    // include at least one data point for each beam to user link.
+    repeated ModemMetrics modem_metrics = 3;
+
+    // Models a collection of user demand metrics for a user connected to
+    // the beam.
+    message UserDemandMetrics {
+      // Required. Identifies the modem of the user.
+      string modem_id = 1;
+
+      message UserDemandDataPoint {
+        // Required. When the value was captured.
+        google.protobuf.Timestamp time = 1;
+
+        // Required. The demanded transmit data rate for the user, in bits per
+        // second.
+        double tx_data_rate_bps = 2;
+
+        // Required. The demanded receive data rate for the user, in bits per
+        // second.
+        double rx_data_rate_bps = 3;
+      }
+      // Required. Datapoints describing the time varying values of the user's
+      // demand data rates.
+      repeated UserDemandDataPoint user_demand_data_points = 2;
+    }
+
+    // Required. A list of recent demand metrics for the users being served
+    // by the beam. The field is used to derive the beam's total demand. The
+    // client must include at least one data point for each user.
+    repeated UserDemandMetrics user_demand_metrics = 4;
+
+    // Models a user being served by the beam.
+    message Endpoint {
+      // Required. Identifies the user's modem that is connected to the beam.
+      string modem_id = 1;
+
+      // Required. The committed information rate for the user.
+      // The beam hopping solver will attempt to allocate sufficient capacity
+      // to meet the minimum of the user's real-time demand and their CIR.
+      double cir_data_rate_bps = 2;
+
+      // Required. The excess information rate for the user.
+      // The beam hopping solver will, when possible, attempt to allocate
+      // sufficient capacity to meet the minimum of the user's real-time
+      // demand and their EIR.
+      double eir_data_rate_bps = 3;
+    }
+    repeated Endpoint endpoints = 5;
+  }
+  repeated UserLinkBeam user_link_beams = 3;
+
+  // Models a collection of modems on a satellite that operate in tandem.
+  message ModemBank{
+    // Required. A unique identifier for the modem bank.
+    string id = 1;
+
+    // Required. The list of modem IDs included in the bank. Note that if a
+    // modem bank consists of multiple modems, the user link beams assigned to
+    // it may be redistributed across modems within the bank, over the duration
+    // of the computed plan. If this behavior is undesired, clients should
+    // limit this field to a single modem.
+    repeated string modem_ids = 2;
+  }
+  repeated ModemBank modem_banks = 4;
+
+}
+
+message BeamIdAndHoppingPlan {
+  string beam_id = 1;
+  aalyria.spacetime.scheduling.v1alpha.BeamHoppingPlan beam_hopping_plan = 2;
+}
+
+// The response for aalyria.spacetime.api.beam_hopping.v1alpha
+// .BeamHoppingSolver.GetBeamHoppingPlans
+message GetBeamHoppingPlansResponse {
+  // A list of the computed beam hopping plans.
+  repeated BeamIdAndHoppingPlan beam_hopping_plans = 2;
+
+  reserved 1;
+}

@@ -1,0 +1,590 @@
+// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// This file defines types for expressing the time-dynamic motion of
+// platforms. Note that for many types, the motion determines the orientation
+// of the platform's axes. These axes must be considered, for example, when 
+// modeling the antenna's gain pattern or field of regard, or interpreting the 
+// direction vector of a link.
+// TODO: Decouple the choice of a platform's motion and its axes, and
+// provide options to allow users to set the platform's axes.
+
+syntax = "proto2";
+
+package aalyria.spacetime.api.common;
+
+import "api/common/time.proto";
+import "google/protobuf/timestamp.proto";
+import "google/type/interval.proto";
+
+option go_package = "aalyria.com/spacetime/api/common";
+option java_package = "com.aalyria.spacetime.api.common";
+
+// GeodeticWgs84, GeodeticMsl, and Geodetic are sets of curvilinear 
+// 3D coordinates with different vertical datum. These are natural 
+// choices to describe the motion of terrestrial platforms. 
+//
+// Note that Spacetime's wireless propagation analysis considers the presence
+// of terrain as a potential obstruction to wireless links. Therefore, when 
+// modeling terrestrial platforms, ensure that the height situates the
+// platform above the terrain at that point. For example, suppose a fixed
+// user terminal were located on a mountainside. If the height of
+// the platform representing this user terminal were set to 0m, this user
+// terminal would be considered to be "under" the mountain, and therefore, would
+// not be able to form any wireless links.
+// TODO: Add an option to clamp a platform to the height of the terrain
+// at a given point.
+//
+// When a platform's motion is described using GeodeticWgs84, GeodeticMsl, or
+// Geodetic, the platform's axes are oriented in the Earth's reference frame, 
+// such that:
+//  - The x-axis points in the local East direction.
+//  - The y-axis points in the local North direction.
+//  - The z-axis points in the direction of the normal vector to the WGS 84
+//    ellipsoid surface which passes through the point. Conceptually, the
+//    z-axis is oriented "outwards" from the Earth's surface towards space.
+message GeodeticWgs84 {
+  // Defaults to 0.
+  optional double longitude_deg = 1;
+  // Defaults to 0.
+  optional double latitude_deg = 2;
+  // The height is relative to the WGS84 ellipsoid. For reference on the 
+  // vertical datum used, see the World Geodetic System - 1984 (WGS-84) Manual 
+  // (Doc 9674 of the International Civil Aviation Organization). 
+  // Defaults to 0.
+  optional double height_wgs84_m = 3;
+}
+
+// See above for notes on this type.
+message GeodeticMsl {
+  // Defaults to 0.
+  optional double longitude_deg = 1;
+  // Defaults to 0.
+  optional double latitude_deg = 2;
+  // The height is relative to mean sea level. 
+  // Defaults to 0.
+  optional double height_msl_m = 3;
+}
+
+// An alternate way to specify GeodeticWgs84 or GeodeticMsl coordinates, used by
+// GeodeticTemporalInterpolation to define a platform's motion. 
+// See above for notes on this type.
+message Geodetic {
+  // Defaults to 0.
+  optional double longitude_deg = 2;
+  // Defaults to 0.
+  optional double latitude_deg = 1;
+  // Defaults to 0.
+  optional double height_m = 3;
+  
+  // Additional values are unlikely to be added.
+  enum VerticalDatum {
+    VERTICAL_DATUM_UNSPECIFIED = 0;
+    WGS84_ELLIPSOID = 1;
+    MEAN_SEA_LEVEL = 2;
+  }
+  // Defaults to 0.
+  optional VerticalDatum vertical_datum = 4;
+}
+
+// A timestamped GeodeticWgs84 coordinate.
+message GeodeticWgs84Temporal {
+  // Required. 
+  optional GeodeticWgs84 point = 1;
+  // Required. 
+  optional google.protobuf.Timestamp time = 2;
+}
+
+// A timestamped Geodetic coordinate.
+message GeodeticTemporal {
+  // Required. 
+  optional Geodetic point = 1;
+  // Required. 
+  optional google.protobuf.Timestamp time = 2;
+}
+
+// A set of rectilinear 3D coordinates described as (x, y, z) in meters. 
+// This type is often used to represent a 3D position vector.
+message Cartesian {
+  // Defaults to 0.
+  optional double x_m = 1;
+  // Defaults to 0.
+  optional double y_m = 2;
+  // Defaults to 0.
+  optional double z_m = 3;
+}
+
+// A 3D rotational coordinate that describes an angular rotation about an
+// arbitrary axis. See 
+// https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation for reference.
+// Quaternions are generally represented in the form:
+//   w + xi + yj + zk
+// where x, y, z, and w are real numbers, and i, j, and k are three imaginary
+// numbers. 3D rotations are also commonly represented as Euler angles, such as 
+// yaw, pitch, and roll. See 
+// https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
+// for how to convert between this representation and quaternions.
+// The quaternion is interpreted as the identity if none of the fields are set.
+//
+// A note about axes defined in terms of quaternion transformations from parent
+// reference frames: Let A be a fixed point in space. Let v be A's cartesian
+// coordinates in the axes reference frame and w A's cartesian coordinates in
+// the parent reference frame. You can use the unit quaternion q below to
+// compute
+//
+//    w = q*v*q'    or    v = q'*w*q
+//
+// where q' is the conjugate of q and * denotes quaternion multiplication. Note
+// that in the formulas above the 3-vectors v and w are treated as quaternions
+// whose real part is zero and whose imaginary components correspond to the
+// respective components of the 3-vectors. Note also that since q is a unit
+// quaternion, q' can be computed simply by negating the three imaginary
+// components of q.
+// TODO: Migrate uses of this to google.type.Quaternion.
+message Quaternion {
+  // Defaults to 0.
+  optional double w = 1;
+  // Defaults to 0.
+  optional double x = 2;
+  // Defaults to 0.
+  optional double y = 3;
+  // Defaults to 0.
+  optional double z = 4;
+}
+
+// A rotational coordinate that represents a sequence of rotations about a
+// reference set of axes. For an aircraft, yaw corresponds to the heading angle,
+// pitch corresponds to the elevation angle, and roll corresponds to the bank 
+// angle.
+message YawPitchRoll {
+  // Defaults to 0.
+  optional double yaw_deg = 1;
+  // Defaults to 0.
+  optional double pitch_deg = 2;
+  // Defaults to 0.
+  optional double roll_deg = 3;
+}
+
+// A point in user-defined axes.
+message PointAxes {
+  // Required.
+  optional Cartesian point = 1;
+
+  // These axes are interpreted as an offset from the Earth-centered, 
+  // Earth-fixed reference frame. If this field is unset, the platform's axes 
+  // will be the Earth-centered, Earth-fixed reference frame. 
+  //
+  // The quaternion q satisfies w = q*v*q' where v is a point in the axes'
+  // coordinate frame, and w is that same point in the parent reference frame
+  // (i.e. the same frame in which the "point" is specified).
+  // Required. 
+  optional Quaternion axes = 2;
+}
+
+// A timestamped point in user-defined axes.
+message PointAxesTemporal {
+  // Required.
+  optional Cartesian point = 1;
+  
+  // These axes are interpreted as an offset from the Earth-centered, 
+  // Earth-fixed reference frame. If this field is unset, the platform's axes 
+  // will be the Earth-centered, Earth-fixed reference frame. 
+  //
+  // The quaternion q satisfies w = q*v*q' where v is a point in the axes'
+  // coordinate frame, and w is that same point in the parent reference frame
+  // (i.e. the same frame in which the "point" is specified).
+  // Required.
+  optional Quaternion axes = 2;
+
+  // TODO: Migrate to Timestamp.
+  // Required.
+  optional GpsTime gps_time = 4;
+  // WARNING: To specify a time with this point, the gps_time field above must
+  // be used, and this field will not be considered. This field is used by the  
+  // Spacetime UI.
+  optional google.protobuf.Timestamp time = 5;
+}
+
+// Interpolation methods listed in increasing order of their ability to fit
+// complex functions.
+enum InterpolationMethod {
+  UNKNOWN_METHOD = 0;
+  // Uses linear interpolation. See 
+  // https://en.wikipedia.org/wiki/Linear_interpolation for reference.
+  LINEAR = 1; 
+  // Uses a Lagrange interpolating polynomial. 
+  // Conceptually, this method finds the lowest-order polynomial that intersects
+  // each point. See https://en.wikipedia.org/wiki/Lagrange_polynomial for  
+  // reference.
+  LAGRANGE = 2;
+  // Uses a Hermite interpolating polynomial. 
+  // Conceptually, this method finds the lowest-order polynomial that not only
+  // intersects each point but also matches the derivatives of the function.  
+  // See https://en.wikipedia.org/wiki/Hermite_interpolation for reference.
+  HERMITIAN = 3; 
+}
+
+// PointAxesTemporalInterpolation, GeodeticWgs84TemporalInterpolation, and 
+// GeodeticTemporalInterpolation specify a list of points and orientations over
+// time. Both the translational and rotational coordinates are interpolated
+// to calculate the position and orientation of the platform at a given 
+// timestamp. This is a natural choice to express the motion of platforms with a
+// known trajectory, such as an aircraft, ship, or launch vehicle.
+//
+// These types are commonly used in conjunction with a gRPC client that 
+// periodically updates the motion of a platform across the NBI. Imagine there 
+// is an airborne vehicle carrying a sensor that needs to constantly stream 
+// data to a Command Center, and an Ops Center that is tracking the 
+// position of this airbone vehicle. A lightweight script or binary can ingest 
+// the position observations from the Ops Center and then update, via the NBI, 
+// the corresponding Spacetime platform's position in real-time. This allows 
+// Spacetime to orchestrate constant connectivity between the airborne vehicle  
+// and the Command Center.  
+//
+// A "location updater" job, similar to the scenario described above, could use 
+// one of PointAxesTemporalInterpolation, GeodeticWgs84TemporalInterpolation, or
+// GeodeticTemporalInterpolation to describe the motion of a mobile platform.
+// This job would simply append points to the locations_orientations_over_time
+// or locations_over_time fields below in real-time. 
+// WARNING: If this job always set the timestamp of each observation to  
+// the current timestamp and the list contained no points in the future, you 
+// likely would not see the platform in the "live" Spacetime UI. By the time the
+// request had been sent across the NBI, the timestamp would have already 
+// passed, so the "live" view of the Spacetime UI would not have location data  
+// to interpolate and render. To see the platform in the UI, either:
+//  1) if available, store one or more predicted future points based on the 
+//     platform's trajectory in the locations_over_time field
+//  2) if your network can tolerate it, or for non-production purposes, shift
+//     the timestamp of each point into the future so that at least one
+//     point in the future always exists within the locations_over_time field
+// TODO: Implement a configurable approach to remove the oldest points in
+// the locations list to prevent this list from growing to an unbounded size.
+message PointAxesTemporalInterpolation {
+  // If no axes are specified, the platform's axes will match the 
+  // Earth-centered, Earth-fixed reference frame. 
+  repeated PointAxesTemporal locations_orientations_over_time = 1;
+  optional InterpolationMethod interpolation_method = 2 [default = LINEAR];
+  // The degree of the polynomial to use for interpolation.
+  optional int32 interpolation_degree = 3 [default = 1];
+}
+
+// See above for notes on this type.
+message GeodeticWgs84TemporalInterpolation {
+  // The platform's axes are oriented in the Earth's reference frame, such that:
+  //  - The x-axis points in the local East direction.
+  //  - The y-axis points in the local North direction.
+  //  - The z-axis points in the direction of the normal vector to the WGS 84
+  //    ellipsoid surface which passes through the point. Conceptually,
+  //    the z-axis is oriented "outwards" from the Earth's surface towards 
+  //    space.
+  repeated GeodeticWgs84Temporal locations_over_time = 1;
+  optional InterpolationMethod interpolation_method = 2 [default = LINEAR];
+  // The degree of the polynomial to use for interpolation.
+  optional int32 interpolation_degree = 3 [default = 1];
+}
+
+// See above for notes on this type.
+message GeodeticTemporalInterpolation {
+  // The platform's axes are oriented in the Earth's reference frame, such that:
+  //  - The x-axis points in the local East direction.
+  //  - The y-axis points in the local North direction.
+  //  - The z-axis points in the direction of the normal vector to the WGS 84
+  //    ellipsoid surface which passes through the point. Conceptually,
+  //    the z-axis is oriented "outwards" from the Earth's surface towards 
+  //    space.
+  repeated GeodeticTemporal locations_over_time = 1;
+  optional InterpolationMethod interpolation_method = 2 [default = LINEAR];
+  // The degree of the polynomial to use for interpolation.
+  optional int32 interpolation_degree = 3 [default = 1];
+}
+
+// A two-line element set (TLE).
+// TLEs for some unclassified objects are publicly available at 
+// https://celestrak.org. See https://en.wikipedia.org/wiki/Two-line_element_set
+// for reference.
+// When a platform's motion is described using this message, the platform's axes
+// are oriented in the Earth's inertial frame, such that:
+//  - The x-axis is aligned with the platform's velocity vector.
+//  - The y-axis is aligned with the negative angular momentum vector.
+//  - The z-axis is aligned with the negative position vector, which points 
+//    towards the Earth's center of mass.
+// For reference, see The Consultative Committee for Space Data Systems  
+// CCSDS 500.0-G-4 Section 4.3.7.2.
+// The orbit is propagated using the NORAD SGP4/SDP4 model as defined by the 
+// Center for Space Standards and Innovation (CSSI). 
+message TwoLineElementSet {
+  optional string line1 = 1;
+  optional string line2 = 2;
+}
+
+// Celestial bodies.
+enum CentralBody {
+  UNKNOWN_CENTRAL_BODY = 0;
+  EARTH = 1;
+  MOON = 2;
+}
+
+// Keplerian elements. 
+// See https://en.wikipedia.org/wiki/Orbital_elements#Keplerian_elements or The
+// Consultative Committee for Space Data  CCSDS 500.0-G-4 
+// section 5.2.2.4, for reference.
+// When a platform's motion is described using this message, the platform's axes
+// are oriented in the Earth's inertial frame, such that:
+//  - The x-axis is aligned with the platform's velocity vector.
+//  - The y-axis is aligned with the negative angular momentum vector.
+//  - The z-axis is aligned with the negative position vector, which points 
+//    towards the Earth's center of mass.
+// For reference, see The Consultative Committee for Space Data Systems  
+// CCSDS 500.0-G-4 Section 4.3.7.2.
+// The orbit is propagated using a first order J2 perturbation algorithm which 
+// models only the secular effects on the orbital elements. The Earth
+// Gravitational Model of 1996 (EGM96) according to NASA Technical Publication 
+// 1998-206861 is used.
+message KeplerianElements {
+  // Semimajor axis (distance), in meters.
+  // Defaults to 0.
+  optional double semimajor_axis_m = 1;
+  // Eccentricity (the shape of the orbital ellipse).
+  // This value must be between 0.0 (a circular orbit) and 1.0.
+  // Defaults to 0.
+  optional double eccentricity = 2;
+  // Inclination, in degrees.
+  // Defaults to 0.
+  optional double inclination_deg = 3;
+  // Argument of periapsis, in degrees.
+  // Defaults to 0.
+  optional double argument_of_periapsis_deg = 4;
+  // Right ascension of ascending node, in degrees.
+  // Defaults to 0.
+  optional double raan_deg = 5;
+  // True anomaly, in degrees.
+  // Defaults to 0.
+  optional double true_anomaly_deg = 6;
+  // A set of orbital elements is a snapshot, at a particular time, of the orbit
+  // of a satellite. This specifies the time at which the snapshot was taken.
+  // Required.
+  optional DateTime epoch = 7;
+  // The celestial body used to fetch gravitational parameters.
+  // Required.
+  optional CentralBody central_body = 8 [default = EARTH];
+}
+
+// A set of 3D velocity components.
+message CartesianDot {
+  // Velocity along x-axis in meters per second.
+  // Defaults to 0.
+  optional double x_mps = 1; 
+  // Velocity along y-axis in meters per second.
+  // Defaults to 0.
+  optional double y_mps = 2;
+  // Velocity along z-axis in meters per second. 
+  // Defaults to 0.
+  optional double z_mps = 3; 
+}
+
+// Generic state vector for any satellite positions. State vectors are used in
+// the CCSDS Orbit Parameter Message standard (502.0-B-2), and are typical for
+// lunar and other interplanetary mission data, as well as any other generic
+// trajectories where TLEs or Keplerian elements are not well suited, e.g. for
+// powered flight, maneuvers, etc.
+// 
+// When a platform's motion is described using this message, the platform's axes
+// are oriented in the Moon's inertial frame, such that:
+//  - The x-axis is aligned with the platform's velocity vector.
+//  - The y-axis is aligned with the negative angular momentum vector.
+//  - The z-axis is aligned with the negative position vector, which points 
+//    towards the Moon's center of mass.
+// For reference, see The Consultative Committee for Space Data Systems  
+// CCSDS 500.0-G-4 Section 4.3.7.2.
+//
+// WARNING: This message is under development and not fully supported.
+message StateVector {
+  // Time that the state vector was measured.
+  optional google.protobuf.Timestamp epoch = 1;
+
+  enum CoordinateFrame {
+    // The frame should always be known; using this must indicate some error.
+    UNKNOWN_FRAME = 0;
+    // This indicates the frame used for most E-M Lagrange point orbit studies.
+    // It is a natural and convenient way to input L1/L2 orbits.
+    EARTH_MOON_BARYCENTER_SYNODIC_FRAME = 1;
+    // Internally, ECEF is used most everywhere else in our software.
+    ECEF_FRAME = 2;
+  }
+  // Indication of the reference frame for the state vector.
+  optional CoordinateFrame coordinate_frame = 2;
+
+  // Three dimensional position and velocity relative to the reference frame.
+  optional Cartesian position = 3;
+  optional CartesianDot velocity = 4;
+
+  enum PropagationAlgorithm {
+    // Generally, a particular class of algorithm should be specified instead.
+    UNSPECIFIED_ALGORITHM = 0;
+    // State vector for a vehicle in cislunar space, that should be
+    // propagated using a three-body algorithm considering the Earth and
+    // Moon's gravity contributions.
+    EARTH_MOON_THREE_BODY_NUMERICAL_ALGORITHM = 1;
+  }
+  // Indicate the type of propagation algorithm to be used.
+  optional PropagationAlgorithm propagation_algorithm = 5;
+
+  // TODO: In the future, if we progress to more complex use cases for deep
+  // space, interplanetary, and other types of trajectories, we may want to
+  // develop a PropagationParameters message with more details about the
+  // relevant force models, constants, and other attributes to be used for
+  // accurate propagation, rather than implying the total set simply from the
+  // PropagationAlgorithm enum.
+
+  ///
+  // Parameters relevant to modeling forces on the body in motion.
+  ///
+
+  // The approximate mass of the body, in kilograms.
+  optional double mass_kg = 6 [default = 2000.0];
+
+  // The approximate coefficient of reflectivity and applicable area in
+  // square meters as pertains to solar radiation pressure.
+  //
+  // For the coefficient of reflectivity, only values from 0.0 (perfect
+  // absorption) to 1.0 (perfect reflectivity) are meaningful.
+  optional double reflectivity = 7 [default = 1.0];
+  optional double reflective_area_sqm = 8 [default = 20.0];
+}
+
+// A set of curvilinear 3D coordinates relative to the Mean Lunar Radius
+// according to the Report of the IAU/IAG Working Group on Cartographic
+// Coordinates and Rotational Elements of the Planets and satellites: 2000.
+//
+// When a platform's motion is described using this message, the platform's axes
+// are defined in the Moon's reference frame, such that:
+//  - The x-axis points in the local East direction.
+//  - The y-axis points in the local North direction.
+//  - The z-axis points in the direction of the normal vector to the reference
+//    Moon ellipsoid surface which passes through the point. Conceptually, the
+//    z-axis is oriented "outwards" from the Moon's surface towards space.
+message SelenographicMlr {
+  // Defaults to 0.
+  optional double longitude_deg = 1;
+  // Defaults to 0.
+  optional double latitude_deg = 2;
+  // Defaults to 0.
+  optional double height_mlr_m = 3;
+}
+
+// STK Ephemeris and Attitude files generated by the STK Desktop tool. 
+// The maximum size of this message is constrained by the maximum size
+// of protocol buffers, which is 2GB. 
+message StkEphemAndAttitudeFile {
+  // Required.
+  optional string ephem_file = 1;
+  // Required.
+  optional string attitude_file = 2;
+}
+
+// A type to express spatial regions over the Earth's surface. 
+// The S2 library defines an index over the 3D surface of the Earth. Arbitrary
+// regions can be described as a collection of S2 cells, each of which can 
+// represent a region of a different size. See http://s2geometry.io for 
+// reference.
+message S2Cells {
+  // Required. 
+  repeated uint64 ids = 1;
+}
+
+// An azimuth/elevation direction vector.
+message PointingVector {  
+  // Defaults to 0.
+  optional double azimuth_deg = 1;
+  // Defaults to 0.
+  optional double elevation_deg = 2;
+}
+
+// A phi/theta direction vector.
+message PhiTheta {
+  // Defaults to 0.
+  optional double phi_rad = 1;
+  // Defaults to 0.
+  optional double theta_rad = 2;
+}
+
+message Motion {
+  // The time interval for which this motion specification is applicable.
+  //
+  // This may be left- or right-unbounded, or unspecified altogether. When
+  // the start or end times (or both) are unspecified, and the motion
+  // specification does not contain a clear indication of valid timestamps,
+  // it is an error if an applicable boundary is required but cannot be
+  // inferred from context (e.g., if there is more than one Motion message
+  // in a sequence but the start/end time of one cannot be inferred from the
+  // end/start time of another).
+  optional google.type.Interval interval = 10;
+
+  // This enum is used in various other messages, e.g. Targeting, to reference
+  // supported or required motion description formats.
+  //
+  // The enum values are kept deliberately in sync with the field values in the
+  // oneof below, but this is not stricly required in order to read the
+  // contents of the oneof.  In this case it suffices to use the
+  // protobuf-constructed language-specific support for switch statements
+  // (which, for C++ and Java for example, generates a language-appropriate
+  // enum to use).
+  enum Type {
+    MOTION_UNSPECIFIED = 0;
+    GEODETIC_MSL = 7;
+    GEODETIC_WGS84 = 1;
+    ECEF_FIXED = 2;
+    ECEF_INTERPOLATION = 3;
+    CARTOGRAPHIC_WAYPOINTS = 4;
+    GEODETIC_WAYPOINTS = 12;
+    TLE = 5;
+    KEPLERIAN_ELEMENTS = 6;
+    // WARNING: This message is under development and not fully supported.
+    STATE_VECTOR = 9;
+    SELENOGRAPHIC_MLR = 8;
+    STK_EPHEM_AND_ATTITUDE_FILE = 11; 
+    CCSDS_ORBIT_EPHEMERIS_MESSAGE = 13;
+  }
+
+  oneof type {
+    GeodeticMsl geodetic_msl = 7;
+    GeodeticWgs84 geodetic_wgs84 = 1;
+    PointAxes ecef_fixed = 2;
+    PointAxesTemporalInterpolation ecef_interpolation = 3;
+    GeodeticWgs84TemporalInterpolation cartographic_waypoints = 4;
+    GeodeticTemporalInterpolation geodetic_waypoints = 12;
+    TwoLineElementSet tle = 5;
+    KeplerianElements keplerian_elements = 6;
+    // WARNING: This message is under development and not fully supported.
+    StateVector state_vector = 9;
+    SelenographicMlr selenographic_mlr = 8;
+    StkEphemAndAttitudeFile stk_ephem_and_attitude_file = 11;
+    CcsdsOrbitEphemerisMessage ccsds_orbit_ephemeris_message = 13;
+  }
+}
+
+// A CCSDS Orbit Ephemeris Message (OEM), per the
+// specification CCSDS 502.0-B-3 published April 2023.
+//
+// Notes:
+// - Though the OEM Metadata INTERPOLATION and INTERPOLATION_DEGREE
+//   fields are Optional in the specification, they are required by Spacetime
+// - File format can be either Key-value notation (KVN) or extensible markup
+//   language (XML)
+// - Presently supports single-segment CCSDS OEM Files (multi-segment will
+//   throw error)
+message CcsdsOrbitEphemerisMessage {
+  // CCSDS OEM file contents as a string.
+  optional string file = 1;
+}
