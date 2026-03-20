@@ -341,9 +341,15 @@ message ContractIntent {
   // through to the provider's Contract API. They do not correspond to
   // NMTS entity IDs (e.g., modem_id is not an EkModulator/EkDemodulator).
   optional string terminal_id = 3;
-  optional string service_plan_id = 5;
-  optional string modem_id = 8;
-  optional string region = 9;
+  optional string service_plan_id = 4;
+  optional string modem_id = 5;
+  optional string region = 6;
+
+  // NMTS entity IDs of the logical packet links associated with this contract
+  // (one for each direction).
+  repeated string logical_packet_link_ids = 7;
+
+  reserved 8 to max;  // Next IDs.
 }
 
 // A bearer intent represents an intent to establish a bearer towards a
