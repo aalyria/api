@@ -1,0 +1,77 @@
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package aalyria.spacetime.api.provisioning.v1alpha;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/empty.proto";
+
+option java_package = "com.aalyria.spacetime.api.provisioning.v1alpha";
+option go_package = "aalyria.com/spacetime/api/provisioning/v1alpha";
+
+// Traffic Engineering (TE) attributes, intended to be aligned with
+// Path Computation Element Procotocl (PCEP) usage.
+
+// Quantitative metric objectives of a single path or service.
+//
+// See also:
+//   - RFC 8776
+//   - draft-ietf-teas-rfc8776-update
+//   - draft-ietf-teas-yang-te
+message Metrics {
+  // Committed Information Rate (CIR) in bits per second.
+  //
+  // N.B.: these units DIFFER from those of RFC 8294's
+  // bandwidth-ieee-float32 and RFC 8776's te-bandwidth.
+  //
+  // Cf. RFC 9833's `bandwidth-parameters`.
+  uint64 cir_bps = 1;
+
+  // Excess Information Rate (EIR) in bits per second.
+  //
+  // N.B.: these units DIFFER from those of RFC 8294's
+  // bandwidth-ieee-float32 and RFC 8776's te-bandwidth.
+  //
+  // Cf. RFC 9833's `bandwidth-parameters`.
+  uint64 eir_bps = 2;
+
+  // Maximum latency (one way frame delay).
+  google.protobuf.Duration max_latency = 3;
+}
+
+// RFC 8745 -style Protection Association Type roles.
+enum ProtectionRole {
+  PROTECTION_ROLE_UNSPECIFIED = 0;
+
+  // RFC 8745 S3.2 Path Protection Association TLV flags: P=0 S=0
+  PROTECTION_ROLE_WORKING = 1;
+
+  // RFC 8745 S3.2 Path Protection Association TLV flags: P=1 S=0
+  PROTECTION_ROLE_PROTECTION = 2;
+
+  // RFC 8745 S3.2 Path Protection Association TLV flags: P=1 S=1
+  //
+  // Per RFC 4872 S4.2.1, "[a] secondary LSP is an LSP that has been
+  // provisioned in the control plane only, and for which resource
+  // selection MAY have been done but for which the resource
+  // allocation has not been committed at the data plane (for
+  // instance, no cross-connection has been performed)."
+  PROTECTION_ROLE_SECONDARY = 3;
+}
+
+// TODO: RFC 9005 -style topological affinity policy association type?
+// TODO: RFC 9059 -style bidirectionality association type?
+// TODO: RFC 9059 -style co-routing association type?

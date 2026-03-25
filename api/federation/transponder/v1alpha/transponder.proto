@@ -1,0 +1,356 @@
+// Copyright 2024 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//     comments over every field, which is a bit too much. --)
+
+// TODO: Pagination of List responses will be added in a future 
+//       version of the API
+//     too much complexity for now. --)
+//     too much complexity for now. --)
+//     too much complexity for now. --)
+
+syntax = "proto3";
+
+package outernet.federation.transponder.v1alpha;
+
+import "google/api/field_behavior.proto";
+import "google/longrunning/operations.proto";
+import "google/protobuf/empty.proto";
+import "google/type/interval.proto";
+import "google/type/latlng.proto";
+import "nmts/v1/proto/types/geophys/motion.proto";
+
+// Transponder API.
+//
+// The transponder API enables a network orchestrator to reserve capacity on
+// transponders from multiple service providers without integrating with each
+// service provider indepdendently.
+//
+// The resources managed by this API are:
+//
+// * Satellites
+//   * Transponders, which represent devices receiving signals over a range of
+//     frequencies, amplifying them, and re-transmitting them on a different set
+//     of frequencies without changing the content of the received signal or
+//     signals. The transponder's channel routing may be configurable.
+//     * ReceiveBeams, which represent beams receiving signals from a user.
+//     * TransmitBeams, which represent beams through which received signals are
+//       re-transmitted.
+//     * Channels, which represent a reservation of bandwidth across a receive
+//       beam and transmit beam.
+//
+// Satellites, Transponders, ReceiveBeams, and TransmitBeams are resources
+// defined by the service provider, and are not mutable by a client of the API.
+service TransponderService {
+  rpc GetSatellite(GetSatelliteRequest) returns (Satellite) {}
+  rpc ListSatellites(ListSatellitesRequest) returns (ListSatellitesResponse) {}
+
+  rpc GetTransponder(GetTransponderRequest) returns (Transponder) {}
+  rpc ListTransponders(ListTranspondersRequest)
+      returns (ListTranspondersResponse) {}
+
+  rpc GetReceiveBeam(GetReceiveBeamRequest) returns (ReceiveBeam) {}
+  rpc ListReceiveBeams(ListReceiveBeamsRequest)
+      returns (ListReceiveBeamsResponse) {}
+
+  rpc GetTransmitBeam(GetTransmitBeamRequest) returns (TransmitBeam) {}
+  rpc ListTransmitBeams(ListTransmitBeamsRequest)
+      returns (ListTransmitBeamsResponse) {}
+
+  rpc GetChannel(GetChannelRequest) returns (Channel) {}
+  rpc ListChannels(ListChannelsRequest) returns (ListChannelsResponse) {}
+
+  // Long Running Operations.
+  rpc CreateChannel(CreateChannelRequest)
+      returns (google.longrunning.Operation) {
+    option (google.longrunning.operation_info) = {
+      response_type: "Channel",
+      metadata_type: "CreateChannelMetadata",
+    };
+  }
+  rpc UpdateChannel(UpdateChannelRequest)
+      returns (google.longrunning.Operation) {
+    option (google.longrunning.operation_info) = {
+      response_type: "Channel",
+      metadata_type: "UpdateChannelMetadata",
+    };
+  }
+  rpc DeleteChannel(DeleteChannelRequest)
+      returns (google.longrunning.Operation) {
+    option (google.longrunning.operation_info) = {
+      response_type: "google.protobuf.Empty",
+      metadata_type: "DeleteChannelMetadata" 
+    };
+  }
+}
+
+message GetSatelliteRequest {
+  // Required. The name of the satellite to retrieve.
+  string name = 1;
+}
+
+message ListSatellitesRequest {
+}
+
+message ListSatellitesResponse {
+  repeated Satellite satellites = 1;
+}
+
+message GetTransponderRequest {
+  // Required. The name of the transponder to retrieve.
+  string name = 1;
+}
+
+message ListTranspondersRequest {
+  // Required. The name of the satellite whose transponders will be listed.
+  string parent = 1;
+}
+
+message ListTranspondersResponse {
+  repeated Transponder transponders = 1;
+}
+
+message GetReceiveBeamRequest {
+  // Required. The name of the receive beam to retrieve.
+  string name = 1;
+}
+
+message ListReceiveBeamsRequest {
+  // Required. The name of the transponder whose receive beams will be listed.
+  string parent = 1;
+}
+
+message ListReceiveBeamsResponse {
+  repeated ReceiveBeam receive_beams = 1;
+}
+
+message GetTransmitBeamRequest {
+  // Required. The name of the transmit beam to retrieve.
+  string name = 1;
+}
+
+message ListTransmitBeamsRequest {
+  // Required. The name of the transponder whose transmit beams will be listed.
+  string parent = 1;
+}
+
+message ListTransmitBeamsResponse {
+  repeated TransmitBeam transmit_beams = 1;
+}
+
+message GetChannelRequest {
+  // Required. The name of the channel to retrieve.
+  string name = 1;
+}
+
+message ListChannelsRequest {
+  // Required. The name of the transponder whose channels will be listed.
+  string parent = 1;
+}
+
+message ListChannelsResponse {
+  repeated Channel channels = 1;
+}
+
+message CreateChannelRequest {
+  // Required. The transponder on which this entity will be created.
+  string parent = 1;
+
+  // Required.
+  string channel_id = 2;
+
+  // Required. The channel to create.
+  Channel channel = 3;
+}
+
+message CreateChannelMetadata {
+  enum CreateChannelState {
+    CREATE_CHANNEL_STATE_UNSPECIFIED = 0;
+    CREATE_CHANNEL_STATE_RESERVING = 1;
+    CREATE_CHANNEL_STATE_RESERVED = 2;    
+  }
+  CreateChannelState state = 1;
+  string message = 2;
+}
+
+message UpdateChannelRequest {
+  // Required.
+  Channel channel = 1;
+}
+
+message UpdateChannelMetadata {
+  enum UpdateChannelState {
+    UPDATE_CHANNEL_STATE_UNSPECIFIED = 0;
+    UPDATE_CHANNEL_STATE_UPDATING = 1;
+    UPDATE_CHANNEL_STATE_UPDATED = 2;
+  }
+  UpdateChannelState state = 1;
+  string message = 2;
+}
+
+message DeleteChannelRequest {
+  // Required.
+  string name = 1;
+}
+
+message DeleteChannelMetadata {
+  enum DeleteChannelState {
+    DELETE_CHANNEL_STATE_UNSPECIFIED = 0;
+    DELETE_CHANNEL_STATE_DELETING = 1;
+    DELETE_CHANNEL_STATE_DELETED = 2;
+  }
+  DeleteChannelState state = 1;
+  string message = 2;
+}
+
+message Satellite {
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  // The satellite's Satellite Catalog Number (SATCAT) aka NORAD Catalog Number.
+  int64 satellite_catalog_number = 2;
+
+  nmts.v1.types.geophys.Motion motion = 3;
+}
+
+// A transponder receives signals over a range of frequencies, amplifies them,
+// and re-transmits them on a different set of frequencies without changing the
+// content of the received signal or signals
+message Transponder {
+  string name = 1;
+}
+
+message ReceiveBeam {
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  // The total bandwidth that may be reserved on the beam, including any
+  // bandwidth that is already reserved by the client.
+  int64 available_bandwidth_hz = 2;
+
+  oneof pattern {
+    GainToNoiseTemperatureContourMap gain_to_noise_temperature_contour_map = 3;
+  }
+
+  repeated FrequencyBand bands = 4;
+
+  Polarization polarization = 5;
+}
+
+message GainToNoiseTemperatureContourMap {
+  message Boresight {
+    double gain_to_noise_temperature_db_k = 1;
+    google.type.LatLng point = 2;
+  }
+  message Contour {
+    double gain_to_noise_temperature_db_k = 1;
+    repeated google.type.LatLng points = 2;
+  }
+  repeated Boresight boresights = 1;
+  repeated Contour contours = 2;
+}
+
+message TransmitBeam {
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  // The total bandwidth that may be reserved on the beam, including any
+  // bandwidth that is already reserved by the client.
+  int64 available_bandwidth_hz = 2;
+
+  oneof pattern {
+    EirpContourMap eirp_contour_map = 4;
+  }
+
+  repeated FrequencyBand bands = 5;
+
+  Polarization polarization = 6;
+
+  // Possible Gain Mode Configurations for this Transmit Beam
+  repeated GainMode available_gain_modes = 7;
+  
+  // Optional.  The supported output backoff (in dB) for this transmit
+  // beam.  There can be multiple that are defined as possible values, or
+  // if left blank, let the orchestrator solve for the optimal OBO value.
+  repeated double supported_output_backoffs_db = 8;
+}
+
+message EirpContourMap {
+  message Boresight {
+    double eirp_dbw = 1;
+    google.type.LatLng point = 2;
+  }
+  message Contour {
+    double eirp_dbw = 1;
+    repeated google.type.LatLng points = 2;
+  }
+  repeated Boresight boresights = 1;
+  repeated Contour contours = 2;
+}
+
+message FrequencyBand {
+  int64 min_frequency_hz = 1;
+  int64 max_frequency_hz = 2;
+}
+
+message Channel {
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  // Required. The interval over which the channel is to be reserved.
+  google.type.Interval interval = 2;
+
+  int64 bandwidth_hz = 3;
+  GainMode gain_mode = 4;
+
+  // Optional.  The requested center frequency for the transmit and 
+  // receive channel.  If set to zero, the service provider can set
+  // the channel frequency internally and fill this in as output
+  // in the channel response.
+  int64 transmit_center_frequency_hz = 16;
+  int64 receive_center_frequency_hz = 17;
+
+  string receive_beam = 5;
+  string transmit_beam = 7;
+
+  // Required. The power flux density at the transponder, in dBW/m^2.
+  double pfd_dbw_per_m2 = 13;
+
+  double output_backoff_db = 9;
+
+  enum State {
+    STATE_UNSPECIFIED = 0;
+    RESERVING = 1;
+    RESERVED = 2;
+    FAILED = 3;
+  }
+
+  // Output only.
+  State state = 10 [(google.api.field_behavior) = OUTPUT_ONLY]; 
+
+  // Output only
+  FrequencyBand receive_band = 14 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // Output only
+  FrequencyBand transmit_band = 15 [(google.api.field_behavior) = OUTPUT_ONLY];
+}
+
+enum Polarization {
+  POLARIZATION_UNSPECIFIED = 0;
+  POLARIZATION_LHCP = 1; // Left-handed circular polarization
+  POLARIZATION_RHCP = 2; // Right-handed circular polarization
+  POLARIZATION_HORIZONTAL = 3;
+  POLARIZATION_VERTICAL = 4;
+}
+
+enum GainMode {
+  GAIN_MODE_UNSPECIFIED = 0;
+  GAIN_MODE_FIXED = 1; // Fixed Gain Mode
+  GAIN_MODE_ADAPTIVE_GAIN_CONTROL = 2; // Adaptive Gain Control
+}
