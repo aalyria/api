@@ -213,6 +213,9 @@ message DirectionalLink {
   // Identifies the platforms that are on the receiving end of the
   // point-to-multipoint link.
   repeated RxPlatform rx_platforms = 4;
+
+  // Identifies the beam candidate's gain for this directional link.
+  optional string beam_candidate_id = 8;
 }
 
 message RxPlatform {
