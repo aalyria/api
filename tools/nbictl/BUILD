@@ -46,6 +46,7 @@ go_library(
         "//api/status/v1:status_go_grpc",
         "//api/telemetry/v1alpha:telemetry_go_grpc",
         "//auth",
+        "//common/quictransport",
         "//tools/nbictl/proto:nbictl_go_proto",
         "//tools/nbictl/proto:provisioning_go_proto",
         "@com_github_deckarep_golang_set_v2//:golang-set",

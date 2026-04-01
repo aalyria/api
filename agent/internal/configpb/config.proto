@@ -83,6 +83,16 @@ message ConnectionParams {
     google.protobuf.Duration max_delay = 4;
   }
 
+  message Transport {
+    oneof type {
+      // Use TCP (default when transport is unset).
+      google.protobuf.Empty tcp = 1;
+      // Use QUIC/UDP. Requires TLS (incompatible with
+      // insecure transport_security).
+      google.protobuf.Empty quic = 2;
+    }
+  }
+
   // The transport security options to use. Required.
   TransportSecurity transport_security = 1;
   // The "host[:port]" network endpoint the relevant service. Required.
@@ -100,6 +110,8 @@ message ConnectionParams {
   // lower than 10s. See
   // https://github.com/grpc/proposal/blob/master/A8-client-side-keepalive.md
   google.protobuf.Duration keepalive_period = 6;
+  // The transport protocol to use. Defaults to TCP if unset.
+  Transport transport = 7;
 }
 
 message SnmpUsmSecurityParameters {

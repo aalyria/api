@@ -17,6 +17,7 @@ package nbictl
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"crypto/x509"
 	"errors"
 	"fmt"
@@ -34,6 +35,7 @@ import (
 	_ "google.golang.org/grpc/encoding/gzip" // Install the gzip compressor
 
 	"aalyria.com/spacetime/auth"
+	"aalyria.com/spacetime/common/quictransport"
 	"aalyria.com/spacetime/tools/nbictl/nbictlpb"
 )
 
@@ -103,31 +105,65 @@ func getDialOpts(ctx context.Context, setting *nbictlpb.Config) ([]grpc.DialOpti
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(1024*1024*256), grpc.UseCompressor(gzip.Name)),
 	}
 
+	var cp *x509.CertPool
+	var transportCreds credentials.TransportCredentials
 	switch t := setting.GetTransportSecurity().GetType().(type) {
 	case *nbictlpb.Config_TransportSecurity_Insecure:
-		dialOpts = append(dialOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		transportCreds = insecure.NewCredentials()
 
 	case *nbictlpb.Config_TransportSecurity_ServerCertificate_:
-		clientTLSFromFile, err := credentials.NewClientTLSFromFile(t.ServerCertificate.GetCertFilePath(), "")
+		certFile := t.ServerCertificate.GetCertFilePath()
+		clientTLSFromFile, err := credentials.NewClientTLSFromFile(certFile, "")
 		if err != nil {
 			return nil, fmt.Errorf("creating TLS credentials from certificate file: %w", err)
 		}
-		dialOpts = append(dialOpts, grpc.WithTransportCredentials(clientTLSFromFile))
+		transportCreds = clientTLSFromFile
+		certPEM, err := os.ReadFile(certFile)
+		if err != nil {
+			return nil, fmt.Errorf("reading certificate file for QUIC: %w", err)
+		}
+		cp = x509.NewCertPool()
+		cp.AppendCertsFromPEM(certPEM)
 
-	// SystemCertPoll is the default option in case transport_security is not set (nil).
+	// SystemCertPool is the default option in case transport_security is not set (nil).
 	case nil, *nbictlpb.Config_TransportSecurity_SystemCertPool:
-		cp, err := x509.SystemCertPool()
+		var err error
+		cp, err = x509.SystemCertPool()
 		if err != nil {
 			return nil, fmt.Errorf("reading system tls cert pool: %w", err)
 		}
-		dialOpts = append(dialOpts, grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(cp, "")))
+		transportCreds = credentials.NewClientTLSFromCert(cp, "")
 
 	default:
 		return nil, fmt.Errorf("unexpected transport security selection: %T", t)
 	}
 
+	var useQUIC bool
+	switch setting.GetTransport().GetType().(type) {
+	case *nbictlpb.Config_Transport_Quic:
+		if _, isInsecure := setting.GetTransportSecurity().GetType().(*nbictlpb.Config_TransportSecurity_Insecure); isInsecure {
+			return nil, errors.New("QUIC transport requires TLS; incompatible with insecure transport_security")
+		}
+		host := setting.GetUrl()
+		if h, _, err := net.SplitHostPort(host); err == nil {
+			host = h
+		}
+		tlsConf := &tls.Config{
+			RootCAs:    cp,
+			ServerName: host,
+			MinVersion: tls.VersionTLS13,
+		}
+		transportCreds = insecure.NewCredentials()
+		dialOpts = append(dialOpts, grpc.WithContextDialer(quictransport.NewDialer(tlsConf)))
+		useQUIC = true
+	case nil, *nbictlpb.Config_Transport_Tcp:
+		// Default: TCP, no changes needed.
+	}
+
+	dialOpts = append(dialOpts, grpc.WithTransportCredentials(transportCreds))
+
 	// Unless transport-security is set to Insecure, add Spacetime PerRPCCredentials.
-	if _, insecure := setting.GetTransportSecurity().GetType().(*nbictlpb.Config_TransportSecurity_Insecure); !insecure {
+	if _, isInsecure := setting.GetTransportSecurity().GetType().(*nbictlpb.Config_TransportSecurity_Insecure); !isInsecure {
 		if setting.GetPrivKey() == "" {
 			return nil, errors.New("no private key set for chosen context")
 		}
@@ -139,10 +175,11 @@ func getDialOpts(ctx context.Context, setting *nbictlpb.Config) ([]grpc.DialOpti
 		clock := clockwork.NewRealClock()
 
 		config := auth.Config{
-			Clock:        clock,
-			PrivateKey:   privateKey,
-			PrivateKeyID: setting.GetKeyId(),
-			Email:        setting.GetEmail(),
+			Clock:                 clock,
+			PrivateKey:            privateKey,
+			PrivateKeyID:          setting.GetKeyId(),
+			Email:                 setting.GetEmail(),
+			SkipTransportSecurity: useQUIC,
 		}
 
 		creds, err := auth.NewCredentials(ctx, config)

@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"cmp"
 	"context"
+	"crypto/tls"
 	"crypto/x509"
 	"errors"
 	"flag"
@@ -64,6 +65,7 @@ import (
 	telemetry_extproc "aalyria.com/spacetime/agent/telemetry/extproc"
 	telemetry_snmp "aalyria.com/spacetime/agent/telemetry/snmp"
 	"aalyria.com/spacetime/auth"
+	"aalyria.com/spacetime/common/quictransport"
 )
 
 var Version = "0.0.0+development"
@@ -345,22 +347,49 @@ func getDialOpts(ctx context.Context, connParams *configpb.ConnectionParams, clo
 		grpcConnParams.MinConnectTimeout = minConnectTimeout
 	}
 
+	var cp *x509.CertPool
+	var transportCreds credentials.TransportCredentials
 	switch connParams.GetTransportSecurity().GetType().(type) {
 	case *configpb.ConnectionParams_TransportSecurity_Insecure:
-		dialOpts = append(dialOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		transportCreds = insecure.NewCredentials()
 
 	case *configpb.ConnectionParams_TransportSecurity_SystemCertPool:
-		cp, err := x509.SystemCertPool()
+		var err error
+		cp, err = x509.SystemCertPool()
 		if err != nil {
 			return nil, fmt.Errorf("reading system tls cert pool: %w", err)
 		}
-		dialOpts = append(dialOpts, grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(cp, "")))
+		transportCreds = credentials.NewClientTLSFromCert(cp, "")
 
 	default:
 		return nil, errors.New("no transport security selection provided")
 	}
 
 	dialOpts = append(dialOpts, grpc.WithConnectParams(grpcConnParams))
+
+	var useQUIC bool
+	switch connParams.GetTransport().GetType().(type) {
+	case *configpb.ConnectionParams_Transport_Quic:
+		if _, isInsecure := connParams.GetTransportSecurity().GetType().(*configpb.ConnectionParams_TransportSecurity_Insecure); isInsecure {
+			return nil, errors.New("QUIC transport requires TLS; incompatible with insecure transport_security")
+		}
+		host := connParams.GetEndpointUri()
+		if h, _, err := net.SplitHostPort(host); err == nil {
+			host = h
+		}
+		tlsConf := &tls.Config{
+			RootCAs:    cp,
+			ServerName: host,
+			MinVersion: tls.VersionTLS13,
+		}
+		transportCreds = insecure.NewCredentials()
+		dialOpts = append(dialOpts, grpc.WithContextDialer(quictransport.NewDialer(tlsConf)))
+		useQUIC = true
+	case nil, *configpb.ConnectionParams_Transport_Tcp:
+		// Default: TCP, no changes needed.
+	}
+
+	dialOpts = append(dialOpts, grpc.WithTransportCredentials(transportCreds))
 
 	switch authStrat := connParams.GetAuthStrategy(); authStrat.Type.(type) {
 	case *configpb.AuthStrategy_None:
@@ -373,10 +402,11 @@ func getDialOpts(ctx context.Context, connParams *configpb.ConnectionParams, clo
 			return nil, err
 		}
 		creds, err := auth.NewCredentials(ctx, auth.Config{
-			Clock:        clock,
-			Email:        jwtSpec.GetEmail(),
-			PrivateKeyID: jwtSpec.GetPrivateKeyId(),
-			PrivateKey:   pkeySrc,
+			Clock:                 clock,
+			Email:                 jwtSpec.GetEmail(),
+			PrivateKeyID:          jwtSpec.GetPrivateKeyId(),
+			PrivateKey:            pkeySrc,
+			SkipTransportSecurity: useQUIC,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("generating authorization JWT: %w", err)

@@ -61,6 +61,8 @@ Sets or updates a configuration profile settings. You can create multiple profil
 
 **--priv_key**="": Path to the private key to use for authentication.
 
+**--transport**="": Transport protocol to use. Allowed values: [tcp, quic] (default: tcp)
+
 **--transport_security**="": Transport security to use when connecting to the API endpoints. Allowed values: [insecure, system_cert_pool]
 
 **--url**="": Spacetime endpoint specified as `host[:port]` (port is optional and defaults to 443). MUST NOT include any scheme (e.g. `https://` or `dns:///`) nor any API-specific prefix (e.g. `model-v1.`).

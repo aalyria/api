@@ -40,6 +40,7 @@ go_library(
         "//agent/telemetry/extproc",
         "//agent/telemetry/snmp",
         "//auth",
+        "//common/quictransport",
         "@com_github_jonboulle_clockwork//:clockwork",
         "@com_github_rs_zerolog//:zerolog",
         "@io_opentelemetry_go_contrib_instrumentation_google_golang_org_grpc_otelgrpc//:otelgrpc",

@@ -237,6 +237,10 @@ func App() *cli.App {
 								Name:  "transport_security",
 								Usage: "Transport security to use when connecting to the API endpoints. Allowed values: [insecure, system_cert_pool]",
 							},
+							&cli.StringFlag{
+								Name:  "transport",
+								Usage: "Transport protocol to use. Allowed values: [tcp, quic] (default: tcp)",
+							},
 						},
 						Action: SetConfig,
 					},

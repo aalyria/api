@@ -192,6 +192,7 @@ func SetConfig(appCtx *cli.Context) error {
 	userID := appCtx.String("user_id")
 	url := appCtx.String("url")
 	transportSecurity := appCtx.String("transport_security")
+	transport := appCtx.String("transport")
 
 	confPath, err := getConfFileForContext(appCtx)
 	if err != nil {
@@ -218,6 +219,22 @@ func SetConfig(appCtx *cli.Context) error {
 		return fmt.Errorf("unexpected transport security selection: %s", transportSecurity)
 	}
 
+	var transportPb *nbictlpb.Config_Transport
+	switch transport {
+	case "quic":
+		transportPb = &nbictlpb.Config_Transport{
+			Type: &nbictlpb.Config_Transport_Quic{},
+		}
+	case "tcp":
+		transportPb = &nbictlpb.Config_Transport{
+			Type: &nbictlpb.Config_Transport_Tcp{},
+		}
+	case "":
+		transportPb = nil
+	default:
+		return fmt.Errorf("unexpected transport selection: %s", transport)
+	}
+
 	contextToCreate := &nbictlpb.Config{
 		Name:              confName,
 		KeyId:             keyID,
@@ -225,6 +242,7 @@ func SetConfig(appCtx *cli.Context) error {
 		PrivKey:           privKey,
 		Url:               url,
 		TransportSecurity: transportSecurityPb,
+		Transport:         transportPb,
 	}
 
 	return setConfig(appCtx.App.Writer, appCtx.App.ErrWriter, contextToCreate, confPath)
@@ -263,6 +281,9 @@ func setConfig(outWriter, errWriter io.Writer, confToCreate *nbictlpb.Config, co
 		}
 		if confToCreate.GetTransportSecurity() != nil {
 			confProto.TransportSecurity = confToCreate.GetTransportSecurity()
+		}
+		if confToCreate.GetTransport() != nil {
+			confProto.Transport = confToCreate.GetTransport()
 		}
 		found = true
 		confToCreate = confProto

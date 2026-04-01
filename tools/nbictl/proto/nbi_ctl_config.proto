@@ -48,5 +48,17 @@ message Config {
     }
   }
 
+  message Transport {
+    oneof type {
+      // Use TCP (default when transport is unset).
+      google.protobuf.Empty tcp = 1;
+      // Use QUIC/UDP. Requires TLS (incompatible with
+      // insecure transport_security).
+      google.protobuf.Empty quic = 2;
+    }
+  }
+
   TransportSecurity transport_security = 7;
+  // The transport protocol to use. Defaults to TCP if unset.
+  Transport transport = 8;
 }
