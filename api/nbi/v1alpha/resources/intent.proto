@@ -520,10 +520,12 @@ message MobilityIntent {
     // Source and Target NR Cell Global IDs.
     optional NewRadioCellGlobalId source_nr_cgi = 1;
     optional string source_access_fn_id = 7;
+    optional string source_network_node_id = 9;
     optional NewRadioCellGlobalId target_nr_cgi = 2;
     optional string target_access_fn_id = 8;
+    optional string target_network_node_id = 10;
 
-    oneof handoverType {
+    oneof handover_type {
       L3HO l3_ho = 3;
       T1CHO t1_cho = 4;
       D1CHO d1_cho = 5;
@@ -535,7 +537,7 @@ message MobilityIntent {
     repeated Endpoint endpoints = 1; 
   }
 
-  oneof accessType {
+  oneof access_type {
     Dvb dvb = 1;
     Nr nr = 2;
   }

@@ -199,6 +199,10 @@ message DirectionalLink {
   optional string platform_id = 7;
   optional string interface_id = 6;
 
+  // If network is of the 3GPP family, associates the DirectionalLink with
+  // a ThreeGPPCellIntent.
+  optional string threegpp_cell_intent_id = 9;
+
   // Identifies the wireless network interface.
   optional aalyria.spacetime.api.common.NetworkInterfaceId id = 1;
 
