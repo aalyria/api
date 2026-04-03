@@ -349,9 +349,23 @@ func getDialOpts(ctx context.Context, connParams *configpb.ConnectionParams, clo
 
 	var cp *x509.CertPool
 	var transportCreds credentials.TransportCredentials
-	switch connParams.GetTransportSecurity().GetType().(type) {
+	switch ts := connParams.GetTransportSecurity().GetType().(type) {
 	case *configpb.ConnectionParams_TransportSecurity_Insecure:
 		transportCreds = insecure.NewCredentials()
+
+	case *configpb.ConnectionParams_TransportSecurity_ServerCertificate_:
+		certFile := ts.ServerCertificate.GetCertFilePath()
+		clientTLSFromFile, err := credentials.NewClientTLSFromFile(certFile, "")
+		if err != nil {
+			return nil, fmt.Errorf("creating TLS credentials from certificate file: %w", err)
+		}
+		transportCreds = clientTLSFromFile
+		certPEM, err := os.ReadFile(certFile)
+		if err != nil {
+			return nil, fmt.Errorf("reading certificate file for QUIC: %w", err)
+		}
+		cp = x509.NewCertPool()
+		cp.AppendCertsFromPEM(certPEM)
 
 	case *configpb.ConnectionParams_TransportSecurity_SystemCertPool:
 		var err error

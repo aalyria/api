@@ -59,12 +59,19 @@ message AuthStrategy {
 
 message ConnectionParams {
   message TransportSecurity {
+    message ServerCertificate {
+      string cert_file_path = 1;
+    }
+
     oneof type {
       // Don't use TLS, connect using plain-text HTTP/2.
       google.protobuf.Empty insecure = 1;
 
       // Use the system certificate pool for TLS.
       google.protobuf.Empty system_cert_pool = 2;
+      //
+      // Use the provided server certificate for TLS.
+      ServerCertificate server_certificate = 3;
     }
   }
 
