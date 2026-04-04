@@ -26,9 +26,12 @@ message AppConfig {
 
 message Config {
   string name = 1;
-  string key_id = 2;
-  string email = 3;
-  string priv_key = 4;
+  // deprecated, use auth_strategy
+  string key_id = 2 [deprecated=true];
+  // deprecated, use auth_strategy
+  string email = 3 [deprecated=true];
+  // deprecated, use auth_strategy
+  string priv_key = 4 [deprecated=true];
   string url = 5;
 
   message TransportSecurity {
@@ -58,7 +61,43 @@ message Config {
     }
   }
 
+  // A strategy for signing a JWT.
+  message SigningStrategy {
+    oneof type {
+      // The bytes of a PEM-encoded RSA private key in
+      // PKCS #1, ASN.1 DER form or in (unencrypted)
+      // PKCS #8, ASN.1 DER form.
+      bytes private_key_bytes = 1;
+      // The path to a PEM-encoded RSA private key in PKCS #1, ASN.1 DER form or
+      // in (unencrypted) PKCS #8, ASN.1 DER form.
+      string private_key_file = 2;
+    }
+  }
+
+  message AuthStrategy {
+    // Jwt is a JSON web token. See https://jwt.io/introduction for more
+    // information.
+    message Jwt {
+      string email = 1;
+      string audience = 2;
+      string private_key_id = 3;
+      SigningStrategy signing_strategy = 4;
+    }
+
+    oneof type {
+      // The specifications for a JWT that should be generated and signed by the
+      // agent.
+      Jwt jwt = 1;
+
+      // No authentication options should be used. This is unlikely to work for
+      // you.
+      google.protobuf.Empty none = 2;
+    }
+  }
+
   TransportSecurity transport_security = 7;
   // The transport protocol to use. Defaults to TCP if unset.
   Transport transport = 8;
+  // The strategy to use for authorization. Required.
+  AuthStrategy auth_strategy = 9;
 }

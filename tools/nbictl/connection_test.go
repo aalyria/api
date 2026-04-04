@@ -183,6 +183,114 @@ func TestDial_serverCertificate(t *testing.T) {
 	}
 }
 
+func TestDial_TLSWithAuthNone(t *testing.T) {
+	t.Parallel()
+
+	tmpDir, err := bazel.NewTmpDir("nbictl")
+	checkErr(t, err)
+	serverCertPath := filepath.Join(tmpDir, "localhost.crt.tls")
+	checkErr(t, os.WriteFile(serverCertPath, LocalhostCert, 0o644))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	g, ctx := errgroup.WithContext(ctx)
+	defer func() { checkErr(t, g.Wait()) }()
+	defer cancel()
+	cert, _ := tls.X509KeyPair(LocalhostCert, LocalhostKey)
+	lis, err := tls.Listen("tcp", "127.0.0.1:0", &tls.Config{Certificates: []tls.Certificate{cert}, NextProtos: []string{"h2"}})
+	checkErr(t, err)
+	fakeGrpcServer, err := startFakeModelServer(ctx, g, lis)
+	checkErr(t, err)
+
+	nbiConf := &nbictlpb.Config{
+		Url:  lis.Addr().String(),
+		Name: "test",
+		TransportSecurity: &nbictlpb.Config_TransportSecurity{
+			Type: &nbictlpb.Config_TransportSecurity_ServerCertificate_{
+				ServerCertificate: &nbictlpb.Config_TransportSecurity_ServerCertificate{
+					CertFilePath: serverCertPath,
+				},
+			},
+		},
+		AuthStrategy: &nbictlpb.Config_AuthStrategy{
+			Type: &nbictlpb.Config_AuthStrategy_None{},
+		},
+	}
+	conn, err := dial(ctx, nbiConf)
+	checkErr(t, err)
+	defer conn.Close()
+
+	client := modelpb.NewModelClient(conn)
+	_, err = client.ListEntities(ctx, &modelpb.ListEntitiesRequest{})
+	checkErr(t, err)
+
+	if fakeGrpcServer.NumCallsListEntities.Load() != 1 {
+		t.Fatal("ListEntities has not been invoked correctly")
+	}
+	if len(fakeGrpcServer.IncomingMetadata[0].Get(authHeader)) > 0 {
+		t.Fatal("Unexpected auth header with auth_strategy=none")
+	}
+}
+
+func TestDial_TLSWithAuthJwt(t *testing.T) {
+	t.Parallel()
+
+	tmpDir, err := bazel.NewTmpDir("nbictl")
+	checkErr(t, err)
+	serverCertPath := filepath.Join(tmpDir, "localhost.crt.tls")
+	checkErr(t, os.WriteFile(serverCertPath, LocalhostCert, 0o644))
+
+	userKeys := generateKeysForTesting(t, tmpDir, "--org", "user.organization")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	g, ctx := errgroup.WithContext(ctx)
+	defer func() { checkErr(t, g.Wait()) }()
+	defer cancel()
+	cert, _ := tls.X509KeyPair(LocalhostCert, LocalhostKey)
+	lis, err := tls.Listen("tcp", "127.0.0.1:0", &tls.Config{Certificates: []tls.Certificate{cert}, NextProtos: []string{"h2"}})
+	checkErr(t, err)
+	fakeGrpcServer, err := startFakeModelServer(ctx, g, lis)
+	checkErr(t, err)
+
+	nbiConf := &nbictlpb.Config{
+		Url:  lis.Addr().String(),
+		Name: "test",
+		TransportSecurity: &nbictlpb.Config_TransportSecurity{
+			Type: &nbictlpb.Config_TransportSecurity_ServerCertificate_{
+				ServerCertificate: &nbictlpb.Config_TransportSecurity_ServerCertificate{
+					CertFilePath: serverCertPath,
+				},
+			},
+		},
+		AuthStrategy: &nbictlpb.Config_AuthStrategy{
+			Type: &nbictlpb.Config_AuthStrategy_Jwt_{
+				Jwt: &nbictlpb.Config_AuthStrategy_Jwt{
+					Email:        "some@example.com",
+					PrivateKeyId: "1",
+					SigningStrategy: &nbictlpb.Config_SigningStrategy{
+						Type: &nbictlpb.Config_SigningStrategy_PrivateKeyFile{
+							PrivateKeyFile: userKeys.key,
+						},
+					},
+				},
+			},
+		},
+	}
+	conn, err := dial(ctx, nbiConf)
+	checkErr(t, err)
+	defer conn.Close()
+
+	client := modelpb.NewModelClient(conn)
+	_, err = client.ListEntities(ctx, &modelpb.ListEntitiesRequest{})
+	checkErr(t, err)
+
+	if fakeGrpcServer.NumCallsListEntities.Load() != 1 {
+		t.Fatal("ListEntities has not been invoked correctly")
+	}
+	if len(fakeGrpcServer.IncomingMetadata[0].Get(authHeader)) != 1 {
+		t.Fatal("Missing auth header with auth_strategy=jwt")
+	}
+}
+
 func testingKey(s string) string {
 	return strings.ReplaceAll(s, "TESTING KEY", "PRIVATE KEY")
 }

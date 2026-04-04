@@ -39,6 +39,77 @@ import (
 	"aalyria.com/spacetime/tools/nbictl/nbictlpb"
 )
 
+func readPrivateKeyFromSigningStrategy(ss *nbictlpb.Config_SigningStrategy) (*bytes.Buffer, error) {
+	switch s := ss.GetType().(type) {
+	case *nbictlpb.Config_SigningStrategy_PrivateKeyFile:
+		pkeyBytes, err := os.ReadFile(s.PrivateKeyFile)
+		if err != nil {
+			return nil, fmt.Errorf("unable to read private key file: %w", err)
+		}
+		return bytes.NewBuffer(pkeyBytes), nil
+	case *nbictlpb.Config_SigningStrategy_PrivateKeyBytes:
+		return bytes.NewBuffer(s.PrivateKeyBytes), nil
+	default:
+		return nil, errors.New("no signing strategy configured")
+	}
+}
+
+func resolvePerRPCCredentials(ctx context.Context, setting *nbictlpb.Config, isInsecure, useQUIC bool) (credentials.PerRPCCredentials, error) {
+	clock := clockwork.NewRealClock()
+
+	switch t := setting.GetAuthStrategy().GetType().(type) {
+	case *nbictlpb.Config_AuthStrategy_None:
+		return nil, nil
+
+	case *nbictlpb.Config_AuthStrategy_Jwt_:
+		jwt := t.Jwt
+		privateKey, err := readPrivateKeyFromSigningStrategy(jwt.GetSigningStrategy())
+		if err != nil {
+			return nil, err
+		}
+		config := auth.Config{
+			Clock:                 clock,
+			PrivateKey:            privateKey,
+			PrivateKeyID:          jwt.GetPrivateKeyId(),
+			Email:                 jwt.GetEmail(),
+			SkipTransportSecurity: useQUIC || isInsecure,
+		}
+		creds, err := auth.NewCredentials(ctx, config)
+		if err != nil {
+			return nil, fmt.Errorf("unable to get new credentials with provided information: %w", err)
+		}
+		return creds, nil
+
+	case nil:
+		// Backward compatibility: auth_strategy not set, use deprecated fields.
+		if isInsecure {
+			return nil, nil
+		}
+		if setting.GetPrivKey() == "" {
+			return nil, errors.New("no private key set for chosen context")
+		}
+		pkeyBytes, err := os.ReadFile(setting.GetPrivKey())
+		if err != nil {
+			return nil, fmt.Errorf("unable to read the file: %w", err)
+		}
+		config := auth.Config{
+			Clock:                 clock,
+			PrivateKey:            bytes.NewBuffer(pkeyBytes),
+			PrivateKeyID:          setting.GetKeyId(),
+			Email:                 setting.GetEmail(),
+			SkipTransportSecurity: useQUIC,
+		}
+		creds, err := auth.NewCredentials(ctx, config)
+		if err != nil {
+			return nil, fmt.Errorf("unable to get new credentials with provided information: %w", err)
+		}
+		return creds, nil
+
+	default:
+		return nil, fmt.Errorf("unexpected auth strategy type: %T", t)
+	}
+}
+
 func openAPIConnection(appCtx *cli.Context, apiSubDomain string) (*grpc.ClientConn, error) {
 	profileName := appCtx.String("profile")
 
@@ -162,32 +233,13 @@ func getDialOpts(ctx context.Context, setting *nbictlpb.Config) ([]grpc.DialOpti
 
 	dialOpts = append(dialOpts, grpc.WithTransportCredentials(transportCreds))
 
-	// Unless transport-security is set to Insecure, add Spacetime PerRPCCredentials.
-	if _, isInsecure := setting.GetTransportSecurity().GetType().(*nbictlpb.Config_TransportSecurity_Insecure); !isInsecure {
-		if setting.GetPrivKey() == "" {
-			return nil, errors.New("no private key set for chosen context")
-		}
-		pkeyBytes, err := os.ReadFile(setting.GetPrivKey())
-		if err != nil {
-			return nil, fmt.Errorf("unable to read the file: %w", err)
-		}
-		privateKey := bytes.NewBuffer(pkeyBytes)
-		clock := clockwork.NewRealClock()
-
-		config := auth.Config{
-			Clock:                 clock,
-			PrivateKey:            privateKey,
-			PrivateKeyID:          setting.GetKeyId(),
-			Email:                 setting.GetEmail(),
-			SkipTransportSecurity: useQUIC,
-		}
-
-		creds, err := auth.NewCredentials(ctx, config)
-		if err != nil {
-			return nil, fmt.Errorf("unable to get new credentials with provided information: %w", err)
-		}
-
-		dialOpts = append(dialOpts, grpc.WithPerRPCCredentials(creds))
+	_, isInsecure := setting.GetTransportSecurity().GetType().(*nbictlpb.Config_TransportSecurity_Insecure)
+	perRPCCreds, err := resolvePerRPCCredentials(ctx, setting, isInsecure, useQUIC)
+	if err != nil {
+		return nil, err
+	}
+	if perRPCCreds != nil {
+		dialOpts = append(dialOpts, grpc.WithPerRPCCredentials(perRPCCreds))
 	}
 
 	return dialOpts, nil

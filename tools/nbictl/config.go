@@ -15,6 +15,7 @@
 package nbictl
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"io"
@@ -28,6 +29,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 	"google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/proto"
 )
 
 func compareEndpoints(endpoint1, endpoint2 string) bool {
@@ -182,6 +184,64 @@ func GetConfig(appCtx *cli.Context) error {
 	return fmt.Errorf("unable to find config %q in file %q.", confName, confFile)
 }
 
+func migrateDeprecatedAuthFields(conf *nbictlpb.Config) {
+	if conf.GetAuthStrategy() != nil {
+		return
+	}
+	if conf.GetEmail() == "" && conf.GetKeyId() == "" && conf.GetPrivKey() == "" {
+		return
+	}
+	jwt := &nbictlpb.Config_AuthStrategy_Jwt{
+		Email:        conf.GetEmail(),
+		PrivateKeyId: conf.GetKeyId(),
+	}
+	if conf.GetPrivKey() != "" {
+		jwt.SigningStrategy = &nbictlpb.Config_SigningStrategy{
+			Type: &nbictlpb.Config_SigningStrategy_PrivateKeyFile{
+				PrivateKeyFile: conf.GetPrivKey(),
+			},
+		}
+	}
+	conf.AuthStrategy = &nbictlpb.Config_AuthStrategy{
+		Type: &nbictlpb.Config_AuthStrategy_Jwt_{Jwt: jwt},
+	}
+	conf.Email = ""
+	conf.KeyId = ""
+	conf.PrivKey = ""
+}
+
+func mergeJwtAuthStrategy(existing, incoming *nbictlpb.Config_AuthStrategy) *nbictlpb.Config_AuthStrategy {
+	if _, ok := incoming.GetType().(*nbictlpb.Config_AuthStrategy_None); ok {
+		return incoming
+	}
+
+	inJwt, ok := incoming.GetType().(*nbictlpb.Config_AuthStrategy_Jwt_)
+	if !ok {
+		return incoming
+	}
+
+	var base *nbictlpb.Config_AuthStrategy_Jwt
+	if exJwt, ok := existing.GetType().(*nbictlpb.Config_AuthStrategy_Jwt_); ok {
+		base = proto.Clone(exJwt.Jwt).(*nbictlpb.Config_AuthStrategy_Jwt)
+	} else {
+		base = &nbictlpb.Config_AuthStrategy_Jwt{}
+	}
+
+	if inJwt.Jwt.GetEmail() != "" {
+		base.Email = inJwt.Jwt.GetEmail()
+	}
+	if inJwt.Jwt.GetPrivateKeyId() != "" {
+		base.PrivateKeyId = inJwt.Jwt.GetPrivateKeyId()
+	}
+	if inJwt.Jwt.GetSigningStrategy() != nil {
+		base.SigningStrategy = inJwt.Jwt.GetSigningStrategy()
+	}
+
+	return &nbictlpb.Config_AuthStrategy{
+		Type: &nbictlpb.Config_AuthStrategy_Jwt_{Jwt: base},
+	}
+}
+
 func SetConfig(appCtx *cli.Context) error {
 	confName := "DEFAULT"
 	if appCtx.IsSet("context") {
@@ -193,56 +253,100 @@ func SetConfig(appCtx *cli.Context) error {
 	url := appCtx.String("url")
 	transportSecurity := appCtx.String("transport_security")
 	transport := appCtx.String("transport")
+	authStrategy := appCtx.String("auth_strategy")
 
 	confPath, err := getConfFileForContext(appCtx)
 	if err != nil {
 		return err
 	}
 
-	var transportSecurityPb *nbictlpb.Config_TransportSecurity
+	var transportSecurityPB *nbictlpb.Config_TransportSecurity
 
 	switch transportSecurity {
 	case "insecure":
-		transportSecurityPb = &nbictlpb.Config_TransportSecurity{
+		transportSecurityPB = &nbictlpb.Config_TransportSecurity{
 			Type: &nbictlpb.Config_TransportSecurity_Insecure{},
 		}
 
 	case "system_cert_pool":
-		transportSecurityPb = &nbictlpb.Config_TransportSecurity{
+		transportSecurityPB = &nbictlpb.Config_TransportSecurity{
 			Type: &nbictlpb.Config_TransportSecurity_SystemCertPool{},
 		}
 
 	case "":
-		transportSecurityPb = nil
+		transportSecurityPB = nil
 
 	default:
 		return fmt.Errorf("unexpected transport security selection: %s", transportSecurity)
 	}
 
-	var transportPb *nbictlpb.Config_Transport
+	var transportPB *nbictlpb.Config_Transport
 	switch transport {
 	case "quic":
-		transportPb = &nbictlpb.Config_Transport{
+		transportPB = &nbictlpb.Config_Transport{
 			Type: &nbictlpb.Config_Transport_Quic{},
 		}
 	case "tcp":
-		transportPb = &nbictlpb.Config_Transport{
+		transportPB = &nbictlpb.Config_Transport{
 			Type: &nbictlpb.Config_Transport_Tcp{},
 		}
 	case "":
-		transportPb = nil
+		transportPB = nil
 	default:
 		return fmt.Errorf("unexpected transport selection: %s", transport)
 	}
 
+	var authStrategyPB *nbictlpb.Config_AuthStrategy
+	switch authStrategy {
+	case "none":
+		authStrategyPB = &nbictlpb.Config_AuthStrategy{
+			Type: &nbictlpb.Config_AuthStrategy_None{},
+		}
+	case "jwt":
+		var signingStrategy *nbictlpb.Config_SigningStrategy
+		if privKey != "" {
+			signingStrategy = &nbictlpb.Config_SigningStrategy{
+				Type: &nbictlpb.Config_SigningStrategy_PrivateKeyFile{
+					PrivateKeyFile: privKey,
+				},
+			}
+		}
+		authStrategyPB = &nbictlpb.Config_AuthStrategy{
+			Type: &nbictlpb.Config_AuthStrategy_Jwt_{
+				Jwt: &nbictlpb.Config_AuthStrategy_Jwt{
+					Email:           userID,
+					PrivateKeyId:    keyID,
+					SigningStrategy: signingStrategy,
+				},
+			},
+		}
+	case "":
+		if cmp.Or(keyID, userID, privKey) != "" {
+			jwt := &nbictlpb.Config_AuthStrategy_Jwt{
+				Email:        userID,
+				PrivateKeyId: keyID,
+			}
+			if privKey != "" {
+				jwt.SigningStrategy = &nbictlpb.Config_SigningStrategy{
+					Type: &nbictlpb.Config_SigningStrategy_PrivateKeyFile{
+						PrivateKeyFile: privKey,
+					},
+				}
+			}
+			authStrategyPB = &nbictlpb.Config_AuthStrategy{
+				Type: &nbictlpb.Config_AuthStrategy_Jwt_{Jwt: jwt},
+			}
+		}
+	default:
+		return fmt.Errorf("unexpected auth strategy: %s (allowed: none, jwt)", authStrategy)
+	}
+
 	contextToCreate := &nbictlpb.Config{
 		Name:              confName,
-		KeyId:             keyID,
-		Email:             userID,
-		PrivKey:           privKey,
 		Url:               url,
-		TransportSecurity: transportSecurityPb,
-		Transport:         transportPb,
+		TransportSecurity: transportSecurityPB,
+		Transport:         transportPB,
+		AuthStrategy:      authStrategyPB,
 	}
 
 	return setConfig(appCtx.App.Writer, appCtx.App.ErrWriter, contextToCreate, confPath)
@@ -252,6 +356,8 @@ func setConfig(outWriter, errWriter io.Writer, confToCreate *nbictlpb.Config, co
 	if confToCreate.GetName() == "" {
 		return errors.New("missing required --context flag")
 	}
+
+	migrateDeprecatedAuthFields(confToCreate)
 
 	confProto, err := readConfigs(confFile)
 	if err != nil {
@@ -267,15 +373,7 @@ func setConfig(outWriter, errWriter io.Writer, confToCreate *nbictlpb.Config, co
 		if confProto.GetName() != confToCreate.GetName() {
 			continue
 		}
-		if confToCreate.GetEmail() != "" {
-			confProto.Email = confToCreate.GetEmail()
-		}
-		if confToCreate.GetPrivKey() != "" {
-			confProto.PrivKey = confToCreate.GetPrivKey()
-		}
-		if confToCreate.GetKeyId() != "" {
-			confProto.KeyId = confToCreate.GetKeyId()
-		}
+		migrateDeprecatedAuthFields(confProto)
 		if confToCreate.GetUrl() != "" {
 			confProto.Url = confToCreate.GetUrl()
 		}
@@ -284,6 +382,13 @@ func setConfig(outWriter, errWriter io.Writer, confToCreate *nbictlpb.Config, co
 		}
 		if confToCreate.GetTransport() != nil {
 			confProto.Transport = confToCreate.GetTransport()
+		}
+		if confToCreate.GetAuthStrategy() != nil {
+			if confProto.GetAuthStrategy() != nil {
+				confProto.AuthStrategy = mergeJwtAuthStrategy(confProto.AuthStrategy, confToCreate.AuthStrategy)
+			} else {
+				confProto.AuthStrategy = confToCreate.AuthStrategy
+			}
 		}
 		found = true
 		confToCreate = confProto

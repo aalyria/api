@@ -29,20 +29,33 @@ import (
 	"aalyria.com/spacetime/tools/nbictl/nbictlpb"
 )
 
+func jwtAuthStrategy(email, keyID, privKeyFile string) *nbictlpb.Config_AuthStrategy {
+	jwt := &nbictlpb.Config_AuthStrategy_Jwt{
+		Email:        email,
+		PrivateKeyId: keyID,
+	}
+	if privKeyFile != "" {
+		jwt.SigningStrategy = &nbictlpb.Config_SigningStrategy{
+			Type: &nbictlpb.Config_SigningStrategy_PrivateKeyFile{
+				PrivateKeyFile: privKeyFile,
+			},
+		}
+	}
+	return &nbictlpb.Config_AuthStrategy{
+		Type: &nbictlpb.Config_AuthStrategy_Jwt_{Jwt: jwt},
+	}
+}
+
 var (
 	testConfig = &nbictlpb.Config{
-		Name:    "unit_testing",
-		KeyId:   "privateKey.id",
-		Email:   "privateKey.userID",
-		PrivKey: "privateKey.path",
-		Url:     "test_url",
+		Name:         "unit_testing",
+		Url:          "test_url",
+		AuthStrategy: jwtAuthStrategy("privateKey.userID", "privateKey.id", "privateKey.path"),
 	}
 	testConfigForUpdate = &nbictlpb.Config{
-		Name:    "test update",
-		KeyId:   "update_key_id",
-		Email:   "update_user_id",
-		PrivKey: "update_priv_key",
-		Url:     "update_url",
+		Name:         "test update",
+		Url:          "update_url",
+		AuthStrategy: jwtAuthStrategy("update_user_id", "update_key_id", "update_priv_key"),
 	}
 	testConfigs = &nbictlpb.AppConfig{
 		Configs: []*nbictlpb.Config{testConfig},
@@ -205,9 +218,8 @@ func TestSetConfig_UpdatePrivateKey(t *testing.T) {
 	gotContexts, err := readConfigs(confFile)
 	checkErr(t, err)
 
-	// check that the private key is updated
 	updatedContext := proto.CloneOf(testConfig)
-	updatedContext.PrivKey = "private_key.updated"
+	updatedContext.AuthStrategy = jwtAuthStrategy("privateKey.userID", "privateKey.id", "private_key.updated")
 	wantContexts := &nbictlpb.AppConfig{
 		Configs: []*nbictlpb.Config{updatedContext, testConfigForUpdate},
 	}
@@ -233,9 +245,8 @@ func TestSetConfig_UpdateKeyId(t *testing.T) {
 	gotContexts, err := readConfigs(confFile)
 	checkErr(t, err)
 
-	// check that the key id is updated
 	updatedContext := proto.CloneOf(testConfigForUpdate)
-	updatedContext.KeyId = "key_id.updated"
+	updatedContext.AuthStrategy = jwtAuthStrategy("update_user_id", "key_id.updated", "update_priv_key")
 	wantContexts := &nbictlpb.AppConfig{
 		Configs: []*nbictlpb.Config{testConfig, updatedContext},
 	}
@@ -261,9 +272,8 @@ func TestSetConfig_UpdateUserID(t *testing.T) {
 	gotContexts, err := readConfigs(confFile)
 	checkErr(t, err)
 
-	// check that the user id is updated
 	updatedContext := proto.CloneOf(testConfig)
-	updatedContext.Email = "email.updated"
+	updatedContext.AuthStrategy = jwtAuthStrategy("email.updated", "privateKey.id", "privateKey.path")
 	wantContexts := &nbictlpb.AppConfig{
 		Configs: []*nbictlpb.Config{updatedContext, testConfigForUpdate},
 	}
@@ -287,7 +297,6 @@ func TestSetConfig_UpdateUrl(t *testing.T) {
 	gotContexts, err := readConfigs(confFile)
 	checkErr(t, err)
 
-	// check that the url is updated
 	updatedContext := proto.CloneOf(testConfig)
 	updatedContext.Url = "url.updated"
 	wantContexts := &nbictlpb.AppConfig{
@@ -302,6 +311,125 @@ func checkErr(t *testing.T, err error) {
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestSetConfig_MigratesDeprecatedFields(t *testing.T) {
+	t.Parallel()
+
+	confDir, err := bazel.NewTmpDir("nbictl")
+	checkErr(t, err)
+	confFile := filepath.Join(confDir, confFileName)
+
+	legacyConfig := &nbictlpb.Config{
+		Name:    "legacy",
+		KeyId:   "old_key",
+		Email:   "old_email",
+		PrivKey: "old_key_path",
+		Url:     "old_url",
+	}
+	checkErr(t, setConfig(io.Discard, io.Discard, legacyConfig, confFile))
+
+	got, err := readConfig("legacy", confFile)
+	checkErr(t, err)
+
+	want := &nbictlpb.Config{
+		Name:         "legacy",
+		Url:          "old_url",
+		AuthStrategy: jwtAuthStrategy("old_email", "old_key", "old_key_path"),
+	}
+	assertProtosEqual(t, want, got)
+}
+
+func TestSetConfig_MergesJwtSubFields(t *testing.T) {
+	t.Parallel()
+
+	confDir, err := bazel.NewTmpDir("nbictl")
+	checkErr(t, err)
+	confFile := filepath.Join(confDir, confFileName)
+
+	checkErr(t, setConfig(io.Discard, io.Discard, &nbictlpb.Config{
+		Name:  "merge_test",
+		Email: "user@test",
+	}, confFile))
+	checkErr(t, setConfig(io.Discard, io.Discard, &nbictlpb.Config{
+		Name:  "merge_test",
+		KeyId: "key123",
+	}, confFile))
+	checkErr(t, setConfig(io.Discard, io.Discard, &nbictlpb.Config{
+		Name:    "merge_test",
+		PrivKey: "/path/to/key",
+	}, confFile))
+
+	got, err := readConfig("merge_test", confFile)
+	checkErr(t, err)
+
+	want := &nbictlpb.Config{
+		Name:         "merge_test",
+		AuthStrategy: jwtAuthStrategy("user@test", "key123", "/path/to/key"),
+	}
+	assertProtosEqual(t, want, got)
+}
+
+func TestSetConfig_SwitchToNone(t *testing.T) {
+	t.Parallel()
+
+	confDir, err := bazel.NewTmpDir("nbictl")
+	checkErr(t, err)
+	confFile := filepath.Join(confDir, confFileName)
+
+	checkErr(t, setConfig(io.Discard, io.Discard, &nbictlpb.Config{
+		Name:         "switch_test",
+		Url:          "example.com",
+		AuthStrategy: jwtAuthStrategy("user@test", "key1", "/path/to/key"),
+	}, confFile))
+
+	checkErr(t, setConfig(io.Discard, io.Discard, &nbictlpb.Config{
+		Name: "switch_test",
+		AuthStrategy: &nbictlpb.Config_AuthStrategy{
+			Type: &nbictlpb.Config_AuthStrategy_None{},
+		},
+	}, confFile))
+
+	got, err := readConfig("switch_test", confFile)
+	checkErr(t, err)
+
+	want := &nbictlpb.Config{
+		Name: "switch_test",
+		Url:  "example.com",
+		AuthStrategy: &nbictlpb.Config_AuthStrategy{
+			Type: &nbictlpb.Config_AuthStrategy_None{},
+		},
+	}
+	assertProtosEqual(t, want, got)
+}
+
+func TestSetConfig_PartialJwtUpdate(t *testing.T) {
+	t.Parallel()
+
+	confDir, err := bazel.NewTmpDir("nbictl")
+	checkErr(t, err)
+	confFile := filepath.Join(confDir, confFileName)
+
+	checkErr(t, setConfig(io.Discard, io.Discard, &nbictlpb.Config{
+		Name:         "partial_test",
+		Url:          "example.com",
+		AuthStrategy: jwtAuthStrategy("original@test", "key1", "/path/to/key"),
+	}, confFile))
+
+	checkErr(t, setConfig(io.Discard, io.Discard, &nbictlpb.Config{
+		Name:  "partial_test",
+		Email: "updated@test",
+	}, confFile))
+
+	got, err := readConfig("partial_test", confFile)
+	checkErr(t, err)
+
+	want := &nbictlpb.Config{
+		Name:         "partial_test",
+		Url:          "example.com",
+		AuthStrategy: jwtAuthStrategy("updated@test", "key1", "/path/to/key"),
+	}
+	assertProtosEqual(t, want, got)
 }
 
 func assertProtosEqual(t *testing.T, want, got interface{}) {

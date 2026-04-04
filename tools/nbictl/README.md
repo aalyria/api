@@ -57,6 +57,8 @@ Prints the NBI connection settings associated with the configuration profile giv
 
 Sets or updates a configuration profile settings. You can create multiple profiles by specifying the `--profile` flag (defaults to "DEFAULT").
 
+**--auth_strategy**="": Authentication strategy. Allowed values: [none, jwt]. When 'none', no authentication credentials are sent.
+
 **--key_id**="": Key ID associated with the private key provided by Aalyria.
 
 **--priv_key**="": Path to the private key to use for authentication.

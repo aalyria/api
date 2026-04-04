@@ -241,6 +241,10 @@ func App() *cli.App {
 								Name:  "transport",
 								Usage: "Transport protocol to use. Allowed values: [tcp, quic] (default: tcp)",
 							},
+							&cli.StringFlag{
+								Name:  "auth_strategy",
+								Usage: "Authentication strategy. Allowed values: [none, jwt]. When 'none', no authentication credentials are sent.",
+							},
 						},
 						Action: SetConfig,
 					},
