@@ -208,5 +208,5 @@ message Polarization {
 
 message Targeting {
   // The format to use when providing the antenna with target acquisition info.
-  optional Motion.Type motion_format = 1;
+  optional Motion.Format motion_format = 1;
 }

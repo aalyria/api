@@ -540,7 +540,7 @@ message Motion {
   // protobuf-constructed language-specific support for switch statements
   // (which, for C++ and Java for example, generates a language-appropriate
   // enum to use).
-  enum Type {
+  enum Format {
     MOTION_UNSPECIFIED = 0;
     GEODETIC_MSL = 7;
     GEODETIC_WGS84 = 1;
@@ -553,7 +553,7 @@ message Motion {
     // WARNING: This message is under development and not fully supported.
     STATE_VECTOR = 9;
     SELENOGRAPHIC_MLR = 8;
-    STK_EPHEM_AND_ATTITUDE_FILE = 11; 
+    STK_EPHEM_AND_ATTITUDE_FILE = 11;
     CCSDS_ORBIT_EPHEMERIS_MESSAGE = 13;
   }
 
