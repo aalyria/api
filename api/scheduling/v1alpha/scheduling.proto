@@ -143,6 +143,8 @@ message CreateEntryRequest {
     DeleteRoute delete_route = 6;
     SetSrPolicy set_sr_policy = 9;
     DeleteSrPolicy delete_sr_policy = 10;
+    UpdateP2pSrTePolicyPath update_p2p_sr_te_policy_path = 20;
+    DeleteP2pSrTePolicyPath delete_p2p_sr_te_policy_path = 21;
     TriggerHandover trigger_handover = 17;
   }
 
@@ -569,6 +571,43 @@ message EndpointRouting {
   // a three-byte or a six-byte value (if it is used at all), as other lengths
   // are not valid GSE labels.
   bytes gse_label = 2;
+}
+
+message P2pSrTePolicyPath {
+  // The resource name of the path.
+  // Format: p2pSrTePolicyPaths/{path_id}
+  string name = 1;
+
+  // Immutable.
+  int32 color = 2;
+
+  // RFC 9256 S2.5 Discriminator. Immutable.
+  int32 discriminator = 3;
+
+  // entity.id of the source EK_ROUTE_FN. Immutable.
+  string headend = 4;
+
+  // entity.id of the destination EK_ROUTE_FN. Immutable.
+  string endpoint = 5;
+
+  // An ordered list of segments from ingress to egress.
+  //
+  // An empty list indicates that the P2pSrTePolicyCandidatePath provisioning
+  // request associated with this <Headend, Color, Endpoint, Descriminator>
+  // tuple could not be fulfilled.
+  repeated SrSegment segments = 6;
+}
+
+message UpdateP2pSrTePolicyPath {
+  // The path to update.
+  P2pSrTePolicyPath p2p_sr_te_policy_path = 1;
+
+  aalyria.spacetime.api.common.FieldMask update_mask = 2;
+}
+
+message DeleteP2pSrTePolicyPath {
+  // The name of the path to delete.
+  string name = 1;
 }
 
 // A Segment Routing Policy Architecture policy description.
