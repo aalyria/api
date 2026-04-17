@@ -41,6 +41,7 @@ go_library(
         "//api/audit/v1alpha:audit_go_grpc",
         "//api/federation/interconnect/v1alpha:interconnect_go_proto",
         "//api/model/v1:v1_go_proto",
+        "//api/permissions/v1alpha:permissions_go_grpc",
         "//api/provisioning/v1alpha:provisioning_go_grpc",
         "//api/scheduling/v1alpha:scheduling_go_grpc",
         "//api/status/v1:status_go_grpc",
