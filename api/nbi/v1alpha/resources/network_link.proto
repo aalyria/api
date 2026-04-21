@@ -89,6 +89,15 @@ message Radio {
     // Transmit power the transmitter must not exceed in Watts.
     optional double max_power_w = 9;
 
+    // TODO: After the compiler has been migrated to read from
+    // initial_beam_peak_eirp_sd_dbw_per_mhz and
+    // max_beam_peak_eirp_sd_dbw_per_mhz, initial_power_w and max_power_w
+    // can be removed.
+    // Initial beam-peak EIRP spectral density in dBW/MHz.
+    optional double initial_beam_peak_eirp_sd_dbw_per_mhz = 10;
+    // Maximum beam-peak EIRP spectral density in dBW/MHz.
+    optional double max_beam_peak_eirp_sd_dbw_per_mhz = 11;
+
     optional string port_id = 6;
     optional string modulator_id = 2;
     optional string transmitter_id = 5;
@@ -103,7 +112,7 @@ message Radio {
 
     optional string lowest_supported_rx_modcod = 7;
 
-    reserved 10 to max;
+    reserved 12 to max;
   }
 
   optional TxRadioConfiguration tx_radio = 4;
