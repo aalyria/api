@@ -566,11 +566,6 @@ message EndpointSecurity {
 message EndpointRouting {
   // Indicates incoming MPLS SIDs pertaining to the endpoint.
   repeated uint32 rx_segment_ids = 1;
-
-  // Provides a GSE label to be used for the endpoint.  This should either be
-  // a three-byte or a six-byte value (if it is used at all), as other lengths
-  // are not valid GSE labels.
-  bytes gse_label = 2;
 }
 
 message P2pSrTePolicyPath {
