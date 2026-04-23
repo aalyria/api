@@ -338,7 +338,7 @@ func getDialOpts(ctx context.Context, connParams *configpb.ConnectionParams, clo
 	if baseDelay := backoffParams.GetBaseDelay().AsDuration(); baseDelay > 0 {
 		grpcBackoff.BaseDelay = baseDelay
 	}
-	if maxDelay := backoffParams.GetBaseDelay().AsDuration(); maxDelay > 0 {
+	if maxDelay := backoffParams.GetMaxDelay().AsDuration(); maxDelay > 0 {
 		grpcBackoff.MaxDelay = maxDelay
 	}
 
