@@ -550,7 +550,6 @@ message Endpoint {
   double excess_information_rate_bps = 6;
 
   EndpointSecurity security = 7;
-  EndpointRouting routing = 8;
 
   // The IDs of all beams that are transmitting to this endpoint and managed by
   // the same agent that manages this beam.
@@ -559,7 +558,30 @@ message Endpoint {
   // fields will contain that beam's own ID.
   repeated string tx_beams = 9;
 
-  reserved 1;
+  // The topmost MPLS label on packets arriving at the transmitting node that
+  // identifies traffic to be forwarded to this endpoint.
+  // 
+  // For example, for a Beam that represents a satellite's user downlink beam,
+  // this endpoint could represent a user terminal. In that case, this field
+  // indicates the MPLS label used in the satellite's dataplane to forward
+  // packets to the user terminal.
+  //
+  // Consider an interface on the transmitting node modeled in an NMTS graph as:
+  //   Interface --RK_ORIGINATES--> LogicalPacketLink
+  //       |
+  //       |--RK_TRAVERSES--> Port --RK_ORIGINATES--> Modulator ...
+  // This field is populated with the sr.adjacency_sid.mpls value from the
+  // nmts.v1.ek.logical.LogicalPacketLink.
+  // 
+  // Assigning multiple carriers on one beam to transmit to this endpoint
+  // involves tasking multiple ports, each of which has a corresponding
+  // adjacency SID. In these cases, there will be more than one ingress MPLS
+  // label that identifies traffic to be forwarded to this endpoint.
+  //
+  // Note that this field is only populated for endpoints of transmit beams.
+  repeated int32 ingress_mpls_labels = 10;
+
+  reserved 1, 8;
 }
 
 message EndpointSecurity {
@@ -567,11 +589,6 @@ message EndpointSecurity {
   // to the endpoint.
   string rx_key = 1;
   string tx_key = 2;
-}
-
-message EndpointRouting {
-  // Indicates incoming MPLS SIDs pertaining to the endpoint.
-  repeated uint32 rx_segment_ids = 1;
 }
 
 message P2pSrTePolicyPath {

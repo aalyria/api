@@ -137,6 +137,15 @@ service Provisioning {
   rpc UpdateEmissionsLimit(UpdateEmissionsLimitRequest) returns (EmissionsLimit) {}
   rpc DeleteEmissionsLimit(DeleteEmissionsLimitRequest) returns (google.protobuf.Empty) {}
 
+  // Methods on PointingConstraints.
+  //
+  // Manage resources under `pointingConstraints/{id}`.
+  rpc GetPointingConstraint(GetPointingConstraintRequest) returns (PointingConstraint) {}
+  rpc ListPointingConstraints(ListPointingConstraintsRequest) returns (ListPointingConstraintsResponse) {}
+  rpc CreatePointingConstraint(CreatePointingConstraintRequest) returns (PointingConstraint) {}
+  rpc UpdatePointingConstraint(UpdatePointingConstraintRequest) returns (PointingConstraint) {}
+  rpc DeletePointingConstraint(DeletePointingConstraintRequest) returns (google.protobuf.Empty) {}
+
   // TODO: Consider RFC 8623 P2MP TE -like request
   // TODO: Consider PHY-layer requests (bent pipe, etc)
   // TODO: Add a DigitalTransparentService request (details TBD)
@@ -928,7 +937,7 @@ message PortSet {
 // This resource describes a request to:
 //  1) Point the antennas of the endpoints towards each other (if the antennas
 //     are steerable).
-//  2) Assign a channel and choose a transmit power that maximizes link 
+//  2) Assign a channel and choose a transmit power that maximizes link
 //     capacity.
 //
 // The request is satisfied if any link can be scheduled between the
@@ -1059,7 +1068,7 @@ message DeleteLinkRequest{
 message GeographicRegion {
   // The resource name of the geographic region.
   // Format: geographicRegions/{region}
-  string name = 1;
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
 
   // A GeoJSON representation of the region.
   //
@@ -1158,7 +1167,7 @@ message DeleteGeographicRegionRequest{
 message EmissionsLimit {
   // The resource name of the emissions limit.
   // Format: emissionsLimits/{limit}
-  string name = 1;
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
 
   // The lower frequency (inclusive) to which this emissions limit applies.
   int64 lower_frequency_hz = 2;
@@ -1243,5 +1252,153 @@ message DeleteEmissionsLimitRequest{
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
       type: "provisioning.spacetimeapis.com/EmissionsLimit"
+    }];
+}
+
+// A range of frequencies.
+message FrequencyRange {
+  // The lower bound of the frequency range, in hertz (inclusive).
+  int64 min_frequency_hz = 1;
+  // The upper bound of the frequency range, in hertz (exclusive).
+  int64 max_frequency_hz = 2;
+}
+
+// A PointingConstraint describes an exclusion constraint on the pointing
+// configurations of antennas in the model, used to satisfy regulatory,
+// interference, or operational requirements. Exclusion constraints define
+// regions or directions that an antenna must avoid pointing towards.
+//
+// When multiple constraints apply to a given subject, the union of all
+// constraints is considered.
+message PointingConstraint {
+  // The resource name of the pointing constraint.
+  // Format: pointingConstraints/{constraint}
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  // Filter the Antenna model entities that must respect this constraint,
+  // using Common Expression Language (CEL).
+  string subjects_filter = 2;
+
+  // The type of exclusion constraint.
+  oneof constraint {
+    SunSeparationAngles sun_separation_angles = 3;
+    GeoArcSeparationAngles geo_arc_separation_angles = 4;
+    AngularSeparations angular_separations = 5;
+  }
+
+  // A set of sun separation angle constraints, optionally per frequency range.
+  message SunSeparationAngles {
+    repeated SunSeparationAngle sun_separation_angles = 1;
+  }
+
+  // A constraint on the minimum angular separation from the sun.
+  message SunSeparationAngle {
+    // If set, the constraint applies only to operations within the
+    // specified frequency range. This allows modeling band-specific
+    // regulatory requirements (e.g., a tighter constraint in Ka-band
+    // than in Ku-band). If unset, the constraint applies to all frequencies.
+    FrequencyRange frequency_range = 1;
+
+    // The minimum angular separation from the sun, in degrees.
+    double minimum_angle_deg = 2;
+  }
+
+  // A set of GEO arc separation angle constraints, optionally per frequency
+  // range.
+  message GeoArcSeparationAngles {
+    repeated GeoArcSeparationAngle geo_arc_separation_angles = 1;
+  }
+
+  // A constraint on the minimum angular separation from the GEO arc.
+  message GeoArcSeparationAngle {
+    // If set, the constraint applies only to operations within the
+    // specified frequency range. This allows modeling band-specific
+    // regulatory requirements (e.g., a tighter constraint in Ka-band
+    // than in Ku-band). If unset, the constraint applies to all frequencies.
+    FrequencyRange frequency_range = 1;
+
+    // The minimum angular separation from the GEO arc, in degrees.
+    double minimum_angle_deg = 2;
+  }
+
+  // A set of angular separation constraints from specific platforms,
+  // optionally per frequency range.
+  message AngularSeparations {
+    // Filter the Platform entities from which the separation angle
+    // must be considered, using Common Expression Language (CEL).
+    string target_platforms_filter = 1;
+
+    repeated AngularSeparation angular_separations = 2;
+  }
+
+  // A constraint on the minimum angular separation from target platforms.
+  message AngularSeparation {
+    // If set, the constraint applies only to operations within the
+    // specified frequency range. This allows modeling band-specific
+    // regulatory requirements (e.g., a tighter constraint in Ka-band
+    // than in Ku-band). If unset, the constraint applies to all frequencies.
+    FrequencyRange frequency_range = 1;
+
+    // The minimum angular separation from target platforms, in degrees.
+    double minimum_angle_deg = 2;
+  }
+}
+
+message GetPointingConstraintRequest{
+  // The resource name of the pointing constraint to retrieve.
+  // Format: `pointingConstraints/{constraint}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/PointingConstraint"
+    }];
+}
+
+message ListPointingConstraintsRequest{
+}
+
+message ListPointingConstraintsResponse{
+  repeated PointingConstraint pointing_constraints = 1;
+}
+
+message CreatePointingConstraintRequest{
+  // The ID to use for the pointing constraint, which will become the final
+  // component of the pointing constraint's resource name.
+  //
+  // This value should be 1-63 characters, and valid characters
+  // are /[a-z][0-9]-/, specifically of the form
+  // "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$".
+  string constraint_id = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // The pointing constraint to create.
+  PointingConstraint pointing_constraint = 3 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+}
+
+message UpdatePointingConstraintRequest{
+  // The PointingConstraint to update.
+  //
+  // The PointingConstraint's `name` field is used to identify the
+  // PointingConstraint instance to be updated.
+  PointingConstraint pointing_constraint = 1 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+
+  // The list of fields to be updated.
+  google.protobuf.FieldMask update_mask = 2;
+
+  // If set to true, and the PointingConstraint named above is not found, a new
+  // instance will be created. In this situation, `update_mask` is ignored.
+  bool allow_missing = 3;
+}
+
+message DeletePointingConstraintRequest{
+  // The resource name of the pointing constraint to delete.
+  // Format: `pointingConstraints/{constraint}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/PointingConstraint"
     }];
 }
