@@ -56,6 +56,7 @@ type ProvisioningResources struct {
 	links                        map[string]*provapipb.Link
 	geographicRegions            map[string]*provapipb.GeographicRegion
 	emissionsLimits              map[string]*provapipb.EmissionsLimit
+	pointingConstraints          map[string]*provapipb.PointingConstraint
 }
 
 func (pr *ProvisioningResources) String() string {
@@ -70,6 +71,7 @@ func (pr *ProvisioningResources) String() string {
 		lo.Keys(pr.links),
 		lo.Keys(pr.geographicRegions),
 		lo.Keys(pr.emissionsLimits),
+		lo.Keys(pr.pointingConstraints),
 	)
 
 	if len(keys) == 0 {
@@ -99,6 +101,7 @@ func (pr *ProvisioningResources) MarshalledString(marshaller protoFormat) string
 		lo.Entries(marshalMap(pr.links, marshaller)),
 		lo.Entries(marshalMap(pr.geographicRegions, marshaller)),
 		lo.Entries(marshalMap(pr.emissionsLimits, marshaller)),
+		lo.Entries(marshalMap(pr.pointingConstraints, marshaller)),
 	)
 	slices.SortFunc(entries, func(e1, e2 lo.Entry[string, string]) int { return strings.Compare(e1.Key, e2.Key) })
 
@@ -120,6 +123,7 @@ func NewProvisioningResources() *ProvisioningResources {
 		links:                        map[string]*provapipb.Link{},
 		geographicRegions:            map[string]*provapipb.GeographicRegion{},
 		emissionsLimits:              map[string]*provapipb.EmissionsLimit{},
+		pointingConstraints:          map[string]*provapipb.PointingConstraint{},
 	}
 }
 
@@ -133,7 +137,8 @@ func (pr *ProvisioningResources) ResourceCount() int {
 		len(pr.disjointAssociationGroups) +
 		len(pr.links) +
 		len(pr.geographicRegions) +
-		len(pr.emissionsLimits)
+		len(pr.emissionsLimits) +
+		len(pr.pointingConstraints)
 }
 
 func (pr *ProvisioningResources) InsertProvisioningResources(resources *provnbipb.ProvisioningResources) {
@@ -147,6 +152,7 @@ func (pr *ProvisioningResources) InsertProvisioningResources(resources *provnbip
 	pr.insertLinks(resources.GetLinks())
 	pr.insertGeographicRegions(resources.GetGeographicRegions())
 	pr.insertEmissionsLimits(resources.GetEmissionsLimits())
+	pr.insertPointingConstraints(resources.GetPointingConstraints())
 }
 
 func ProvisioningResourcesFromRemote(ctx context.Context, client provapipb.ProvisioningClient) (*ProvisioningResources, error) {
@@ -232,6 +238,19 @@ func ProvisioningResourcesFromRemote(ctx context.Context, client provapipb.Provi
 		return nil
 	})
 
+	var pointingConstraints []*provapipb.PointingConstraint
+	p.Go(func() error {
+		result, err := client.ListPointingConstraints(ctx, &provapipb.ListPointingConstraintsRequest{})
+		if err != nil {
+			if isUnimplementedError(err) {
+				return nil
+			}
+			return err
+		}
+		pointingConstraints = result.GetPointingConstraints()
+		return nil
+	})
+
 	err := p.Wait()
 	if err != nil {
 		return nil, err
@@ -243,6 +262,7 @@ func ProvisioningResourcesFromRemote(ctx context.Context, client provapipb.Provi
 	pr.insertLinks(links)
 	pr.insertGeographicRegions(geographicRegions)
 	pr.insertEmissionsLimits(emissionsLimits)
+	pr.insertPointingConstraints(pointingConstraints)
 
 	{
 		result, err := client.ListP2PSrTePolicies(ctx, &provapipb.ListP2PSrTePoliciesRequest{})
@@ -383,6 +403,12 @@ func (pr *ProvisioningResources) insertEmissionsLimits(entries []*provapipb.Emis
 	}
 }
 
+func (pr *ProvisioningResources) insertPointingConstraints(entries []*provapipb.PointingConstraint) {
+	for _, entry := range entries {
+		pr.pointingConstraints[entry.GetName()] = entry
+	}
+}
+
 func provisioningResourcesAreEquivalent[T proto.Message](a, b T) bool {
 	// TODO: find a more robust equivalency check.
 	return proto.Equal(a, b)
@@ -467,6 +493,7 @@ func ProvisioningSync(appCtx *cli.Context) error {
 		"links":                       lo.Without(lo.Keys(localResources.links), lo.Keys(remoteResources.links)...),
 		"geographicRegions":           lo.Without(lo.Keys(localResources.geographicRegions), lo.Keys(remoteResources.geographicRegions)...),
 		"emissionsLimits":             lo.Without(lo.Keys(localResources.emissionsLimits), lo.Keys(remoteResources.emissionsLimits)...),
+		"pointingConstraints":         lo.Without(lo.Keys(localResources.pointingConstraints), lo.Keys(remoteResources.pointingConstraints)...),
 	}
 
 	resourcesInCommon := map[string][]string{
@@ -478,6 +505,7 @@ func ProvisioningSync(appCtx *cli.Context) error {
 		"links":                       lo.Intersect(lo.Keys(localResources.links), lo.Keys(remoteResources.links)),
 		"geographicRegions":           lo.Intersect(lo.Keys(localResources.geographicRegions), lo.Keys(remoteResources.geographicRegions)),
 		"emissionsLimits":             lo.Intersect(lo.Keys(localResources.emissionsLimits), lo.Keys(remoteResources.emissionsLimits)),
+		"pointingConstraints":         lo.Intersect(lo.Keys(localResources.pointingConstraints), lo.Keys(remoteResources.pointingConstraints)),
 	}
 
 	fmt.Println("\ncomparing local and remote resources:")
@@ -498,6 +526,7 @@ func ProvisioningSync(appCtx *cli.Context) error {
 			links:                       lo.Without(lo.Keys(remoteResources.links), lo.Keys(localResources.links)...),
 			geographicRegions:           lo.Without(lo.Keys(remoteResources.geographicRegions), lo.Keys(localResources.geographicRegions)...),
 			emissionsLimits:             lo.Without(lo.Keys(remoteResources.emissionsLimits), lo.Keys(localResources.emissionsLimits)...),
+			pointingConstraints:         lo.Without(lo.Keys(remoteResources.pointingConstraints), lo.Keys(localResources.pointingConstraints)...),
 
 			printMode:  printMode,
 			dryRunMode: dryRunMode,
@@ -513,6 +542,7 @@ func ProvisioningSync(appCtx *cli.Context) error {
 			deleteParams.links,
 			deleteParams.geographicRegions,
 			deleteParams.emissionsLimits,
+			deleteParams.pointingConstraints,
 		)))
 
 		err := deleteProvisioning(ctx, deleteParams)
@@ -603,6 +633,16 @@ func ProvisioningSync(appCtx *cli.Context) error {
 				return err
 			})...)
 	})
+	p.Go(func() error {
+		return errors.Join(updateRemoteResources[*provapipb.PointingConstraint](
+			resourcesInCommon["pointingConstraints"], localResources.pointingConstraints, remoteResources.pointingConstraints, printMode, dryRunMode, func(pointingConstraint *provapipb.PointingConstraint) error {
+				_, err := provisioningClient.UpdatePointingConstraint(ctx, &provapipb.UpdatePointingConstraintRequest{
+					PointingConstraint: pointingConstraint,
+					AllowMissing:       false,
+				})
+				return err
+			})...)
+	})
 
 	///
 	// Add resources.
@@ -689,6 +729,16 @@ func ProvisioningSync(appCtx *cli.Context) error {
 				return err
 			})...)
 	})
+	p.Go(func() error {
+		return errors.Join(createRemoteResources[*provapipb.PointingConstraint](
+			resourcesToBeAdded["pointingConstraints"], localResources.pointingConstraints, printMode, dryRunMode, func(pointingConstraint *provapipb.PointingConstraint) error {
+				_, err := provisioningClient.UpdatePointingConstraint(ctx, &provapipb.UpdatePointingConstraintRequest{
+					PointingConstraint: pointingConstraint,
+					AllowMissing:       true,
+				})
+				return err
+			})...)
+	})
 
 	errs = append(errs, p.Wait())
 	return errors.Join(errs...)
@@ -726,6 +776,7 @@ type deleteProvisioningParams struct {
 	links                       []string
 	geographicRegions           []string
 	emissionsLimits             []string
+	pointingConstraints         []string
 
 	printMode  bool
 	dryRunMode bool
@@ -833,6 +884,17 @@ func deleteProvisioning(ctx context.Context, params deleteProvisioningParams) er
 				})...)
 		})
 	}
+	if len(params.pointingConstraints) > 0 {
+		p.Go(func() error {
+			return errors.Join(deleteRemoteResources(
+				params.pointingConstraints, printMode, dryRunMode, func(pointingConstraint string) error {
+					_, err := client.DeletePointingConstraint(ctx, &provapipb.DeletePointingConstraintRequest{
+						Name: pointingConstraint,
+					})
+					return err
+				})...)
+		})
+	}
 
 	return p.Wait()
 }
@@ -868,6 +930,7 @@ func ProvisioningDeleteAll(appCtx *cli.Context) error {
 		links:                       lo.Keys(remoteResources.links),
 		geographicRegions:           lo.Keys(remoteResources.geographicRegions),
 		emissionsLimits:             lo.Keys(remoteResources.emissionsLimits),
+		pointingConstraints:         lo.Keys(remoteResources.pointingConstraints),
 	}
 
 	return deleteProvisioning(appCtx.Context, params)
@@ -909,6 +972,7 @@ func ProvisioningDelete(appCtx *cli.Context) error {
 	params.links = lo.Intersect(resourceNames, lo.Keys(remoteResources.links))
 	params.geographicRegions = lo.Intersect(resourceNames, lo.Keys(remoteResources.geographicRegions))
 	params.emissionsLimits = lo.Intersect(resourceNames, lo.Keys(remoteResources.emissionsLimits))
+	params.pointingConstraints = lo.Intersect(resourceNames, lo.Keys(remoteResources.pointingConstraints))
 
 	deleteResourceNameSet := slices.Concat(
 		params.p2pSrTePolicies,
@@ -919,6 +983,7 @@ func ProvisioningDelete(appCtx *cli.Context) error {
 		params.links,
 		params.geographicRegions,
 		params.emissionsLimits,
+		params.pointingConstraints,
 	)
 
 	notFoundNames := lo.Without(resourceNames, deleteResourceNameSet...)

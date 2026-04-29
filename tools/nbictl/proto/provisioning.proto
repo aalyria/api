@@ -38,6 +38,7 @@ message ProvisioningResources {
   repeated aalyria.spacetime.api.provisioning.v1alpha.Link links = 6;
   repeated aalyria.spacetime.api.provisioning.v1alpha.GeographicRegion geographic_regions = 7;
   repeated aalyria.spacetime.api.provisioning.v1alpha.EmissionsLimit emissions_limits = 8;
+  repeated aalyria.spacetime.api.provisioning.v1alpha.PointingConstraint pointing_constraints = 12;
 
   reserved 9;
 }
