@@ -1,4 +1,4 @@
-# Copyright 2024 Aalyria Technologies, Inc., and its affiliates.
+# Copyright (c) Aalyria Technologies, Inc., and its affiliates.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -54,6 +54,9 @@ python_grpc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//api/common:common_python_proto",
+        "@googleapis//google/api:field_behavior_py_proto",
+        "@googleapis//google/longrunning:operations_py_proto",
         "@googleapis//google/rpc:code_py_proto",
+        "@googleapis//google/type:latlng_py_proto",
     ],
 )

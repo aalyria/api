@@ -279,7 +279,10 @@ message TransmitBeam {
   // Optional.  The supported output backoff (in dB) for this transmit
   // beam.  There can be multiple that are defined as possible values, or
   // if left blank, let the orchestrator solve for the optimal OBO value.
-  repeated double supported_output_backoffs_db = 8;
+
+  // Deprecated... to be removed soon to meet pularlization requirements
+  repeated double supported_output_backoff_db = 8 [deprecated = true];
+  repeated double supported_output_backoffs_db = 9;
 }
 
 message EirpContourMap {
