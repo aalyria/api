@@ -58,7 +58,7 @@ service Provisioning {
 
   // P2MP SR-TE Policy provisioning.
   //
-  // RFC 9522 S5.1.1.3; draft-ietf-pim-sr-p2mp-policy P2MP SR Policy
+  // RFC 9522 S5.1.1.3; RFC 9960 P2MP SR Policy
   //
   // Manage resources under `p2mpSrTePolicies/{policy_id}`.
   rpc GetP2mpSrTePolicy(GetP2mpSrTePolicyRequest) returns (P2mpSrTePolicy) {}
@@ -69,7 +69,7 @@ service Provisioning {
 
   // P2MP SR TE Policy dynamic candidate path provisioning.
   //
-  // draft-ietf-pim-sr-p2mp-policy-22 S2.3 P2MP SR Policy candidate paths.
+  // RFC 9960 S2.3 P2MP SR Policy candidate paths.
   //
   // Manage subresources under
   //     `p2mpSrTePolicies/{policy_id}/candidatePaths/{path_id}`.
@@ -379,8 +379,7 @@ message DeleteP2pSrTePolicyCandidatePathRequest{
 // Describes one SR TE policy from one root EK_ROUTE_FN entity in the
 // data model to the set of EK_ROUTE_FN entities in the list of leaves.
 //
-// See also:
-//   - draft-ietf-pim-sr-p2mp-policy
+// See also RFC 9960.
 message P2mpSrTePolicy {
   // The resource name of this policy.
   string name = 1 [(google.api.field_behavior) = IDENTIFIER];
@@ -420,8 +419,8 @@ message P2mpSrTePolicy {
   // NMTS Entity ID corresponding to the source EK_ROUTE_FN Entity
   // element already created within the network data model.
   //
-  // draft-ietf-pim-sr-p2mp-policy S2.1 SR P2MP Policy identifying
-  // tuple; "[a]n SR P2MP Policy is uniquely identified by the tuple
+  // RFC 9960 S2.1 SR P2MP Policy identifying tuple;
+  // "[a]n SR P2MP Policy is uniquely identified by the tuple
   // <Root, Tree-ID>".
   //
   // Note: SR P2P Policy color-like differentiation can be implemented
@@ -507,9 +506,8 @@ message P2mpSrTePolicyCandidatePath {
   uint32 discriminator = 2;
   // RFC 9256 S2.6 optional symbolic name.
   string symbolic_name = 3;
-  // draft-ietf-pim-sr-p2mp-policy-22 does not have a field corresponding
-  // to the RFC 9256 S2.7 Preference. This can be added later, should the
-  // specification change or the need arise.
+  // RFC 9960 does not have a field corresponding to the RFC 9256 S2.7
+  // Preference. This can be added later, should specifications evolve.
 
   // Quantitative path metrics.
   Metrics metrics = 4;
