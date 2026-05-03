@@ -42,6 +42,11 @@ message NetworkLink {
   optional string src_interface_id = 5;
   optional string dst_interface_id = 6;
 
+  // The adjacency SID that has been assigned to this link. This field is only
+  // set for user downlinks. For all other links, the adjacency SID is
+  // determined by the compiler. See NRMP-193 for context.
+  optional int32 user_downlink_adjacency_sid = 9;
+
   reserved 1, 2;
 }
 
