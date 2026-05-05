@@ -309,16 +309,13 @@ message BeamTarget {
 // to target) in agents that are not aware of the local platform position
 // via other means.
 //
-// BeamOrigin type will be populated according to the Antenna.pointing_format
+// BeamOrigin type will be populated according to the Antenna.origin_format
 // field specified in the relevant Model entities.
 message BeamOrigin {
   oneof origin {
     Cartesian cartesian = 1;
     string ccsds_oem_file_content = 2;
     StateVector state_vector = 3;
-
-    // Note:  Chebyshev Coefficients are currently only supported in the API,
-    // they are not currently implemented.
     ChebyshevCoefficients chebyshev_coefficients = 4;
   }
 }
