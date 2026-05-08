@@ -1,0 +1,103 @@
+// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package aalyria.spacetime.tools.nbictl;
+
+import "google/protobuf/empty.proto";
+
+option go_package = "aalyria.com/spacetime/tools/nbictl/nbictlpb";
+
+message AppConfig {
+  repeated Config configs = 1;
+}
+
+message Config {
+  string name = 1;
+  // deprecated, use auth_strategy
+  string key_id = 2 [deprecated=true];
+  // deprecated, use auth_strategy
+  string email = 3 [deprecated=true];
+  // deprecated, use auth_strategy
+  string priv_key = 4 [deprecated=true];
+  string url = 5;
+
+  message TransportSecurity {
+    message ServerCertificate {
+      string cert_file_path = 1;
+    }
+
+    oneof type {
+      // Don't use TLS, connect using plain-text HTTP/2.
+      google.protobuf.Empty insecure = 1;
+
+      // Use the system certificate pool for TLS.
+      google.protobuf.Empty system_cert_pool = 2;
+
+      // Use the provided server certificate for TLS.
+      ServerCertificate server_certificate = 3;
+    }
+  }
+
+  message Transport {
+    oneof type {
+      // Use TCP (default when transport is unset).
+      google.protobuf.Empty tcp = 1;
+      // Use QUIC/UDP. Requires TLS (incompatible with
+      // insecure transport_security).
+      google.protobuf.Empty quic = 2;
+    }
+  }
+
+  // A strategy for signing a JWT.
+  message SigningStrategy {
+    oneof type {
+      // The bytes of a PEM-encoded RSA private key in
+      // PKCS #1, ASN.1 DER form or in (unencrypted)
+      // PKCS #8, ASN.1 DER form.
+      bytes private_key_bytes = 1;
+      // The path to a PEM-encoded RSA private key in PKCS #1, ASN.1 DER form or
+      // in (unencrypted) PKCS #8, ASN.1 DER form.
+      string private_key_file = 2;
+    }
+  }
+
+  message AuthStrategy {
+    // Jwt is a JSON web token. See https://jwt.io/introduction for more
+    // information.
+    message Jwt {
+      string email = 1;
+      string audience = 2;
+      string private_key_id = 3;
+      SigningStrategy signing_strategy = 4;
+    }
+
+    oneof type {
+      // The specifications for a JWT that should be generated and signed by the
+      // agent.
+      Jwt jwt = 1;
+
+      // No authentication options should be used. This is unlikely to work for
+      // you.
+      google.protobuf.Empty none = 2;
+    }
+  }
+
+  TransportSecurity transport_security = 7;
+  // The transport protocol to use. Defaults to TCP if unset.
+  Transport transport = 8;
+  // The strategy to use for authorization. Required.
+  AuthStrategy auth_strategy = 9;
+}
