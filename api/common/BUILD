@@ -17,6 +17,7 @@ load("@rules_go//proto:def.bzl", "go_proto_library")
 load("@rules_proto_grpc_cpp//:defs.bzl", "cpp_proto_library")
 load("@rules_proto_grpc_java//:defs.bzl", "java_proto_library")
 load("@rules_proto_grpc_python//:defs.bzl", "python_proto_library")
+load("@rules_rust_prost//:defs.bzl", "rust_prost_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -91,4 +92,9 @@ python_proto_library(
         "@googleapis//google/rpc:status_py_proto",
         "@googleapis//google/type:interval_py_proto",
     ],
+)
+
+rust_prost_library(
+    name = "common_rust_proto",
+    proto = ":common_proto",
 )

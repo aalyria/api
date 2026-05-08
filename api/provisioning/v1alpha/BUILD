@@ -17,6 +17,7 @@ load("@rules_go//proto:def.bzl", "go_proto_library")
 load("@rules_proto_grpc_cpp//:defs.bzl", "cpp_grpc_library")
 load("@rules_proto_grpc_java//:defs.bzl", "java_grpc_library")
 load("@rules_proto_grpc_python//:defs.bzl", "python_grpc_library")
+load("@rules_rust_prost//:defs.bzl", "rust_prost_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -83,4 +84,9 @@ go_proto_library(
         "@org_golang_google_genproto_googleapis_api//annotations",
         "@org_outernetcouncil_nmts//v1/proto/types/physical:physical_go_proto",
     ],
+)
+
+rust_prost_library(
+    name = "provisioning_rust_grpc",
+    proto = ":provisioning_proto",
 )

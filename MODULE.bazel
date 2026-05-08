@@ -31,6 +31,8 @@ bazel_dep(name = "rules_proto_grpc_doc", version = "5.6.0")
 bazel_dep(name = "rules_proto_grpc_java", version = "5.6.0")
 bazel_dep(name = "rules_proto_grpc_python", version = "5.6.0")
 bazel_dep(name = "rules_python", version = "1.6.3")
+bazel_dep(name = "rules_rust", version = "0.69.0")
+bazel_dep(name = "rules_rust_prost", version = "0.69.0")
 bazel_dep(name = "aspect_rules_py", version = "1.8.4")
 bazel_dep(name = "toolchains_protoc", version = "0.4.3")
 
@@ -147,6 +149,69 @@ pull(
     registry = "mirror.gcr.io",
     repository = "library/alpine",
 )
+
+RUST_EDITION = "2024"
+
+RUST_VERSION = "1.94.1"
+
+rust = use_extension("@rules_rust//rust:extensions.bzl", "rust")
+rust.toolchain(
+    edition = RUST_EDITION,
+    extra_exec_rustc_flags = ["-Clink-self-contained=no"],
+    extra_rustc_flags = ["-Clink-self-contained=no"],
+    versions = [RUST_VERSION],
+)
+use_repo(rust, "rust_toolchains")
+
+register_toolchains("@rust_toolchains//:all")
+
+register_toolchains(
+    "//api/build_tools/prost_toolchain",
+)
+
+crate = use_extension("@rules_rust//crate_universe:extension.bzl", "crate")
+crate.spec(
+    package = "prost",
+    version = "0.14.3",
+)
+crate.spec(
+    default_features = False,
+    package = "prost-types",
+    version = "0.14.3",
+)
+crate.spec(
+    package = "protoc-gen-prost",
+    version = "0.5.0",
+)
+crate.spec(
+    package = "protoc-gen-tonic",
+    version = "0.5.0",
+)
+crate.spec(
+    features = ["transport"],
+    package = "tonic",
+    version = "0.14.4",
+)
+crate.spec(
+    package = "tonic-build",
+    version = "0.14.4",
+)
+crate.spec(
+    package = "tonic-prost",
+    version = "0.14.4",
+)
+crate.annotation(
+    crate = "protoc-gen-prost",
+    gen_binaries = ["protoc-gen-prost"],
+)
+crate.annotation(
+    crate = "protoc-gen-tonic",
+    gen_binaries = ["protoc-gen-tonic"],
+)
+crate.from_specs(
+    name = "spacetime_crates",
+)
+use_repo(crate, "spacetime_crates")
 
 bazel_dep(name = "org_outernetcouncil_nmts")
 archive_override(

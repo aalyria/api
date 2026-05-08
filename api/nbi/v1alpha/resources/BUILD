@@ -20,6 +20,7 @@ load("@rules_go//proto:def.bzl", "go_proto_library")
 load("@rules_proto_grpc_cpp//:defs.bzl", "cpp_grpc_library")
 load("@rules_proto_grpc_java//:defs.bzl", "java_grpc_library")
 load("@rules_proto_grpc_python//:defs.bzl", "python_grpc_library")
+load("@rules_rust_prost//:defs.bzl", "rust_prost_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -99,4 +100,9 @@ python_grpc_library(
         "@googleapis//google/type:money_py_proto",
         "@org_outernetcouncil_nmts//v1/proto/types/geophys:geophys_python_proto",
     ],
+)
+
+rust_prost_library(
+    name = "resources_rust_proto",
+    proto = ":resources_proto",
 )
