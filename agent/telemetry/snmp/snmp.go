@@ -72,8 +72,8 @@ func NewDriver(ctx context.Context, snmpStruct *gosnmp.GoSNMP, snmpMetrics []snm
 			promMetrics[metric.DisplayName] = &promGauge
 		}
 
-		// nosemgrep: go.lang.security.audit.net.use-tls.use-tls
 		http.Handle("/metrics", promhttp.Handler())
+		// nosemgrep: go.lang.security.audit.net.use-tls.use-tls
 		if err := http.ListenAndServe(":"+strconv.Itoa(int(prometheusPort)), nil); err != nil {
 			os.Exit(1)
 		}
