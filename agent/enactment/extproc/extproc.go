@@ -69,6 +69,8 @@ func (ed *driver) Dispatch(ctx context.Context, req *schedpb.CreateEntryRequest)
 		return fmt.Errorf("marshalling proto as %s: %w", ed.protoFmt, err)
 	}
 	log.Trace().Strs("args", ed.args).Msg("running enactment command")
+	// the whole point of this is to run a user supplied command
+	// nosemgrep: dangerous-exec-command
 	cmd := exec.CommandContext(ctx, ed.args[0], ed.args[1:]...)
 	cmd.Stdin = bytes.NewBuffer(js)
 
