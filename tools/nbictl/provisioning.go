@@ -43,8 +43,6 @@ func isUnimplementedError(err error) bool {
 	return st.Code() == codes.Unimplemented
 }
 
-const provisioningAPISubDomain = "provisioning-v1alpha"
-
 type ProvisioningResources struct {
 	p2pSrTePolicies              map[string]*provapipb.P2PSrTePolicy
 	p2pSrTePolicyCandidatePaths  map[string]*provapipb.P2PSrTePolicyCandidatePath
@@ -464,7 +462,7 @@ func ProvisioningSync(appCtx *cli.Context) error {
 	fmt.Printf("\nfound local resources:\n%s", localResources)
 
 	// Step 2: load up all the remote instance resources.
-	conn, err := openAPIConnection(appCtx, provisioningAPISubDomain)
+	conn, err := openAPIConnection(appCtx, serviceProvisioning)
 	if err != nil {
 		return err
 	}
@@ -750,7 +748,7 @@ func ProvisioningList(appCtx *cli.Context) error {
 		return err
 	}
 
-	conn, err := openAPIConnection(appCtx, provisioningAPISubDomain)
+	conn, err := openAPIConnection(appCtx, serviceProvisioning)
 	if err != nil {
 		return err
 	}
@@ -905,7 +903,7 @@ func ProvisioningDeleteAll(appCtx *cli.Context) error {
 	verboseMode := appCtx.Bool("verbose")
 	printMode := dryRunMode || verboseMode
 
-	conn, err := openAPIConnection(appCtx, provisioningAPISubDomain)
+	conn, err := openAPIConnection(appCtx, serviceProvisioning)
 	if err != nil {
 		return err
 	}
@@ -947,7 +945,7 @@ func ProvisioningDelete(appCtx *cli.Context) error {
 		return errors.New("no resource names specified")
 	}
 
-	conn, err := openAPIConnection(appCtx, provisioningAPISubDomain)
+	conn, err := openAPIConnection(appCtx, serviceProvisioning)
 	if err != nil {
 		return err
 	}

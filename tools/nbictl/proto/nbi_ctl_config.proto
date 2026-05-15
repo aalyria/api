@@ -108,9 +108,49 @@ message Config {
     }
   }
 
+  // Describes how to connect to a single gRPC service endpoint.
+  message ServiceEndpoint {
+    // The host[:port] for this service. Required.
+    string url = 1;
+
+    // Optional overrides. When unset, inherits from the parent Config.
+    TransportSecurity transport_security = 2;
+    Transport transport = 3;
+    AuthStrategy auth_strategy = 4;
+  }
+
+  // Per-service endpoint overrides for custom mode.
+  message CustomEndpoints {
+    ServiceEndpoint model = 1;
+    ServiceEndpoint status = 2;
+    ServiceEndpoint provisioning = 3;
+
+    // Fallback for services not explicitly listed
+    // (e.g. grpcurl --api=<arbitrary>). When unset, falls back to the
+    // parent Config's url with no subdomain prefix.
+    ServiceEndpoint default = 4;
+  }
+
+  // Describes endpoint resolution strategy.
+  message EndpointConfig {
+    oneof strategy {
+      // Each service is at <subdomain>.<url>.
+      // This is the default when endpoint_config is unset.
+      google.protobuf.Empty subdomain = 1;
+
+      // All services share a single URL. When url is set, it overrides
+      // the parent Config's url. Other fields override when set.
+      ServiceEndpoint single_domain = 2;
+
+      // Each service has an independently specified endpoint.
+      CustomEndpoints custom = 3;
+    }
+  }
+
   TransportSecurity transport_security = 7;
   // The transport protocol to use. Defaults to TCP if unset.
   Transport transport = 8;
   // The strategy to use for authorization. Required.
   AuthStrategy auth_strategy = 9;
+  EndpointConfig endpoint_config = 10;
 }

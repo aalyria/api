@@ -439,3 +439,155 @@ func assertProtosEqual(t *testing.T, want, got interface{}) {
 		t.Fatalf("proto mismatch: (-want +got):\n%s", diff)
 	}
 }
+
+func TestSetConfig_EndpointConfigSingleDomain(t *testing.T) {
+	t.Parallel()
+
+	confDir, err := bazel.NewTmpDir("nbictl")
+	checkErr(t, err)
+	confFile := filepath.Join(confDir, confFileName)
+
+	config := &nbictlpb.Config{
+		Name: "single_domain_test",
+		Url:  "api.example.com:443",
+		EndpointConfig: &nbictlpb.Config_EndpointConfig{
+			Strategy: &nbictlpb.Config_EndpointConfig_SingleDomain{
+				SingleDomain: &nbictlpb.Config_ServiceEndpoint{
+					Url: "localhost:8080",
+					TransportSecurity: &nbictlpb.Config_TransportSecurity{
+						Type: &nbictlpb.Config_TransportSecurity_Insecure{},
+					},
+					AuthStrategy: &nbictlpb.Config_AuthStrategy{
+						Type: &nbictlpb.Config_AuthStrategy_None{},
+					},
+				},
+			},
+		},
+	}
+	checkErr(t, setConfig(io.Discard, io.Discard, config, confFile))
+
+	got, err := readConfig("single_domain_test", confFile)
+	checkErr(t, err)
+
+	assertProtosEqual(t, config, got)
+}
+
+func TestSetConfig_EndpointConfigCustom(t *testing.T) {
+	t.Parallel()
+
+	confDir, err := bazel.NewTmpDir("nbictl")
+	checkErr(t, err)
+	confFile := filepath.Join(confDir, confFileName)
+
+	config := &nbictlpb.Config{
+		Name: "custom_test",
+		Url:  "default.example.com:443",
+		AuthStrategy: &nbictlpb.Config_AuthStrategy{
+			Type: &nbictlpb.Config_AuthStrategy_Jwt_{
+				Jwt: &nbictlpb.Config_AuthStrategy_Jwt{
+					Email:        "user@example.com",
+					PrivateKeyId: "key-123",
+				},
+			},
+		},
+		EndpointConfig: &nbictlpb.Config_EndpointConfig{
+			Strategy: &nbictlpb.Config_EndpointConfig_Custom{
+				Custom: &nbictlpb.Config_CustomEndpoints{
+					Model:  &nbictlpb.Config_ServiceEndpoint{Url: "model.internal:443"},
+					Status: &nbictlpb.Config_ServiceEndpoint{Url: "status.internal:443"},
+					Provisioning: &nbictlpb.Config_ServiceEndpoint{
+						Url: "prov.partner:443",
+						AuthStrategy: &nbictlpb.Config_AuthStrategy{
+							Type: &nbictlpb.Config_AuthStrategy_None{},
+						},
+					},
+					Default: &nbictlpb.Config_ServiceEndpoint{Url: "fallback.example.com:443"},
+				},
+			},
+		},
+	}
+	checkErr(t, setConfig(io.Discard, io.Discard, config, confFile))
+
+	got, err := readConfig("custom_test", confFile)
+	checkErr(t, err)
+
+	assertProtosEqual(t, config, got)
+}
+
+func TestSetConfig_EndpointConfigUpdate(t *testing.T) {
+	t.Parallel()
+
+	confDir, err := bazel.NewTmpDir("nbictl")
+	checkErr(t, err)
+	confFile := filepath.Join(confDir, confFileName)
+
+	checkErr(t, setConfig(io.Discard, io.Discard, &nbictlpb.Config{
+		Name: "update_test",
+		Url:  "api.example.com:443",
+	}, confFile))
+
+	checkErr(t, setConfig(io.Discard, io.Discard, &nbictlpb.Config{
+		Name: "update_test",
+		EndpointConfig: &nbictlpb.Config_EndpointConfig{
+			Strategy: &nbictlpb.Config_EndpointConfig_SingleDomain{
+				SingleDomain: &nbictlpb.Config_ServiceEndpoint{
+					Url: "localhost:8080",
+				},
+			},
+		},
+	}, confFile))
+
+	got, err := readConfig("update_test", confFile)
+	checkErr(t, err)
+
+	want := &nbictlpb.Config{
+		Name: "update_test",
+		Url:  "api.example.com:443",
+		EndpointConfig: &nbictlpb.Config_EndpointConfig{
+			Strategy: &nbictlpb.Config_EndpointConfig_SingleDomain{
+				SingleDomain: &nbictlpb.Config_ServiceEndpoint{
+					Url: "localhost:8080",
+				},
+			},
+		},
+	}
+	assertProtosEqual(t, want, got)
+}
+
+func TestSetConfig_EndpointConfigNoUpdatePreservesExisting(t *testing.T) {
+	t.Parallel()
+
+	confDir, err := bazel.NewTmpDir("nbictl")
+	checkErr(t, err)
+	confFile := filepath.Join(confDir, confFileName)
+
+	original := &nbictlpb.Config{
+		Name: "preserve_test",
+		Url:  "api.example.com:443",
+		EndpointConfig: &nbictlpb.Config_EndpointConfig{
+			Strategy: &nbictlpb.Config_EndpointConfig_SingleDomain{
+				SingleDomain: &nbictlpb.Config_ServiceEndpoint{Url: "localhost:8080"},
+			},
+		},
+	}
+	checkErr(t, setConfig(io.Discard, io.Discard, original, confFile))
+
+	checkErr(t, setConfig(io.Discard, io.Discard, &nbictlpb.Config{
+		Name: "preserve_test",
+		Url:  "updated.example.com:443",
+	}, confFile))
+
+	got, err := readConfig("preserve_test", confFile)
+	checkErr(t, err)
+
+	want := &nbictlpb.Config{
+		Name: "preserve_test",
+		Url:  "updated.example.com:443",
+		EndpointConfig: &nbictlpb.Config_EndpointConfig{
+			Strategy: &nbictlpb.Config_EndpointConfig_SingleDomain{
+				SingleDomain: &nbictlpb.Config_ServiceEndpoint{Url: "localhost:8080"},
+			},
+		},
+	}
+	assertProtosEqual(t, want, got)
+}

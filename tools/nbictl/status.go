@@ -22,15 +22,13 @@ import (
 	statuspb "aalyria.com/spacetime/api/status/v1"
 )
 
-const statusAPISubDomain = "status-v1"
-
 func StatusGetVersion(appCtx *cli.Context) error {
 	marshaller, err := marshallerForFormat(appCtx.String("format"))
 	if err != nil {
 		return err
 	}
 
-	conn, err := openAPIConnection(appCtx, statusAPISubDomain)
+	conn, err := openAPIConnection(appCtx, serviceStatus)
 	if err != nil {
 		return err
 	}
@@ -57,7 +55,7 @@ func StatusGetMetrics(appCtx *cli.Context) error {
 		return err
 	}
 
-	conn, err := openAPIConnection(appCtx, statusAPISubDomain)
+	conn, err := openAPIConnection(appCtx, serviceStatus)
 	if err != nil {
 		return err
 	}

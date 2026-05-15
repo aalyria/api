@@ -34,10 +34,93 @@ import (
 	"google.golang.org/grpc/encoding/gzip"
 	_ "google.golang.org/grpc/encoding/gzip" // Install the gzip compressor
 
+	"google.golang.org/protobuf/proto"
+
 	"aalyria.com/spacetime/auth"
 	"aalyria.com/spacetime/common/quictransport"
 	"aalyria.com/spacetime/tools/nbictl/nbictlpb"
 )
+
+type serviceKey string
+
+const (
+	serviceModel        serviceKey = "model"
+	serviceStatus       serviceKey = "status"
+	serviceProvisioning serviceKey = "provisioning"
+)
+
+var serviceToSubdomain = map[serviceKey]string{
+	serviceModel:        "model-v1",
+	serviceStatus:       "status-v1",
+	serviceProvisioning: "provisioning-v1alpha",
+}
+
+func subdomainForService(svc serviceKey) string {
+	if sd, ok := serviceToSubdomain[svc]; ok {
+		return sd
+	}
+	return string(svc)
+}
+
+func resolveEndpoint(base *nbictlpb.Config, svc serviceKey) (*nbictlpb.Config, error) {
+	switch ec := base.GetEndpointConfig().GetStrategy().(type) {
+	case nil, *nbictlpb.Config_EndpointConfig_Subdomain:
+		resolved := proto.Clone(base).(*nbictlpb.Config)
+		subdomain := subdomainForService(svc)
+		url, err := adjustURLForAPISubDomain(base.GetUrl(), subdomain)
+		if err != nil {
+			return nil, err
+		}
+		resolved.Url = url
+		return resolved, nil
+
+	case *nbictlpb.Config_EndpointConfig_SingleDomain:
+		return mergeServiceEndpoint(base, ec.SingleDomain), nil
+
+	case *nbictlpb.Config_EndpointConfig_Custom:
+		se := lookupServiceEndpoint(ec.Custom, svc)
+		return mergeServiceEndpoint(base, se), nil
+
+	default:
+		return nil, fmt.Errorf("unexpected endpoint config strategy: %T", base.GetEndpointConfig().GetStrategy())
+	}
+}
+
+func mergeServiceEndpoint(base *nbictlpb.Config, se *nbictlpb.Config_ServiceEndpoint) *nbictlpb.Config {
+	merged := proto.Clone(base).(*nbictlpb.Config)
+	if se == nil {
+		return merged
+	}
+	if se.GetUrl() != "" {
+		merged.Url = se.GetUrl()
+	}
+	if se.GetTransportSecurity() != nil {
+		merged.TransportSecurity = se.GetTransportSecurity()
+	}
+	if se.GetTransport() != nil {
+		merged.Transport = se.GetTransport()
+	}
+	if se.GetAuthStrategy() != nil {
+		merged.AuthStrategy = se.GetAuthStrategy()
+	}
+	return merged
+}
+
+func lookupServiceEndpoint(custom *nbictlpb.Config_CustomEndpoints, svc serviceKey) *nbictlpb.Config_ServiceEndpoint {
+	var se *nbictlpb.Config_ServiceEndpoint
+	switch svc {
+	case serviceModel:
+		se = custom.GetModel()
+	case serviceStatus:
+		se = custom.GetStatus()
+	case serviceProvisioning:
+		se = custom.GetProvisioning()
+	}
+	if se == nil {
+		se = custom.GetDefault()
+	}
+	return se
+}
 
 func readPrivateKeyFromSigningStrategy(ss *nbictlpb.Config_SigningStrategy) (*bytes.Buffer, error) {
 	switch s := ss.GetType().(type) {
@@ -130,7 +213,7 @@ func resolvePerRPCCredentials(ctx context.Context, setting *nbictlpb.Config, isI
 	}
 }
 
-func openAPIConnection(appCtx *cli.Context, apiSubDomain string) (*grpc.ClientConn, error) {
+func openAPIConnection(appCtx *cli.Context, svc serviceKey) (*grpc.ClientConn, error) {
 	profileName := appCtx.String("profile")
 
 	appConfDir, err := getAppConfDir(appCtx)
@@ -148,13 +231,13 @@ func openAPIConnection(appCtx *cli.Context, apiSubDomain string) (*grpc.ClientCo
 	if containsDnsSchema {
 		return nil, fmt.Errorf("URL (%s) with dns:/// prefix is unsupported. Please provide only host[:port].", originalURL)
 	}
-	url, err = adjustURLForAPISubDomain(url, apiSubDomain)
+	setting.Url = url
+
+	resolved, err := resolveEndpoint(setting, svc)
 	if err != nil {
 		return nil, err
 	}
-
-	setting.Url = url
-	return dial(appCtx.Context, setting)
+	return dial(appCtx.Context, resolved)
 }
 
 func adjustURLForAPISubDomain(url string, apiSubDomain string) (string, error) {

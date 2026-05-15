@@ -280,6 +280,7 @@ func SetConfig(appCtx *cli.Context) error {
 	transportSecurity := appCtx.String("transport_security")
 	transport := appCtx.String("transport")
 	authStrategy := appCtx.String("auth_strategy")
+	endpointConfigStrategy := appCtx.String("endpoint_config")
 
 	confPath, err := getConfFileForContext(appCtx)
 	if err != nil {
@@ -386,12 +387,54 @@ func SetConfig(appCtx *cli.Context) error {
 		return fmt.Errorf("unexpected auth strategy: %s (allowed: none, jwt, oidc)", authStrategy)
 	}
 
+	var endpointConfigPB *nbictlpb.Config_EndpointConfig
+	switch endpointConfigStrategy {
+	case "subdomain":
+		endpointConfigPB = &nbictlpb.Config_EndpointConfig{
+			Strategy: &nbictlpb.Config_EndpointConfig_Subdomain{},
+		}
+	case "single_domain":
+		se := &nbictlpb.Config_ServiceEndpoint{}
+		if u := appCtx.String("url"); u != "" {
+			se.Url = u
+		}
+		endpointConfigPB = &nbictlpb.Config_EndpointConfig{
+			Strategy: &nbictlpb.Config_EndpointConfig_SingleDomain{
+				SingleDomain: se,
+			},
+		}
+	case "custom":
+		custom := &nbictlpb.Config_CustomEndpoints{}
+		if u := appCtx.String("model_url"); u != "" {
+			custom.Model = &nbictlpb.Config_ServiceEndpoint{Url: u}
+		}
+		if u := appCtx.String("status_url"); u != "" {
+			custom.Status = &nbictlpb.Config_ServiceEndpoint{Url: u}
+		}
+		if u := appCtx.String("provisioning_url"); u != "" {
+			custom.Provisioning = &nbictlpb.Config_ServiceEndpoint{Url: u}
+		}
+		if u := appCtx.String("default_url"); u != "" {
+			custom.Default = &nbictlpb.Config_ServiceEndpoint{Url: u}
+		}
+		endpointConfigPB = &nbictlpb.Config_EndpointConfig{
+			Strategy: &nbictlpb.Config_EndpointConfig_Custom{
+				Custom: custom,
+			},
+		}
+	case "":
+		endpointConfigPB = nil
+	default:
+		return fmt.Errorf("unexpected endpoint_config strategy: %s (allowed: subdomain, single_domain, custom)", endpointConfigStrategy)
+	}
+
 	contextToCreate := &nbictlpb.Config{
 		Name:              confName,
 		Url:               url,
 		TransportSecurity: transportSecurityPB,
 		Transport:         transportPB,
 		AuthStrategy:      authStrategyPB,
+		EndpointConfig:    endpointConfigPB,
 	}
 
 	return setConfig(appCtx.App.Writer, appCtx.App.ErrWriter, contextToCreate, confPath)
@@ -434,6 +477,9 @@ func setConfig(outWriter, errWriter io.Writer, confToCreate *nbictlpb.Config, co
 			} else {
 				confProto.AuthStrategy = confToCreate.AuthStrategy
 			}
+		}
+		if confToCreate.GetEndpointConfig() != nil {
+			confProto.EndpointConfig = confToCreate.GetEndpointConfig()
 		}
 		found = true
 		confToCreate = confProto

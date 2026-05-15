@@ -33,8 +33,6 @@ import (
 	modelpb "aalyria.com/spacetime/api/model/v1"
 )
 
-const modelAPISubDomain = "model-v1"
-
 func readDataFromCommandLineFilenameArgument(appCtx *cli.Context) ([]byte, error) {
 	if appCtx.Args().Len() != 1 {
 		return nil, fmt.Errorf("need one and only one filename argument ('-' reads from stdin)")
@@ -67,7 +65,7 @@ func ModelCreateEntity(appCtx *cli.Context) error {
 		return err
 	}
 
-	conn, err := openAPIConnection(appCtx, modelAPISubDomain)
+	conn, err := openAPIConnection(appCtx, serviceModel)
 	if err != nil {
 		return err
 	}
@@ -96,7 +94,7 @@ func ModelUpdateEntity(appCtx *cli.Context) error {
 		return err
 	}
 
-	conn, err := openAPIConnection(appCtx, modelAPISubDomain)
+	conn, err := openAPIConnection(appCtx, serviceModel)
 	if err != nil {
 		return err
 	}
@@ -119,7 +117,7 @@ func ModelDeleteEntity(appCtx *cli.Context) error {
 		return fmt.Errorf("need one and only one Entity ID argument")
 	}
 
-	conn, err := openAPIConnection(appCtx, modelAPISubDomain)
+	conn, err := openAPIConnection(appCtx, serviceModel)
 	if err != nil {
 		return err
 	}
@@ -148,7 +146,7 @@ func ModelCreateRelationship(appCtx *cli.Context) error {
 		return err
 	}
 
-	conn, err := openAPIConnection(appCtx, modelAPISubDomain)
+	conn, err := openAPIConnection(appCtx, serviceModel)
 	if err != nil {
 		return err
 	}
@@ -177,7 +175,7 @@ func ModelDeleteRelationship(appCtx *cli.Context) error {
 		return err
 	}
 
-	conn, err := openAPIConnection(appCtx, modelAPISubDomain)
+	conn, err := openAPIConnection(appCtx, serviceModel)
 	if err != nil {
 		return err
 	}
@@ -206,7 +204,7 @@ func ModelUpsertFragment(appCtx *cli.Context) error {
 		return err
 	}
 
-	conn, err := openAPIConnection(appCtx, modelAPISubDomain)
+	conn, err := openAPIConnection(appCtx, serviceModel)
 	if err != nil {
 		return err
 	}
@@ -249,7 +247,7 @@ func ModelGetEntity(appCtx *cli.Context) error {
 		return fmt.Errorf("need one and only one Entity ID argument")
 	}
 
-	conn, err := openAPIConnection(appCtx, modelAPISubDomain)
+	conn, err := openAPIConnection(appCtx, serviceModel)
 	if err != nil {
 		return err
 	}
@@ -279,7 +277,7 @@ func ModelListEntities(appCtx *cli.Context) error {
 		return err
 	}
 
-	conn, err := openAPIConnection(appCtx, modelAPISubDomain)
+	conn, err := openAPIConnection(appCtx, serviceModel)
 	if err != nil {
 		return err
 	}
@@ -305,7 +303,7 @@ func ModelListRelationships(appCtx *cli.Context) error {
 		return err
 	}
 
-	conn, err := openAPIConnection(appCtx, modelAPISubDomain)
+	conn, err := openAPIConnection(appCtx, serviceModel)
 	if err != nil {
 		return err
 	}
@@ -355,7 +353,7 @@ func ModelDeleteAll(appCtx *cli.Context) error {
 	verboseMode := appCtx.Bool("verbose")
 	printMode := dryRunMode || verboseMode
 
-	conn, err := openAPIConnection(appCtx, modelAPISubDomain)
+	conn, err := openAPIConnection(appCtx, serviceModel)
 	if err != nil {
 		return err
 	}
@@ -502,7 +500,7 @@ func ModelSync(appCtx *cli.Context) error {
 	remoteEntities := map[string]*nmtspb.Entity{}
 	remoteRelationships := er.NewRelationshipSet()
 
-	conn, err := openAPIConnection(appCtx, modelAPISubDomain)
+	conn, err := openAPIConnection(appCtx, serviceModel)
 	if err != nil {
 		return err
 	}

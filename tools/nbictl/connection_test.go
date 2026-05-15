@@ -291,6 +291,283 @@ func TestDial_TLSWithAuthJwt(t *testing.T) {
 	}
 }
 
+func TestSubdomainForService(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		svc  serviceKey
+		want string
+	}{
+		{name: "model", svc: serviceModel, want: "model-v1"},
+		{name: "status", svc: serviceStatus, want: "status-v1"},
+		{name: "provisioning", svc: serviceProvisioning, want: "provisioning-v1alpha"},
+		{name: "unknown_passthrough", svc: serviceKey("custom-api"), want: "custom-api"},
+		{name: "empty", svc: serviceKey(""), want: ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := subdomainForService(tt.svc); got != tt.want {
+				t.Errorf("subdomainForService(%q) = %q, want %q", tt.svc, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestResolveEndpoint_Subdomain_Nil(t *testing.T) {
+	t.Parallel()
+
+	base := &nbictlpb.Config{
+		Url: "api.example.com:443",
+		TransportSecurity: &nbictlpb.Config_TransportSecurity{
+			Type: &nbictlpb.Config_TransportSecurity_SystemCertPool{},
+		},
+	}
+
+	got, err := resolveEndpoint(base, serviceModel)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.GetUrl() != "model-v1.api.example.com:443" {
+		t.Errorf("got URL %q, want %q", got.GetUrl(), "model-v1.api.example.com:443")
+	}
+	if base.GetUrl() != "api.example.com:443" {
+		t.Error("resolveEndpoint mutated the base config")
+	}
+}
+
+func TestResolveEndpoint_Subdomain_Explicit(t *testing.T) {
+	t.Parallel()
+
+	base := &nbictlpb.Config{
+		Url: "api.example.com:443",
+		EndpointConfig: &nbictlpb.Config_EndpointConfig{
+			Strategy: &nbictlpb.Config_EndpointConfig_Subdomain{},
+		},
+	}
+
+	got, err := resolveEndpoint(base, serviceStatus)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.GetUrl() != "status-v1.api.example.com:443" {
+		t.Errorf("got URL %q, want %q", got.GetUrl(), "status-v1.api.example.com:443")
+	}
+}
+
+func TestResolveEndpoint_Subdomain_IPAddress(t *testing.T) {
+	t.Parallel()
+
+	base := &nbictlpb.Config{Url: "192.168.1.1:8080"}
+
+	got, err := resolveEndpoint(base, serviceModel)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.GetUrl() != "192.168.1.1:8080" {
+		t.Errorf("got URL %q, want %q (IP addresses should not get subdomain prefix)", got.GetUrl(), "192.168.1.1:8080")
+	}
+}
+
+func TestResolveEndpoint_Subdomain_UnknownService(t *testing.T) {
+	t.Parallel()
+
+	base := &nbictlpb.Config{Url: "api.example.com:443"}
+
+	got, err := resolveEndpoint(base, serviceKey("custom-api"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.GetUrl() != "custom-api.api.example.com:443" {
+		t.Errorf("got URL %q, want %q", got.GetUrl(), "custom-api.api.example.com:443")
+	}
+}
+
+func TestResolveEndpoint_SingleDomain_WithURL(t *testing.T) {
+	t.Parallel()
+
+	base := &nbictlpb.Config{
+		Url: "should-be-overridden.example.com:443",
+		EndpointConfig: &nbictlpb.Config_EndpointConfig{
+			Strategy: &nbictlpb.Config_EndpointConfig_SingleDomain{
+				SingleDomain: &nbictlpb.Config_ServiceEndpoint{
+					Url: "localhost:8080",
+					TransportSecurity: &nbictlpb.Config_TransportSecurity{
+						Type: &nbictlpb.Config_TransportSecurity_Insecure{},
+					},
+					AuthStrategy: &nbictlpb.Config_AuthStrategy{
+						Type: &nbictlpb.Config_AuthStrategy_None{},
+					},
+				},
+			},
+		},
+	}
+
+	got, err := resolveEndpoint(base, serviceModel)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.GetUrl() != "localhost:8080" {
+		t.Errorf("got URL %q, want %q", got.GetUrl(), "localhost:8080")
+	}
+	if _, ok := got.GetTransportSecurity().GetType().(*nbictlpb.Config_TransportSecurity_Insecure); !ok {
+		t.Errorf("expected insecure transport security, got %T", got.GetTransportSecurity().GetType())
+	}
+	if _, ok := got.GetAuthStrategy().GetType().(*nbictlpb.Config_AuthStrategy_None); !ok {
+		t.Errorf("expected none auth strategy, got %T", got.GetAuthStrategy().GetType())
+	}
+}
+
+func TestResolveEndpoint_SingleDomain_Empty(t *testing.T) {
+	t.Parallel()
+
+	base := &nbictlpb.Config{
+		Url: "api.example.com:443",
+		TransportSecurity: &nbictlpb.Config_TransportSecurity{
+			Type: &nbictlpb.Config_TransportSecurity_SystemCertPool{},
+		},
+		AuthStrategy: &nbictlpb.Config_AuthStrategy{
+			Type: &nbictlpb.Config_AuthStrategy_Jwt_{
+				Jwt: &nbictlpb.Config_AuthStrategy_Jwt{Email: "user@example.com"},
+			},
+		},
+		EndpointConfig: &nbictlpb.Config_EndpointConfig{
+			Strategy: &nbictlpb.Config_EndpointConfig_SingleDomain{
+				SingleDomain: &nbictlpb.Config_ServiceEndpoint{},
+			},
+		},
+	}
+
+	got, err := resolveEndpoint(base, serviceStatus)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.GetUrl() != "api.example.com:443" {
+		t.Errorf("got URL %q, want %q (empty single_domain should use base URL)", got.GetUrl(), "api.example.com:443")
+	}
+	if _, ok := got.GetTransportSecurity().GetType().(*nbictlpb.Config_TransportSecurity_SystemCertPool); !ok {
+		t.Error("expected base transport security to be inherited")
+	}
+}
+
+func TestResolveEndpoint_Custom_PerService(t *testing.T) {
+	t.Parallel()
+
+	base := &nbictlpb.Config{
+		Url: "default.example.com:443",
+		AuthStrategy: &nbictlpb.Config_AuthStrategy{
+			Type: &nbictlpb.Config_AuthStrategy_Jwt_{
+				Jwt: &nbictlpb.Config_AuthStrategy_Jwt{Email: "base@example.com"},
+			},
+		},
+		EndpointConfig: &nbictlpb.Config_EndpointConfig{
+			Strategy: &nbictlpb.Config_EndpointConfig_Custom{
+				Custom: &nbictlpb.Config_CustomEndpoints{
+					Model:  &nbictlpb.Config_ServiceEndpoint{Url: "model.internal:443"},
+					Status: &nbictlpb.Config_ServiceEndpoint{Url: "status.internal:443"},
+					Provisioning: &nbictlpb.Config_ServiceEndpoint{
+						Url: "prov.partner:443",
+						AuthStrategy: &nbictlpb.Config_AuthStrategy{
+							Type: &nbictlpb.Config_AuthStrategy_None{},
+						},
+					},
+					Default: &nbictlpb.Config_ServiceEndpoint{Url: "fallback.example.com:443"},
+				},
+			},
+		},
+	}
+
+	tests := []struct {
+		name    string
+		svc     serviceKey
+		wantURL string
+	}{
+		{name: "model", svc: serviceModel, wantURL: "model.internal:443"},
+		{name: "status", svc: serviceStatus, wantURL: "status.internal:443"},
+		{name: "provisioning", svc: serviceProvisioning, wantURL: "prov.partner:443"},
+		{name: "unknown_fallback", svc: serviceKey("other-api"), wantURL: "fallback.example.com:443"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := resolveEndpoint(base, tt.svc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.GetUrl() != tt.wantURL {
+				t.Errorf("got URL %q, want %q", got.GetUrl(), tt.wantURL)
+			}
+		})
+	}
+
+	got, err := resolveEndpoint(base, serviceProvisioning)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := got.GetAuthStrategy().GetType().(*nbictlpb.Config_AuthStrategy_None); !ok {
+		t.Errorf("provisioning should have overridden auth to none, got %T", got.GetAuthStrategy().GetType())
+	}
+
+	got, err = resolveEndpoint(base, serviceModel)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jwt := got.GetAuthStrategy().GetJwt()
+	if jwt == nil || jwt.GetEmail() != "base@example.com" {
+		t.Errorf("model should inherit base JWT auth, got %v", got.GetAuthStrategy())
+	}
+}
+
+func TestResolveEndpoint_Custom_NoDefault(t *testing.T) {
+	t.Parallel()
+
+	base := &nbictlpb.Config{
+		Url: "base.example.com:443",
+		EndpointConfig: &nbictlpb.Config_EndpointConfig{
+			Strategy: &nbictlpb.Config_EndpointConfig_Custom{
+				Custom: &nbictlpb.Config_CustomEndpoints{
+					Model: &nbictlpb.Config_ServiceEndpoint{Url: "model.internal:443"},
+				},
+			},
+		},
+	}
+
+	got, err := resolveEndpoint(base, serviceKey("unknown"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.GetUrl() != "base.example.com:443" {
+		t.Errorf("with no default and unknown service, should use base URL; got %q", got.GetUrl())
+	}
+}
+
+func TestResolveEndpoint_DoesNotMutateBase(t *testing.T) {
+	t.Parallel()
+
+	base := &nbictlpb.Config{
+		Url: "api.example.com:443",
+		EndpointConfig: &nbictlpb.Config_EndpointConfig{
+			Strategy: &nbictlpb.Config_EndpointConfig_Custom{
+				Custom: &nbictlpb.Config_CustomEndpoints{
+					Model: &nbictlpb.Config_ServiceEndpoint{Url: "model.internal:443"},
+				},
+			},
+		},
+	}
+	originalURL := base.GetUrl()
+
+	_, err := resolveEndpoint(base, serviceModel)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if base.GetUrl() != originalURL {
+		t.Errorf("resolveEndpoint mutated base config URL from %q to %q", originalURL, base.GetUrl())
+	}
+}
+
 func testingKey(s string) string {
 	return strings.ReplaceAll(s, "TESTING KEY", "PRIVATE KEY")
 }

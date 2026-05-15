@@ -253,6 +253,26 @@ func App() *cli.App {
 								Name:  "token_url",
 								Usage: "OIDC token endpoint URL (used with --auth_strategy=oidc).",
 							},
+							&cli.StringFlag{
+								Name:  "endpoint_config",
+								Usage: "Endpoint resolution strategy. Allowed values: [subdomain, single_domain, custom]",
+							},
+							&cli.StringFlag{
+								Name:  "model_url",
+								Usage: "URL for the Model API (custom endpoint_config only).",
+							},
+							&cli.StringFlag{
+								Name:  "status_url",
+								Usage: "URL for the Status API (custom endpoint_config only).",
+							},
+							&cli.StringFlag{
+								Name:  "provisioning_url",
+								Usage: "URL for the Provisioning API (custom endpoint_config only).",
+							},
+							&cli.StringFlag{
+								Name:  "default_url",
+								Usage: "Fallback URL for unlisted services (custom endpoint_config only).",
+							},
 						},
 						Action: SetConfig,
 					},

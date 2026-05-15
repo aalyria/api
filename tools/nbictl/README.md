@@ -61,9 +61,19 @@ Sets or updates a configuration profile settings. You can create multiple profil
 
 **--client_id**="": OIDC client ID (used with --auth_strategy=oidc).
 
+**--default_url**="": Fallback URL for unlisted services (custom endpoint_config only).
+
+**--endpoint_config**="": Endpoint resolution strategy. Allowed values: [subdomain, single_domain, custom]
+
 **--key_id**="": Key ID associated with the private key provided by Aalyria.
 
+**--model_url**="": URL for the Model API (custom endpoint_config only).
+
 **--priv_key**="": Path to the private key to use for authentication.
+
+**--provisioning_url**="": URL for the Provisioning API (custom endpoint_config only).
+
+**--status_url**="": URL for the Status API (custom endpoint_config only).
 
 **--token_url**="": OIDC token endpoint URL (used with --auth_strategy=oidc).
 

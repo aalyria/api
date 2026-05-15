@@ -49,7 +49,7 @@ func GRPCDescribe(appCtx *cli.Context) error {
 }
 
 func GRPCDescribeServices(appCtx *cli.Context) error {
-	conn, err := openAPIConnection(appCtx, appCtx.String("subdomain"))
+	conn, err := openAPIConnection(appCtx, serviceKey(appCtx.String("api")))
 	if err != nil {
 		return err
 	}
@@ -70,7 +70,7 @@ func GRPCDescribeServices(appCtx *cli.Context) error {
 }
 
 func GRPCDescribeSymbol(appCtx *cli.Context, symbol string) error {
-	conn, err := openAPIConnection(appCtx, appCtx.String("subdomain"))
+	conn, err := openAPIConnection(appCtx, serviceKey(appCtx.String("api")))
 	if err != nil {
 		return err
 	}
@@ -155,7 +155,7 @@ func GRPCList(appCtx *cli.Context) error {
 }
 
 func GRPCListServices(appCtx *cli.Context) error {
-	conn, err := openAPIConnection(appCtx, appCtx.String("subdomain"))
+	conn, err := openAPIConnection(appCtx, serviceKey(appCtx.String("api")))
 	if err != nil {
 		return err
 	}
@@ -174,7 +174,7 @@ func GRPCListServices(appCtx *cli.Context) error {
 }
 
 func GRPCListMethods(appCtx *cli.Context, svc string) error {
-	conn, err := openAPIConnection(appCtx, appCtx.String("subdomain"))
+	conn, err := openAPIConnection(appCtx, serviceKey(appCtx.String("api")))
 	if err != nil {
 		return err
 	}
@@ -216,7 +216,7 @@ func GRPCCall(appCtx *cli.Context) error {
 		r = rdr
 	}
 
-	conn, err := openAPIConnection(appCtx, appCtx.String("api"))
+	conn, err := openAPIConnection(appCtx, serviceKey(appCtx.String("api")))
 	if err != nil {
 		return err
 	}
