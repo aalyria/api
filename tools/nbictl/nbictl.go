@@ -243,7 +243,15 @@ func App() *cli.App {
 							},
 							&cli.StringFlag{
 								Name:  "auth_strategy",
-								Usage: "Authentication strategy. Allowed values: [none, jwt]. When 'none', no authentication credentials are sent.",
+								Usage: "Authentication strategy. Allowed values: [none, jwt, oidc]. When 'none', no authentication credentials are sent.",
+							},
+							&cli.StringFlag{
+								Name:  "client_id",
+								Usage: "OIDC client ID (used with --auth_strategy=oidc).",
+							},
+							&cli.StringFlag{
+								Name:  "token_url",
+								Usage: "OIDC token endpoint URL (used with --auth_strategy=oidc).",
 							},
 						},
 						Action: SetConfig,

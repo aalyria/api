@@ -24,6 +24,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_golang_jwt_jwt_v5//:jwt",
+        "@com_github_google_uuid//:uuid",
         "@com_github_jonboulle_clockwork//:clockwork",
         "@org_golang_google_grpc//credentials",
     ],

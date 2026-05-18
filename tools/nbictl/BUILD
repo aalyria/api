@@ -52,6 +52,7 @@ go_library(
         "//tools/nbictl/proto:provisioning_go_proto",
         "@com_github_deckarep_golang_set_v2//:golang-set",
         "@com_github_fullstorydev_grpcurl//:grpcurl",
+        "@com_github_google_uuid//:uuid",
         "@com_github_jhump_protoreflect//desc",
         "@com_github_jhump_protoreflect//grpcreflect",
         "@com_github_jonboulle_clockwork//:clockwork",

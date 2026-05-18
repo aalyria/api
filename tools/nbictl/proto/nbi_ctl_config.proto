@@ -84,6 +84,16 @@ message Config {
       SigningStrategy signing_strategy = 4;
     }
 
+    // OidcClientCredentials exchanges a signed JWT assertion at an OIDC token
+    // endpoint using the client_credentials grant type, and uses the returned
+    // access token for authentication.
+    message OidcClientCredentials {
+      string client_id = 1;
+      string token_url = 2;
+      string private_key_id = 3;
+      SigningStrategy signing_strategy = 4;
+    }
+
     oneof type {
       // The specifications for a JWT that should be generated and signed by the
       // agent.
@@ -92,6 +102,9 @@ message Config {
       // No authentication options should be used. This is unlikely to work for
       // you.
       google.protobuf.Empty none = 2;
+
+      // OIDC client_credentials token exchange.
+      OidcClientCredentials oidc_client_credentials = 3;
     }
   }
 

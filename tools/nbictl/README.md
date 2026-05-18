@@ -57,11 +57,15 @@ Prints the NBI connection settings associated with the configuration profile giv
 
 Sets or updates a configuration profile settings. You can create multiple profiles by specifying the `--profile` flag (defaults to "DEFAULT").
 
-**--auth_strategy**="": Authentication strategy. Allowed values: [none, jwt]. When 'none', no authentication credentials are sent.
+**--auth_strategy**="": Authentication strategy. Allowed values: [none, jwt, oidc]. When 'none', no authentication credentials are sent.
+
+**--client_id**="": OIDC client ID (used with --auth_strategy=oidc).
 
 **--key_id**="": Key ID associated with the private key provided by Aalyria.
 
 **--priv_key**="": Path to the private key to use for authentication.
+
+**--token_url**="": OIDC token endpoint URL (used with --auth_strategy=oidc).
 
 **--transport**="": Transport protocol to use. Allowed values: [tcp, quic] (default: tcp)
 

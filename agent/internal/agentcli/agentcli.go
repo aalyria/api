@@ -427,6 +427,25 @@ func getDialOpts(ctx context.Context, connParams *configpb.ConnectionParams, clo
 		}
 		dialOpts = append(dialOpts, grpc.WithPerRPCCredentials(creds))
 
+	case *configpb.AuthStrategy_OidcClientCredentials_:
+		oidcSpec := authStrat.GetOidcClientCredentials()
+		pkeySrc, err := getPrivateKey(oidcSpec.GetSigningStrategy())
+		if err != nil {
+			return nil, err
+		}
+		creds, err := auth.NewOIDCCredentials(ctx, auth.OIDCConfig{
+			Clock:                 clock,
+			ClientID:              oidcSpec.GetClientId(),
+			TokenURL:              oidcSpec.GetTokenUrl(),
+			PrivateKeyID:          oidcSpec.GetPrivateKeyId(),
+			PrivateKey:            pkeySrc,
+			SkipTransportSecurity: useQUIC,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("creating OIDC authorization credentials: %w", err)
+		}
+		dialOpts = append(dialOpts, grpc.WithPerRPCCredentials(creds))
+
 	default:
 		return nil, errors.New("no auth_strategy provided")
 	}

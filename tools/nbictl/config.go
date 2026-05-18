@@ -210,35 +210,61 @@ func migrateDeprecatedAuthFields(conf *nbictlpb.Config) {
 	conf.PrivKey = ""
 }
 
-func mergeJwtAuthStrategy(existing, incoming *nbictlpb.Config_AuthStrategy) *nbictlpb.Config_AuthStrategy {
+func mergeAuthStrategy(existing, incoming *nbictlpb.Config_AuthStrategy) *nbictlpb.Config_AuthStrategy {
 	if _, ok := incoming.GetType().(*nbictlpb.Config_AuthStrategy_None); ok {
 		return incoming
 	}
 
-	inJwt, ok := incoming.GetType().(*nbictlpb.Config_AuthStrategy_Jwt_)
-	if !ok {
+	switch in := incoming.GetType().(type) {
+	case *nbictlpb.Config_AuthStrategy_Jwt_:
+		var base *nbictlpb.Config_AuthStrategy_Jwt
+		if exJwt, ok := existing.GetType().(*nbictlpb.Config_AuthStrategy_Jwt_); ok {
+			base = proto.Clone(exJwt.Jwt).(*nbictlpb.Config_AuthStrategy_Jwt)
+		} else {
+			base = &nbictlpb.Config_AuthStrategy_Jwt{}
+		}
+
+		if in.Jwt.GetEmail() != "" {
+			base.Email = in.Jwt.GetEmail()
+		}
+		if in.Jwt.GetPrivateKeyId() != "" {
+			base.PrivateKeyId = in.Jwt.GetPrivateKeyId()
+		}
+		if in.Jwt.GetSigningStrategy() != nil {
+			base.SigningStrategy = in.Jwt.GetSigningStrategy()
+		}
+
+		return &nbictlpb.Config_AuthStrategy{
+			Type: &nbictlpb.Config_AuthStrategy_Jwt_{Jwt: base},
+		}
+
+	case *nbictlpb.Config_AuthStrategy_OidcClientCredentials_:
+		var base *nbictlpb.Config_AuthStrategy_OidcClientCredentials
+		if exOIDC, ok := existing.GetType().(*nbictlpb.Config_AuthStrategy_OidcClientCredentials_); ok {
+			base = proto.Clone(exOIDC.OidcClientCredentials).(*nbictlpb.Config_AuthStrategy_OidcClientCredentials)
+		} else {
+			base = &nbictlpb.Config_AuthStrategy_OidcClientCredentials{}
+		}
+
+		if in.OidcClientCredentials.GetClientId() != "" {
+			base.ClientId = in.OidcClientCredentials.GetClientId()
+		}
+		if in.OidcClientCredentials.GetTokenUrl() != "" {
+			base.TokenUrl = in.OidcClientCredentials.GetTokenUrl()
+		}
+		if in.OidcClientCredentials.GetPrivateKeyId() != "" {
+			base.PrivateKeyId = in.OidcClientCredentials.GetPrivateKeyId()
+		}
+		if in.OidcClientCredentials.GetSigningStrategy() != nil {
+			base.SigningStrategy = in.OidcClientCredentials.GetSigningStrategy()
+		}
+
+		return &nbictlpb.Config_AuthStrategy{
+			Type: &nbictlpb.Config_AuthStrategy_OidcClientCredentials_{OidcClientCredentials: base},
+		}
+
+	default:
 		return incoming
-	}
-
-	var base *nbictlpb.Config_AuthStrategy_Jwt
-	if exJwt, ok := existing.GetType().(*nbictlpb.Config_AuthStrategy_Jwt_); ok {
-		base = proto.Clone(exJwt.Jwt).(*nbictlpb.Config_AuthStrategy_Jwt)
-	} else {
-		base = &nbictlpb.Config_AuthStrategy_Jwt{}
-	}
-
-	if inJwt.Jwt.GetEmail() != "" {
-		base.Email = inJwt.Jwt.GetEmail()
-	}
-	if inJwt.Jwt.GetPrivateKeyId() != "" {
-		base.PrivateKeyId = inJwt.Jwt.GetPrivateKeyId()
-	}
-	if inJwt.Jwt.GetSigningStrategy() != nil {
-		base.SigningStrategy = inJwt.Jwt.GetSigningStrategy()
-	}
-
-	return &nbictlpb.Config_AuthStrategy{
-		Type: &nbictlpb.Config_AuthStrategy_Jwt_{Jwt: base},
 	}
 }
 
@@ -337,8 +363,27 @@ func SetConfig(appCtx *cli.Context) error {
 				Type: &nbictlpb.Config_AuthStrategy_Jwt_{Jwt: jwt},
 			}
 		}
+	case "oidc":
+		var signingStrategy *nbictlpb.Config_SigningStrategy
+		if privKey != "" {
+			signingStrategy = &nbictlpb.Config_SigningStrategy{
+				Type: &nbictlpb.Config_SigningStrategy_PrivateKeyFile{
+					PrivateKeyFile: privKey,
+				},
+			}
+		}
+		authStrategyPB = &nbictlpb.Config_AuthStrategy{
+			Type: &nbictlpb.Config_AuthStrategy_OidcClientCredentials_{
+				OidcClientCredentials: &nbictlpb.Config_AuthStrategy_OidcClientCredentials{
+					ClientId:        appCtx.String("client_id"),
+					TokenUrl:        appCtx.String("token_url"),
+					PrivateKeyId:    keyID,
+					SigningStrategy: signingStrategy,
+				},
+			},
+		}
 	default:
-		return fmt.Errorf("unexpected auth strategy: %s (allowed: none, jwt)", authStrategy)
+		return fmt.Errorf("unexpected auth strategy: %s (allowed: none, jwt, oidc)", authStrategy)
 	}
 
 	contextToCreate := &nbictlpb.Config{
@@ -385,7 +430,7 @@ func setConfig(outWriter, errWriter io.Writer, confToCreate *nbictlpb.Config, co
 		}
 		if confToCreate.GetAuthStrategy() != nil {
 			if confProto.GetAuthStrategy() != nil {
-				confProto.AuthStrategy = mergeJwtAuthStrategy(confProto.AuthStrategy, confToCreate.AuthStrategy)
+				confProto.AuthStrategy = mergeAuthStrategy(confProto.AuthStrategy, confToCreate.AuthStrategy)
 			} else {
 				confProto.AuthStrategy = confToCreate.AuthStrategy
 			}

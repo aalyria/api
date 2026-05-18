@@ -15,18 +15,22 @@
 package auth // import "aalyria.com/spacetime/auth"
 
 import (
+	"cmp"
 	"context"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/jonboulle/clockwork"
 	"google.golang.org/grpc/credentials"
 )
@@ -184,23 +188,32 @@ func NewCredentials(ctx context.Context, c Config) (credentials.PerRPCCredential
 // JWTOptions contains options for JWT creation
 type JWTOptions struct {
 	Email        string
+	Issuer       string
+	Subject      string
 	PrivateKeyID string
 	Audience     string
 	ExpiresAt    time.Time
 	IssuedAt     time.Time
+	JTI          string
 }
 
 // CreateJWT creates a JWT token with the specified options and private key
 func CreateJWT(opts JWTOptions, pkey any) (string, error) {
+	iss := cmp.Or(opts.Issuer, opts.Email)
+	sub := cmp.Or(opts.Subject, opts.Email)
 	claims := jwt.MapClaims{
-		"iss": opts.Email,
-		"sub": opts.Email,
+		"iss": iss,
+		"sub": sub,
 		"iat": jwt.NewNumericDate(opts.IssuedAt),
 		"exp": jwt.NewNumericDate(opts.ExpiresAt),
 	}
 
 	if opts.Audience != "" {
 		claims["aud"] = opts.Audience
+	}
+
+	if opts.JTI != "" {
+		claims["jti"] = opts.JTI
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
@@ -250,5 +263,189 @@ type expiringToken struct {
 }
 
 func (et *expiringToken) isStale(clock clockwork.Clock) bool {
-	return clock.Now().After(et.expiresAt.Add(tokenExpirationWindow))
+	return clock.Now().After(et.expiresAt.Add(-tokenExpirationWindow))
+}
+
+// HTTPDoer abstracts an HTTP client for testing.
+type HTTPDoer interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
+// OIDCConfig configures OIDC client_credentials token exchange.
+type OIDCConfig struct {
+	Clock                 clockwork.Clock
+	PrivateKey            io.Reader
+	PrivateKeyID          string
+	ClientID              string
+	TokenURL              string
+	HTTPClient            HTTPDoer
+	SkipTransportSecurity bool
+}
+
+// NewOIDCCredentials creates a [credentials.PerRPCCredentials] implementation
+// that exchanges a signed JWT assertion at an OIDC token endpoint for an
+// access token, which is then used to authenticate gRPC requests.
+func NewOIDCCredentials(_ context.Context, c OIDCConfig) (credentials.PerRPCCredentials, error) {
+	errs := []error{}
+	switch {
+	case c.Clock == nil:
+		errs = append(errs, errors.New("missing required field 'Clock'"))
+	case c.ClientID == "":
+		errs = append(errs, errors.New("missing required field 'ClientID'"))
+	case c.TokenURL == "":
+		errs = append(errs, errors.New("missing required field 'TokenURL'"))
+	case c.PrivateKey == nil:
+		errs = append(errs, errors.New("missing required field 'PrivateKey'"))
+	}
+	if len(errs) > 0 {
+		return nil, errors.Join(errs...)
+	}
+
+	pkeyBytes, err := io.ReadAll(c.PrivateKey)
+	if err != nil {
+		return nil, fmt.Errorf("getting private key bytes: %w", err)
+	} else if len(pkeyBytes) == 0 {
+		return nil, errors.New("empty private key")
+	}
+
+	pkeyBlock, _ := pem.Decode(pkeyBytes)
+	if pkeyBlock == nil {
+		return nil, errors.New("PrivateKey not PEM-encoded")
+	}
+	pkey, err := ParsePrivateKey(pkeyBlock.Bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	httpClient := c.HTTPClient
+	if httpClient == nil {
+		httpClient = http.DefaultClient
+	}
+
+	return &oidcCredentials{
+		config: c,
+		pkey:   pkey,
+		client: httpClient,
+	}, nil
+}
+
+type oidcCredentials struct {
+	mu     sync.RWMutex
+	token  *expiringToken
+	config OIDCConfig
+	pkey   any
+	client HTTPDoer
+}
+
+func (oc *oidcCredentials) RequireTransportSecurity() bool {
+	return !oc.config.SkipTransportSecurity
+}
+
+func (oc *oidcCredentials) GetRequestMetadata(ctx context.Context, _ ...string) (map[string]string, error) {
+	reqInfo, ok := credentials.RequestInfoFromContext(ctx)
+	if !ok {
+		return nil, errors.New("failed to obtain RequestInfoFromContext")
+	}
+	if oc.RequireTransportSecurity() {
+		if err := credentials.CheckSecurityLevel(reqInfo.AuthInfo, credentials.PrivacyAndIntegrity); err != nil {
+			return nil, fmt.Errorf("cannot include credentials in unsafe communication: %w", err)
+		}
+	}
+
+	token, err := oc.getToken(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get OIDC access token: %w", err)
+	}
+
+	return map[string]string{
+		authorizationHeader: "Bearer " + token,
+	}, nil
+}
+
+func (oc *oidcCredentials) getToken(ctx context.Context) (string, error) {
+	oc.mu.RLock()
+	token := oc.token
+	oc.mu.RUnlock()
+	if token != nil && !token.isStale(oc.config.Clock) {
+		return token.tok, nil
+	}
+
+	oc.mu.Lock()
+	defer oc.mu.Unlock()
+
+	token = oc.token
+	if token != nil && !token.isStale(oc.config.Clock) {
+		return token.tok, nil
+	}
+
+	accessToken, expiresAt, err := oc.exchangeToken(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	oc.token = &expiringToken{tok: accessToken, expiresAt: expiresAt}
+	return accessToken, nil
+}
+
+func (oc *oidcCredentials) exchangeToken(ctx context.Context) (string, time.Time, error) {
+	now := oc.config.Clock.Now()
+	assertion, err := CreateJWT(JWTOptions{
+		Issuer:       oc.config.ClientID,
+		Subject:      oc.config.ClientID,
+		Audience:     oc.config.TokenURL,
+		PrivateKeyID: oc.config.PrivateKeyID,
+		IssuedAt:     now,
+		ExpiresAt:    now.Add(tokenLifetime),
+		JTI:          uuid.NewString(),
+	}, oc.pkey)
+	if err != nil {
+		return "", time.Time{}, fmt.Errorf("creating OIDC assertion JWT: %w", err)
+	}
+
+	form := url.Values{
+		"grant_type":            {"client_credentials"},
+		"client_id":             {oc.config.ClientID},
+		"client_assertion_type": {"urn:ietf:params:oauth:client-assertion-type:jwt-bearer"},
+		"client_assertion":      {assertion},
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, oc.config.TokenURL, strings.NewReader(form.Encode()))
+	if err != nil {
+		return "", time.Time{}, fmt.Errorf("creating token request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := oc.client.Do(req)
+	if err != nil {
+		return "", time.Time{}, fmt.Errorf("executing token request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", time.Time{}, fmt.Errorf("reading token response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", time.Time{}, fmt.Errorf("token endpoint returned status %d: %s", resp.StatusCode, body)
+	}
+
+	var tokenResp struct {
+		AccessToken string `json:"access_token"`
+		ExpiresIn   int64  `json:"expires_in"`
+	}
+	if err := json.Unmarshal(body, &tokenResp); err != nil {
+		return "", time.Time{}, fmt.Errorf("parsing token response: %w", err)
+	}
+
+	if tokenResp.AccessToken == "" {
+		return "", time.Time{}, errors.New("token response missing access_token")
+	}
+
+	expiresAt := now.Add(tokenLifetime)
+	if tokenResp.ExpiresIn > 0 {
+		expiresAt = now.Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
+	}
+
+	return tokenResp.AccessToken, expiresAt, nil
 }

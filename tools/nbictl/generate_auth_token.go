@@ -15,12 +15,18 @@
 package nbictl
 
 import (
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/urfave/cli/v2"
 
 	"aalyria.com/spacetime/auth"
@@ -70,6 +76,10 @@ func GenerateAuthToken(appCtx *cli.Context) error {
 			return errors.New("no signing strategy (private key source) configured for JWT auth")
 		}
 
+	case *nbictlpb.Config_AuthStrategy_OidcClientCredentials_:
+		oidc := t.OidcClientCredentials
+		return generateOIDCToken(appCtx, oidc)
+
 	default:
 		// Backward compatibility: use deprecated fields.
 		email = c.GetEmail()
@@ -112,5 +122,82 @@ func GenerateAuthToken(appCtx *cli.Context) error {
 		return err
 	}
 	fmt.Fprintln(appCtx.App.Writer, tokenString)
+	return nil
+}
+
+func generateOIDCToken(appCtx *cli.Context, oidc *nbictlpb.Config_AuthStrategy_OidcClientCredentials) error {
+	if oidc.GetClientId() == "" {
+		return errors.New("no client_id set for chosen context")
+	}
+	if oidc.GetTokenUrl() == "" {
+		return errors.New("no token_url set for chosen context")
+	}
+
+	pkeyReader, err := readPrivateKeyFromSigningStrategy(oidc.GetSigningStrategy())
+	if err != nil {
+		return err
+	}
+	pkeyBytes, err := io.ReadAll(pkeyReader)
+	if err != nil {
+		return fmt.Errorf("reading private key: %w", err)
+	}
+
+	pkeyBlock, _ := pem.Decode(pkeyBytes)
+	if pkeyBlock == nil {
+		return errors.New("PrivateKey not PEM-encoded")
+	}
+	pkey, err := auth.ParsePrivateKey(pkeyBlock.Bytes)
+	if err != nil {
+		return fmt.Errorf("error while parsing private key: %w", err)
+	}
+
+	now := time.Now()
+	assertion, err := auth.CreateJWT(auth.JWTOptions{
+		Issuer:       oidc.GetClientId(),
+		Subject:      oidc.GetClientId(),
+		Audience:     oidc.GetTokenUrl(),
+		PrivateKeyID: oidc.GetPrivateKeyId(),
+		IssuedAt:     now,
+		ExpiresAt:    now.Add(1 * time.Hour),
+		JTI:          uuid.NewString(),
+	}, pkey)
+	if err != nil {
+		return fmt.Errorf("creating OIDC assertion: %w", err)
+	}
+
+	form := url.Values{
+		"grant_type":            {"client_credentials"},
+		"client_id":             {oidc.GetClientId()},
+		"client_assertion_type": {"urn:ietf:params:oauth:client-assertion-type:jwt-bearer"},
+		"client_assertion":      {assertion},
+	}
+
+	resp, err := http.Post(oidc.GetTokenUrl(), "application/x-www-form-urlencoded", strings.NewReader(form.Encode()))
+	if err != nil {
+		return fmt.Errorf("token exchange request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("reading token response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("token endpoint returned status %d: %s", resp.StatusCode, body)
+	}
+
+	var tokenResp struct {
+		AccessToken string `json:"access_token"`
+	}
+	if err := json.Unmarshal(body, &tokenResp); err != nil {
+		return fmt.Errorf("parsing token response: %w", err)
+	}
+
+	if tokenResp.AccessToken == "" {
+		return fmt.Errorf("token response missing access_token: %s", body)
+	}
+
+	fmt.Fprintln(appCtx.App.Writer, tokenResp.AccessToken)
 	return nil
 }

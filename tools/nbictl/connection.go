@@ -80,6 +80,26 @@ func resolvePerRPCCredentials(ctx context.Context, setting *nbictlpb.Config, isI
 		}
 		return creds, nil
 
+	case *nbictlpb.Config_AuthStrategy_OidcClientCredentials_:
+		oidc := t.OidcClientCredentials
+		privateKey, err := readPrivateKeyFromSigningStrategy(oidc.GetSigningStrategy())
+		if err != nil {
+			return nil, err
+		}
+		config := auth.OIDCConfig{
+			Clock:                 clock,
+			PrivateKey:            privateKey,
+			PrivateKeyID:          oidc.GetPrivateKeyId(),
+			ClientID:              oidc.GetClientId(),
+			TokenURL:              oidc.GetTokenUrl(),
+			SkipTransportSecurity: useQUIC || isInsecure,
+		}
+		creds, err := auth.NewOIDCCredentials(ctx, config)
+		if err != nil {
+			return nil, fmt.Errorf("unable to create OIDC credentials: %w", err)
+		}
+		return creds, nil
+
 	case nil:
 		// Backward compatibility: auth_strategy not set, use deprecated fields.
 		if isInsecure {
