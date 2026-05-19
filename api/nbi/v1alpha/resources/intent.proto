@@ -22,6 +22,7 @@ package aalyria.spacetime.api.nbi.v1alpha.resources;
 import "api/common/control.proto";
 import "api/common/coordinates.proto";
 import "api/common/network.proto";
+import "api/common/threegpp.proto";
 import "api/common/time.proto";
 import "api/nbi/v1alpha/resources/network_link.proto";
 import "google/protobuf/duration.proto";
@@ -439,9 +440,14 @@ message MobilityIntent {
       // conditional HO event condEventT1. 
       // Each step represents 100ms"
       //
-      // As per above definition from 3GPP TS 38.331, the value is to be 
+      // As per above definition from 3GPP TS 38.331, the value is to be
       // quantised into units of 100ms when being provided to the NTN RAN.
       optional google.protobuf.Duration duration = 2;
+
+      // Conditional reconfiguration identifier. Scoped per source NR CGI
+      // cell, must not overlap with D1CHO cond_reconfig_id_r16s.
+      // Maximum value 8.
+      optional int32 cond_reconfig_id_r16 = 3;
     }
 
     // Distance-based Conditional Handover (CHO).
@@ -489,6 +495,12 @@ message MobilityIntent {
       // ms0, ms40, ms64, ms80, ms100, ms128, ms160, ms256, ms320, ms480, ms512,
       // ms640, ms1024, ms1280, ms2560, ms5120
       optional google.protobuf.Duration time_to_trigger = 6;
+
+      // Conditional reconfiguration identifier. Scoped per source NR CGI
+      // cell, maximum value 8. When the cell occupying a neighbour area
+      // changes, the D1CHO config with the same cond_reconfig_id_r16 is updated
+      // via a new UpdateHandoverTrigger rather than deleted and recreated.
+      optional int32 cond_reconfig_id_r16 = 7;
     }
 
     // Satellite Switch with Resynchronization.

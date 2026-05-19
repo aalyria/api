@@ -143,10 +143,9 @@ message CreateEntryRequest {
     DeleteRoute delete_route = 6;
     UpdateP2pSrTePolicyPath update_p2p_sr_te_policy_path = 20;
     DeleteP2pSrTePolicyPath delete_p2p_sr_te_policy_path = 21;
-    TriggerHandover trigger_handover = 17;
   }
 
-  reserved 7, 8 to 11, 13, 14;
+  reserved 7, 8, 11, 13, 14, 17;
 }
 
 message SetRoute {
@@ -650,7 +649,29 @@ message SrSegment {
   string srv6 = 2;
 }
 
-message TriggerHandover {
+// NR Cell Global Identity, shared by UpdateHandoverTrigger and
+// DeleteHandoverTrigger.
+message NewRadioCellGlobalId {
+  // Mobile Country Code (MCC) - 3 digits
+  uint32 mcc = 1;
+
+  // Mobile Network Code (MNC) - 2 or 3 digits
+  uint32 mnc = 2;
+
+  // gNodeB ID
+  // equivalent to 22-32 binary bits (w/ cell_local_id totals 36 bits)
+  uint32 gnb_id = 3;
+
+  // gNodeB ID Length in bits
+  // 22-32
+  uint32 gnb_id_length = 4;
+
+  // Cell Local ID - 4-14 bits (w/ gnb_id totals 36 bits)
+  // equivalent to 4-14 binary bits (w/ gnb_id totals 36 bits)
+  uint32 cell_local_id = 5;
+}
+
+message UpdateHandoverTrigger {
   // Mobility signaling for networks adopting one of the Digital Video
   // Broadcasting (DVB) family of access networks, e.g. DVB-S, DVB-S2,
   // DVB-S2X, etc. There are no exact standards which define what mobility
@@ -687,6 +708,11 @@ message TriggerHandover {
       // As per above definition from 3GPP TS 38.331, the value is to be
       // quanitsed into units of 100ms when being provided to the NTN RAN.
       google.protobuf.Duration duration = 2;
+
+      // Conditional reconfiguration identifier. Scoped per source NR CGI
+      // cell, must not overlap with D1CHO cond_reconfig_id_r16s.
+      // Maximum value 64.
+      int32 cond_reconfig_id_r16 = 3;
     }
 
     // Distance-based Conditional Handover (CHO).
@@ -734,6 +760,12 @@ message TriggerHandover {
       // ms0, ms40, ms64, ms80, ms100, ms128, ms160, ms256, ms320, ms480, ms512,
       // ms640, ms1024, ms1280, ms2560, ms5120
       google.protobuf.Duration time_to_trigger = 5;
+
+      // Conditional reconfiguration identifier. Scoped per source NR CGI
+      // cell, maximum value 64. When the cell occupying a neighbour area
+      // changes, the D1CHO config with the same cond_reconfig_id_r16 is updated
+      // via a new UpdateHandoverTrigger rather than deleted and recreated.
+      int32 cond_reconfig_id_r16 = 7;
     }
 
     // Satellite Switch with Resynchronization.
@@ -752,6 +784,8 @@ message TriggerHandover {
       //
       // As per above definition from 3GPP TS 38.331, the value is to be
       // quantised into units of 10ms when being provided to the NTN RAN.
+      //
+      // Alternatively delivered within ThreeGPPCell.ntn_sib19_validity_interval
       google.protobuf.Timestamp t_service_start = 1;
 
       // "Indicates the time offset between the SSB from source and target
@@ -760,31 +794,11 @@ message TriggerHandover {
       int32 ssb_time_offset_count = 2;
     }
 
-    message NewRadioCellGlobalId {
-      // Mobile Country Code (MCC) - 3 digits
-      uint32 mcc = 1;
-
-      // Mobile Network Code (MNC) - 2 or 3 digits
-      uint32 mnc = 2;
-
-      // gNodeB ID
-      // equivalent to 22-32 binary bits (w/ cell_local_id totals 36 bits)
-      uint32 gnb_id = 3;
-
-      // gNodeB ID Length in bits
-      // 22-32
-      uint32 gnb_id_length = 4;
-
-      // Cell Local ID - 4-14 bits (w/ gnb_id totals 36 bits)
-      // equivalent to 4-14 binary bits (w/ gnb_id totals 36 bits)
-      uint32 cell_local_id = 5;
-    }
-
     // Source and Target NR Cell Global IDs.
     NewRadioCellGlobalId source_nr_cgi = 1;
     NewRadioCellGlobalId target_nr_cgi = 2;
 
-    oneof handoverType {
+    oneof handover_type {
       L3HO l3_ho = 3;
       T1CHO t1_cho = 4;
       D1CHO d1_cho = 5;
@@ -796,7 +810,7 @@ message TriggerHandover {
     repeated string endpoint_ids = 1;
   }
 
-  oneof accessType {
+  oneof access_type {
     Dvb dvb = 1;
     Nr nr = 2;
   }
@@ -805,6 +819,25 @@ message TriggerHandover {
   oneof subject {
     BeamTarget target = 3;
     EndpointList endpoint_list = 4;
+  }
+}
+
+// Removes a conditional handover configuration (T1CHO or D1CHO) from the
+// agent's schedule. Identified by the source NR CGI and the
+// cond_reconfig_id_r16 that was previously installed via UpdateHandoverTrigger.
+message DeleteHandoverTrigger {
+  message Dvb {
+    string source_network_node_id = 1;
+  }
+
+  message Nr {
+    NewRadioCellGlobalId source_nr_cgi = 1;
+    int32 cond_reconfig_id_r16 = 2;
+  }
+
+  oneof access_type {
+    Dvb dvb = 1;
+    Nr nr = 2;
   }
 }
 

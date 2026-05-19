@@ -36,6 +36,7 @@ proto_library(
         "platform.proto",
         "platform_antenna.proto",
         "telemetry.proto",
+        "threegpp.proto",
         "time.proto",
         "wireless.proto",
         "wireless_modcod.proto",
@@ -47,6 +48,7 @@ proto_library(
         "//api/types:types_proto",
         "@googleapis//google/rpc:status_proto",
         "@googleapis//google/type:interval_proto",
+        "@org_outernetcouncil_nmts//v1/proto/types/geophys:orbital_proto",
         "@protobuf//:duration_proto",
         "@protobuf//:empty_proto",
         "@protobuf//:timestamp_proto",
@@ -60,6 +62,7 @@ cpp_proto_library(
         "//api/types:types_cpp_proto",
         "@googleapis//google/rpc:status_cc_proto",
         "@googleapis//google/type:interval_cc_proto",
+        "@org_outernetcouncil_nmts//v1/proto/types/geophys:geophys_cpp_proto",
     ],
 )
 
@@ -71,6 +74,7 @@ go_proto_library(
         "//api/types:types_go_proto",
         "@org_golang_google_genproto//googleapis/type/interval",
         "@org_golang_google_genproto_googleapis_rpc//status",
+        "@org_outernetcouncil_nmts//v1/proto/types/geophys:geophys_go_proto",
     ],
 )
 
@@ -81,6 +85,7 @@ java_proto_library(
         "//api/types:types_java_proto",
         "@googleapis//google/rpc:rpc_java_proto",
         "@googleapis//google/type:type_java_proto",
+        "@org_outernetcouncil_nmts//v1/proto/types/geophys:geophys_java_proto",
     ],
 )
 
