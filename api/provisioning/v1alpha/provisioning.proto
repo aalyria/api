@@ -167,6 +167,11 @@ service Provisioning {
 //   - RFC 9862
 //   - draft-ietf-spring-sr-policy-yang
 message P2pSrTePolicy {
+  option (google.api.resource) = {
+    type: "provisioning.spacetimeapis.com/P2pSrTePolicy"
+    pattern: "p2pSrTePolicies/{p2p_sr_te_policy}"
+  };
+
   // The resource name of this policy.
   string name = 1 [(google.api.field_behavior) = IDENTIFIER];
 
@@ -221,7 +226,7 @@ message P2pSrTePolicy {
 
 message GetP2pSrTePolicyRequest {
   // The resource name of the policy to retrieve.
-  // Format: `p2pSrTePolicies/{policy_id}`
+  // Format: `p2pSrTePolicies/{p2p_sr_te_policy}`
   string name = 1 [
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
@@ -253,7 +258,7 @@ message UpdateP2pSrTePolicyRequest{
   // The policy to update.
   //
   // The policy's `name` field is used to identify the policy to be updated.
-  // Format: `p2pSrTePolicies/{policy_id}`
+  // Format: `p2pSrTePolicies/{p2p_sr_te_policy}`
   P2pSrTePolicy policy = 1 [(google.api.field_behavior) = REQUIRED];
 
   // The list of fields to be updated.
@@ -266,7 +271,7 @@ message UpdateP2pSrTePolicyRequest{
 
 message DeleteP2pSrTePolicyRequest{
   // The resource name of the policy to delete.
-  // Format: `p2pSrTePolicies/{policy_id}`
+  // Format: `p2pSrTePolicies/{p2p_sr_te_policy}`
   //
   // Deleting a P2P SR-TE Policy also deletes all its Candidate Paths.
   string name = 1 [
@@ -277,6 +282,12 @@ message DeleteP2pSrTePolicyRequest{
 }
 
 message P2pSrTePolicyCandidatePath {
+  option (google.api.resource) = {
+    type: "provisioning.spacetimeapis.com/P2pSrTePolicyCandidatePath"
+    pattern:
+      "p2pSrTePolicies/{p2p_sr_te_policy}/candidatePaths/{candidate_path}"
+  };
+
   // The resource name of this candidate path.
   string name = 1 [(google.api.field_behavior) = IDENTIFIER];
 
@@ -299,7 +310,8 @@ message P2pSrTePolicyCandidatePath {
 
 message GetP2pSrTePolicyCandidatePathRequest{
   // The resource name of the candidate path to retrieve.
-  // Format: `p2pSrTePolicies/{policy_id}/candidatePaths/{path_id}`
+  // Format:
+  // `p2pSrTePolicies/{p2p_sr_te_policy}/candidatePaths/{candidate_path}`
   string name = 1 [
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
@@ -309,11 +321,11 @@ message GetP2pSrTePolicyCandidatePathRequest{
 
 message ListP2pSrTePolicyCandidatePathsRequest{
   // The parent policy for which to list candidate paths.
-  // Format: `p2pSrTePolicies/{policy_id}`
+  // Format: `p2pSrTePolicies/{p2p_sr_te_policy}`
   string parent = 1 [
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
-      child_type: "provisioning.spacetimeapis.com/P2pSrTePolicyCandidatePath"
+      type: "provisioning.spacetimeapis.com/P2pSrTePolicy"
     }];
 }
 
@@ -323,11 +335,11 @@ message ListP2pSrTePolicyCandidatePathsResponse{
 
 message CreateP2pSrTePolicyCandidatePathRequest{
   // The parent policy for which this candidate path will be created.
-  // Format: `p2pSrTePolicies/{policy_id}`
+  // Format: `p2pSrTePolicies/{p2p_sr_te_policy}`
   string parent = 1 [
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
-      child_type: "provisioning.spacetimeapis.com/P2pSrTePolicyCandidatePath"
+      type: "provisioning.spacetimeapis.com/P2pSrTePolicy"
     }];
 
   // The ID to use for the path, which will become the final component of
@@ -348,7 +360,8 @@ message UpdateP2pSrTePolicyCandidatePathRequest{
   //
   // The candidate path's `name` field is used to identify the candidate
   // path to be updated.
-  // `p2pSrTePolicies/{policy_id}/candidatePaths/{path_id}`
+  // Format:
+  // `p2pSrTePolicies/{p2p_sr_te_policy}/candidatePaths/{candidate_path}`
   P2pSrTePolicyCandidatePath path = 1 [(google.api.field_behavior) = REQUIRED];
 
   // The list of fields to be updated.
@@ -362,10 +375,8 @@ message UpdateP2pSrTePolicyCandidatePathRequest{
 
 message DeleteP2pSrTePolicyCandidatePathRequest{
   // The resource name of the candidate path to delete.
-  // Format: `p2pSrTePolicies/{policy_id}/candidatePaths/{path_id}`
-  //
-  // Delete all Candidate Paths associated with a P2P SR-TE Policy
-  // DOES NOT delete the policy itself.
+  // Format:
+  // `p2pSrTePolicies/{p2p_sr_te_policy}/candidatePaths/{candidate_path}`
   string name = 1 [
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
@@ -381,6 +392,11 @@ message DeleteP2pSrTePolicyCandidatePathRequest{
 //
 // See also RFC 9960.
 message P2mpSrTePolicy {
+  option (google.api.resource) = {
+    type: "provisioning.spacetimeapis.com/P2mpSrTePolicy"
+    pattern: "p2mpSrTePolicies/{p2mp_sr_te_policy}"
+  };
+
   // The resource name of this policy.
   string name = 1 [(google.api.field_behavior) = IDENTIFIER];
 
@@ -439,7 +455,7 @@ message P2mpSrTePolicy {
 
 message GetP2mpSrTePolicyRequest {
   // The resource name of the policy to retrieve.
-  // Format: `p2mpSrTePolicies/{policy_id}`
+  // Format: `p2mpSrTePolicies/{p2mp_sr_te_policy}`
   string name = 1 [
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
@@ -471,7 +487,7 @@ message UpdateP2mpSrTePolicyRequest{
   // The policy to update.
   //
   // The policy's `name` field is used to identify the policy to be updated.
-  // Format: `p2mpSrTePolicies/{policy_id}`
+  // Format: `p2mpSrTePolicies/{p2mp_sr_te_policy}`
   P2mpSrTePolicy policy = 1 [(google.api.field_behavior) = REQUIRED];
 
   // The list of fields to be updated.
@@ -484,7 +500,7 @@ message UpdateP2mpSrTePolicyRequest{
 
 message DeleteP2mpSrTePolicyRequest{
   // The resource name of the policy to delete.
-  // Format: `p2mpSrTePolicies/{policy_id}`
+  // Format: `p2mpSrTePolicies/{p2mp_sr_te_policy}`
   //
   // Deleting a P2MP SR-TE Policy also deletes all its Candidate Paths.
   string name = 1 [
@@ -495,6 +511,12 @@ message DeleteP2mpSrTePolicyRequest{
 }
 
 message P2mpSrTePolicyCandidatePath {
+  option (google.api.resource) = {
+    type: "provisioning.spacetimeapis.com/P2mpSrTePolicyCandidatePath"
+    pattern:
+      "p2mpSrTePolicies/{p2mp_sr_te_policy}/candidatePaths/{candidate_path}"
+  };
+
   // The resource name of this candidate path.
   string name = 1 [(google.api.field_behavior) = IDENTIFIER];
 
@@ -515,7 +537,8 @@ message P2mpSrTePolicyCandidatePath {
 
 message GetP2mpSrTePolicyCandidatePathRequest{
   // The resource name of the candidate path to retrieve.
-  // Format: `p2mpSrTePolicies/{policy_id}/candidatePaths/{path_id}`
+  // Format:
+  // `p2mpSrTePolicies/{p2mp_sr_te_policy}/candidatePaths/{candidate_path}`
   string name = 1 [
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
@@ -525,11 +548,11 @@ message GetP2mpSrTePolicyCandidatePathRequest{
 
 message ListP2mpSrTePolicyCandidatePathsRequest{
   // The parent policy for which to list candidate paths.
-  // Format: `p2mpSrTePolicies/{policy_id}`
+  // Format: `p2mpSrTePolicies/{p2mp_sr_te_policy}`
   string parent = 1 [
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
-      child_type: "provisioning.spacetimeapis.com/P2mpSrTePolicyCandidatePath"
+      type: "provisioning.spacetimeapis.com/P2mpSrTePolicy"
     }];
 }
 
@@ -539,11 +562,11 @@ message ListP2mpSrTePolicyCandidatePathsResponse{
 
 message CreateP2mpSrTePolicyCandidatePathRequest{
   // The parent policy for which this candidate path will be created.
-  // Format: `p2mpSrTePolicies/{policy_id}`
+  // Format: `p2mpSrTePolicies/{p2mp_sr_te_policy}`
   string parent = 1 [
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
-      child_type: "provisioning.spacetimeapis.com/P2mpSrTePolicyCandidatePath"
+      type: "provisioning.spacetimeapis.com/P2mpSrTePolicy"
     }];
 
   // The ID to use for the path, which will become the final component of
@@ -564,7 +587,8 @@ message UpdateP2mpSrTePolicyCandidatePathRequest{
   //
   // The candidate path's `name` field is used to identify the candidate
   // path to be updated.
-  // `p2mpSrTePolicies/{policy_id}/candidatePaths/{path_id}`
+  // Format:
+  // `p2mpSrTePolicies/{p2mp_sr_te_policy}/candidatePaths/{candidate_path}`
   P2mpSrTePolicyCandidatePath path = 1 [(google.api.field_behavior) = REQUIRED];
 
   // The list of fields to be updated.
@@ -578,10 +602,8 @@ message UpdateP2mpSrTePolicyCandidatePathRequest{
 
 message DeleteP2mpSrTePolicyCandidatePathRequest{
   // The resource name of the candidate path to delete.
-  // Format: `p2mpSrTePolicies/{policy_id}/candidatePaths/{path_id}`
-  //
-  // Delete all Candidate Paths associated with a P2MP SR-TE Policy
-  // DOES NOT delete the policy itself.
+  // Format:
+  // `p2mpSrTePolicies/{p2mp_sr_te_policy}/candidatePaths/{candidate_path}`
   string name = 1 [
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
@@ -596,6 +618,11 @@ message DeleteP2mpSrTePolicyCandidatePathRequest{
 // Spacetime will exclude these elements from any solutions it computes
 // for other provisioning requests.
 message Downtime {
+  option (google.api.resource) = {
+    type: "provisioning.spacetimeapis.com/Downtime"
+    pattern: "downtimes/{downtime}"
+  };
+
   // The resource name of this Downtime request.
   string name = 1 [(google.api.field_behavior) = IDENTIFIER];
 
@@ -657,7 +684,7 @@ message Downtime {
 
 message GetDowntimeRequest{
   // The resource name of the Downtime instance to retrieve.
-  // Format: `downtimes/{id}`
+  // Format: `downtimes/{downtime}`
   string name = 1 [
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
@@ -690,6 +717,7 @@ message UpdateDowntimeRequest{
   //
   // The Downtime's `name` field is used to identify the Downtime
   // instance to be updated.
+  // Format: `downtimes/{downtime}`
   Downtime downtime = 1 [(google.api.field_behavior) = REQUIRED];
 
   // The list of fields to be updated.
@@ -703,7 +731,7 @@ message UpdateDowntimeRequest{
 
 message DeleteDowntimeRequest{
   // The resource name of the Downtime instance to delete.
-  // Format: `downtimes/{id}`
+  // Format: `downtimes/{downtime}`
   string name = 1 [
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
@@ -713,6 +741,11 @@ message DeleteDowntimeRequest{
 
 // RFC 8745 -style Protection Association Group
 message ProtectionAssociationGroup {
+  option (google.api.resource) = {
+    type: "provisioning.spacetimeapis.com/ProtectionAssociationGroup"
+    pattern: "protectionAssociationGroups/{protection_association_group}"
+  };
+
   // The resource name of this Protection Association Group.
   string name = 1 [(google.api.field_behavior) = IDENTIFIER];
 
@@ -733,7 +766,9 @@ message ProtectionAssociationGroup {
 
     // MUST be the full resource name of a TE path or resource created
     // previously via this API, e.g. a P2pSrTePolicyCandidatePath.
-    string resource = 2;
+    string resource = 2 [(google.api.resource_reference) = {
+      type: "*"
+    }];
   }
   // A list of Protection Association Group members with corresponding
   // TE Protection roles. It is a configuration error if no association
@@ -743,7 +778,7 @@ message ProtectionAssociationGroup {
 
 message GetProtectionAssociationGroupRequest{
   // The resource name of the protection association group to retrieve.
-  // Format: `protectionAssociationGroups/{group_id}`
+  // Format: `protectionAssociationGroups/{protection_association_group}`
   string name = 1 [
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
@@ -778,6 +813,7 @@ message UpdateProtectionAssociationGroupRequest{
   //
   // The ProtectionAssociationGroup's `name` field is used to identify the
   // ProtectionAssociationGroup instance to be updated.
+  // Format: `protectionAssociationGroups/{protection_association_group}`
   ProtectionAssociationGroup protection_association_group  = 1 [
     (google.api.field_behavior) = REQUIRED
   ];
@@ -793,7 +829,7 @@ message UpdateProtectionAssociationGroupRequest{
 
 message DeleteProtectionAssociationGroupRequest{
   // The resource name of the protection association group to delete.
-  // Format: `protectionAssociationGroups/{group_id}`
+  // Format: `protectionAssociationGroups/{protection_association_group}`
   string name = 1 [
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
@@ -802,6 +838,11 @@ message DeleteProtectionAssociationGroupRequest{
 }
 
 message DisjointAssociationGroup {
+  option (google.api.resource) = {
+    type: "provisioning.spacetimeapis.com/DisjointAssociationGroup"
+    pattern: "disjointAssociationGroups/{disjoint_association_group}"
+  };
+
   // The resource name of this Disjoint Association Group.
   string name = 1 [(google.api.field_behavior) = IDENTIFIER];
 
@@ -852,12 +893,14 @@ message DisjointAssociationGroup {
 
   // MUST be the full resource name of a TE path or resource created
   // previously via this API, e.g. a P2pSrTePolicyCandidatePath.
-  repeated string resources = 7;
+  repeated string resources = 7 [(google.api.resource_reference) = {
+    type: "*"
+  }];
 }
 
 message GetDisjointAssociationGroupRequest{
   // The resource name of the disjoint association group to retrieve.
-  // Format: `disjointAssociationGroups/{group_id}`
+  // Format: `disjointAssociationGroups/{disjoint_association_group}`
   string name = 1 [
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
@@ -892,6 +935,7 @@ message UpdateDisjointAssociationGroupRequest{
   //
   // The DisjointAssociationGroup's `name` field is used to identify the
   // DisjointAssociationGroup instance to be updated.
+  // Format: `disjointAssociationGroups/{disjoint_association_group}`
   DisjointAssociationGroup disjoint_association_group  = 1 [
     (google.api.field_behavior) = REQUIRED
   ];
@@ -907,7 +951,7 @@ message UpdateDisjointAssociationGroupRequest{
 
 message DeleteDisjointAssociationGroupRequest{
   // The resource name of the disjoint association group to delete.
-  // Format: `disjointAssociationGroups/{group_id}`
+  // Format: `disjointAssociationGroups/{disjoint_association_group}`
   string name = 1 [
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
@@ -941,6 +985,11 @@ message PortSet {
 // The request is satisfied if any link can be scheduled between the
 // endpoints.
 message Link {
+  option (google.api.resource) = {
+    type: "provisioning.spacetimeapis.com/Link"
+    pattern: "links/{link}"
+  };
+
   // The resource name of this Link.
   string name = 1 [(google.api.field_behavior) = IDENTIFIER];
 
@@ -1004,7 +1053,7 @@ message Link {
 
 message GetLinkRequest{
   // The resource name of the Link to retrieve.
-  // Format: `links/{link_id}`
+  // Format: `links/{link}`
   string name = 1 [
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
@@ -1028,7 +1077,7 @@ message CreateLinkRequest{
   // "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$".
   string link_id = 2 [(google.api.field_behavior) = REQUIRED];
 
-  // The disjoint association group to create.
+  // The link to create.
   Link link = 3 [
     (google.api.field_behavior) = REQUIRED
   ];
@@ -1039,6 +1088,7 @@ message UpdateLinkRequest{
   //
   // The Link's `name` field is used to identify the Link instance
   // to be updated.
+  // Format: `links/{link}`
   Link link  = 1 [
     (google.api.field_behavior) = REQUIRED
   ];
@@ -1054,7 +1104,7 @@ message UpdateLinkRequest{
 
 message DeleteLinkRequest{
   // The resource name of the Link to delete.
-  // Format: `links/{link_id}`
+  // Format: `links/{link}`
   string name = 1 [
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
@@ -1064,8 +1114,12 @@ message DeleteLinkRequest{
 
 // A representation of a region on the Earth's surace. May be non-contiguous.
 message GeographicRegion {
+  option (google.api.resource) = {
+    type: "provisioning.spacetimeapis.com/GeographicRegion"
+    pattern: "geographicRegions/{geographic_region}"
+  };
+
   // The resource name of the geographic region.
-  // Format: geographicRegions/{region}
   string name = 1 [(google.api.field_behavior) = IDENTIFIER];
 
   // A GeoJSON representation of the region.
@@ -1101,7 +1155,7 @@ message GeographicRegion {
 
 message GetGeographicRegionRequest{
   // The resource name of the geographic region to retrieve.
-  // Format: `geographicRegions/{region}`
+  // Format: `geographicRegions/{geographic_region}`
   string name = 1 [
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
@@ -1136,6 +1190,7 @@ message UpdateGeographicRegionRequest{
   //
   // The GeographicRegion's `name` field is used to identify the
   // GeographicRegion instance to be updated.
+  // Format: `geographicRegions/{geographic_region}`
   GeographicRegion geographic_region  = 1 [
     (google.api.field_behavior) = REQUIRED
   ];
@@ -1150,7 +1205,7 @@ message UpdateGeographicRegionRequest{
 
 message DeleteGeographicRegionRequest{
   // The resource name of the geographic region to delete.
-  // Format: `geographicRegions/{region_id}`
+  // Format: `geographicRegions/{geographic_region}`
   string name = 1 [
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
@@ -1163,8 +1218,12 @@ message DeleteGeographicRegionRequest{
 // The limit may be defined to be enforced only over certain frequencies,
 // polarizations, and geographical regions.
 message EmissionsLimit {
+  option (google.api.resource) = {
+    type: "provisioning.spacetimeapis.com/EmissionsLimit"
+    pattern: "emissionsLimits/{emissions_limit}"
+  };
+
   // The resource name of the emissions limit.
-  // Format: emissionsLimits/{limit}
   string name = 1 [(google.api.field_behavior) = IDENTIFIER];
 
   // The lower frequency (inclusive) to which this emissions limit applies.
@@ -1178,8 +1237,10 @@ message EmissionsLimit {
 
   // The geographic regions in which this emissions limit is to be enforced.
   // If empty, the emissions limit is applied globally.
-  // Format: geographicRegions/{region}
-  repeated string geographic_regions = 5;
+  // Format: `geographicRegions/{geographic_region}`
+  repeated string geographic_regions = 5 [(google.api.resource_reference) = {
+    type: "provisioning.spacetimeapis.com/GeographicRegion"
+  }];
 
   message Label {
     string key = 1;
@@ -1196,7 +1257,7 @@ message EmissionsLimit {
 
 message GetEmissionsLimitRequest{
   // The resource name of the emissions limit to retrieve.
-  // Format: `emissionsLimits/{limit}`
+  // Format: `emissionsLimits/{emissions_limit}`
   string name = 1 [
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
@@ -1231,6 +1292,7 @@ message UpdateEmissionsLimitRequest{
   //
   // The EmissionsLimit's `name` field is used to identify the EmissionsLimit
   // instance to be updated.
+  // Format: `emissionsLimits/{emissions_limit}`
   EmissionsLimit emissions_limit  = 1 [
     (google.api.field_behavior) = REQUIRED
   ];
@@ -1245,7 +1307,7 @@ message UpdateEmissionsLimitRequest{
 
 message DeleteEmissionsLimitRequest{
   // The resource name of the emissions limit to delete.
-  // Format: `emissionsLimits/{limit}`
+  // Format: `emissionsLimits/{emissions_limit}`
   string name = 1 [
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
@@ -1269,8 +1331,12 @@ message FrequencyRange {
 // When multiple constraints apply to a given subject, the union of all
 // constraints is considered.
 message PointingConstraint {
+  option (google.api.resource) = {
+    type: "provisioning.spacetimeapis.com/PointingConstraint"
+    pattern: "pointingConstraints/{pointing_constraint}"
+  };
+
   // The resource name of the pointing constraint.
-  // Format: pointingConstraints/{constraint}
   string name = 1 [(google.api.field_behavior) = IDENTIFIER];
 
   // Filter the Antenna model entities that must respect this constraint,
@@ -1344,7 +1410,7 @@ message PointingConstraint {
 
 message GetPointingConstraintRequest{
   // The resource name of the pointing constraint to retrieve.
-  // Format: `pointingConstraints/{constraint}`
+  // Format: `pointingConstraints/{pointing_constraint}`
   string name = 1 [
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
@@ -1379,6 +1445,7 @@ message UpdatePointingConstraintRequest{
   //
   // The PointingConstraint's `name` field is used to identify the
   // PointingConstraint instance to be updated.
+  // Format: `pointingConstraints/{pointing_constraint}`
   PointingConstraint pointing_constraint = 1 [
     (google.api.field_behavior) = REQUIRED
   ];
@@ -1393,7 +1460,7 @@ message UpdatePointingConstraintRequest{
 
 message DeletePointingConstraintRequest{
   // The resource name of the pointing constraint to delete.
-  // Format: `pointingConstraints/{constraint}`
+  // Format: `pointingConstraints/{pointing_constraint}`
   string name = 1 [
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
