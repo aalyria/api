@@ -66,6 +66,7 @@ import (
 	telemetry_snmp "aalyria.com/spacetime/agent/telemetry/snmp"
 	"aalyria.com/spacetime/auth"
 	"aalyria.com/spacetime/common/quictransport"
+
 )
 
 var Version = "0.0.0+development"
@@ -463,6 +464,7 @@ func (ac *AgentConf) getNodeOpts(ctx context.Context, node *configpb.SdnAgent, c
 		cp.EndpointUri = strings.TrimPrefix(cp.EndpointUri, dnsSchema)
 	}
 
+
 enactmentSwitch:
 	switch conf := node.GetEnactmentDriver().GetType().(type) {
 	case *configpb.SdnAgent_EnactmentDriver_ExternalCommand:
@@ -490,7 +492,6 @@ enactmentSwitch:
 
 	case *configpb.SdnAgent_EnactmentDriver_Snmp:
 		fmt.Print("TODO: SdnAgent_EnactmentDriver_Snmp")
-
 	case *configpb.SdnAgent_EnactmentDriver_Dynamic:
 		dialOpts, err := getDialOpts(ctx, node.EnactmentDriver.GetConnectionParams(), clock)
 		if err != nil {
@@ -556,7 +557,6 @@ telemetrySwitch:
 			return nil, err
 		}
 		nodeOpts = append(nodeOpts, agent.WithTelemetryDriver(node.GetTelemetryDriver().GetConnectionParams().EndpointUri, td, dialOpts...))
-
 	case *configpb.SdnAgent_TelemetryDriver_Dynamic:
 		dialOpts, err := getDialOpts(ctx, node.TelemetryDriver.GetConnectionParams(), clock)
 		if err != nil {

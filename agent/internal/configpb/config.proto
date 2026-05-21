@@ -273,6 +273,10 @@ message SdnAgent {
     int32 prometheus_port = 3;
   }
 
+  // E2 enactment driver configuration (currently empty, for future use).
+  message E2Enactment {
+  }
+
   // An EnactmentDriver is responsible for processing incoming enactments for
   // a given node.
   message EnactmentDriver {
@@ -291,6 +295,9 @@ message SdnAgent {
 
       // Use an agent-specific driver to process enactments.
       google.protobuf.Any dynamic = 4;
+
+      // Use E2 interface for enactments to RAN nodes.
+      E2Enactment e2 = 7;
     }
   }
 
@@ -324,6 +331,21 @@ message SdnAgent {
     int32 prometheus_port = 4;
   }
 
+  // E2 telemetry driver configuration.
+  message E2Telemetry {
+    // The local IP address to bind the SCTP server to.
+    string local_addr = 1;
+
+    // The SCTP port to listen on for E2 node connections.
+    int32 sctp_port = 2;
+
+    // Directory to store received RIC Indication metrics as JSON files.
+    string metrics_dir = 3;
+
+    // Metrics collection periodicity.
+    google.protobuf.Duration collection_period = 4;
+  }
+
   // A TelemetryDriver is responsible for generating telemetry reports for a
   // given node.
   message TelemetryDriver {
@@ -343,6 +365,9 @@ message SdnAgent {
 
       // Use an agent-specific driver to gather telemetry.
       google.protobuf.Any dynamic = 4;
+
+      // Use E2 interface for telemetry from RAN nodes.
+      E2Telemetry e2 = 7;
     }
   }
 
