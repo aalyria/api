@@ -32,6 +32,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/jonboulle/clockwork"
@@ -44,6 +45,7 @@ import (
 	otelsdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.34.0"
 	oteltracenoop "go.opentelemetry.io/otel/trace/noop"
+
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/backoff"
@@ -57,6 +59,7 @@ import (
 	agent "aalyria.com/spacetime/agent"
 	"aalyria.com/spacetime/agent/enactment"
 	enact_extproc "aalyria.com/spacetime/agent/enactment/extproc"
+
 	"aalyria.com/spacetime/agent/internal/configpb"
 	"aalyria.com/spacetime/agent/internal/protofmt"
 	"aalyria.com/spacetime/agent/internal/snmp"
@@ -175,7 +178,7 @@ func (ac AgentConf) Run(ctx context.Context, args []string) (err error) {
 	}
 	defer shutdownTracer()
 
-	ctx, stop := signal.NotifyContext(ctx, os.Interrupt)
+	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	g, ctx := errgroup.WithContext(ctx)
@@ -197,7 +200,17 @@ func (ac AgentConf) Run(ctx context.Context, args []string) (err error) {
 		}
 		return nil
 	})
-	return g.Wait()
+
+	// Wait for all goroutines to complete
+	err = g.Wait()
+	// Treat context cancellation (from Ctrl+C or SIGTERM) as normal shutdown
+	// TODO: Check whether this is intended behaviour
+	if errors.Is(err, context.Canceled) {
+		log := zerolog.Ctx(ctx)
+		log.Info().Msg("agent shutdown complete")
+		return nil
+	}
+	return err
 }
 
 const defaultMinConnectTimeout = 20 * time.Second
@@ -492,6 +505,7 @@ enactmentSwitch:
 
 	case *configpb.SdnAgent_EnactmentDriver_Snmp:
 		fmt.Print("TODO: SdnAgent_EnactmentDriver_Snmp")
+
 	case *configpb.SdnAgent_EnactmentDriver_Dynamic:
 		dialOpts, err := getDialOpts(ctx, node.EnactmentDriver.GetConnectionParams(), clock)
 		if err != nil {

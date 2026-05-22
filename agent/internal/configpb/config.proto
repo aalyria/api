@@ -221,6 +221,7 @@ message SnmpObject {
 
 // An SDN agent, controlling any number of commandable elements.
 message SdnAgent {
+
   // An external command is a delegate process that handles implementing some
   // aspect of the SBI contract. Exit codes within the range of the canonical
   // gRPC status codes will be transformed (alongside any messages written to
@@ -276,6 +277,7 @@ message SdnAgent {
   // E2 enactment driver configuration (currently empty, for future use).
   message E2Enactment {
   }
+  
 
   // An EnactmentDriver is responsible for processing incoming enactments for
   // a given node.
@@ -292,6 +294,7 @@ message SdnAgent {
 
       // SNMPv3 for enactments
       SnmpEnactment snmp = 5;
+
 
       // Use an agent-specific driver to process enactments.
       google.protobuf.Any dynamic = 4;
@@ -327,7 +330,7 @@ message SdnAgent {
     // How often the metrics will be gathered and reported.
     google.protobuf.Duration collection_period = 3;
 
-    // The port on which the metrics will be scrapable as Prometheus metrics
+    // The port on which the metrics will be scrapable as Prometheus metrics.
     int32 prometheus_port = 4;
   }
 
@@ -362,6 +365,7 @@ message SdnAgent {
 
       // Use SNMPv3 GET calls to gather telemetry.
       SnmpTelemetry snmp = 5;
+
 
       // Use an agent-specific driver to gather telemetry.
       google.protobuf.Any dynamic = 4;

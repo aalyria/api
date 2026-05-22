@@ -80,6 +80,11 @@ func (a *Agent) newNodeController(node *node, done func()) (*nodeController, err
 		}
 		nc.closers = append(nc.closers, telemetryConn.Close)
 
+		// If the telemetry driver implements io.Closer, register it for cleanup
+		if closer, ok := node.td.(interface{ Close() error }); ok {
+			nc.closers = append(nc.closers, closer.Close)
+		}
+
 		telemetryClient := telemetrypb.NewTelemetryClient(telemetryConn)
 
 		ts := nc.newTelemetryService(telemetryClient, node.td)

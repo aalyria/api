@@ -84,3 +84,12 @@ func (pd *PeriodicDriver) Run(
 		}
 	}
 }
+
+// Close shuts down the PeriodicDriver. If the underlying ReportGenerator
+// implements Close() error, it will be called for cleanup.
+func (pd *PeriodicDriver) Close() error {
+	if closer, ok := pd.ReportGenerator.(interface{ Close() error }); ok {
+		return closer.Close()
+	}
+	return nil
+}
