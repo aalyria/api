@@ -143,6 +143,8 @@ message CreateEntryRequest {
     DeleteRoute delete_route = 6;
     UpdateP2pSrTePolicyPath update_p2p_sr_te_policy_path = 20;
     DeleteP2pSrTePolicyPath delete_p2p_sr_te_policy_path = 21;
+    UpdateIpRoute update_ip_route = 24;
+    DeleteIpRoute delete_ip_route = 25;
   }
 
   reserved 7, 8, 11, 13, 14, 17;
@@ -151,13 +153,13 @@ message CreateEntryRequest {
 message SetRoute {
   // The source prefix of the route.
   //
-  // An IP or IPv6 address optionally followed by a slash and the prefix
+  // An IPv4 or IPv6 address optionally followed by a slash and the prefix
   // length.
   string from = 1;
 
   // The destination prefix of the route.
   //
-  // An IP or IPv6 address optionally followed by a slash and the prefix
+  // An IPv4 or IPv6 address optionally followed by a slash and the prefix
   // length.
   string to = 2;
 
@@ -166,22 +168,74 @@ message SetRoute {
 
   // The address of the nexthop router.
   //
-  // An IP or IPv6 address.
+  // An IPv4 or IPv6 address.
   string via = 4;
 }
 
 message DeleteRoute {
   // The source prefix of the route.
   //
-  // An IP or IPv6 address optionally followed by a slash and the prefix
+  // An IPv4 or IPv6 address optionally followed by a slash and the prefix
   // length.
   string from = 1;
 
   // The destination prefix of the route.
   //
-  // An IP or IPv6 address optionally followed by a slash and the prefix
+  // An IPv4 or IPv6 address optionally followed by a slash and the prefix
   // length.
   string to = 2;
+}
+
+// An IP forwarding entry to be installed in an EK_ROUTE_FN's forwarding table.
+//
+// The time associated with a revision of an IpRoute resource in a schedule
+// dictates the earliest time at which the agent should install the route into
+// the indicated EK_ROUTE_FN. A route persists until superseded by a later
+// IpRoute revision with the same name or removed by a DeleteIpRoute entry.
+message IpRoute {
+  // The resource name of the IpRoute.
+  // Format: ipRoutes/{ip_route_id}
+  //
+  // Names are unique within a schedule. Two IpRoutes in the same schedule will
+  // never share a name even if the IpRoutes exist at different times.
+  string name = 1;
+
+  // Identifies which EK_ROUTE_FN entity controlled by the receiving
+  // EK_SDN_AGENT this route is installed on. Required: producers MUST
+  // populate this field; agents MUST reject an IpRoute that omits it.
+  string route_fn_id = 2;
+
+  // The source prefix of the route.
+  //
+  // An IPv4 or IPv6 address optionally followed by a slash and the prefix
+  // length.
+  string from = 3;
+
+  // The destination prefix of the route.
+  //
+  // An IPv4 or IPv6 address optionally followed by a slash and the prefix
+  // length.
+  string to = 4;
+
+  // The output device name.
+  string dev = 5;
+
+  // The address of the nexthop router.
+  //
+  // An IPv4 or IPv6 address.
+  string via = 6;
+}
+
+message UpdateIpRoute {
+  IpRoute ip_route = 1;
+
+  aalyria.spacetime.api.common.FieldMask update_mask = 2;
+}
+
+message DeleteIpRoute {
+  // The resource name of the IpRoute to delete.
+  // Format: ipRoutes/{ip_route_id}
+  string name = 1;
 }
 
 // A transmit and/or receive beam of RF energy operating on a set of channels,
