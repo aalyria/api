@@ -864,21 +864,24 @@ message UpdateHandoverTrigger {
     repeated string endpoint_ids = 1;
   }
 
+  // Compiler-assigned identifier for this handover trigger instance.
+  // Used by schedulingsync to track identity across schedule revisions,
+  // following the same pattern as Beam.id and ThreeGPPCell.Nr.id.
+  string id = 1;
+
   oneof access_type {
-    Dvb dvb = 1;
-    Nr nr = 2;
+    Dvb dvb = 2;
+    Nr nr = 3;
   }
 
   // Other subjects TBD.
   oneof subject {
-    BeamTarget target = 3;
-    EndpointList endpoint_list = 4;
+    BeamTarget target = 4;
+    EndpointList endpoint_list = 5;
   }
 }
 
-// Removes a conditional handover configuration (T1CHO or D1CHO) from the
-// agent's schedule. Identified by the source NR CGI and the
-// cond_reconfig_id_r16 that was previously installed via UpdateHandoverTrigger.
+// Removes a handover trigger from the agent's schedule, identified by id.
 message DeleteHandoverTrigger {
   message Dvb {
     string source_network_node_id = 1;
@@ -889,9 +892,12 @@ message DeleteHandoverTrigger {
     int32 cond_reconfig_id_r16 = 2;
   }
 
+  // The id of the UpdateHandoverTrigger to remove.
+  string id = 1;
+
   oneof access_type {
-    Dvb dvb = 1;
-    Nr nr = 2;
+    Dvb dvb = 2;
+    Nr nr = 3;
   }
 }
 
