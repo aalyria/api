@@ -27,13 +27,11 @@ import (
 	"net/url"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/jonboulle/clockwork"
-	"golang.org/x/sync/singleflight"
 	"google.golang.org/grpc/credentials"
 )
 
@@ -332,8 +330,8 @@ func NewOIDCCredentials(_ context.Context, c OIDCConfig) (credentials.PerRPCCred
 }
 
 type oidcCredentials struct {
-	token  atomic.Pointer[expiringToken]
-	sf     singleflight.Group
+	mu     sync.RWMutex
+	token  *expiringToken
 	config OIDCConfig
 	pkey   any
 	client HTTPDoer
@@ -365,25 +363,28 @@ func (oc *oidcCredentials) GetRequestMetadata(ctx context.Context, _ ...string) 
 }
 
 func (oc *oidcCredentials) getToken(ctx context.Context) (string, error) {
-	if token := oc.token.Load(); token != nil && !token.isStale(oc.config.Clock) {
+	oc.mu.RLock()
+	token := oc.token
+	oc.mu.RUnlock()
+	if token != nil && !token.isStale(oc.config.Clock) {
 		return token.tok, nil
 	}
 
-	result, err, _ := oc.sf.Do("token", func() (any, error) {
-		if token := oc.token.Load(); token != nil && !token.isStale(oc.config.Clock) {
-			return token.tok, nil
-		}
-		accessToken, expiresAt, err := oc.exchangeToken(ctx)
-		if err != nil {
-			return nil, err
-		}
-		oc.token.Store(&expiringToken{tok: accessToken, expiresAt: expiresAt})
-		return accessToken, nil
-	})
+	oc.mu.Lock()
+	defer oc.mu.Unlock()
+
+	token = oc.token
+	if token != nil && !token.isStale(oc.config.Clock) {
+		return token.tok, nil
+	}
+
+	accessToken, expiresAt, err := oc.exchangeToken(ctx)
 	if err != nil {
 		return "", err
 	}
-	return result.(string), nil
+
+	oc.token = &expiringToken{tok: accessToken, expiresAt: expiresAt}
+	return accessToken, nil
 }
 
 func (oc *oidcCredentials) exchangeToken(ctx context.Context) (string, time.Time, error) {

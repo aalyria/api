@@ -15,18 +15,17 @@
 package nbictl
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
-	"sync/atomic"
 
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/samber/lo"
 	"github.com/sourcegraph/conc/pool"
 	"github.com/urfave/cli/v2"
-	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	er "outernetcouncil.org/nmts/v1/lib/entityrelationship"
 	nmtspb "outernetcouncil.org/nmts/v1/proto"
@@ -324,45 +323,48 @@ func ModelListRelationships(appCtx *cli.Context) error {
 	return nil
 }
 
+func nmtsEntitiesAreEquivalent(a, b *nmtspb.Entity) bool {
+	// TODO: find a more robust equivalency check.
+	// Additionally, allow for not overwriting certain changes,
+	// like not changing interface admin status (because this
+	// can be changed in the UI), and perhaps not changing
+	// a KeplerianElements if the only change is the epoch
+	// time (just wastes a lot of motion computation).
+	return proto.Equal(a, b)
+}
+
+func isNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	st, ok := status.FromError(err)
+	if !ok {
+		// Not a gRPC status error
+		return false
+	}
+
+	// Check if the code is NotFound (code 5)
+	return st.Code() == codes.NotFound
+}
+
 func ModelDeleteAll(appCtx *cli.Context) error {
 	dryRunMode := !appCtx.Bool("execute")
 	verboseMode := appCtx.Bool("verbose")
 	printMode := dryRunMode || verboseMode
-	maxConcurrency := appCtx.Int("max-concurrency")
-	showProgress := shouldShowProgress(appCtx)
 
-	target, dialOpts, err := resolveAPIDialOpts(appCtx, serviceModel)
+	conn, err := openAPIConnection(appCtx, serviceModel)
 	if err != nil {
 		return err
 	}
-	clients := make([]modelpb.ModelClient, maxConcurrency)
-	for i := range maxConcurrency {
-		conn, err := grpc.NewClient(target, dialOpts...)
-		if err != nil {
-			return fmt.Errorf("unable to connect to the server: %w", err)
-		}
-		defer conn.Close()
-		clients[i] = modelpb.NewModelClient(conn)
-	}
-	var clientIdx atomic.Int64
-	nextClient := func() modelpb.ModelClient {
-		return clients[clientIdx.Add(1)%int64(maxConcurrency)]
-	}
-
-	progress := newSyncProgress(showProgress)
-	listEntBar := progress.AddBar("listing remote entities     ", 1)
-	listRelBar := progress.AddBar("listing remote relationships", 1)
-
-	progress.Start()
-	defer progress.Stop()
-
-	w := progress.Writer()
+	defer conn.Close()
+	modelClient := modelpb.NewModelClient(conn)
 
 	listPool := pool.New().WithErrors()
 
 	var entityIds []string
 	listPool.Go(func() error {
-		entityList, err := clients[0].ListEntities(appCtx.Context, &modelpb.ListEntitiesRequest{})
+		entityList, err := modelClient.ListEntities(appCtx.Context, &modelpb.ListEntitiesRequest{})
 		if err != nil {
 			return err
 		}
@@ -371,18 +373,16 @@ func ModelDeleteAll(appCtx *cli.Context) error {
 			return item.GetId()
 		})
 
-		listEntBar.Incr()
 		return nil
 	})
 	var relationships []*nmtspb.Relationship
 	listPool.Go(func() error {
-		relationshipList, err := clients[1%maxConcurrency].ListRelationships(appCtx.Context, &modelpb.ListRelationshipsRequest{})
+		relationshipList, err := modelClient.ListRelationships(appCtx.Context, &modelpb.ListRelationshipsRequest{})
 		if err != nil {
 			return err
 		}
 
 		relationships = relationshipList.GetRelationships()
-		listRelBar.Incr()
 		return nil
 	})
 
@@ -391,114 +391,60 @@ func ModelDeleteAll(appCtx *cli.Context) error {
 		return errors.Join(errs)
 	}
 
-	deleteRelsBar := progress.AddBar("deleting relationships", len(relationships))
-	deleteEntsBar := progress.AddBar("deleting entities", len(entityIds))
-
-	refCount := make(map[string]*atomic.Int32, len(entityIds))
-	for _, id := range entityIds {
-		refCount[id] = &atomic.Int32{}
-	}
-	for _, rel := range relationships {
-		if c, ok := refCount[rel.GetA()]; ok {
-			c.Add(1)
-		}
-		if c, ok := refCount[rel.GetZ()]; ok {
-			c.Add(1)
-		}
-	}
-
-	// Buffer sized for every entity, since each is sent at most once. Sends
-	// from relationship workers therefore never block, which is what prevents
-	// the self-feeding deadlock the single-pool design had.
-	entityCh := make(chan string, len(entityIds))
-	for id, refs := range refCount {
-		if refs.Load() == 0 {
-			entityCh <- id
-		}
-	}
-
-	deleteEntity := func(id string) error {
-		if printMode {
-			fmt.Fprintf(w, "delete entity: %s\n", id)
-		}
-		var err error
-		if !dryRunMode {
-			err = withRetry(appCtx.Context, func(ctx context.Context) error {
-				_, err := nextClient().DeleteEntity(ctx, &modelpb.DeleteEntityRequest{
-					EntityId: id,
-				})
-				return err
-			})
-			if err != nil && isNotFoundError(err) {
-				err = nil
-			}
-		}
-		deleteEntsBar.Incr()
-		return err
-	}
-
-	entityPool := pool.New().WithErrors()
-	for range maxConcurrency {
-		entityPool.Go(func() error {
-			var errs []error
-			for id := range entityCh {
-				if err := deleteEntity(id); err != nil {
-					errs = append(errs, err)
-				}
-			}
-			return errors.Join(errs...)
-		})
-	}
-
-	maybeDeleteEntity := func(entityId string) {
-		c, ok := refCount[entityId]
-		if !ok {
-			return
-		}
-		if c.Add(-1) > 0 {
-			return
-		}
-		entityCh <- entityId
-	}
-
-	relPool := pool.New().WithErrors().WithMaxGoroutines(maxConcurrency)
+	deleteRelationshipsPool := pool.New().WithErrors()
 	for _, relationship := range relationships {
-		relPool.Go(func() error {
+		deleteRelationshipsPool.Go(func() error {
 			if printMode {
-				fmt.Fprintf(w, "delete relationship: %s\n", relationship)
+				fmt.Printf("delete relationship: %s\n", relationship)
 			}
 			var err error
 			if !dryRunMode {
-				err = withRetry(appCtx.Context, func(ctx context.Context) error {
-					_, err := nextClient().DeleteRelationship(ctx, &modelpb.DeleteRelationshipRequest{
-						Relationship: relationship,
-					})
-					return err
+				_, err = modelClient.DeleteRelationship(appCtx.Context, &modelpb.DeleteRelationshipRequest{
+					Relationship: relationship,
 				})
 				if err != nil && isNotFoundError(err) {
 					err = nil
 				}
 			}
-			deleteRelsBar.Incr()
-			if err == nil {
-				maybeDeleteEntity(relationship.GetA())
-				maybeDeleteEntity(relationship.GetZ())
+			return err
+		})
+	}
+
+	errs = deleteRelationshipsPool.Wait()
+	if errs != nil {
+		return errors.Join(errs)
+	}
+
+	deleteEntitiesPool := pool.New().WithErrors()
+	for _, entityId := range entityIds {
+		deleteEntitiesPool.Go(func() error {
+			if printMode {
+				fmt.Printf("delete entity: %s\n", entityId)
+			}
+			var err error
+			if !dryRunMode {
+				_, err = modelClient.DeleteEntity(appCtx.Context, &modelpb.DeleteEntityRequest{
+					EntityId: entityId,
+				})
+				if err != nil && isNotFoundError(err) {
+					err = nil
+				}
 			}
 			return err
 		})
 	}
 
-	relErr := relPool.Wait()
-	close(entityCh)
-	entityErr := entityPool.Wait()
-	return errors.Join(relErr, entityErr)
+	errs = deleteEntitiesPool.Wait()
+
+	return errors.Join(errs)
 }
 
 func ModelSync(appCtx *cli.Context) error {
 	deleteMode := appCtx.Bool("delete")
 	dryRunMode := appCtx.Bool("dry-run")
+	verboseMode := appCtx.Bool("verbose")
 	maxConcurrency := appCtx.Int("max-concurrency")
-	showProgress := shouldShowProgress(appCtx)
+	printMode := dryRunMode || verboseMode
 
 	marshaller, err := marshallerForFormat(appCtx.String("format"))
 	if err != nil {
@@ -509,145 +455,92 @@ func ModelSync(appCtx *cli.Context) error {
 		return fmt.Errorf("sync needs at least one directory or filename argument")
 	}
 
-	target, dialOpts, err := resolveAPIDialOpts(appCtx, serviceModel)
-	if err != nil {
-		return err
-	}
-	clients := make([]modelpb.ModelClient, maxConcurrency)
-	for i := range maxConcurrency {
-		conn, err := grpc.NewClient(target, dialOpts...)
-		if err != nil {
-			return fmt.Errorf("unable to connect to the server: %w", err)
-		}
-		defer conn.Close()
-		clients[i] = modelpb.NewModelClient(conn)
-	}
-	var clientIdx atomic.Int64
-	nextClient := func() modelpb.ModelClient {
-		return clients[clientIdx.Add(1)%int64(maxConcurrency)]
-	}
+	// Step 1: load up all the local entity and relationship elements.
+	localEntities := map[string]*nmtspb.Entity{}
+	localRelationships := er.NewRelationshipSet()
 
-	// to speed things up, we read all files and issue remote RPCs in parallel
-	// at the same time.
 	localFiles, err := findAllFilesWithExtension(marshaller.fileExt, appCtx.Bool("recursive"), appCtx.Args().Slice()...)
 	if err != nil {
 		return err
 	}
+	for _, localFile := range localFiles {
+		fmt.Fprintf(os.Stdout, "reading %s\n", localFile)
+		contents, err := os.ReadFile(localFile)
+		if err != nil {
+			return err
+		}
 
-	progress := newSyncProgress(showProgress)
-	readBar := progress.AddBar("reading local files         ", len(localFiles))
-	listRelBar := progress.AddBar("listing remote relationships", 1)
-	listEntBar := progress.AddBar("listing remote entities     ", 1)
+		fragment := &nmtspb.Fragment{}
+		err = marshaller.unmarshal(contents, fragment)
+		if err != nil {
+			return err
+		}
 
-	progress.Start()
-	defer progress.Stop()
-
-	type parsedFragment struct {
-		entities      []*nmtspb.Entity
-		relationships []*nmtspb.Relationship
+		for _, entity := range fragment.GetEntity() {
+			localEntities[entity.GetId()] = entity
+		}
+		for _, relationship := range fragment.GetRelationship() {
+			localRelationships.Insert(er.RelationshipFromProto(relationship))
+		}
 	}
 
-	parsedFragments := make([]parsedFragment, len(localFiles))
+	if len(localEntities) == 0 {
+		return fmt.Errorf("no local entities to sync to remote instance")
+	}
+	if len(localRelationships.Relations) == 0 {
+		fmt.Fprintf(os.Stderr, "# Warning: no local relationship to sync to remote instance")
+	}
+	localEntityKeys := set.NewSetFromMapKeys(localEntities)
+	localRelationshipKeys := set.NewSetFromMapKeys(localRelationships.Relations)
+	fmt.Fprintf(os.Stdout, "local model elements:\n")
+	fmt.Fprintf(os.Stdout, "- %d NMTS Entities\n", localEntityKeys.Cardinality())
+	fmt.Fprintf(os.Stdout, "- %d NMTS Relationships\n", localRelationshipKeys.Cardinality())
+
+	// Step 2: load up all the remote instance entity and relationship elements.
 	remoteEntities := map[string]*nmtspb.Entity{}
 	remoteRelationships := er.NewRelationshipSet()
 
-	initialReadPool := pool.New().WithErrors()
+	conn, err := openAPIConnection(appCtx, serviceModel)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	modelClient := modelpb.NewModelClient(conn)
 
-	// Read and parse local files concurrently.
-	initialReadPool.Go(func() error {
-		readPool := pool.New().WithErrors().WithMaxGoroutines(maxConcurrency)
-		for i, localFile := range localFiles {
-			readPool.Go(func() error {
-				contents, err := os.ReadFile(localFile)
-				if err != nil {
-					return err
-				}
+	listPool := pool.New().WithErrors()
 
-				fragment := &nmtspb.Fragment{}
-				if err := marshaller.unmarshal(contents, fragment); err != nil {
-					return err
-				}
-
-				parsedFragments[i] = parsedFragment{
-					entities:      fragment.GetEntity(),
-					relationships: fragment.GetRelationship(),
-				}
-				readBar.Incr()
-				return nil
-			})
-		}
-		return readPool.Wait()
-	})
-
-	// List remote entities.
-	initialReadPool.Go(func() error {
-		entityList, err := clients[0].ListEntities(appCtx.Context, &modelpb.ListEntitiesRequest{})
+	listPool.Go(func() error {
+		entityList, err := modelClient.ListEntities(appCtx.Context, &modelpb.ListEntitiesRequest{})
 		if err != nil {
 			return err
 		}
 		for _, entity := range entityList.GetEntities() {
 			remoteEntities[entity.GetId()] = entity
 		}
-		listEntBar.Incr()
 		return nil
 	})
 
-	// List remote relationships.
-	initialReadPool.Go(func() error {
-		relationshipList, err := clients[1%maxConcurrency].ListRelationships(appCtx.Context, &modelpb.ListRelationshipsRequest{})
+	listPool.Go(func() error {
+		relationshipList, err := modelClient.ListRelationships(appCtx.Context, &modelpb.ListRelationshipsRequest{})
 		if err != nil {
 			return err
 		}
 		for _, relationship := range relationshipList.GetRelationships() {
 			remoteRelationships.Insert(er.RelationshipFromProto(relationship))
 		}
-		listRelBar.Incr()
 		return nil
 	})
 
-	if err = initialReadPool.Wait(); err != nil {
+	if err = listPool.Wait(); err != nil {
 		return err
 	}
-
-	// Merge parsed fragments into local maps.
-	localEntities := map[string]*nmtspb.Entity{}
-	localRelationships := er.NewRelationshipSet()
-	for _, pf := range parsedFragments {
-		for _, entity := range pf.entities {
-			localEntities[entity.GetId()] = entity
-		}
-		for _, relationship := range pf.relationships {
-			localRelationships.Insert(er.RelationshipFromProto(relationship))
-		}
-	}
-
-	if len(localEntities) == 0 && !deleteMode {
-		return fmt.Errorf("no local entities to sync to remote instance and --delete is false")
-	}
-	if len(localRelationships.Relations) == 0 {
-		fmt.Fprintf(appCtx.App.ErrWriter, "# Warning: no local relationship to sync to remote instance")
-	}
-	localEntityKeys := set.NewSetFromMapKeys(localEntities)
-	localRelationshipKeys := set.NewSetFromMapKeys(localRelationships.Relations)
-
 	remoteEntityKeys := set.NewSetFromMapKeys(remoteEntities)
 	remoteRelationshipKeys := set.NewSetFromMapKeys(remoteRelationships.Relations)
+	fmt.Fprintf(os.Stdout, "remote model elements:\n")
+	fmt.Fprintf(os.Stdout, "- %d NMTS Entities\n", remoteEntityKeys.Cardinality())
+	fmt.Fprintf(os.Stdout, "- %d NMTS Relationships\n", remoteRelationshipKeys.Cardinality())
 
 	// Step 3: compute and print/enact differences.
-	var deleteRelsTotal int
-	if deleteMode {
-		deleteRelsTotal = remoteRelationshipKeys.Difference(localRelationshipKeys).Cardinality()
-	}
-	deleteRelsBar := progress.AddBar("deleting relationships", deleteRelsTotal)
-
-	upsertTotal := len(localEntities)
-	if deleteMode {
-		upsertTotal += remoteEntityKeys.Difference(localEntityKeys).Cardinality()
-	}
-	upsertBar := progress.AddBar("applying changes to remote", upsertTotal)
-
-	addRelsBar := progress.AddBar("adding relationships", localRelationshipKeys.Difference(remoteRelationshipKeys).Cardinality())
-
 	errs := []error{}
 
 	// Delete relationships before deleting entities.
@@ -656,16 +549,15 @@ func ModelSync(appCtx *cli.Context) error {
 		relationshipsToBeDeleted := remoteRelationshipKeys.Difference(localRelationshipKeys)
 		for relationship := range relationshipsToBeDeleted.Iter() {
 			deleteRelationshipsPool.Go(func() error {
+				if printMode {
+					fmt.Printf("delete relationship: %s\n", relationship)
+				}
 				var err error
 				if !dryRunMode {
-					err = withRetry(appCtx.Context, func(ctx context.Context) error {
-						_, err := nextClient().DeleteRelationship(ctx, &modelpb.DeleteRelationshipRequest{
-							Relationship: relationship.ToProto(),
-						})
-						return err
+					_, err = modelClient.DeleteRelationship(appCtx.Context, &modelpb.DeleteRelationshipRequest{
+						Relationship: relationship.ToProto(),
 					})
 				}
-				deleteRelsBar.Incr()
 				return err
 			})
 		}
@@ -674,64 +566,87 @@ func ModelSync(appCtx *cli.Context) error {
 	// relationships that might create difficult-to-analyze graphs.
 	errs = append(errs, deleteRelationshipsPool.Wait())
 
-	// Upsert all local entities + delete remote-only entities.
-	upsertPool := pool.New().WithErrors().WithMaxGoroutines(maxConcurrency)
-	for _, entity := range localEntities {
-		upsertPool.Go(func() error {
+	// Update entities.
+	updatePool := pool.New().WithErrors().WithMaxGoroutines(maxConcurrency)
+	entitiesInCommon := localEntityKeys.Intersect(remoteEntityKeys)
+	for entity := range entitiesInCommon.Iter() {
+		updatePool.Go(func() error {
+			if nmtsEntitiesAreEquivalent(localEntities[entity], remoteEntities[entity]) {
+				return nil
+			}
+			if printMode {
+				fmt.Printf("update entity: %s\n", entity)
+			}
 			var err error
 			if !dryRunMode {
-				err = withRetry(appCtx.Context, func(ctx context.Context) error {
-					_, err := nextClient().UpdateEntity(ctx, &modelpb.UpdateEntityRequest{
-						Entity:       entity,
-						AllowMissing: true,
-					})
-					return err
+				_, err = modelClient.UpdateEntity(appCtx.Context, &modelpb.UpdateEntityRequest{
+					Entity: localEntities[entity],
 				})
 			}
-			upsertBar.Incr()
 			return err
 		})
 	}
 
+	// Maybe delete entities (and prune collaterally deleted relationships)
 	if deleteMode {
 		entitiesToBeDeleted := remoteEntityKeys.Difference(localEntityKeys)
-		for entityID := range entitiesToBeDeleted.Iter() {
-			upsertPool.Go(func() error {
+
+		for entity := range entitiesToBeDeleted.Iter() {
+			updatePool.Go(func() error {
+				if printMode {
+					fmt.Printf("delete entity: %s\n", entity)
+				}
 				var err error
 				if !dryRunMode {
-					err = withRetry(appCtx.Context, func(ctx context.Context) error {
-						_, err := nextClient().DeleteEntity(ctx, &modelpb.DeleteEntityRequest{
-							EntityId: entityID,
-						})
-						return err
+					_, err = modelClient.DeleteEntity(appCtx.Context, &modelpb.DeleteEntityRequest{
+						EntityId: entity,
 					})
 					if err != nil && isNotFoundError(err) {
 						err = nil
 					}
 				}
-				upsertBar.Incr()
 				return err
 			})
 		}
 	}
 
-	errs = append(errs, upsertPool.Wait())
+	errs = append(errs, updatePool.Wait())
+
+	// Add entities.
+	addEntitiesPool := pool.New().WithErrors().WithMaxGoroutines(maxConcurrency)
+	entitiesToBeAdded := localEntityKeys.Difference(remoteEntityKeys)
+	for entity := range entitiesToBeAdded.Iter() {
+		addEntitiesPool.Go(func() error {
+			if printMode {
+				fmt.Printf("add entity: %s\n", entity)
+			}
+			var err error
+			if !dryRunMode {
+				_, err = modelClient.CreateEntity(appCtx.Context, &modelpb.CreateEntityRequest{
+					Entity: localEntities[entity],
+				})
+			}
+			return err
+		})
+	}
+	// Need to wait for entities to be added before adding any
+	// relationships that might reference them.
+	errs = append(errs, addEntitiesPool.Wait())
 
 	// Add relationships.
 	addRelationshipsPool := pool.New().WithErrors().WithMaxGoroutines(maxConcurrency)
 	relationshipsToBeAdded := localRelationshipKeys.Difference(remoteRelationshipKeys)
 	for relationship := range relationshipsToBeAdded.Iter() {
 		addRelationshipsPool.Go(func() error {
+			if printMode {
+				fmt.Printf("add relationship: %s\n", relationship)
+			}
 			var err error
 			if !dryRunMode {
-				err = withRetry(appCtx.Context, func(ctx context.Context) error {
-					_, err := nextClient().CreateRelationship(ctx, &modelpb.CreateRelationshipRequest{
-						Relationship: relationship.ToProto(),
-					})
-					return err
+				_, err = modelClient.CreateRelationship(appCtx.Context, &modelpb.CreateRelationshipRequest{
+					Relationship: relationship.ToProto(),
 				})
 			}
-			addRelsBar.Incr()
 			return err
 		})
 	}

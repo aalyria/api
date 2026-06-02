@@ -31,17 +31,11 @@ Generate RSA keys to use for authentication with the Spacetime APIs.
 
 >After creating the Private-Public keypair, you will need to request API access by sharing the `.crt` file (a self-signed x509 certificate containing the public key) with Aalyria to receive the `USER_ID` and a `KEY_ID` needed to complete the nbictl configuration. Only share the public certificate (`.crt`) with Aalyria or third-parties. The private key (`.key`) must be protected and should never be sent by email or communicated to others.
 
-**--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
-
 **--country**="": Country of certificate.
-
-**--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
 
 **--dir, --directory**="": Directory to store the generated RSA keys in. (default: ~/.config/nbictl/keys)
 
 **--location**="": Location of certificate.
-
-**--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
 
 **--org, --organization**="": [REQUIRED] Organization of certificate.
 
@@ -55,21 +49,9 @@ Provides subcommands for managing nbictl configuration.
 
 List all configuration profiles (ignores any `--profile` flag)
 
-**--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
-
-**--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
-
-**--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
-
 ### describe
 
 Prints the NBI connection settings associated with the configuration profile given by the `--profile` flag (defaults to "DEFAULT").
-
-**--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
-
-**--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
-
-**--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
 
 ### set
 
@@ -77,19 +59,13 @@ Sets or updates a configuration profile settings. You can create multiple profil
 
 **--auth_strategy**="": Authentication strategy. Allowed values: [none, jwt, oidc]. When 'none', no authentication credentials are sent.
 
-**--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
-
 **--client_id**="": OIDC client ID (used with --auth_strategy=oidc).
-
-**--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
 
 **--default_url**="": Fallback URL for unlisted services (custom endpoint_config only).
 
 **--endpoint_config**="": Endpoint resolution strategy. Allowed values: [subdomain, single_domain, custom]
 
 **--key_id**="": Key ID associated with the private key provided by Aalyria.
-
-**--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
 
 **--model_url**="": URL for the Model API (custom endpoint_config only).
 
@@ -117,117 +93,59 @@ Subcommands for Model API v1, to manage the model elements comprising the digita
 
 Create the model NMTS Entity contained within the file provided on the command line ('-' reads from stdin).
 
-**--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
-
-**--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
-
 **--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
-
-**--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
 
 ### update-entity
 
 Update the model NMTS Entity contained within the file provided on the command line ('-' reads from stdin).
 
-**--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
-
-**--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
-
 **--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
-
-**--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
 
 ### delete-entity
 
 Delete the model NMTS Entity associated with the entity ID provided on the command line, along with any relationships in which it participates.
 
-**--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
-
-**--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
-
 **--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
-
-**--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
 
 ### get-entity
 
 Get the model NMTS Entity associated with the entity ID given on the command line.
 
-**--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
-
-**--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
-
 **--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
-
-**--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
 
 ### create-relationship
 
 Insert the model NMTS Relationship contained within the file provided on the command line ('-' reads from stdin).
 
-**--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
-
-**--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
-
 **--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
-
-**--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
 
 ### delete-relationship
 
 Delete the model NMTS Relationship contained within the file provided on the command line ('-' reads from stdin).
 
-**--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
-
-**--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
-
 **--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
-
-**--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
 
 ### upsert-fragment
 
 Upsert the model NMTS Fragment contained within the file provided on the command line ('-' reads from stdin).
 
-**--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
-
-**--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
-
 **--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
-
-**--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
 
 ### list-entities
 
 List all model entities.
 
-**--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
-
-**--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
-
 **--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
-
-**--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
 
 ### list-relationships
 
 List all model relationships.
 
-**--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
-
-**--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
-
 **--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
-
-**--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
 
 ### sync, rsync
 
 Sync all model entities and relationships from file and directory arguments.
-
-**--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
-
-**--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
 
 **--delete, -d, --delete-before**: delete entities and relationships from remote instance not present in local sources
 
@@ -237,27 +155,15 @@ Sync all model entities and relationships from file and directory arguments.
 
 **--max-concurrency, -j, --max_concurrency**="": Limit the number of in-flight requests at once. (default: 100)
 
-**--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
-
-**--progress**="": Show progress bars during sync. One of [auto, on, off]. 'auto' enables when stderr is a TTY. (default: "auto")
-
 **--recursive, -r**: descend recursively into directory arguments
+
+**--verbose, -v**: increase verbosity
 
 ### delete-all, clear
 
 Delete all model entities and relationships from remote.
 
-**--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
-
-**--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
-
 **--execute, -y, --no-dry-run**: execute command, skipping trial run that doesn't make any changes
-
-**--max-concurrency, -j, --max_concurrency**="": Limit the number of in-flight requests at once. (default: 100)
-
-**--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
-
-**--progress**="": Show progress bars during sync. One of [auto, on, off]. 'auto' enables when stderr is a TTY. (default: "auto")
 
 **--verbose, -v**: increase verbosity
 
@@ -269,10 +175,6 @@ Subcommands for Provisioning API v1alpha, to manage the provisioned resources wi
 
 Sync all provisioning resources from file and directory arguments.
 
-**--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
-
-**--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
-
 **--delete, -d, --delete-before**: delete resources from remote instance not present in local sources
 
 **--dry-run, -n**: perform a trial run that doesn't make any changes
@@ -280,10 +182,6 @@ Sync all provisioning resources from file and directory arguments.
 **--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
 
 **--max-concurrency, -j, --max_concurrency**="": Limit the number of in-flight requests at once. (default: 100)
-
-**--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
-
-**--progress**="": Show progress bars during sync. One of [auto, on, off]. 'auto' enables when stderr is a TTY. (default: "auto")
 
 **--recursive, -r**: descend recursively into directory arguments
 
@@ -293,15 +191,9 @@ Sync all provisioning resources from file and directory arguments.
 
 List all provisioning resources from remote.
 
-**--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
-
-**--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
-
 **--dry-run, -n**: perform a trial run that doesn't make any changes
 
 **--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
-
-**--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
 
 **--verbose, -v**: increase verbosity
 
@@ -309,17 +201,9 @@ List all provisioning resources from remote.
 
 Delete provisioning resources from remote.
 
-**--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
-
-**--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
-
 **--dry-run, -n**: perform a trial run that doesn't make any changes
 
 **--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
-
-**--max-concurrency, -j, --max_concurrency**="": Limit the number of in-flight requests at once. (default: 100)
-
-**--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
 
 **--verbose, -v**: increase verbosity
 
@@ -327,17 +211,7 @@ Delete provisioning resources from remote.
 
 Delete all provisioning resources from remote.
 
-**--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
-
-**--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
-
 **--execute, -y, --no-dry-run**: execute command, skipping trial run that doesn't make any changes
-
-**--max-concurrency, -j, --max_concurrency**="": Limit the number of in-flight requests at once. (default: 100)
-
-**--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
-
-**--progress**="": Show progress bars during sync. One of [auto, on, off]. 'auto' enables when stderr is a TTY. (default: "auto")
 
 **--verbose, -v**: increase verbosity
 
@@ -349,25 +223,13 @@ Subcommands for Status API v1.
 
 Retrieve the version of this Spacetime instance.
 
-**--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
-
-**--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
-
 **--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
-
-**--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
 
 ### get-metrics
 
 Retrieve the insight metrics of this Spacetime instance.
 
-**--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
-
-**--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
-
 **--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
-
-**--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
 
 ## grpcurl
 
@@ -379,33 +241,15 @@ Provides curl-like equivalents for interacting with the Spacetime APIs.
 
 Takes an optional fully-qualified symbol (service, enum, or message). If provided, the descriptor for that symbol is shown. If not provided, the descriptor for all exposed or known services are shown.
 
-**--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
-
-**--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
-
-**--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
-
 ### list
 
 Takes an optional fully-qualified service name. If provided, lists all methods of that service. If not provided, all exposed services are listed.
-
-**--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
-
-**--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
-
-**--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
 
 ### call, invoke
 
 Takes a fully-qualified method name in 'service.method' or 'service/method' format. Invokes the method using the provided request body.
 
-**--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
-
-**--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
-
 **--format, -f**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: json)
-
-**--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
 
 **--request, -r**="": File containing the request to make encoded in the selected --format. Defaults to -, which uses stdin. (default: -)
 
@@ -415,13 +259,7 @@ Generate a self-signed JWT token for API authentication.
 
 **--audience, --aud**="": The audience (aud) to set in the JWT token.
 
-**--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
-
-**--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
-
 **--expiration, --exp**="": The validity duration of token, from the time of creation. (default: 1h)
-
-**--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
 
 ## help, h
 
