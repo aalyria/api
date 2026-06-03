@@ -18,7 +18,7 @@ load("@rules_rust_prost//:defs.bzl", "rust_prost_toolchain")
 rust_library_group(
     name = "prost_runtime",
     deps = [
-        "@st_crates_io//:prost",
+        "@spacetime_crates//:prost",
     ],
 )
 
@@ -26,18 +26,18 @@ rust_library_group(
     name = "tonic_runtime",
     deps = [
         ":prost_runtime",
-        "@st_crates_io//:tonic",
-        "@st_crates_io//:tonic-prost",
+        "@spacetime_crates//:tonic",
+        "@spacetime_crates//:tonic-prost",
     ],
 )
 
 rust_prost_toolchain(
     name = "prost_toolchain_impl",
     compile_well_known_types = False,
-    prost_plugin = "@st_crates_io//:protoc-gen-prost__protoc-gen-prost",
+    prost_plugin = "@spacetime_crates//:protoc-gen-prost__protoc-gen-prost",
     prost_runtime = ":prost_runtime",
-    prost_types = "@st_crates_io//:prost-types",
-    tonic_plugin = "@st_crates_io//:protoc-gen-tonic__protoc-gen-tonic",
+    prost_types = "@spacetime_crates//:prost-types",
+    tonic_plugin = "@spacetime_crates//:protoc-gen-tonic__protoc-gen-tonic",
     tonic_runtime = ":tonic_runtime",
 )
 
