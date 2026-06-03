@@ -27,6 +27,7 @@ go_library(
         "@com_github_google_uuid//:uuid",
         "@com_github_jonboulle_clockwork//:clockwork",
         "@org_golang_google_grpc//credentials",
+        "@org_golang_x_sync//singleflight",
     ],
 )
 

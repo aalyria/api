@@ -82,9 +82,11 @@ use_repo(
     "com_github_google_go_cmp",
     "com_github_google_uuid",
     "com_github_gosnmp_gosnmp",
+    "com_github_gosuri_uiprogress",
     "com_github_iancoleman_strcase",
     "com_github_jhump_protoreflect",
     "com_github_jonboulle_clockwork",
+    "com_github_mattn_go_isatty",
     "com_github_prometheus_client_golang",
     "com_github_prometheus_client_model",
     "com_github_prometheus_prom2json",
@@ -111,6 +113,7 @@ use_repo(
     "org_golang_x_net",
     "org_golang_x_sync",
     "org_golang_x_sys",
+    "org_golang_x_text",
 )
 
 switched_rules = use_extension("@googleapis//:extensions.bzl", "switched_rules")

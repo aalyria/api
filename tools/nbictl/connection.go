@@ -25,14 +25,18 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/jonboulle/clockwork"
 	"github.com/urfave/cli/v2"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/encoding/gzip"
 	_ "google.golang.org/grpc/encoding/gzip" // Install the gzip compressor
+	"google.golang.org/grpc/keepalive"
+	"google.golang.org/grpc/status"
 
 	"google.golang.org/protobuf/proto"
 
@@ -213,31 +217,47 @@ func resolvePerRPCCredentials(ctx context.Context, setting *nbictlpb.Config, isI
 	}
 }
 
-func openAPIConnection(appCtx *cli.Context, svc serviceKey) (*grpc.ClientConn, error) {
+func resolveAPIDialOpts(appCtx *cli.Context, svc serviceKey) (string, []grpc.DialOption, error) {
 	profileName := appCtx.String("profile")
 
 	appConfDir, err := getAppConfDir(appCtx)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	setting, err := readConfig(profileName, filepath.Join(appConfDir, confFileName))
 	if err != nil {
-		return nil, fmt.Errorf("unable to obtain context information: %w", err)
+		return "", nil, fmt.Errorf("unable to obtain context information: %w", err)
 	}
 	url := setting.GetUrl()
 	originalURL := url
 	var containsDnsSchema bool
 	url, containsDnsSchema = strings.CutPrefix(url, "dns:///")
 	if containsDnsSchema {
-		return nil, fmt.Errorf("URL (%s) with dns:/// prefix is unsupported. Please provide only host[:port].", originalURL)
+		return "", nil, fmt.Errorf("URL (%s) with dns:/// prefix is unsupported. Please provide only host[:port].", originalURL)
 	}
 	setting.Url = url
 
 	resolved, err := resolveEndpoint(setting, svc)
 	if err != nil {
+		return "", nil, err
+	}
+	dialOpts, err := getDialOpts(appCtx.Context, resolved)
+	if err != nil {
+		return "", nil, fmt.Errorf("unable to construct dial options: %w", err)
+	}
+	return resolved.GetUrl(), dialOpts, nil
+}
+
+func openAPIConnection(appCtx *cli.Context, svc serviceKey) (*grpc.ClientConn, error) {
+	target, dialOpts, err := resolveAPIDialOpts(appCtx, svc)
+	if err != nil {
 		return nil, err
 	}
-	return dial(appCtx.Context, resolved)
+	conn, err := grpc.NewClient(target, dialOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("unable to connect to the server: %w", err)
+	}
+	return conn, nil
 }
 
 func adjustURLForAPISubDomain(url string, apiSubDomain string) (string, error) {
@@ -277,6 +297,11 @@ func dial(ctx context.Context, setting *nbictlpb.Config) (*grpc.ClientConn, erro
 func getDialOpts(ctx context.Context, setting *nbictlpb.Config) ([]grpc.DialOption, error) {
 	dialOpts := []grpc.DialOption{
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(1024*1024*256), grpc.UseCompressor(gzip.Name)),
+		grpc.WithKeepaliveParams(keepalive.ClientParameters{
+			Time:                30 * time.Second,
+			Timeout:             10 * time.Second,
+			PermitWithoutStream: false,
+		}),
 	}
 
 	var cp *x509.CertPool
@@ -346,4 +371,40 @@ func getDialOpts(ctx context.Context, setting *nbictlpb.Config) ([]grpc.DialOpti
 	}
 
 	return dialOpts, nil
+}
+
+func isNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	st, ok := status.FromError(err)
+	if !ok {
+		return false
+	}
+
+	return st.Code() == codes.NotFound
+}
+
+func withRetry(ctx context.Context, fn func(ctx context.Context) error) error {
+	var err error
+	for attempt := range 3 {
+		rpcCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		err = fn(rpcCtx)
+		cancel()
+		if err == nil {
+			return nil
+		}
+		st, ok := status.FromError(err)
+		if !ok || st.Code() != codes.Unavailable {
+			return err
+		}
+		delay := time.Duration(1<<attempt) * 100 * time.Millisecond
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(delay):
+		}
+	}
+	return err
 }
