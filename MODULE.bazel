@@ -172,6 +172,11 @@ register_toolchains(
     "//api/build_tools/prost_toolchain",
 )
 
+# All of these crates come from crates.io, hence the "crates_io" name.
+# The "st_" (spacetime) prefix is required to avoid a collision with the
+# nmts submodule, which defines its own "crates_io" (and "crates") repo:
+# rules_rust's crate extension is shared across the whole module graph,
+# so two modules generating a repo of the same name would error.
 crate = use_extension("@rules_rust//crate_universe:extension.bzl", "crate")
 crate.spec(
     package = "prost",
@@ -212,9 +217,9 @@ crate.annotation(
     gen_binaries = ["protoc-gen-tonic"],
 )
 crate.from_specs(
-    name = "spacetime_crates",
+    name = "st_crates_io",
 )
-use_repo(crate, "spacetime_crates")
+use_repo(crate, "st_crates_io")
 
 bazel_dep(name = "org_outernetcouncil_nmts")
 archive_override(
