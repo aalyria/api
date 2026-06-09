@@ -103,3 +103,12 @@ rust_prost_library(
     name = "resources_rust_proto",
     proto = ":resources_proto",
 )
+
+# Explicit rust_prost_library for the transitive `google.type.Interval` proto
+# so that downstream rust_binary/rust_test targets can name the type. See
+# apps/simplesolver/CLAUDE.md — "Non-WKT Transitive Deps" — for why this
+# wrapper is needed even though the proto is already pulled in transitively.
+rust_prost_library(
+    name = "interval_rust_proto",
+    proto = "@googleapis//google/type:interval_proto",
+)
