@@ -1,0 +1,138 @@
+// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto2";
+
+package aalyria.spacetime.api.nbi.v1alpha.resources;
+
+import "api/common/coordinates.proto";
+import "api/common/wireless_transceiver.proto";
+import "api/nbi/v1alpha/resources/coverage.proto";
+import "api/nbi/v1alpha/resources/network_link.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+import "google/type/interval.proto";
+
+option java_package = "com.aalyria.spacetime.api.nbi.v1alpha.resources";
+option go_package = "aalyria.com/spacetime/api/nbi/v1alpha/resources";
+
+/* Messages that relate to how a wireless signal is propagated. */
+
+// Models a transceiver with a specified motion.
+// This can be used for one-off analyses to compute link budgets
+// with the
+// aalyria.spacetime.nbi.v1alpha.SignalPropagation service.
+message TransceiverWithMotion {
+  optional aalyria.spacetime.api.common.TransceiverModel model = 1;
+  optional aalyria.spacetime.api.common.Motion motion = 2;
+}
+
+// Models either a transceiver on an existing PlatformDefinition, 
+// or a transceiver with a specified motion for one-off 
+// analysis. This is used by the 
+// aalyria.spacetime.nbi.v1alpha.SignalPropagation service.
+message TransceiverProvider {
+  oneof source {
+    aalyria.spacetime.api.common.TransceiverModelId id_in_store = 1;
+    TransceiverWithMotion definition = 2;
+  }
+}
+
+// Explains the reason that a wireless link is inaccessible.
+message NoAccessReason {
+  enum Constraint {
+    UNKNOWN_CONSTRAINT = 1;
+
+    // Required separation from an azimuth/elevation mask.
+    // See `minimum_azimuth_elevation_mask_separation_deg` in
+    // aalyria.spacetime.api.common.AntennaConstraints.
+    SEPARATION_FROM_AZ_EL_MASK = 2;
+
+    // Minimum and/or maximum link slant range.
+    // See `link_range` in 
+    // aalyria.spacetime.api.common.AntennaConstraints.
+    LINK_RANGE = 3;
+
+    // Field of view or regard.
+    // See `field_of_regard` in 
+    // aalyria.spacetime.api.common.AntennaDefinition.
+    FIELD_OF_VIEW_OR_REGARD = 4;
+
+    // Required angle between the sun's center of mass and the link vector.
+    // See `minimum_sun_angle_deg` in 
+    // aalyria.spacetime.api.common.AntennaConstraints.
+    SUN_EXCLUSION = 5;
+
+    // Something on the local platform is obstructing the link.
+    // See `obstructions` in 
+    // aalyria.spacetime.api.common.AntennaDefinition.
+    PLATFORM_OBSTRUCTION = 6;
+
+    // Terrain is obstructing the link vector.
+    TERRAIN_OBSTRUCTION = 7;
+
+    // The modeled carrier-to-noise ratio at the receiver is too low.
+    RECEIVER_CNR_TOO_LOW = 8;
+
+    // The Earth (or other planetary body) is obstructing the link.
+    NO_LINE_OF_SIGHT = 9;
+  }
+  optional Constraint constraint = 1;
+
+  // Identifies the constrained link end.
+  optional aalyria.spacetime.api.common.TransceiverModelId 
+    transceiver_link_end = 2;
+}
+
+// Defines the predicted accessibility of the target. Modeled signal
+// propagation information is included within accessible intervals.
+message AccessInterval {
+  // The applicable time interval (may be open ended).
+  optional google.type.Interval interval = 1;
+
+  // The predicted accessibility of the link target over the entire interval.
+  // A new AccessInterval is created for each change in modeled accessibility.
+  // Changes in the reason for inaccessibility also result in new intervals.
+  optional Accessibility accessibility = 2;
+
+  // The set of reasons that the link is inaccessible over this interval.
+  repeated NoAccessReason no_access_reason = 3;
+
+  // Modeled signal propagation, to coordinates of interest, over time.
+  // Timestamped entries are sorted in ascending order into the future.
+  // This field is omitted during inaccessible intervals.
+  repeated SpatialPropagation propagation_over_time = 4;
+}
+
+// The modeled signal propagation across space at an instance in time.
+message SpatialPropagation {
+  // Time as observed by the transmitter.
+  optional google.protobuf.Timestamp timestamp = 1;
+
+  // Modeled signal propagation to the target.
+  optional WirelessLinkBudget reception = 2;
+
+  // The link direction from transmitter towards the target.
+  optional aalyria.spacetime.api.common.PointingVector pointing_vector = 3;
+
+  // The range to the target's coordinates, in meters.
+  optional double range_m = 4;
+
+  // The electromagnetic propagation delay to target's coordinates.
+  optional google.protobuf.Duration propagation_delay = 5;
+
+  // The spatial propagation to specified points of interest.
+  optional SignalPowerCoverage coverage = 6;
+}
+
