@@ -1358,12 +1358,11 @@ message PointingConstraint {
   // A constraint on the minimum angular separation from the sun.
   message SunSeparationAngle {
     // If set, the constraint applies only to operations within the
-    // specified frequency range. This allows modeling band-specific
-    // regulatory requirements (e.g., a tighter constraint in Ka-band
-    // than in Ku-band). If unset, the constraint applies to all frequencies.
+    // specified frequency range. If unset, it applies to all frequencies.
     FrequencyRange frequency_range = 1;
 
-    // The minimum angular separation from the sun, in degrees.
+    // The minimum angular separation between boresight and the sun's center
+    // of mass, in degrees.
     double minimum_angle_deg = 2;
   }
 
