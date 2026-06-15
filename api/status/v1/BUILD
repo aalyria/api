@@ -44,4 +44,7 @@ go_proto_library(
 python_grpc_library(
     name = "status_python_grpc",
     protos = [":status_proto"],
+    deps = [
+        "@opentelemetry_proto//:metrics_python_proto",
+    ],
 )

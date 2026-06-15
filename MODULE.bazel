@@ -232,7 +232,7 @@ http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "ht
 
 http_archive(
     name = "opentelemetry_proto",
-    build_file = "//api/third_party/opentelemetry:otel.BUILD",
+    build_file = "//third_party/opentelemetry:otel.BUILD",
     strip_prefix = "opentelemetry-proto-main",
     urls = ["https://github.com/open-telemetry/opentelemetry-proto/archive/main.zip"],
 )
