@@ -32,7 +32,32 @@ import (
 	nmtspb "outernetcouncil.org/nmts/v1/proto"
 
 	modelpb "aalyria.com/spacetime/api/model/v1"
+	omnipb "aalyria.com/spacetime/tools/nbictl/omnipb"
 )
+
+// normalizeOmniFragment collapses an OmniFragment, which permissively accepts
+// both the singular (`entity`/`relationship`) and pluralized
+// (`entities`/`relationships`) field spellings, into a single normalized native
+// nmts.v1.Fragment. The singular and pluralized lists are concatenated so that
+// inputs mixing both spellings - even within the same file - are accepted.
+func normalizeOmniFragment(omni *omnipb.OmniFragment) *nmtspb.Fragment {
+	fragment := &nmtspb.Fragment{}
+	fragment.Entity = append(fragment.Entity, omni.GetEntity()...)
+	fragment.Entity = append(fragment.Entity, omni.GetEntities()...)
+	fragment.Relationship = append(fragment.Relationship, omni.GetRelationship()...)
+	fragment.Relationship = append(fragment.Relationship, omni.GetRelationships()...)
+	return fragment
+}
+
+// readNormalizedFragment reads an OmniFragment from the provided bytes using the
+// given marshaller and returns the normalized native nmts.v1.Fragment.
+func readNormalizedFragment(marshaller protoFormat, data []byte) (*nmtspb.Fragment, error) {
+	omni := &omnipb.OmniFragment{}
+	if err := marshaller.unmarshal(data, omni); err != nil {
+		return nil, err
+	}
+	return normalizeOmniFragment(omni), nil
+}
 
 func readDataFromCommandLineFilenameArgument(appCtx *cli.Context) ([]byte, error) {
 	if appCtx.Args().Len() != 1 {
@@ -200,8 +225,12 @@ func ModelUpsertFragment(appCtx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	nmtsFragment := &nmtspb.Fragment{}
-	if err := readProtoFromCommandLineFilenameArgument(appCtx, marshaller, nmtsFragment); err != nil {
+	data, err := readDataFromCommandLineFilenameArgument(appCtx)
+	if err != nil {
+		return err
+	}
+	nmtsFragment, err := readNormalizedFragment(marshaller, data)
+	if err != nil {
 		return err
 	}
 
@@ -290,7 +319,10 @@ func ModelListEntities(appCtx *cli.Context) error {
 		return err
 	}
 
-	marshalled, err := marshaller.marshal(response)
+	// Emit a normalized native nmts.v1.Fragment so the output can be fed
+	// directly back into `sync` or `upsert-fragment`.
+	fragment := &nmtspb.Fragment{Entity: response.GetEntities()}
+	marshalled, err := marshaller.marshal(fragment)
 	if err != nil {
 		return err
 	}
@@ -316,7 +348,10 @@ func ModelListRelationships(appCtx *cli.Context) error {
 		return err
 	}
 
-	marshalled, err := marshaller.marshal(response)
+	// Emit a normalized native nmts.v1.Fragment so the output can be fed
+	// directly back into `sync` or `upsert-fragment`.
+	fragment := &nmtspb.Fragment{Relationship: response.GetRelationships()}
+	marshalled, err := marshaller.marshal(fragment)
 	if err != nil {
 		return err
 	}
@@ -349,14 +384,11 @@ func ModelDeleteAll(appCtx *cli.Context) error {
 		return clients[clientIdx.Add(1)%int64(maxConcurrency)]
 	}
 
-	progress := newSyncProgress(showProgress)
-	listEntBar := progress.AddBar("listing remote entities     ", 1)
-	listRelBar := progress.AddBar("listing remote relationships", 1)
+	listProgress := newSyncProgress(showProgress)
+	listEntBar := listProgress.AddBar("listing remote entities     ", 1)
+	listRelBar := listProgress.AddBar("listing remote relationships", 1)
 
-	progress.Start()
-	defer progress.Stop()
-
-	w := progress.Writer()
+	listProgress.Start()
 
 	listPool := pool.New().WithErrors()
 
@@ -388,11 +420,19 @@ func ModelDeleteAll(appCtx *cli.Context) error {
 
 	errs := listPool.Wait()
 	if errs != nil {
+		listProgress.Stop()
 		return errors.Join(errs)
 	}
+	listProgress.Stop()
 
-	deleteRelsBar := progress.AddBar("deleting relationships", len(relationships))
-	deleteEntsBar := progress.AddBar("deleting entities", len(entityIds))
+	deleteProgress := newSyncProgress(showProgress)
+	deleteRelsBar := deleteProgress.AddBar("deleting relationships", len(relationships))
+	deleteEntsBar := deleteProgress.AddBar("deleting entities", len(entityIds))
+
+	deleteProgress.Start()
+	defer deleteProgress.Stop()
+
+	w := deleteProgress.Writer()
 
 	refCount := make(map[string]*atomic.Int32, len(entityIds))
 	for _, id := range entityIds {
@@ -534,13 +574,12 @@ func ModelSync(appCtx *cli.Context) error {
 		return err
 	}
 
-	progress := newSyncProgress(showProgress)
-	readBar := progress.AddBar("reading local files         ", len(localFiles))
-	listRelBar := progress.AddBar("listing remote relationships", 1)
-	listEntBar := progress.AddBar("listing remote entities     ", 1)
+	readProgress := newSyncProgress(showProgress)
+	readBar := readProgress.AddBar("reading local files         ", len(localFiles))
+	listRelBar := readProgress.AddBar("listing remote relationships", 1)
+	listEntBar := readProgress.AddBar("listing remote entities     ", 1)
 
-	progress.Start()
-	defer progress.Stop()
+	readProgress.Start()
 
 	type parsedFragment struct {
 		entities      []*nmtspb.Entity
@@ -563,8 +602,8 @@ func ModelSync(appCtx *cli.Context) error {
 					return err
 				}
 
-				fragment := &nmtspb.Fragment{}
-				if err := marshaller.unmarshal(contents, fragment); err != nil {
+				fragment, err := readNormalizedFragment(marshaller, contents)
+				if err != nil {
 					return err
 				}
 
@@ -606,8 +645,10 @@ func ModelSync(appCtx *cli.Context) error {
 	})
 
 	if err = initialReadPool.Wait(); err != nil {
+		readProgress.Stop()
 		return err
 	}
+	readProgress.Stop()
 
 	// Merge parsed fragments into local maps.
 	localEntities := map[string]*nmtspb.Entity{}
@@ -638,15 +679,21 @@ func ModelSync(appCtx *cli.Context) error {
 	if deleteMode {
 		deleteRelsTotal = remoteRelationshipKeys.Difference(localRelationshipKeys).Cardinality()
 	}
-	deleteRelsBar := progress.AddBar("deleting relationships", deleteRelsTotal)
 
 	upsertTotal := len(localEntities)
 	if deleteMode {
 		upsertTotal += remoteEntityKeys.Difference(localEntityKeys).Cardinality()
 	}
-	upsertBar := progress.AddBar("applying changes to remote", upsertTotal)
 
-	addRelsBar := progress.AddBar("adding relationships", localRelationshipKeys.Difference(remoteRelationshipKeys).Cardinality())
+	addRelsTotal := localRelationshipKeys.Difference(remoteRelationshipKeys).Cardinality()
+
+	applyProgress := newSyncProgress(showProgress)
+	deleteRelsBar := applyProgress.AddBar("deleting relationships", deleteRelsTotal)
+	upsertBar := applyProgress.AddBar("applying changes to remote", upsertTotal)
+	addRelsBar := applyProgress.AddBar("adding relationships", addRelsTotal)
+
+	applyProgress.Start()
+	defer applyProgress.Stop()
 
 	errs := []error{}
 

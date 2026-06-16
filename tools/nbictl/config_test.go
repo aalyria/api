@@ -313,6 +313,23 @@ func checkErr(t *testing.T, err error) {
 	}
 }
 
+// resolveFileArgs returns a copy of args in which any argument naming a file
+// written into tmpDir (i.e. a key of fileContents) is rewritten to its absolute
+// path under tmpDir. This lets file-based command arguments be resolved without
+// changing the process working directory, which is global state and unsafe to
+// mutate from t.Parallel() tests. The stdin sentinel "-" is left untouched.
+func resolveFileArgs(tmpDir string, fileContents map[string]string, args []string) []string {
+	resolved := make([]string, len(args))
+	for i, arg := range args {
+		if _, ok := fileContents[arg]; ok && arg != "-" {
+			resolved[i] = filepath.Join(tmpDir, arg)
+		} else {
+			resolved[i] = arg
+		}
+	}
+	return resolved
+}
+
 func TestSetConfig_MigratesDeprecatedFields(t *testing.T) {
 	t.Parallel()
 

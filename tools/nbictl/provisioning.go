@@ -15,13 +15,13 @@
 package nbictl
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"slices"
-	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -296,9 +296,7 @@ func ProvisioningResourcesFromRemote(ctx context.Context, client provapipb.Provi
 		if len(p2pSrTePolicies) == 0 {
 			return nil
 		}
-		sort.Slice(p2pSrTePolicies, func(i, j int) bool {
-			return p2pSrTePolicies[i].GetName() < p2pSrTePolicies[j].GetName()
-		})
+		slices.SortFunc(p2pSrTePolicies, func(l, r *provapipb.P2PSrTePolicy) int { return cmp.Compare(l.GetName(), r.GetName()) })
 		bumpTotal(len(p2pSrTePolicies))
 
 		candidatePathResults := make([][]*provapipb.P2PSrTePolicyCandidatePath, len(p2pSrTePolicies))
@@ -345,9 +343,7 @@ func ProvisioningResourcesFromRemote(ctx context.Context, client provapipb.Provi
 		if len(p2mpSrTePolicies) == 0 {
 			return nil
 		}
-		sort.Slice(p2mpSrTePolicies, func(i, j int) bool {
-			return p2mpSrTePolicies[i].GetName() < p2mpSrTePolicies[j].GetName()
-		})
+		slices.SortFunc(p2mpSrTePolicies, func(l, r *provapipb.P2MpSrTePolicy) int { return cmp.Compare(l.GetName(), r.GetName()) })
 		bumpTotal(len(p2mpSrTePolicies))
 
 		candidatePathResults := make([][]*provapipb.P2MpSrTePolicyCandidatePath, len(p2mpSrTePolicies))

@@ -49,11 +49,6 @@ func setupSyncTestEnv(t *testing.T) *syncTestEnv {
 		t.Fatal(err)
 	}
 
-	if err := os.Chdir(tmpDir); err != nil {
-		cancel()
-		t.Fatalf("changing to tmp dir %s: %v", tmpDir, err)
-	}
-
 	dataDir := filepath.Join(tmpDir, "data")
 	if err := os.MkdirAll(dataDir, 0o700); err != nil {
 		cancel()
@@ -124,6 +119,8 @@ func (env *syncTestEnv) syncArgs(extraFlags ...string) []string {
 }
 
 func TestModelSync_AddsNewEntities(t *testing.T) {
+	t.Parallel()
+
 	env := setupSyncTestEnv(t)
 
 	env.writeEntityFile(t, "platforms.txtpb", `
@@ -141,6 +138,8 @@ entity { id: "platform-2" ek_platform {} }
 }
 
 func TestModelSync_UpdatesExistingEntities(t *testing.T) {
+	t.Parallel()
+
 	env := setupSyncTestEnv(t)
 
 	env.srv.Seed([]*nmtspb.Entity{
@@ -161,6 +160,8 @@ entity { id: "platform-1" ek_platform {} }
 }
 
 func TestModelSync_AddsRelationships(t *testing.T) {
+	t.Parallel()
+
 	env := setupSyncTestEnv(t)
 
 	env.writeEntityFile(t, "model.txtpb", `
@@ -182,6 +183,8 @@ relationship { a: "platform-1" z: "platform-2" kind: RK_CONTAINS }
 }
 
 func TestModelSync_DeleteMode_RemovesRemoteOnly(t *testing.T) {
+	t.Parallel()
+
 	env := setupSyncTestEnv(t)
 
 	env.srv.Seed(
@@ -211,6 +214,8 @@ entity { id: "platform-1" ek_platform {} }
 }
 
 func TestModelSync_DryRun_DoesNotMutate(t *testing.T) {
+	t.Parallel()
+
 	env := setupSyncTestEnv(t)
 
 	env.writeEntityFile(t, "platforms.txtpb", `
@@ -235,6 +240,8 @@ func TestModelSync_NoEntities_ReturnsError(t *testing.T) {
 }
 
 func TestModelSync_MultipleFiles(t *testing.T) {
+	t.Parallel()
+
 	env := setupSyncTestEnv(t)
 
 	env.writeEntityFile(t, "entities.txtpb", `

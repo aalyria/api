@@ -22,6 +22,8 @@ import (
 )
 
 func TestShouldShowProgress(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		flagVal string
@@ -34,8 +36,15 @@ func TestShouldShowProgress(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			var got bool
 			app := &cli.App{
+				// urfave/cli mutates the package-global HelpFlag/VersionFlag in
+				// (*BoolFlag).Apply, so parallel tests that Run a cli app race on
+				// that shared state. Opt out of both, as newTestApp does.
+				HideHelp:    true,
+				HideVersion: true,
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "progress", Value: "auto"},
 				},
@@ -55,6 +64,15 @@ func TestShouldShowProgress(t *testing.T) {
 	}
 }
 
+// TestModelSync_WithProgressOn intentionally does NOT call t.Parallel. With
+// --progress=on, sync renders via gosuri/uiprogress -> gosuri/uilive, which
+// keeps terminal-size state (termWidth, overFlowHandled, and the /dev/tty
+// handle) in package-global variables shared across every Writer instance.
+// Those globals are written when a progress writer is created and read by its
+// background flush goroutine, so two progress-rendering syncs running at once
+// race. Leaving these tests non-parallel runs them in the serial phase, before
+// any t.Parallel test starts, so no two progress renderers are ever live
+// concurrently. See also TestModelSync_DeleteWithProgressOn.
 func TestModelSync_WithProgressOn(t *testing.T) {
 	env := setupSyncTestEnv(t)
 
@@ -76,6 +94,9 @@ relationship { a: "platform-1" z: "platform-2" kind: RK_CONTAINS }
 	}
 }
 
+// TestModelSync_DeleteWithProgressOn intentionally does NOT call t.Parallel;
+// see TestModelSync_WithProgressOn for why progress-rendering syncs must not run
+// concurrently.
 func TestModelSync_DeleteWithProgressOn(t *testing.T) {
 	env := setupSyncTestEnv(t)
 

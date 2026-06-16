@@ -53,10 +53,6 @@ func (tc *testCase) Run(t *testing.T) {
 	tmpDir, err := bazel.NewTmpDir("nbictl")
 	checkErr(t, err)
 
-	if err := os.Chdir(tmpDir); err != nil {
-		t.Fatalf("changing to tmp dir %s: %v", tmpDir, err)
-	}
-
 	app := newTestApp()
 	for key, value := range tc.fileContents {
 		if key == "-" {
@@ -89,7 +85,7 @@ func (tc *testCase) Run(t *testing.T) {
 	}...)))
 
 	srv.ResponseMessage = tc.responseMessage
-	args := append(argsPrefix, tc.cmdLineArgs...)
+	args := append(argsPrefix, resolveFileArgs(tmpDir, tc.fileContents, tc.cmdLineArgs)...)
 	err = app.Run(args)
 	if tc.wantAppError {
 		if err != nil {
@@ -470,8 +466,13 @@ var testCases = []testCase{
 }
 
 func TestCases(t *testing.T) {
+	t.Parallel()
+
 	for _, tc := range testCases {
 		tc := tc
-		t.Run(tc.desc, tc.Run)
+		t.Run(tc.desc, func(t *testing.T) {
+			t.Parallel()
+			tc.Run(t)
+		})
 	}
 }

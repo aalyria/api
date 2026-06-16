@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"sort"
+	"slices"
 
 	"github.com/fullstorydev/grpcurl"
 	"github.com/jhump/protoreflect/desc"
@@ -190,7 +190,7 @@ func GRPCListMethods(appCtx *cli.Context, svc string) error {
 	for _, meth := range serviceDesc.GetMethods() {
 		methods = append(methods, meth.GetFullyQualifiedName())
 	}
-	sort.Strings(methods)
+	slices.Sort(methods)
 	for _, meth := range methods {
 		fmt.Fprintln(appCtx.App.Writer, meth)
 	}

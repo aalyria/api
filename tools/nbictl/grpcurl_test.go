@@ -48,7 +48,27 @@ func newTestApp() testApp {
 	app.Reader = stdin
 	app.Writer = stdout
 	app.ErrWriter = stderr
+
+	// urfave/cli builds each command's flag set from the package-global HelpFlag
+	// and VersionFlag and mutates them in (*BoolFlag).Apply, so apps run
+	// concurrently by t.Parallel() tests race on that shared state. Tests never
+	// exercise --help/--version, so opt every App and command out of them: with
+	// HideHelp/HideVersion set, the globals are never appended or applied, and the
+	// flag state stays in the per-App/per-command structs instead of the globals.
+	app.HideHelp = true
+	app.HideVersion = true
+	hideHelp(app.Commands)
+
 	return testApp{stdin: stdin, stdout: stdout, stderr: stderr, App: app}
+}
+
+// hideHelp sets HideHelp on each command and its subcommands so that urfave/cli's
+// per-command setup never appends the package-global HelpFlag. See newTestApp.
+func hideHelp(commands []*cli.Command) {
+	for _, c := range commands {
+		c.HideHelp = true
+		hideHelp(c.Subcommands)
+	}
 }
 
 func TestGrpcurlDescribe_rejectsTooManyArgs(t *testing.T) {

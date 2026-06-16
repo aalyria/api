@@ -36,6 +36,21 @@ go_proto_library(
 )
 
 proto_library(
+    name = "omni_fragment_proto",
+    srcs = ["omni_fragment.proto"],
+    visibility = ["//tools/nbictl:__subpackages__"],
+    deps = ["@org_outernetcouncil_nmts//v1/proto:nmts_proto"],
+)
+
+go_proto_library(
+    name = "omni_fragment_go_proto",
+    importpath = "aalyria.com/spacetime/tools/nbictl/omnipb",
+    proto = ":omni_fragment_proto",
+    visibility = ["//tools/nbictl:__subpackages__"],
+    deps = ["@org_outernetcouncil_nmts//v1/proto:nmts_go_proto"],
+)
+
+proto_library(
     name = "provisioning_proto",
     srcs = ["provisioning.proto"],
     deps = ["//api/provisioning/v1alpha:provisioning_proto"],

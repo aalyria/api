@@ -17,6 +17,7 @@ package nbictl
 import (
 	"context"
 	"net"
+	"sync"
 	"sync/atomic"
 
 	"golang.org/x/sync/errgroup"
@@ -40,6 +41,17 @@ type FakeModelServer struct {
 	RequestMessage       proto.Message
 	IncomingMetadata     []metadata.MD
 	NumCallsListEntities *atomic.Int64
+
+	// Fields used to exercise the `sync` flow, which issues concurrent
+	// List* and Create* RPCs. When the List*Response fields are set they
+	// take precedence over ResponseMessage, and Create* RPCs accumulate the
+	// supplied elements. All access is guarded by mu.
+	mu                    sync.Mutex
+	ListEntitiesResp      *modelpb.ListEntitiesResponse
+	ListRelationshipsResp *modelpb.ListRelationshipsResponse
+	CreatedEntities       []*nmtspb.Entity
+	UpsertedEntities      []*nmtspb.Entity
+	CreatedRelationships  []*nmtspb.Relationship
 }
 
 func (s *FakeModelServer) Reset() {
@@ -48,6 +60,11 @@ func (s *FakeModelServer) Reset() {
 	s.ResponseError = nil
 	s.ResponseMessage = nil
 	s.RequestMessage = nil
+	s.ListEntitiesResp = nil
+	s.ListRelationshipsResp = nil
+	s.CreatedEntities = nil
+	s.UpsertedEntities = nil
+	s.CreatedRelationships = nil
 }
 
 // Handle any of the gRPC calls for simplistic testing:
@@ -75,17 +92,31 @@ func handleCall[RespT proto.Message](s *FakeModelServer, ctx context.Context, re
 }
 
 func (s *FakeModelServer) CreateEntity(ctx context.Context, req *modelpb.CreateEntityRequest) (*nmtspb.Entity, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.RequestMessage = req
+	s.CreatedEntities = append(s.CreatedEntities, req.GetEntity())
 	if s.ResponseError != nil {
 		return nil, s.ResponseError
-	} else {
-		resp := s.ResponseMessage.(*nmtspb.Entity)
-		return resp, nil
 	}
+	if s.ResponseMessage != nil {
+		return s.ResponseMessage.(*nmtspb.Entity), nil
+	}
+	return req.GetEntity(), nil
 }
 
 func (s *FakeModelServer) UpdateEntity(ctx context.Context, req *modelpb.UpdateEntityRequest) (*nmtspb.Entity, error) {
-	return handleCall[*nmtspb.Entity](s, ctx, req)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.RequestMessage = req
+	s.UpsertedEntities = append(s.UpsertedEntities, req.GetEntity())
+	if s.ResponseError != nil {
+		return nil, s.ResponseError
+	}
+	if s.ResponseMessage != nil {
+		return s.ResponseMessage.(*nmtspb.Entity), nil
+	}
+	return req.GetEntity(), nil
 }
 
 func (s *FakeModelServer) DeleteEntity(ctx context.Context, req *modelpb.DeleteEntityRequest) (*modelpb.DeleteEntityResponse, error) {
@@ -93,7 +124,17 @@ func (s *FakeModelServer) DeleteEntity(ctx context.Context, req *modelpb.DeleteE
 }
 
 func (s *FakeModelServer) CreateRelationship(ctx context.Context, req *modelpb.CreateRelationshipRequest) (*nmtspb.Relationship, error) {
-	return handleCall[*nmtspb.Relationship](s, ctx, req)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.RequestMessage = req
+	s.CreatedRelationships = append(s.CreatedRelationships, req.GetRelationship())
+	if s.ResponseError != nil {
+		return nil, s.ResponseError
+	}
+	if s.ResponseMessage != nil {
+		return s.ResponseMessage.(*nmtspb.Relationship), nil
+	}
+	return req.GetRelationship(), nil
 }
 
 func (s *FakeModelServer) DeleteRelationship(ctx context.Context, req *modelpb.DeleteRelationshipRequest) (*emptypb.Empty, error) {
@@ -106,10 +147,22 @@ func (s *FakeModelServer) GetEntity(ctx context.Context, req *modelpb.GetEntityR
 
 func (s *FakeModelServer) ListEntities(ctx context.Context, req *modelpb.ListEntitiesRequest) (*modelpb.ListEntitiesResponse, error) {
 	s.NumCallsListEntities.Add(1)
+	if s.ListEntitiesResp != nil {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		s.RequestMessage = req
+		return s.ListEntitiesResp, nil
+	}
 	return handleCall[*modelpb.ListEntitiesResponse](s, ctx, req)
 }
 
 func (s *FakeModelServer) ListRelationships(ctx context.Context, req *modelpb.ListRelationshipsRequest) (*modelpb.ListRelationshipsResponse, error) {
+	if s.ListRelationshipsResp != nil {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		s.RequestMessage = req
+		return s.ListRelationshipsResp, nil
+	}
 	return handleCall[*modelpb.ListRelationshipsResponse](s, ctx, req)
 }
 
