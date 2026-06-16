@@ -617,7 +617,7 @@ func ProvisioningSync(appCtx *cli.Context) error {
 
 	syncBar := progress.AddBar("syncing resources", countValues(resourcesToBeAdded)+countValues(resourcesInCommon))
 
-	// Update and create resources (except P2P candidate paths which must wait for policies).
+	// Update and create resources, except P2P candidate paths (which must wait for policies) and association groups (which must wait for candidate paths).
 	p := pool.New().WithErrors().WithMaxGoroutines(maxConcurrency)
 
 	updateRemoteResources(p, ctx, resourcesInCommon["p2pSrTePolicies"], localResources.p2pSrTePolicies, remoteResources.p2pSrTePolicies, w, printMode, dryRunMode, syncBar.Incr, func(ctx context.Context, policy *provapipb.P2PSrTePolicy) error {
@@ -638,20 +638,6 @@ func ProvisioningSync(appCtx *cli.Context) error {
 		_, err := nextClient().UpdateDowntime(ctx, &provapipb.UpdateDowntimeRequest{
 			Downtime:     downtime,
 			AllowMissing: false,
-		})
-		return err
-	})
-	updateRemoteResources(p, ctx, resourcesInCommon["protectionAssociationGroups"], localResources.protectionAssociationGroups, remoteResources.protectionAssociationGroups, w, printMode, dryRunMode, syncBar.Incr, func(ctx context.Context, protectionAssociationGroup *provapipb.ProtectionAssociationGroup) error {
-		_, err := nextClient().UpdateProtectionAssociationGroup(ctx, &provapipb.UpdateProtectionAssociationGroupRequest{
-			ProtectionAssociationGroup: protectionAssociationGroup,
-			AllowMissing:               false,
-		})
-		return err
-	})
-	updateRemoteResources(p, ctx, resourcesInCommon["disjointAssociationGroups"], localResources.disjointAssociationGroups, remoteResources.disjointAssociationGroups, w, printMode, dryRunMode, syncBar.Incr, func(ctx context.Context, disjointAssociationGroup *provapipb.DisjointAssociationGroup) error {
-		_, err := nextClient().UpdateDisjointAssociationGroup(ctx, &provapipb.UpdateDisjointAssociationGroupRequest{
-			DisjointAssociationGroup: disjointAssociationGroup,
-			AllowMissing:             false,
 		})
 		return err
 	})
@@ -700,20 +686,6 @@ func ProvisioningSync(appCtx *cli.Context) error {
 		})
 		return err
 	})
-	createRemoteResources(p, ctx, resourcesToBeAdded["protectionAssociationGroups"], localResources.protectionAssociationGroups, w, printMode, dryRunMode, syncBar.Incr, func(ctx context.Context, protectionAssociationGroup *provapipb.ProtectionAssociationGroup) error {
-		_, err := nextClient().UpdateProtectionAssociationGroup(ctx, &provapipb.UpdateProtectionAssociationGroupRequest{
-			ProtectionAssociationGroup: protectionAssociationGroup,
-			AllowMissing:               true,
-		})
-		return err
-	})
-	createRemoteResources(p, ctx, resourcesToBeAdded["disjointAssociationGroups"], localResources.disjointAssociationGroups, w, printMode, dryRunMode, syncBar.Incr, func(ctx context.Context, disjointAssociationGroup *provapipb.DisjointAssociationGroup) error {
-		_, err := nextClient().UpdateDisjointAssociationGroup(ctx, &provapipb.UpdateDisjointAssociationGroupRequest{
-			DisjointAssociationGroup: disjointAssociationGroup,
-			AllowMissing:             true,
-		})
-		return err
-	})
 	createRemoteResources(p, ctx, resourcesToBeAdded["links"], localResources.links, w, printMode, dryRunMode, syncBar.Incr, func(ctx context.Context, link *provapipb.Link) error {
 		_, err := nextClient().UpdateLink(ctx, &provapipb.UpdateLinkRequest{
 			Link:         link,
@@ -755,6 +727,38 @@ func ProvisioningSync(appCtx *cli.Context) error {
 		return err
 	})
 	errs = append(errs, candidatePathPool.Wait())
+
+	// Update and create association groups after candidate paths exist, since group members reference candidate paths.
+	associationGroupPool := pool.New().WithErrors().WithMaxGoroutines(maxConcurrency)
+	updateRemoteResources(associationGroupPool, ctx, resourcesInCommon["protectionAssociationGroups"], localResources.protectionAssociationGroups, remoteResources.protectionAssociationGroups, w, printMode, dryRunMode, syncBar.Incr, func(ctx context.Context, protectionAssociationGroup *provapipb.ProtectionAssociationGroup) error {
+		_, err := nextClient().UpdateProtectionAssociationGroup(ctx, &provapipb.UpdateProtectionAssociationGroupRequest{
+			ProtectionAssociationGroup: protectionAssociationGroup,
+			AllowMissing:               false,
+		})
+		return err
+	})
+	updateRemoteResources(associationGroupPool, ctx, resourcesInCommon["disjointAssociationGroups"], localResources.disjointAssociationGroups, remoteResources.disjointAssociationGroups, w, printMode, dryRunMode, syncBar.Incr, func(ctx context.Context, disjointAssociationGroup *provapipb.DisjointAssociationGroup) error {
+		_, err := nextClient().UpdateDisjointAssociationGroup(ctx, &provapipb.UpdateDisjointAssociationGroupRequest{
+			DisjointAssociationGroup: disjointAssociationGroup,
+			AllowMissing:             false,
+		})
+		return err
+	})
+	createRemoteResources(associationGroupPool, ctx, resourcesToBeAdded["protectionAssociationGroups"], localResources.protectionAssociationGroups, w, printMode, dryRunMode, syncBar.Incr, func(ctx context.Context, protectionAssociationGroup *provapipb.ProtectionAssociationGroup) error {
+		_, err := nextClient().UpdateProtectionAssociationGroup(ctx, &provapipb.UpdateProtectionAssociationGroupRequest{
+			ProtectionAssociationGroup: protectionAssociationGroup,
+			AllowMissing:               true,
+		})
+		return err
+	})
+	createRemoteResources(associationGroupPool, ctx, resourcesToBeAdded["disjointAssociationGroups"], localResources.disjointAssociationGroups, w, printMode, dryRunMode, syncBar.Incr, func(ctx context.Context, disjointAssociationGroup *provapipb.DisjointAssociationGroup) error {
+		_, err := nextClient().UpdateDisjointAssociationGroup(ctx, &provapipb.UpdateDisjointAssociationGroupRequest{
+			DisjointAssociationGroup: disjointAssociationGroup,
+			AllowMissing:             true,
+		})
+		return err
+	})
+	errs = append(errs, associationGroupPool.Wait())
 
 	return errors.Join(errs...)
 }
@@ -805,20 +809,36 @@ func deleteProvisioning(ctx context.Context, params deleteProvisioningParams) er
 	printMode := params.printMode
 	dryRunMode := params.dryRunMode
 
-	// Delete candidate paths before the policies, in case they need to be removed separately.
-	p := pool.New().WithErrors().WithMaxGoroutines(params.maxConcurrency)
-	deleteRemoteResources(p, ctx, params.p2pSrTePolicyCandidatePaths, params.w, printMode, dryRunMode, params.onProgress, func(ctx context.Context, path string) error {
+	// Delete in reverse order of creation: association groups, then candidate paths, then everything else.
+	associationGroupPool := pool.New().WithErrors().WithMaxGoroutines(params.maxConcurrency)
+	deleteRemoteResources(associationGroupPool, ctx, params.protectionAssociationGroups, params.w, printMode, dryRunMode, params.onProgress, func(ctx context.Context, name string) error {
+		_, err := params.nextClient().DeleteProtectionAssociationGroup(ctx, &provapipb.DeleteProtectionAssociationGroupRequest{
+			Name: name,
+		})
+		return err
+	})
+	deleteRemoteResources(associationGroupPool, ctx, params.disjointAssociationGroups, params.w, printMode, dryRunMode, params.onProgress, func(ctx context.Context, name string) error {
+		_, err := params.nextClient().DeleteDisjointAssociationGroup(ctx, &provapipb.DeleteDisjointAssociationGroupRequest{
+			Name: name,
+		})
+		return err
+	})
+	if err := associationGroupPool.Wait(); err != nil {
+		return err
+	}
+
+	candidatePathPool := pool.New().WithErrors().WithMaxGoroutines(params.maxConcurrency)
+	deleteRemoteResources(candidatePathPool, ctx, params.p2pSrTePolicyCandidatePaths, params.w, printMode, dryRunMode, params.onProgress, func(ctx context.Context, path string) error {
 		_, err := params.nextClient().DeleteP2PSrTePolicyCandidatePath(ctx, &provapipb.DeleteP2PSrTePolicyCandidatePathRequest{
 			Name: path,
 		})
 		return err
 	})
-	err := p.Wait()
-	if err != nil {
+	if err := candidatePathPool.Wait(); err != nil {
 		return err
 	}
 
-	p = pool.New().WithErrors().WithMaxGoroutines(params.maxConcurrency)
+	p := pool.New().WithErrors().WithMaxGoroutines(params.maxConcurrency)
 	deleteRemoteResources(p, ctx, params.p2pSrTePolicies, params.w, printMode, dryRunMode, params.onProgress, func(ctx context.Context, policy string) error {
 		_, err := params.nextClient().DeleteP2PSrTePolicy(ctx, &provapipb.DeleteP2PSrTePolicyRequest{
 			Name: policy,
@@ -828,18 +848,6 @@ func deleteProvisioning(ctx context.Context, params deleteProvisioningParams) er
 	deleteRemoteResources(p, ctx, params.downtimes, params.w, printMode, dryRunMode, params.onProgress, func(ctx context.Context, downtime string) error {
 		_, err := params.nextClient().DeleteDowntime(ctx, &provapipb.DeleteDowntimeRequest{
 			Name: downtime,
-		})
-		return err
-	})
-	deleteRemoteResources(p, ctx, params.protectionAssociationGroups, params.w, printMode, dryRunMode, params.onProgress, func(ctx context.Context, name string) error {
-		_, err := params.nextClient().DeleteProtectionAssociationGroup(ctx, &provapipb.DeleteProtectionAssociationGroupRequest{
-			Name: name,
-		})
-		return err
-	})
-	deleteRemoteResources(p, ctx, params.disjointAssociationGroups, params.w, printMode, dryRunMode, params.onProgress, func(ctx context.Context, name string) error {
-		_, err := params.nextClient().DeleteDisjointAssociationGroup(ctx, &provapipb.DeleteDisjointAssociationGroupRequest{
-			Name: name,
 		})
 		return err
 	})
