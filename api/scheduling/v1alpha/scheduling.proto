@@ -608,28 +608,39 @@ message Endpoint {
   // fields will contain that beam's own ID.
   repeated string tx_beams = 9;
 
-  // The topmost MPLS label on packets arriving at the transmitting node that
-  // identifies traffic to be forwarded to this endpoint.
-  // 
+  // This field is deprecated. Use incoming_mpls_label_to_egress_port instead.
+  repeated int32 ingress_mpls_labels = 10 [deprecated = true];
+
+  // This field maps incoming MPLS labels at the transmitting node to the
+  // corresponding port through which traffic for this endpoint is transmitted.
+  //
+  // Each key is the topmost MPLS label on packets arriving at the transmitting
+  // node that identifies traffic to be forwarded to this endpoint. Each value
+  // is the NMTS entity ID of the nmts.v1.ek.physical.Port on the transmitting
+  // node through which traffic for that label is transmitted.
+  //
   // For example, for a Beam that represents a satellite's user downlink beam,
-  // this endpoint could represent a user terminal. In that case, this field
-  // indicates the MPLS label used in the satellite's dataplane to forward
-  // packets to the user terminal.
+  // this endpoint could represent a user terminal. In that case, a key in this
+  // map indicates the MPLS label used in the satellite's dataplane to forward
+  // packets to the user terminal. The corresponding value is the port on the
+  // satellite used to transmit that traffic.
   //
   // Consider an interface on the transmitting node modeled in an NMTS graph as:
   //   Interface --RK_ORIGINATES--> LogicalPacketLink
   //       |
   //       |--RK_TRAVERSES--> Port --RK_ORIGINATES--> Modulator ...
-  // This field is populated with the sr.adjacency_sid.mpls value from the
-  // nmts.v1.ek.logical.LogicalPacketLink.
-  // 
+  //
+  // Each key is populated with the sr.adjacency_sid.mpls value from the
+  // nmts.v1.ek.logical.LogicalPacketLink, and the corresponding value is the
+  // entity ID of the port that the interface traverses.
+  //
   // Assigning multiple carriers on one beam to transmit to this endpoint
-  // involves tasking multiple ports, each of which has a corresponding
-  // adjacency SID. In these cases, there will be more than one ingress MPLS
-  // label that identifies traffic to be forwarded to this endpoint.
+  // involves tasking multiple ports, each of which is associated with one
+  // SR-MPLS Adjacency SID. In these cases, there will be one entry per carrier
+  // in this map.
   //
   // Note that this field is only populated for endpoints of transmit beams.
-  repeated int32 ingress_mpls_labels = 10;
+  map<int32, string> incoming_mpls_label_to_egress_port = 11;
 
   reserved 1, 8;
 }
