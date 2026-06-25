@@ -18,16 +18,22 @@ load("@bazel_skylib//lib:shell.bzl", "shell")
 def _java_format_test_impl(ctx):
     out_file = ctx.actions.declare_file(ctx.label.name + ".bash")
     runfiles = [ctx.executable.google_java_format]
+
+    # buildifier: disable=canonical-repository
     substitutions = {
         "@@GOOGLE_JAVA_FORMAT@@": shell.quote(ctx.executable.google_java_format.short_path),
         "@@SRCS@@": "",
     }
     if ctx.file.workspace != None:
         runfiles.append(ctx.file.workspace)
+
+        # buildifier: disable=canonical-repository
         substitutions["@@WORKSPACE@@"] = ctx.file.workspace.path
     else:
         for f in ctx.files.srcs:
             runfiles.append(f)
+
+        # buildifier: disable=canonical-repository
         substitutions["@@SRCS@@"] = " ".join([shell.quote(f.short_path) for f in ctx.files.srcs])
 
     ctx.actions.expand_template(

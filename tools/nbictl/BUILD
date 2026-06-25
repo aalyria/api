@@ -16,6 +16,7 @@
 # internal packages apart from those found in //api.
 
 load("@rules_go//go:def.bzl", "go_library", "go_test")
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
 load("//:version.bzl", "VERSION")
 
 go_library(
