@@ -14,6 +14,7 @@
 
 module(name = "aalyria_api")
 
+bazel_dep(name = "bazel_skylib", version = "1.9.0")
 bazel_dep(name = "protobuf", version = "31.1")
 bazel_dep(name = "gazelle", version = "0.46.0")
 bazel_dep(name = "googleapis", version = "0.0.0-20241220-5e258e33.bcr.1")
@@ -226,7 +227,7 @@ bazel_dep(name = "org_outernetcouncil_nmts")
 archive_override(
     module_name = "org_outernetcouncil_nmts",
     strip_prefix = "nmts-1.7.0",
-    urls = "https://github.com/outernetcouncil/nmts/archive/refs/tags/v1.7.0.tar.gz",
+    urls = ["https://github.com/outernetcouncil/nmts/archive/refs/tags/v1.7.0.tar.gz"],
 )
 
 http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")

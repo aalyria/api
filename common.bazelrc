@@ -78,4 +78,4 @@ build --incompatible_default_to_explicit_init_py
 # This is required for py_cc_toolchain resolution when using aspect_rules_py.
 common --@rules_python//python/config_settings:python_version=3.11
 
-common --experimental_downloader_config=./bazel/bazel_downloader.cfg
+common --downloader_config=./bazel/bazel_downloader.cfg

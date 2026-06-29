@@ -28,7 +28,7 @@ def _java_format_test_impl(ctx):
         runfiles.append(ctx.file.workspace)
 
         # buildifier: disable=canonical-repository
-        substitutions["@@WORKSPACE@@"] = ctx.file.workspace.path
+        substitutions["@@WORKSPACE@@"] = ctx.file.workspace.short_path
     else:
         for f in ctx.files.srcs:
             runfiles.append(f)
