@@ -1,4 +1,4 @@
-'''
+"""
 Copyright (c) Aalyria Technologies, Inc., and its affiliates.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +12,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
-'''
+"""
 
 import argparse
 import sys
@@ -33,31 +33,24 @@ def list_entities(stub: model_pb2_grpc.ModelStub) -> list[nmts_pb2.Entity]:
   return [entity for entity in response.entities]
 
 
-def establish_connection(target: str, email: str, key_id: str,
-                         private_key: str) -> model_pb2_grpc.ModelStub:
+def establish_connection(target: str, email: str, key_id: str, private_key: str) -> model_pb2_grpc.ModelStub:
   # Create auth config
-  config = auth.Config(
-      email=email,
-      private_key_id=key_id,
-      private_key=BytesIO(private_key.encode('utf-8'))
-  )
+  config = auth.Config(email=email, private_key_id=key_id, private_key=BytesIO(private_key.encode("utf-8")))
 
   # Create call credentials
   call_credentials = auth.new_credentials(config)
 
   # Combine with SSL channel credentials
   channel = grpc.secure_channel(
-      target,
-      grpc.composite_channel_credentials(
-          grpc.ssl_channel_credentials(),
-          call_credentials
+    target,
+    grpc.composite_channel_credentials(grpc.ssl_channel_credentials(), call_credentials),
+    [
+      (
+        "grpc.max_receive_message_length",
+        1024 * 1024 * 256,
       ),
-      [
-          (
-              "grpc.max_receive_message_length",
-              1024 * 1024 * 256,
-          ),
-      ])
+    ],
+  )
   return model_pb2_grpc.ModelStub(channel)
 
 
@@ -65,25 +58,24 @@ def main():
   # Setup argparser
   parser = argparse.ArgumentParser()
   parser.add_argument(
-      "target",
-      type=str,
-      help=
-      "The target URL of the Spacetime Model API (e.g., 'api.example.com' or 'api.example.com:8080').",
+    "target",
+    type=str,
+    help="The target URL of the Spacetime Model API (e.g., 'api.example.com' or 'api.example.com:8080').",
   )
   parser.add_argument(
-      "email",
-      type=str,
-      help="Client Email for Spacetime Auth.",
+    "email",
+    type=str,
+    help="Client Email for Spacetime Auth.",
   )
   parser.add_argument(
-      "key_id",
-      type=str,
-      help="Client Key ID for Spacetime Auth.",
+    "key_id",
+    type=str,
+    help="Client Key ID for Spacetime Auth.",
   )
   parser.add_argument(
-      "private_key_path",
-      type=str,
-      help="The Client Key File Path for Spacetime Auth.",
+    "private_key_path",
+    type=str,
+    help="The Client Key File Path for Spacetime Auth.",
   )
   args = parser.parse_args()
 
