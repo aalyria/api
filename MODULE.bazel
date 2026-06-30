@@ -38,6 +38,7 @@ bazel_dep(name = "rules_rust_prost", version = "0.69.0")
 bazel_dep(name = "rules_shell", version = "0.6.1")
 bazel_dep(name = "aspect_rules_py", version = "1.8.4")
 bazel_dep(name = "toolchains_protoc", version = "0.4.3")
+bazel_dep(name = "toolchains_llvm", version = "1.4.0")
 
 # Configure the protoc toolchain used by rules_proto_grpc to use protoc v31.1.
 # This ensures that the version agrees with the protobuf dependency version,
@@ -69,6 +70,23 @@ maven.install(
     ],
 )
 use_repo(maven, "maven")
+
+# Hermetic C/C++ toolchain. Required under Bazel 8: the auto-detected host
+# toolchain (@local_config_cc, registered transitively by rules_cc) yields no
+# matching cc toolchain on a compiler-less CI runner, which breaks protobuf's
+# cc selects during the OSS-export dry-run. The downloaded LLVM toolchain
+# registers a resolvable cc toolchain independent of the host.
+#
+# LLVM versions and platforms:
+# https://github.com/bazel-contrib/toolchains_llvm/blob/master/toolchain/internal/llvm_distributions.bzl
+llvm = use_extension("@toolchains_llvm//toolchain/extensions:llvm.bzl", "llvm")
+llvm.toolchain(
+    name = "llvm_toolchain",
+    llvm_version = "20.1.2",
+)
+use_repo(llvm, "llvm_toolchain", "llvm_toolchain_llvm")
+
+register_toolchains("@llvm_toolchain//:all")
 
 go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
 go_sdk.download(

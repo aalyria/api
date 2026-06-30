@@ -262,7 +262,7 @@ func (es *enactmentService) mainScheduleLoop(ctx context.Context) error {
 				// Presently, all requests supported here have a sequence number.
 				err := es.sendResponse(ctx, req.RequestId, status.Newf(
 					codes.Unimplemented,
-					"unable to handle request %q which has no seqno", req.RequestId))
+					"unable to handle request %d which has no seqno", req.RequestId))
 				if err != nil {
 					return err
 				}

@@ -110,7 +110,7 @@ func readConfig(profileName, confFilePath string) (*nbictlpb.Config, error) {
 			urlMatchCount,
 			strings.Join(lo.Map(matchingProfilesByHostPort, func(c *nbictlpb.Config, _ int) string { return c.GetName() }), ", "))
 	}
-	return nil, fmt.Errorf(errMsg)
+	return nil, fmt.Errorf("%s", errMsg)
 }
 
 func readConfigs(confFilePath string) (*nbictlpb.AppConfig, error) {
