@@ -219,8 +219,8 @@ use_repo(crate, "spacetime_crates")
 bazel_dep(name = "org_outernetcouncil_nmts")
 archive_override(
     module_name = "org_outernetcouncil_nmts",
-    strip_prefix = "nmts-1.7.0",
-    urls = "https://github.com/outernetcouncil/nmts/archive/refs/tags/v1.7.0.tar.gz",
+    strip_prefix = "nmts-1.8.0",
+    urls = ["https://github.com/outernetcouncil/nmts/archive/refs/tags/v1.8.0.tar.gz"],
 )
 
 http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
