@@ -1,0 +1,706 @@
+// Copyright 2024 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// TODO: Pagination of List responses will be added in a future version of the API
+
+
+syntax = "proto3";
+
+package outernet.federation.interconnect.v1alpha;
+
+import "google/protobuf/empty.proto";
+import "google/type/interval.proto";
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+import "google/api/field_behavior.proto";
+import "google/api/resource.proto";
+import "nmts/v1/proto/ek/physical/antenna.proto";
+import "nmts/v1/proto/ek/physical/modem.proto";
+import "nmts/v1/proto/ek/physical/platform.proto";
+import "nmts/v1/proto/ek/physical/signal_processing_chain.proto";
+import "nmts/v1/proto/ek/physical/transceiver.proto";
+import "nmts/v1/proto/types/geophys/motion.proto";
+
+option go_package = "aalyria.com/spacetime/api/federation/interconnect/v1alpha";
+option java_outer_classname = "InterconnectProto";
+option java_multiple_files = true;
+option java_package = "com.github.outernet.federation.interconnect.v1alpha";
+
+// Interconnect API
+//
+// The Interconnect API is intended to enable a network orchestrator to use
+// connectivity services from multiple service providers without integrating
+// with each service provider separately. In particular, the API is intended to
+// facilitate use of connectivity services that require the customer to
+// establish a single wireless link with the service provider’s network, through
+// which connectivity is available. This wireless link could be a link to an
+// optical terminal on a low-Earth-orbiting satellite, or it could be a link to
+// a ground station, among other possibilities.
+service InterconnectService {
+  // Lists the types of transceivers with which the connectivity service
+  // provider's network is compatible. This enables the client to provide the
+  // service provider with the details of only the transceivers that might
+  // feasibly be capable of connecting to the service provider's network.
+  rpc ListCompatibleTransceiverTypes(ListCompatibleTransceiverTypesRequest)
+    returns (ListCompatibleTransceiverTypesResponse) {
+      option (google.api.http) = {
+        get: "/v1alpha/compatibleTransceivers"
+      };
+    }
+
+  // Lists all client-operated wireless transceivers.
+  rpc ListTransceivers(ListTransceiversRequest)
+    returns(ListTransceiversResponse) {
+      option (google.api.http) = {
+        get: "/v1alpha/transceivers"
+      };
+    }
+
+  // Gets the definition of a client-operated wireless transceiver.
+  rpc GetTransceiver(GetTransceiverRequest)
+    returns (Transceiver) {
+      option (google.api.method_signature) = "name";
+      option (google.api.http) = {
+        get: "/v1alpha/{name=transceivers/*}"
+      };
+    }
+
+  // Creates a transceiver resource representing a client-operated wireless
+  // transceiver. Creation of the transceiver allows the connectivity service
+  // provider to begin creating the transceiver's contact windows. Each contact
+  // window represents a period of feasible communication between the
+  // client-operated transceiver and transceivers in the service provider's
+  // network.
+  rpc CreateTransceiver(CreateTransceiverRequest)
+    returns (Transceiver) {
+      option (google.api.method_signature) = "transceiver,transceiver_id";
+      option (google.api.http) = {
+        post: "/v1alpha/transceivers"
+        body: "transceiver"
+      };
+    }
+
+  // Updates a transceiver. May be used to update a transceiver's predicted
+  // trajectory, for example. The full transceiver data must always be submitted.
+  rpc UpdateTransceiver(UpdateTransceiverRequest)
+    returns (Transceiver) {
+      option (google.api.method_signature) = "transceiver";
+      option (google.api.http) = {
+        put: "/v1alpha/{transceiver.name=transceivers/*}"
+        body: "transceiver"
+      };
+    }
+
+  // Deletes a transceiver. Transceivers may only be deleted if no bearer's are
+  // currently created between the transceiver and a target. In this case, the API
+  // will return a FAILED_PRECONDITION.
+  rpc DeleteTransceiver(DeleteTransceiverRequest)
+    returns (google.protobuf.Empty) {
+      option (google.api.method_signature) = "name";
+      option (google.api.http) = {
+        delete: "/v1alpha/{name=transceivers/*}"
+      };
+    }
+
+  // Lists all available contact windows between client-operated transceivers
+  // and those in the connectivity service provider's network.
+  rpc ListContactWindows(ListContactWindowsRequest)
+    returns (ListContactWindowsResponse) {
+      option (google.api.http) = {
+        get: "/v1alpha/contactWindows"
+      };
+    }
+
+  // Lists all bearers created between client-operated transceivers and provider's targets.
+  rpc ListBearers(ListBearersRequest)
+    returns (ListBearersResponse) {
+      option (google.api.http) = {
+        get: "/v1alpha/bearers"
+      };
+    }
+
+  // Gets the information for a specific bearer created between a client's transceiver and a provider's target.
+  rpc GetBearer(GetBearerRequest)
+  returns (Bearer) {
+    option (google.api.method_signature) = "name";
+    option (google.api.http) = {
+      get: "/v1alpha/{name=bearers/*}"
+    };
+  }
+
+  // Creates a bearer. A bearer defines the physical connection necessary to create attachment circuits (data links)
+  // between client operated hardware and the provider's network. Bearers must reside within a contact window 
+  // both in terms of the time interval of their provisioning and the frequency band information. However, multiple
+  // bearers may in principle occupy the same contact window if their respective frequency bands or time intervals do not overlap.
+  // Note here that interval protos by definition contain the start time timestamp but not the end time timestamp to allow for
+  // time intervals which share an endpoint. For details, see the google/type/interval.proto file.
+  // The provider may limit this possibility if their hardware does not support multiple bearers on different frequency bands at
+  // the same time.
+  // If the bearer cannot be created because it is not part of a valid contact window, the service should return a FAILED_RPECONDITION.
+  rpc CreateBearer(CreateBearerRequest)
+    returns (Bearer) {
+      option (google.api.method_signature) = "bearer,bearer_id";
+      option (google.api.http) = {
+        post: "/v1alpha/bearers"
+        body: "bearer"
+      };
+    }
+
+  // Deletes a bearer. Bearers can only be deleted if no attachmet circuits are attached to a bearer.
+  // If an attachment circuit is still attached, the service should return a FAILED_RPECONDITION.
+  rpc DeleteBearer(DeleteBearerRequest)
+    returns (google.protobuf.Empty) {
+      option (google.api.method_signature) = "name";
+      option (google.api.http) = {
+        delete: "/v1alpha/{name=bearers/*}"
+      };
+    }
+
+  // Lists attachment circuits.
+  rpc ListAttachmentCircuits(ListAttachmentCircuitsRequest)
+    returns (ListAttachmentCircuitsResponse) {
+      option (google.api.http) = {
+        get: "/v1alpha/attachmentCircuits"
+      };
+    }
+
+  // Gets an attachment circuit.
+  rpc GetAttachmentCircuit(GetAttachmentCircuitRequest)
+  returns (AttachmentCircuit) {
+    option (google.api.method_signature) = "name";
+    option (google.api.http) = {
+      get: "/v1alpha/{name=attachmentCircuits/*}"
+    };
+  }
+
+  // Creates an attachment circuit. There is currently no API to check possible attachment circuits
+  // with the providers. It is assumed that the client and the provider know in advance what kind
+  // of attachment circuits are possible. If an attachment circuit is requested, which does not meet
+  // the provider's criteria, they may just respond with a FAILED_PRECONDITION. 
+  rpc CreateAttachmentCircuit(CreateAttachmentCircuitRequest)
+    returns (AttachmentCircuit) {
+      option (google.api.method_signature) = "attachment_circuit,attachment_circuit_id";
+      option (google.api.http) = {
+        post: "/v1alpha/attachmentCircuits"
+        body: "attachment_circuit"
+      };
+    }
+
+  // Deletes an attachment circuit.
+  rpc DeleteAttachmentCircuit(DeleteAttachmentCircuitRequest)
+    returns (google.protobuf.Empty) {
+      option (google.api.method_signature) = "name";
+      option (google.api.http) = {
+        delete: "/v1alpha/{name=attachmentCircuits/*}"
+      };
+    }
+
+  // Gets attributes of a target that are required for interconnection, such
+  // as the target's motion.
+  rpc GetTarget(GetTargetRequest)
+    returns (Target) {
+      option (google.api.method_signature) = "name";
+      option (google.api.http) = {
+        get: "/v1alpha/{name=targets/*}"
+      };
+    }
+
+  // Lists all targets. This may not list all target assets in the service
+  // provider's network. It may only return those targets referenced in contact
+  // windows visible to the client.
+  rpc ListTargets(ListTargetsRequest)
+    returns (ListTargetsResponse) {
+      option (google.api.http) = {
+        get: "/v1alpha/targets"
+      };
+    }
+}
+
+// Defines a class of transceivers that are compatible with the connectivity
+// provider's services.
+message CompatibleTransceiverType {
+  // A string specifying a filter over transceiver resources. Any transceiver
+  // matching the filter may be considered compatible with services offered by
+  // the service provider.
+  //
+  // extended to explicitly support matching of ranges in repeated fields.
+  // For example, a filter for transceivers capable of transmitting in the X
+  // band (8.0 – 12.0 GHz) could be represented by the expression
+  //
+  // transmit_signal_chain.transmitter.signals.signal.center_frequency_hz:\
+  // (>= 8000000000 AND <= 12000000000)
+  string transceiver_filter = 1;
+}
+
+// Defines the class of transceivers containing all information about a client's transceiver
+// necessary to calculate compatibility and connectivity to provider's services.
+message Transceiver {
+  option (google.api.resource) = {
+    type: "interconnect.outernetcouncil.org/Transceiver"
+    pattern: "transceivers/{transceiver}"
+    singular: "transceiver"
+    plural: "transceivers"
+  };
+
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+  ReceiveSignalChain receive_signal_chain = 2 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+  TransmitSignalChain transmit_signal_chain = 3 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+  nmts.v1.ek.physical.Platform platform = 4 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+}
+
+message ReceiveSignalChain {
+  nmts.v1.ek.physical.Demodulator demodulator = 1 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+  repeated nmts.v1.ek.physical.SignalProcessingChain
+    signal_processing_chains = 2 [
+      (google.api.field_behavior) = REQUIRED
+    ];
+  nmts.v1.ek.physical.Receiver receiver = 3 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+  nmts.v1.ek.physical.Antenna antenna = 4 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+}
+
+message TransmitSignalChain {
+  nmts.v1.ek.physical.Modulator modulator = 1 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+  repeated nmts.v1.ek.physical.SignalProcessingChain
+    signal_processing_chains = 2 [
+      (google.api.field_behavior) = REQUIRED
+    ];
+  nmts.v1.ek.physical.Transmitter transmitter = 3 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+  nmts.v1.ek.physical.Antenna antenna = 4 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+}
+
+// An interval over which a client transceiver could feasibly connect to the
+// service provider's network and utilize connectivity services.
+message ContactWindow {
+  option (google.api.resource) = {
+    type: "interconnect.outernetcouncil.org/ContactWindow"
+    pattern: "contactWindows/{contact_window}"
+    singular: "contactWindow"
+    plural: "contactWindows"
+  };
+  
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  // The interval over which contact is feasible.
+  google.type.Interval interval = 2 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+
+  // The name of the client's transceiver. Together with the target, it defines the endpoints of a feasible connection.
+  string transceiver = 3 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference).type = "Transceiver"
+  ];
+
+  // The name of the provider's target. Together with the target, it defines the endpoints of a feasible connection.
+  string target = 4 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference).type = "Target"
+  ];
+  int64 min_rx_center_frequency_hz = 5 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+  int64 max_rx_center_frequency_hz = 6 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+  int64 min_rx_bandwidth_hz = 7 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+  int64 max_rx_bandwidth_hz = 8 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+  int64 min_tx_center_frequency_hz = 9 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+  int64 max_tx_center_frequency_hz = 10 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+  int64 min_tx_bandwidth_hz = 11 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+  int64 max_tx_bandwidth_hz = 12 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+}
+
+// A bearer is the required underlying connection for the provisioning of an attachment circuit. 
+// It is used as defined in RFC 9834.
+// Bearers must be defined within Contact Windows.
+message Bearer {
+  option (google.api.resource) = {
+    type: "interconnect.outernetcouncil.org/Bearer"
+    pattern: "bearers/{bearer}"
+    singular: "bearer"
+    plural: "bearers"
+  };
+
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+  
+  // The interval over which the bearer is active. The interval must be covered by a contact window with the same specification.
+  google.type.Interval interval = 2 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+
+  // The name of the client's transceiver. Together with the target, it defines the endpoints of the connection.
+  string transceiver = 3 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference).type = "Transceiver"
+  ];
+
+  // The name of the provider's target. Together with the target, it defines the endpoints of the connection.
+  string target = 4 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference).type = "Target"
+  ];
+
+  int64 rx_center_frequency_hz = 5 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+  int64 rx_bandwidth_hz = 6 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+  int64 tx_center_frequency_hz = 7 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+  int64 tx_bandwidth_hz = 8 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+
+  Mac mac = 9 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+}
+
+// An attachment circuit is a means of attaching to a router.
+// Per Section 1.2 of RFC4364, it may be the sort of connection that is usually
+// thought of as a "data link", or it may be a tunnel of some sort; what matters
+// is that it be possible for two devices to be network layer peers over the
+// attachment circuit.
+//
+// The L2Connection and therefore the attachment circuit is attached to a bearer. 
+// This message is similar to section A.2. in RFC 9834.
+message AttachmentCircuit {
+  option (google.api.resource) = {
+    type: "interconnect.outernetcouncil.org/AttachmentCircuit"
+    pattern: "attachmentCircuits/{attachment_circuit}"
+    singular: "attachmentCircuit"
+    plural: "attachmentCircuits"
+  };
+  
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  message L2Connection {
+    message Encapsulation {
+      message Dot1Q {
+        int32 cvlan_id = 1 [
+          (google.api.field_behavior) = REQUIRED
+        ];
+      }
+      oneof type {
+        google.protobuf.Empty ethernet = 1;
+        Dot1Q dot1q = 2;
+      }
+    }
+
+    message L2Service {
+      message L2TunnelService {
+        message Pseudowire {
+          // Far end IP address.
+          string far_end = 1 [
+            (google.api.field_behavior) = REQUIRED
+          ];
+        }
+
+        oneof type {
+          Pseudowire pseudowire = 1;
+        }
+      }
+      oneof type {
+        L2TunnelService l2_tunnel_service = 1;
+      }
+    }
+
+    string bearer = 1 [
+      (google.api.field_behavior) = REQUIRED,
+      (google.api.resource_reference).type = "interconnect.outernetcouncil.org/Bearer"
+    ];  
+
+    Encapsulation encapsulation = 2 [
+      (google.api.field_behavior) = REQUIRED
+    ];
+    L2Service l2_service = 3 [
+      (google.api.field_behavior) = REQUIRED
+    ];
+  }
+
+  message IpConnection {
+    message AllocationType {
+      message Static {
+        repeated string client_addresses = 1 [
+          (google.api.field_behavior) = REQUIRED
+        ];
+      }
+
+      oneof type {
+        google.protobuf.Empty dynamic = 1;
+        Static static_type = 2 ;
+      }
+    }
+
+    string provider_address = 1 [
+      (google.api.field_behavior) = REQUIRED
+    ];
+    int32 prefix_length = 2 [
+      (google.api.field_behavior) = REQUIRED
+    ];
+
+    // Specifies the IP address allocation service provided to the client's
+    // network by the service provider's network.
+    AllocationType allocation_type = 3 [
+      (google.api.field_behavior) = REQUIRED
+    ];
+  }
+
+  message RoutingProtocol {
+    message Static {
+      message Prefix {
+        // The destination prefix of the route.
+        //
+        // An IP or IPv6 address optionally followed by a slash and the prefix
+        // length.
+        string prefix = 1 [
+          (google.api.field_behavior) = REQUIRED
+        ];
+
+        // The next hop to be used for the static route.
+        //
+        // An IP or IPv6 address.
+        string next_hop = 2 [
+          (google.api.field_behavior) = REQUIRED
+        ];
+      }
+      repeated Prefix prefixes = 1 [
+        (google.api.field_behavior) = REQUIRED
+      ];
+    }
+
+    oneof type {
+      Static static_type = 1;
+      google.protobuf.Empty direct = 3;
+    }
+  }
+
+
+  google.type.Interval interval = 2 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+  L2Connection l2_connection = 3 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+  IpConnection ip_connection = 4 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+  repeated RoutingProtocol routing_protocols = 5 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+}
+
+// The attributes of a target that are required for interconnection, such as the
+// target's motion.
+message Target {
+  option (google.api.resource) = {
+    type: "interconnect.outernetcouncil.org/Target"
+    pattern: "targets/{target}"
+    singular: "target"
+    plural: "targets"
+  };
+  
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  nmts.v1.types.geophys.Motion motion = 2 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+}
+message ListCompatibleTransceiverTypesRequest {
+}
+
+message ListCompatibleTransceiverTypesResponse {
+  repeated CompatibleTransceiverType compatible_transceiver_types = 1;
+}
+
+message ListTransceiversRequest {
+  string filter = 1 [
+    (google.api.field_behavior) = OPTIONAL
+  ];
+}
+
+message ListTransceiversResponse {
+  repeated Transceiver transceivers = 1 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+}
+
+message GetTransceiverRequest {
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference).type = "interconnect.outernetcouncil.org/Transceiver"
+  ];
+}
+
+message CreateTransceiverRequest {
+  string transceiver_id = 1 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+
+  // The transceiver to create.
+  Transceiver transceiver = 2 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+}
+message UpdateTransceiverRequest {
+  Transceiver transceiver = 1 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+}
+
+message DeleteTransceiverRequest {
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference).type = "Transceiver"
+  ];
+}
+
+message ListContactWindowsRequest {
+  string filter = 1 [
+    (google.api.field_behavior) = OPTIONAL
+  ];
+}
+
+message ListContactWindowsResponse {
+  repeated ContactWindow contact_windows = 1 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+}
+
+message GetBearerRequest {
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference).type = "interconnect.outernetcouncil.org/Bearer"
+  ];
+}
+
+message ListBearersRequest {
+  string filter = 1 [
+    (google.api.field_behavior) = OPTIONAL
+  ];
+}
+
+message ListBearersResponse {
+  repeated Bearer bearers = 1 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+}
+
+message CreateBearerRequest {
+  string bearer_id = 1 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+
+  Bearer bearer = 2 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+}
+
+message DeleteBearerRequest {
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference).type = "Bearer"
+  ];
+}
+
+message ListAttachmentCircuitsRequest {
+  string filter = 1 [
+    (google.api.field_behavior) = OPTIONAL
+  ];
+}
+
+message ListAttachmentCircuitsResponse {
+  repeated AttachmentCircuit attachment_circuits = 1 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+}
+
+message GetAttachmentCircuitRequest {
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference).type = "interconnect.outernetcouncil.org/AttachmentCircuit"
+  ];
+}
+
+message CreateAttachmentCircuitRequest {
+  string attachment_circuit_id = 1 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+
+  AttachmentCircuit attachment_circuit = 2 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+}
+
+message DeleteAttachmentCircuitRequest {
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference).type = "AttachmentCircuit"
+  ];
+}
+
+message GetTargetRequest {
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference).type = "interconnect.outernetcouncil.org/Target"
+  ];
+}
+
+message ListTargetsRequest {
+}
+
+message ListTargetsResponse {
+  repeated Target targets = 1 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+}
+
+// A MAC protocol.
+enum Mac {
+  MAC_UNSPECIFIED = 0;
+  MAC_DVB_S2 = 1;
+  MAC_ETH = 2;
+}

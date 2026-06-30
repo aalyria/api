@@ -1,0 +1,892 @@
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package aalyria.spacetime.api.simulation.v1alpha;
+
+import "api/provisioning/v1alpha/provisioning.proto";
+import "google/api/field_behavior.proto";
+import "google/longrunning/operations.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "google/type/interval.proto";
+import "nmts/v1/proto/nmts.proto";
+
+option go_package = "aalyria.com/spacetime/api/simulation/v1alpha";
+option java_package = "com.aalyria.spacetime.simulation.v1alpha";
+
+// Simulation API.
+//
+// The resources managed by this API are:
+//
+// * Scenarios, which define a system to be simulated.
+//   * Network model entities, which represent entities in a network.
+//   * Network model relationships, which represent relationships between
+//     entities in a network.
+//   * P2pSrTePolicies, which represent point-to-point SR-TE policies in the
+//     network.
+//     * P2pSrTePolicyCandidatePaths, which represent requests to establish
+//       candidate paths in service of SR-TE policies.
+//   * Downtimes, which represent downtimes of entities in the scenario.
+//   * ProtectionAssociationGroups, which indicate which paths through the
+//     network are to serve as protection to others.
+//   * DisjointAssociationGroups, which indicate which paths are to traverse
+//     disjoint paths through the network.
+//
+// * Simulations, which represent simulations of a scenario over a time
+//   interval.
+//   * Analyses, statistical analyses of a simulation's results.
+//
+// A simulation may be set-up, run, and analyzed via the following process:
+//
+// 1. Create a scenario, giving the scenario a name and description.
+// 2. Define the scenario by creating the scenario's network model entities and
+//    relationships, point-to-point SR-TE policies and candidate paths,
+//    downtimes, protection association groups, and disjoint association groups.
+// 3. Create a simulation, referencing the scenario by name and specifying a
+//    time interval to be simulated. Spacetime will populate the simulation with
+//    the results of the simulation.
+// 4. Create an analysis, specifying analysis interval and granularity.
+//    Spacetime will populate the analysis with the results of the statistical
+//    analysis of the simulation results.
+service SimulationService {
+  rpc GetScenario(GetScenarioRequest) returns (Scenario) {}
+  rpc ListScenarios(ListScenariosRequest) returns (ListScenariosResponse) {}
+  rpc CreateScenario(CreateScenarioRequest) returns (Scenario) {}
+  rpc UpdateScenario(UpdateScenarioRequest) returns (Scenario) {}
+  rpc DeleteScenario(DeleteScenarioRequest) returns (google.protobuf.Empty) {}
+  rpc CopyScenario(CopyScenarioRequest) returns (Scenario) {}
+
+  rpc GetNetworkModelEntity(GetNetworkModelEntityRequest)
+      returns (nmts.v1.Entity) {}
+  rpc ListNetworkModelEntities(ListNetworkModelEntitiesRequest)
+      returns (ListNetworkModelEntitiesResponse) {}
+  rpc CreateNetworkModelEntity(CreateNetworkModelEntityRequest)
+      returns (nmts.v1.Entity) {}
+  rpc UpdateNetworkModelEntity(UpdateNetworkModelEntityRequest)
+      returns (nmts.v1.Entity) {}
+  rpc DeleteNetworkModelEntity(DeleteNetworkModelEntityRequest)
+      returns (google.protobuf.Empty) {}
+
+  rpc GetNetworkModelRelationship(GetNetworkModelRelationshipRequest)
+      returns (nmts.v1.Relationship) {}
+  rpc ListNetworkModelRelationships(ListNetworkModelRelationshipsRequest)
+      returns (ListNetworkModelRelationshipsResponse) {}
+  rpc CreateNetworkModelRelationship(CreateNetworkModelRelationshipRequest)
+      returns (nmts.v1.Relationship) {}
+  rpc DeleteNetworkModelRelationship(DeleteNetworkModelRelationshipRequest)
+      returns (google.protobuf.Empty) {}
+
+  rpc GetP2pSrTePolicy(GetP2pSrTePolicyRequest)
+      returns (provisioning.v1alpha.P2pSrTePolicy) {}
+  rpc ListP2pSrTePolicies(ListP2pSrTePoliciesRequest)
+      returns (ListP2pSrTePoliciesResponse) {}
+  rpc CreateP2pSrTePolicy(CreateP2pSrTePolicyRequest)
+      returns (provisioning.v1alpha.P2pSrTePolicy) {}
+  rpc UpdateP2pSrTePolicy(UpdateP2pSrTePolicyRequest)
+      returns (provisioning.v1alpha.P2pSrTePolicy) {}
+  rpc DeleteP2pSrTePolicy(DeleteP2pSrTePolicyRequest)
+      returns (google.protobuf.Empty) {}
+
+  rpc GetP2pSrTePolicyCandidatePath(GetP2pSrTePolicyCandidatePathRequest)
+      returns (provisioning.v1alpha.P2pSrTePolicyCandidatePath) {}
+  rpc ListP2pSrTePolicyCandidatePaths(ListP2pSrTePolicyCandidatePathsRequest)
+      returns (ListP2pSrTePolicyCandidatePathsResponse) {}
+  rpc CreateP2pSrTePolicyCandidatePath(CreateP2pSrTePolicyCandidatePathRequest)
+      returns (provisioning.v1alpha.P2pSrTePolicyCandidatePath) {}
+  rpc UpdateP2pSrTePolicyCandidatePath(UpdateP2pSrTePolicyCandidatePathRequest)
+      returns (provisioning.v1alpha.P2pSrTePolicyCandidatePath) {}
+  rpc DeleteP2pSrTePolicyCandidatePath(DeleteP2pSrTePolicyCandidatePathRequest)
+      returns (google.protobuf.Empty) {}
+
+  rpc GetDowntime(GetDowntimeRequest) returns (provisioning.v1alpha.Downtime) {}
+  rpc ListDowntimes(ListDowntimesRequest) returns (ListDowntimesResponse) {}
+  rpc CreateDowntime(CreateDowntimeRequest)
+      returns (provisioning.v1alpha.Downtime) {}
+  rpc UpdateDowntime(UpdateDowntimeRequest)
+      returns (provisioning.v1alpha.Downtime) {}
+  rpc DeleteDowntime(DeleteDowntimeRequest) returns (google.protobuf.Empty) {}
+
+  rpc GetProtectionAssociationGroup(GetProtectionAssociationGroupRequest)
+      returns (provisioning.v1alpha.ProtectionAssociationGroup) {}
+  rpc ListProtectionAssociationGroups(ListProtectionAssociationGroupsRequest)
+      returns (ListProtectionAssociationGroupsResponse) {}
+  rpc CreateProtectionAssociationGroup(CreateProtectionAssociationGroupRequest)
+      returns (provisioning.v1alpha.ProtectionAssociationGroup) {}
+  rpc UpdateProtectionAssociationGroup(UpdateProtectionAssociationGroupRequest)
+      returns (provisioning.v1alpha.ProtectionAssociationGroup) {}
+  rpc DeleteProtectionAssociationGroup(DeleteProtectionAssociationGroupRequest)
+      returns (google.protobuf.Empty) {}
+
+  rpc GetDisjointAssociationGroup(GetDisjointAssociationGroupRequest)
+      returns (provisioning.v1alpha.DisjointAssociationGroup) {}
+  rpc ListDisjointAssociationGroups(ListDisjointAssociationGroupsRequest)
+      returns (ListDisjointAssociationGroupsResponse) {}
+  rpc CreateDisjointAssociationGroup(CreateDisjointAssociationGroupRequest)
+      returns (provisioning.v1alpha.DisjointAssociationGroup) {}
+  rpc UpdateDisjointAssociationGroup(UpdateDisjointAssociationGroupRequest)
+      returns (provisioning.v1alpha.DisjointAssociationGroup) {}
+  rpc DeleteDisjointAssociationGroup(DeleteDisjointAssociationGroupRequest)
+      returns (google.protobuf.Empty) {}
+
+  rpc GetSimulation(GetSimulationRequest) returns (Simulation) {}
+  rpc ListSimulations(ListSimulationsRequest)
+      returns (ListSimulationsResponse) {}
+  rpc CreateSimulation(CreateSimulationRequest)
+      returns (google.longrunning.Operation) {
+    option (google.longrunning.operation_info) = {
+      response_type: "Simulation"
+      metadata_type: "CreateSimulationMetadata"
+    };
+  }
+  rpc DeleteSimulation(DeleteSimulationRequest)
+      returns (google.protobuf.Empty) {}
+
+  rpc GetAnalysis(GetAnalysisRequest) returns (Analysis) {}
+  rpc ListAnalyses(ListAnalysesRequest) returns (ListAnalysesResponse) {}
+  rpc CreateAnalysis(CreateAnalysisRequest) returns (Analysis) {}
+  rpc DeleteAnalysis(DeleteAnalysisRequest) returns (google.protobuf.Empty) {}
+}
+
+message GetScenarioRequest {
+  // Required. The name of the scenario to retrieve.
+  // Format: scenarios/{scenario}
+  string name = 1;
+}
+
+message ListScenariosRequest {
+}
+
+message ListScenariosResponse {
+  repeated Scenario scenarios = 1;
+}
+
+message CreateScenarioRequest {
+  // Required.
+  string scenario_id = 1;
+
+  // Required. The scenario to create.
+  Scenario scenario = 2;
+}
+
+message UpdateScenarioRequest {
+  // Required.
+  Scenario scenario = 1;
+}
+
+message DeleteScenarioRequest {
+  // Required.
+  // Format: scenarios/{scenario}
+  string name = 1;
+}
+
+message CopyScenarioRequest {
+  // Required.
+  string scenario_id = 1;
+
+  // Required. The scenario to copy.
+  string source = 2;
+}
+
+message GetNetworkModelEntityRequest {
+  // Required. The name of the network model entity to retrieve.
+  // Format: scenarios/{scenario}/networkModelEntities/{networkModelEntity}
+  string name = 1;
+}
+
+message ListNetworkModelEntitiesRequest {
+  // Required. The name of the scenario whose network model entities will be
+  // listed.
+  // Format: scenarios/{scenario}
+  string parent = 1;
+}
+
+message ListNetworkModelEntitiesResponse {
+  repeated nmts.v1.Entity network_model_entities = 1;
+}
+
+message CreateNetworkModelEntityRequest {
+  // Required. The scenario in which this network model entity will be created.
+  // Format: scenarios/{scenario}
+  string parent = 1;
+
+  // Required.
+  string network_model_entity_id = 2;
+
+  // Required. The network model entity to create.
+  nmts.v1.Entity network_model_entity = 3;
+}
+
+message UpdateNetworkModelEntityRequest {
+  // Required.
+  nmts.v1.Entity network_model_entity = 1;
+}
+
+message DeleteNetworkModelEntityRequest {
+  // Required.
+  // Format: scenarios/{scenario}/networkModelEntities/{networkModelEntity}
+  string name = 1;
+}
+
+message GetNetworkModelRelationshipRequest {
+  // Required. The name of the relationship to retrieve.
+  // Format:
+  // scenarios/{scenario}/networkModelRelationships/{networkModelRelationship}
+  string name = 1;
+}
+
+message ListNetworkModelRelationshipsRequest {
+  // Required. The name of the scenario whose network model relationships will
+  // be listed.
+  // Format: scenarios/{scenario}
+  string parent = 1;
+}
+
+message ListNetworkModelRelationshipsResponse {
+  repeated nmts.v1.Relationship relationships = 1;
+}
+
+message CreateNetworkModelRelationshipRequest {
+  // Required. The scenario in which this network model relationship will be
+  // created.
+  // Format: scenarios/{scenario}
+  string parent = 1;
+
+  // Required.
+  string network_model_relationship_id = 2;
+
+  // Required. The network model relationship to create.
+  nmts.v1.Relationship network_model_relationship = 3;
+}
+
+message UpdateNetworkModelRelationshipRequest {
+  // Required.
+  nmts.v1.Relationship network_model_relationship = 1;
+}
+
+message DeleteNetworkModelRelationshipRequest {
+  // Required.
+  string name = 1;
+}
+
+message GetP2pSrTePolicyRequest {
+  // Required. The name of the policy to retrieve.
+  // Format: scenarios/{scenario}/p2pSrTePolicies/{p2pSrTePolicy}
+  string name = 1;
+}
+
+message ListP2pSrTePoliciesRequest {
+  // Required. The name of the scenario whose point-to-point SR-TE policies will
+  // be listed.
+  // Format: scenarios/{scenario}
+  string parent = 1;
+}
+
+message ListP2pSrTePoliciesResponse {
+  repeated provisioning.v1alpha.P2pSrTePolicy p2p_sr_te_policies = 1;
+}
+
+message CreateP2pSrTePolicyRequest {
+  // Required. The scenario in which this point-to-point SR-TE policy will be
+  // created.
+  // Format: scenarios/{scenario}
+  string parent = 1;
+
+  // Required.
+  string p2p_sr_te_policy_id = 2;
+
+  // Required. The point-to-point SR-TE policy to create.
+  provisioning.v1alpha.P2pSrTePolicy p2p_sr_te_policy = 3;
+}
+
+message UpdateP2pSrTePolicyRequest {
+  // Required.
+  provisioning.v1alpha.P2pSrTePolicy p2p_sr_te_policy = 1;
+}
+
+message DeleteP2pSrTePolicyRequest {
+  // Required.
+  // Format: scenarios/{scenario}/p2pSrTePolicies/{p2pSrTePolicy}
+  string name = 1;
+}
+
+message GetP2pSrTePolicyCandidatePathRequest {
+  // Required. The name of the path to retrieve.
+  // Format: scenarios/{scenario}/p2pSrTePolicies/{p2pSrTePolicy}/candidatePaths/{candidatePath}
+  string name = 1;
+}
+
+message ListP2pSrTePolicyCandidatePathsRequest {
+  // Required. The name of the policy whose paths will be listed.
+  // Format: scenarios/{scenario}/p2pSrTePolicies/{p2pSrTePolicy}
+  string parent = 1;
+}
+
+message ListP2pSrTePolicyCandidatePathsResponse {
+  repeated provisioning.v1alpha.P2pSrTePolicyCandidatePath
+    p2p_sr_te_policy_candidate_paths = 1;
+}
+
+message CreateP2pSrTePolicyCandidatePathRequest {
+  // Required. The point-to-point SR-TE policy in which this path will be
+  // created.
+  // Format: scenarios/{scenario}/p2pSrTePolicies/{p2pSrTePolicy}
+  string parent = 1;
+
+  // Required.
+  string p2p_sr_te_policy_candidate_path_id = 2;
+
+  // Required. The path to create.
+  provisioning.v1alpha.P2pSrTePolicyCandidatePath
+    p2p_sr_te_policy_candidate_path = 3;
+}
+
+message UpdateP2pSrTePolicyCandidatePathRequest {
+  // Required.
+  provisioning.v1alpha.P2pSrTePolicyCandidatePath
+    p2p_sr_te_policy_candidate_path = 1;
+}
+
+message DeleteP2pSrTePolicyCandidatePathRequest {
+  // Required.
+  // Format: scenarios/{scenario}/p2pSrTePolicies/{p2pSrTePolicy}/candidatePaths/{candidatePath}
+  string name = 1;
+}
+
+message GetDowntimeRequest {
+  // Required. The name of the downtime to retrieve.
+  // Format: scenarios/{scenario}/downtimes/{downtime}
+  string name = 1;
+}
+
+message ListDowntimesRequest {
+  // Required. The name of the scenario whose downtimes will be listed.
+  // Format: scenarios/{scenario}
+  string parent = 1;
+}
+
+message ListDowntimesResponse {
+  repeated provisioning.v1alpha.Downtime downtimes = 1;
+}
+
+message CreateDowntimeRequest {
+  // Required. The scenario in which this downtime will be created.
+  // Format: scenarios/{scenario}
+  string parent = 1;
+
+  // Required.
+  string downtime_id = 2;
+
+  // Required. The downtime to create.
+  provisioning.v1alpha.Downtime downtime = 3;
+}
+
+message UpdateDowntimeRequest {
+  // Required.
+  provisioning.v1alpha.Downtime downtime = 1;
+}
+
+message DeleteDowntimeRequest {
+  // Required.
+  // Format: scenarios/{scenario}/downtimes/{downtime}
+  string name = 1;
+}
+
+message GetProtectionAssociationGroupRequest {
+  // Required. The name of the protection association group to retrieve.
+  // Format: scenarios/{scenario}/protectionAssociationGroups/{protectionAssociationGroup}
+  string name = 1;
+}
+
+message ListProtectionAssociationGroupsRequest {
+  // Required. The name of the scenario whose protection association groups will
+  // be listed.
+  // Format: scenarios/{scenario}
+  string parent = 1;
+}
+
+message ListProtectionAssociationGroupsResponse {
+  repeated provisioning.v1alpha.ProtectionAssociationGroup
+    protection_association_groups = 1;
+}
+
+message CreateProtectionAssociationGroupRequest {
+  // Required. The scenario in which this protection association group will be
+  // created.
+  // Format: scenarios/{scenario}
+  string parent = 1;
+
+  // Required.
+  string protection_association_group_id = 2;
+
+  // Required. The protection association group to create.
+  provisioning.v1alpha.ProtectionAssociationGroup
+    protection_association_group = 3;
+}
+
+message UpdateProtectionAssociationGroupRequest {
+  // Required.
+  provisioning.v1alpha.ProtectionAssociationGroup
+    protection_association_group = 1;
+}
+
+message DeleteProtectionAssociationGroupRequest {
+  // Required.
+  // Format: scenarios/{scenario}/protectionAssociationGroups/{protectionAssociationGroup}
+  string name = 1;
+}
+
+message GetDisjointAssociationGroupRequest {
+  // Required. The name of the disjoint association group to retrieve.
+  // Format:
+  // scenarios/{scenario}/disjointAssocicationGroups/{disjointAssocicationGroup}
+  string name = 1;
+}
+
+message ListDisjointAssociationGroupsRequest {
+  // Required. The name of the scenario whose disjoint association groups will
+  // be listed.
+  // Format: scenarios/{scenario}
+  string parent = 1;
+}
+
+message ListDisjointAssociationGroupsResponse {
+  repeated provisioning.v1alpha.DisjointAssociationGroup
+    disjoint_association_groups = 1;
+}
+
+message CreateDisjointAssociationGroupRequest {
+  // Required. The scenario in which this disjoint association group will be
+  // created.
+  // Format: scenarios/{scenario}
+  string parent = 1;
+
+  // Required.
+  string disjoint_association_group_id = 2;
+
+  // Required. The disjoint association group to create.
+  provisioning.v1alpha.DisjointAssociationGroup disjoint_association_group = 3;
+}
+
+message UpdateDisjointAssociationGroupRequest {
+  // Required.
+  provisioning.v1alpha.DisjointAssociationGroup disjoint_association_group = 1;
+}
+
+message DeleteDisjointAssociationGroupRequest {
+  // Required.
+  // Format:
+  // scenarios/{scenario}/disjointAssocicationGroups/{disjointAssocicationGroup}
+  string name = 1;
+}
+
+message GetSimulationRequest {
+  // Required. The name of the simulation to retrieve.
+  // Format: simulations/{simulation}
+  string name = 1;
+}
+
+message ListSimulationsRequest {
+}
+
+message ListSimulationsResponse {
+  repeated Simulation simulations = 1;
+}
+
+message CreateSimulationRequest {
+  // Required.
+  string simulation_id = 1;
+
+  // Required. The simulation to create.
+  Simulation simulation = 2;
+}
+
+message DeleteSimulationRequest {
+  // Required.
+  // Format: simulations/{simulation}
+  string name = 1;
+}
+
+message GetAnalysisRequest {
+  // Required. The name of the simulation to retrieve.
+  // Format: simulations/{simulation}/analyses/{analysis}
+  string name = 1;
+}
+
+message ListAnalysesRequest {
+  // Required. The name of the simulation whose analyses will be listed.
+  // Format: simulations/{simulation}
+  string parent = 1;
+}
+
+message ListAnalysesResponse {
+  repeated Analysis analyses = 1;
+}
+
+message CreateAnalysisRequest {
+  // Required. The simulation in which this analysis will be created.
+  // Format: simulations/{simulation}
+  string parent = 1;
+
+  // Required.
+  string analysis_id = 2;
+
+  // Required. The analysis to create.
+  Analysis analysis = 3;
+}
+
+message DeleteAnalysisRequest {
+  // Required.
+  // Format: simulations/{simulation}/analyses/{analysis}
+  string name = 1;
+}
+
+// A scenario defining a system to be simulated.
+message Scenario {
+  // The resource name of the scenario.
+  // Format: scenarios/{scenario}
+  string name = 1;
+
+  // Optional. A description of this scenario.
+  string description = 2;
+}
+
+// A simulation of a scenario over a time interval.
+message Simulation {
+  // The resource name of the simulation.
+  // Format: simulations/{simulation}
+  string name = 1;
+
+  // Required. The scenario in the simulation.
+  // Format: scenarios/{scenario}
+  string scenario = 2;
+
+  // Required. The simulated time interval.
+  google.type.Interval interval = 3;
+
+  enum State {
+    STATE_UNSPECIFIED = 0;
+    RUNNING = 1;   
+    SUCCEEDED = 2; 
+    FAILED = 3;    
+    CANCELLED = 4; 
+  }
+
+  // Output only.
+  State state = 4 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // Output only. The time at which the simulation was created.
+  google.protobuf.Timestamp create_time = 5
+       [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // Output only. Each solution segment defines the beams and paths that make up
+  // the solution over a segment of suimulated interval, along with attributes
+  // relevant to analysis (frame delay, CIR per path, EIR per path).
+  repeated SolutionSegment solution_segments = 6
+      [(google.api.field_behavior) = OUTPUT_ONLY];
+}
+
+// Metadata about a simulation operation.
+message CreateSimulationMetadata {
+  double progress_percent = 1;
+}
+
+message SolutionSegment {
+  // The interval over which this segment applies.
+  google.type.Interval interval = 1;
+
+  repeated Beam beams = 2;
+  repeated SrPolicy sr_policies = 3;
+}
+
+message Beam {
+  // Identifies the pointing target for the beam to be aimed at & track.
+  BeamTarget target = 1;
+
+  // Identifies the antenna that is used to transmit and/or receive the beam.
+  string antenna = 2;
+
+  // Parameters specifying the configuration of the beam in the receive
+  // direction.
+  //
+  // Empty if the beam is to be used for transmit only.
+  repeated RxConfiguration rx_configurations = 3;
+
+  // Parameters specifying the configuration of the beam in the transmit
+  // direction.
+  //
+  // The string keys uniquely identify a corresponding TxConfiguration,
+  // and are present only for reference in FieldMask (update) operations.
+  //
+  // Empty if the beam is to be used for receiving only.
+  repeated TxConfiguration tx_configurations = 4;
+
+  // The collection of endpoints served by the beam.
+  // For example, a collection of user terminals (UTs) served.
+  repeated Endpoint endpoints = 5;
+
+  // ID of the beam shape.
+  string shape_id = 6;
+
+  // Only present if beam-hopping is to be used.
+  BeamHoppingPlan beam_hopping_plan = 7;
+}
+
+message BeamTarget {
+  oneof target {
+    Ecef ecef = 1;
+    string platform = 2;
+  }
+}
+
+message Ecef {
+  int64 x_m = 1;
+  int64 y_m = 2;
+  int64 z_m = 3;
+}
+
+message RxConfiguration {
+  int64 center_frequency_hz = 1;
+  int64 channel_bandwidth_hz = 2;
+  Polarization polarization = 3;
+
+  // Identifies the demodulator associated with the carrier on this beam. Must
+  // be present if beam-hopping is not used, otherwise it should be empty and
+  // the demodulators are identified in the beam hopping plan.
+  string demodulator = 4;
+
+  // This value corresponds to the nmts.v1.ek.physical.Carrier.waveform of the
+  // carrier assigned to this beam. nmts.v1.ek.physical.Carriers are defined in
+  // nmts.v1.ek.physical.CarrierConfigurations.
+  string waveform = 5;
+}
+
+message TxConfiguration {
+  int64 center_frequency_hz = 1;
+  int64 channel_bandwidth_hz = 2;
+  Polarization polarization = 3;
+
+  // Transmit power in Watts.
+  double power_w = 5;
+
+  // Symbol rate in Megasymbols per second.
+  double symbol_rate_msps = 6;
+
+  // Identifies the modulator associated with the carrier on this beam. Must be
+  // present if beam-hopping is not used, otherwise it should be empty and the
+  // modulators are identified in the beam hopping plan.
+  string modulator = 8;
+
+  // This value corresponds to the nmts.v1.ek.physical.Carrier.waveform of the
+  // carrier assigned to this beam. nmts.v1.ek.physical.Carriers are defined in
+  // nmts.v1.ek.physical.CarrierConfigurations.
+  string waveform = 4;
+}
+
+enum Polarization {
+  POLARIZATION_UNSPECIFIED = 0;
+  POLARIZATION_LHCP = 1;  // Left-handed circular polarization
+  POLARIZATION_RHCP = 2;  // Right-handed circular polarization
+}
+
+message Endpoint {
+  string modulator = 1;
+  string demodulator = 2;
+}
+
+message BeamHoppingPlan {
+  message Section {
+    // The length of the section, in number of time slots.
+    int32 length = 1;
+
+    // An entry in the beam-hopping plan section representing a time slot during
+    // which the associated beam is to be illuminated.
+    message Entry {
+      // The entry's time slot within the section.
+      int32 time_slot = 1;
+
+      string modem = 2;
+    }
+
+    // The entries in the beam-hopping plan section. The beam should not be
+    // illuminated during any time slot not represented in the collection of
+    // entries.
+    repeated Entry entries = 2;
+
+    // The number of extra times that the list of time slots defined by the
+    // section should be looped.  A zero value (no repeats) is assumed if not
+    // present, which means the entries are only visited once by the beam.  A
+    // value of 2 means the section is iterated through and then repeated
+    // twice (so all of the entries are visited three times by the beam).
+    // Negative values should not be used; the type is signed in accordance
+    int32 repeat_count = 3;
+  }
+
+  repeated Section sections = 1;
+}
+
+// A Segment Routing Policy Architecture policy description.
+// Based largely upon elements from:
+//   * RFC 9256
+//   * draft-ietf-spring-sr-policy-yang
+message SrPolicy {
+  // The ID of the request for this SR policy, unique among all service
+  // requests, that caused this policy to be instantiated.
+  //
+  // Per RFC 9256 S2.1, "[a]n SR Policy MUST be identified through the
+  // tuple <Headend, Color, Endpoint>." That information is not copied
+  // here; rather it is assumed that this ID suffices to locate that
+  // information, should it be required.
+  string id = 1;
+
+  // For convenience, the optional symbolic name for this SR Policy.
+  // See also: RFC 9256 S2.1.
+  string name = 2;
+
+  // RFC 9256 S2.2 "Candidate Path and Segment List"; only explicit
+  // candidate paths are supported.
+  message ExplicitPath {
+    // RFC 9256 S2.5 Discriminator.
+    uint32 discriminator = 3;
+    // RFC 9256 S2.6 optional symbolic name.
+    string name = 4;
+    // RFC 9256 S2.7 Preference.
+    uint32 preference = 5;
+
+    // An ordered list of network interfaces traversed by the path.
+    repeated string interfaces = 6;
+
+    // Committed Information Rate (CIR) in bits per second.
+    int64 cir_bps = 7;
+  }
+  repeated ExplicitPath paths = 8;
+}
+
+// A statisical analysis of simulation results.
+message Analysis {
+  // Required. The resource name of the analysis.
+  // Format: scenarios/{scenario}/analyses/{analysis}
+  string name = 1;
+
+  // Required. The interval over which the solution is to be analyzed.
+  google.type.Interval interval = 2;
+
+  // Required. The resolution at which the solution is to be analyzed.
+  google.protobuf.Duration resolution = 3;
+
+  // Output only. Statistical analyses of segments of the simulation, sized
+  // according to the analysis resolution.
+  repeated AnalysisSegment segments = 4
+      [(google.api.field_behavior) = OUTPUT_ONLY];
+}
+
+message AnalysisSegment {
+  google.type.Interval interval = 1;
+
+  // Statisics associated with point-to-point SR-TE policy paths over the
+  // analysis segment interval.
+  repeated P2pSrTePolicyCandidatePathStats
+      p2p_sr_te_polcy_candidate_path_stats = 2;
+}
+
+message P2pSrTePolicyCandidatePathStats {
+  // The name of the SR-TE policy path.
+  string path = 1;
+
+  // Time-averaged committed information rate (in bits per second) allocated to
+  // the path over the analysis segment.
+  double cir_avg_bps = 2;
+
+  // Standard deviation of the comitted information rate (in bits per second)
+  // allocated to the path over the analysis segment.
+  double cir_stddev_bps = 3;
+
+  // Minimum committed information rate (in bits per second) allocated to the
+  // path over the analysis segment.
+  double cir_min_bps = 4;
+
+  // Maximum committed information rate (in bits per second) allocated to the
+  // path over the analysis segment.
+  double cir_max_bps = 5;
+
+  // Percentile of the average committed information rate allocated to the path
+  // relative to the average committed information rate allocated to the path in
+  // other analysis segments.
+  double cir_percentile = 6;
+
+  // Time-averaged excess information rate (in bits per second) allocated to the
+  // path over the analysis segment.
+  double eir_avg_bps = 7;
+
+  // Standard deviation of the excess information rate (in bits per second)
+  // allocated to the path over the analysis segment.
+  double eir_stddev_bps = 8;
+
+  // Minimum excess information rate (in bits per second) allocated to the path
+  // over the analysis segment.
+  double eir_min_bps = 9;
+
+  // Maximum excess information rate (in bits per second) allocated to the path
+  // over the analysis segment.
+  double eir_max_bps = 10;
+
+  // Percentile of the average excess information rate allocated to the path
+  // relative to the average excess information rate allocated to the path in
+  // other analysis segments.
+  double eir_percentile = 11;
+
+  // Time-averaged frame delay experienced by a frame traveling the path over
+  // the analysis segment.
+  google.protobuf.Duration frame_delay_avg = 12;
+
+  // Standard deviation of the frame delay experienced by a frame traveling the
+  // path over the analysis segment.
+  google.protobuf.Duration frame_delay_stddev = 13;
+
+  // Minimum frame delay experienced by a frame traveling the path over the
+  // analysis segment.
+  google.protobuf.Duration frame_delay_min = 14;
+
+  // Maximum frame delay experienced by a frame traveling the path over the
+  // analysis segment.
+  google.protobuf.Duration frame_delay_max = 15;
+
+  // Percentile of the average frame delay experienced by a frame traveling the
+  // path over the analysis segment, relative to the frame delay associated with
+  // the path in other analysis segments.
+  double frame_delay_percentile = 16;
+
+  // Time-averaged inter-frame delay variation over the path over the analysis
+  // segment.
+  google.protobuf.Duration ifdv_avg = 17;
+
+  // Standatd deviation of the inter-frame delay variation over the path over
+  // the analysis segment.
+  google.protobuf.Duration ifdv_stddev = 18;
+
+  // Minimum inter-frame delay variation over the path over the analysis
+  // segment.
+  google.protobuf.Duration ifdv_min = 19;
+
+  // Maximum inter-frame delay variation over the path over the analysis
+  // segment.
+  google.protobuf.Duration ifdv_max = 20;
+
+  // Percentile of the average inter-frame delay variation relative to the
+  // inter-frame delay variation associated with the path in other analysis
+  // segments.
+  double ifdv_percentile = 21;
+}
