@@ -294,6 +294,12 @@ message Beam {
 
   // Only present if beam-hopping is to be used.
   BeamHoppingPlan beam_hopping_plan = 8;
+
+  // The IDs of all beams that are transmitting to the endpoints served by this
+  // beam.
+  //
+  // Note that, for any transmit beam, tx_beams will contain that beam's own ID.
+  repeated string tx_beams = 11;
 }
 
 message BeamHoppingPlan {
@@ -601,13 +607,6 @@ message Endpoint {
 
   EndpointSecurity security = 7;
 
-  // The IDs of all beams that are transmitting to this endpoint and managed by
-  // the same agent that manages this beam.
-  //
-  // Note that, for any transmit beam, all of that beam's endpoints' tx_beams
-  // fields will contain that beam's own ID.
-  repeated string tx_beams = 9;
-
   // This field is deprecated. Use incoming_mpls_label_to_egress_port instead.
   repeated int32 ingress_mpls_labels = 10 [deprecated = true];
 
@@ -642,7 +641,7 @@ message Endpoint {
   // Note that this field is only populated for endpoints of transmit beams.
   map<int32, string> incoming_mpls_label_to_egress_port = 11;
 
-  reserved 1, 8;
+  reserved 1, 8, 9;
 }
 
 message EndpointSecurity {
