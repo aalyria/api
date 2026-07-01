@@ -607,9 +607,6 @@ message Endpoint {
 
   EndpointSecurity security = 7;
 
-  // This field is deprecated. Use incoming_mpls_label_to_egress_port instead.
-  repeated int32 ingress_mpls_labels = 10 [deprecated = true];
-
   // This field maps incoming MPLS labels at the transmitting node to the
   // corresponding port through which traffic for this endpoint is transmitted.
   //
@@ -641,7 +638,7 @@ message Endpoint {
   // Note that this field is only populated for endpoints of transmit beams.
   map<int32, string> incoming_mpls_label_to_egress_port = 11;
 
-  reserved 1, 8, 9;
+  reserved 1, 8, 9, 10;
 }
 
 message EndpointSecurity {

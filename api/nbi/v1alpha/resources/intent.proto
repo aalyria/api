@@ -282,11 +282,11 @@ message Endpoint {
   // field is only set for user downlinks. For all other links, the adjacency 
   // SID is determined by the compiler. See NRMP-193 for context.
   //
-  // The corresponding field in the Scheduling API, 
-  // aalyria.spacetime.scheduling.v1alpha.Endpoint.ingress_mpls_labels, is used
-  // by the satellite to identify the traffic to be forwarded to the user
-  // terminal. This is a non-repeated field because each UT is served by at most
-  // one downlink currently.
+  // The corresponding field in the Scheduling API,
+  // Endpoint.incoming_mpls_label_to_egress_port, is used by the satellite to
+  // identify the traffic to be forwarded to the user terminal. This is a
+  // non-repeated field because each UT is served by at most one downlink
+  // currently.
   optional int32 user_downlink_adjacency_sid = 5;
 }
 
