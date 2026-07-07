@@ -305,6 +305,8 @@ message P2pSrTePolicyCandidatePath {
   uint32 preference = 4;
 
   // Quantitative path metrics.
+  //
+  // N.B.: At least one of `cir_bps` or `eir_bps` must be non-zero.
   Metrics metrics = 5;
 }
 
@@ -532,6 +534,8 @@ message P2mpSrTePolicyCandidatePath {
   // Preference. This can be added later, should specifications evolve.
 
   // Quantitative path metrics.
+  //
+  // N.B.: At least one of `cir_bps` or `eir_bps` must be non-zero.
   Metrics metrics = 4;
 }
 
