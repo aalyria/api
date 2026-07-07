@@ -1,4 +1,4 @@
-# Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+# Copyright 2026 Aalyria Technologies, Inc., and its affiliates.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,5 +13,8 @@
 # limitations under the License.
 
 exports_files([
-    "rules_proto_grpc_python.patch",
+    "c-ares_1_19_1_rbe_headers.patch",
+    "grpc_1_74_1_rbe_xds_headers.patch",
+    "grpc_1_74_1_upb_gen_include_shadowing.patch",
+    "protobuf_v31_1_zig_constinit_fix.patch",
 ])
