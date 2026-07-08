@@ -158,6 +158,7 @@ func TestGrpcurl_list(t *testing.T) {
 		"aalyria.spacetime.api.model.v1.Model.ListEntities",
 		"aalyria.spacetime.api.model.v1.Model.ListRelationships",
 		"aalyria.spacetime.api.model.v1.Model.UpdateEntity",
+		"aalyria.spacetime.api.model.v1.Model.UpsertFragment",
 	))
 }
 

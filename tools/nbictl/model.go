@@ -219,7 +219,6 @@ func ModelDeleteRelationship(appCtx *cli.Context) error {
 	return err
 }
 
-// TODO: turn these into one atomic RPC call in the modelfe.
 func ModelUpsertFragment(appCtx *cli.Context) error {
 	marshaller, err := marshallerForFormat(appCtx.String("format"))
 	if err != nil {
@@ -241,26 +240,11 @@ func ModelUpsertFragment(appCtx *cli.Context) error {
 	defer conn.Close()
 	modelClient := modelpb.NewModelClient(conn)
 
-	for _, nmtsEntity := range nmtsFragment.GetEntity() {
-		_, err = modelClient.CreateEntity(
-			appCtx.Context,
-			&modelpb.CreateEntityRequest{
-				Entity: nmtsEntity,
-			})
-		if err != nil {
-			return err
-		}
-	}
-
-	for _, nmtsRelationship := range nmtsFragment.GetRelationship() {
-		_, err = modelClient.CreateRelationship(
-			appCtx.Context,
-			&modelpb.CreateRelationshipRequest{
-				Relationship: nmtsRelationship,
-			})
-		if err != nil {
-			return err
-		}
+	if _, err := modelClient.UpsertFragment(
+		appCtx.Context,
+		&modelpb.UpsertFragmentRequest{Fragment: nmtsFragment},
+	); err != nil {
+		return err
 	}
 
 	fmt.Fprintln(appCtx.App.ErrWriter, "# OK")

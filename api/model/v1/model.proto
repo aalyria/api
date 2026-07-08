@@ -59,6 +59,15 @@ service Model {
   rpc DeleteRelationship(DeleteRelationshipRequest)
       returns (google.protobuf.Empty) {}
 
+  // Upsert (create-or-replace) every nmts.Entity and nmts.Relationship in a
+  // Fragment in a single atomic transaction that is validated exactly once.
+  //
+  // Existing entities are fully replaced (an entity's kind may not change).
+  // A relationship that already exists (same a/kind/z) is a no-op. The whole
+  // fragment is applied atomically: on any validation or write error, nothing
+  // is committed.
+  rpc UpsertFragment(UpsertFragmentRequest) returns (UpsertFragmentResponse) {}
+
   // Retrieve an nmts.Entity
   //
   // Returns a gRPC NotFound error if an Entity with the supplied Id
@@ -120,4 +129,14 @@ message ListRelationshipsRequest {
 
 message ListRelationshipsResponse {
   repeated nmts.v1.Relationship relationships = 1;
+}
+
+message UpsertFragmentRequest {
+  nmts.v1.Fragment fragment = 1;
+}
+
+message UpsertFragmentResponse {
+  int32 entities_created = 1;
+  int32 entities_updated = 2;
+  int32 relationships_created = 3;
 }
