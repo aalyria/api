@@ -17,7 +17,7 @@ load("@rules_go//proto:def.bzl", "go_proto_library")
 load("@rules_proto_grpc_cpp//:defs.bzl", "cpp_grpc_library")
 load("@rules_proto_grpc_java//:defs.bzl", "java_grpc_library")
 load("@rules_proto_grpc_python//:defs.bzl", "python_grpc_library")
-load("@rules_rust_prost//:defs.bzl", "rust_prost_library")
+load("@rules_rust//extensions/prost:defs.bzl", "rust_prost_library")
 
 package(default_visibility = ["//visibility:public"])
 

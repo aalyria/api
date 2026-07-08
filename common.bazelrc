@@ -52,6 +52,23 @@ build --host_cxxopt=-Wno-deprecated-declarations
 ##
 build --features=external_include_paths
 
+# The hermetic clang toolchain enforces module-map strictness that the previous
+# toolchain did not. grpc includes zlib's module-private zconf.h/zlib.h, which
+# clang flags under -Wprivate-header.
+build --per_file_copt=external/grpc[~+]/.*@-Wno-private-header
+
+# opencensus-cpp (a grpc dependency) has an unused local variable
+# (cloud_trace_context.cc) that clang flags under -Wunused-variable. It is
+# third-party code.
+build --per_file_copt=external/opencensus-cpp[~+]/.*@-Wno-unused-variable
+
+# The hermetic clang toolchain enables Bazel's layering_check feature (module
+# strict-decluse), which neither this tree nor external deps like grpc declare
+# the layering dependencies for, so compiles fail with "module ... does not
+# depend on a module exporting ...". Disable it repo-wide. This is a feature,
+# not a -W flag, so it cannot be scoped per external repo via per_file_copt.
+build --features=-layering_check
+
 ##
 # Enable hermetic testing and compilation of Java using a JVM downloaded from a
 # remote repository.
