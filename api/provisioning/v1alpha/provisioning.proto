@@ -16,6 +16,7 @@ syntax = "proto3";
 
 package aalyria.spacetime.api.provisioning.v1alpha;
 
+import "api/provisioning/v1alpha/position_varying_uv_mask.proto";
 import "api/provisioning/v1alpha/te.proto";
 import "google/api/field_behavior.proto";
 import "google/api/resource.proto";
@@ -145,6 +146,15 @@ service Provisioning {
   rpc CreatePointingConstraint(CreatePointingConstraintRequest) returns (PointingConstraint) {}
   rpc UpdatePointingConstraint(UpdatePointingConstraintRequest) returns (PointingConstraint) {}
   rpc DeletePointingConstraint(DeletePointingConstraintRequest) returns (google.protobuf.Empty) {}
+
+  // Methods on EirpsdMaskLimits.
+  //
+  // Manage resources under `eirpsdMaskLimits/{id}`.
+  rpc GetEirpsdMaskLimit(GetEirpsdMaskLimitRequest) returns (EirpsdMaskLimit) {}
+  rpc ListEirpsdMaskLimits(ListEirpsdMaskLimitsRequest) returns (ListEirpsdMaskLimitsResponse) {}
+  rpc CreateEirpsdMaskLimit(CreateEirpsdMaskLimitRequest) returns (EirpsdMaskLimit) {}
+  rpc UpdateEirpsdMaskLimit(UpdateEirpsdMaskLimitRequest) returns (EirpsdMaskLimit) {}
+  rpc DeleteEirpsdMaskLimit(DeleteEirpsdMaskLimitRequest) returns (google.protobuf.Empty) {}
 
   // TODO: Consider RFC 8623 P2MP TE -like request
   // TODO: Consider PHY-layer requests (bent pipe, etc)
@@ -1468,5 +1478,126 @@ message DeletePointingConstraintRequest{
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
       type: "provisioning.spacetimeapis.com/PointingConstraint"
+    }];
+}
+
+// An operational limit on the beam-peak EIRP spectral density an antenna may
+// radiate, as a function of where the platform is and where the beam points.
+// The limit applies to the main-lobe beam peak only. Spacetime enforces the
+// cap per-beam, with no multi-beam correction at runtime; the operator's
+// mask-generation process must make the per-beam caps conservative enough
+// that any beam configuration Spacetime schedules stays compliant.
+//
+// One resource describes a set of position-dependent masks for one
+// frequency band. Operators with
+// per-sub-band masks (e.g. distinct ITU Article 22 limits per Ka-band
+// sub-band, or out-of-band emission limits) create one resource per
+// sub-band.
+//
+// An EirpsdMaskLimit applies to every antenna matched by its
+// subjects_filter, at every frequency covered by its frequency_range; a
+// given antenna and frequency may therefore be subject to several
+// EirpsdMaskLimit resources at once.
+message EirpsdMaskLimit {
+  option (google.api.resource) = {
+    type: "provisioning.spacetimeapis.com/EirpsdMaskLimit"
+    pattern: "eirpsdMaskLimits/{eirpsd_mask_limit}"
+  };
+
+  // The resource name of the EIRPSD mask limit.
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  // Filter the Antenna model entities that must respect this limit,
+  // using Common Expression Language (CEL).
+  string subjects_filter = 2;
+
+  // The frequency band over which this mask applies.
+  FrequencyRange frequency_range = 3;
+
+  // The reference bandwidth the mask values are expressed in, in Hz
+  // (e.g. 1 Hz, 4 kHz, 1 MHz). Mask values are dBW per this bandwidth;
+  // Spacetime normalizes to a common basis (per-Hz: subtract
+  // 10*log10(reference_bandwidth_hz)) before comparing or min-combining
+  // masks.
+  double reference_bandwidth_hz = 4;
+
+  // The mask itself, tabulated per platform position. Position conventions:
+  // (lat, lon) is the platform's geodetic position (equivalently its
+  // geodetic sub-point), referenced to the reference ellipsoid of the
+  // central body the platform orbits (WGS84 for Earth). A limit that
+  // varies with altitude is expressed as one EirpsdMaskLimit resource per
+  // altitude band, each selecting the applicable antennas via
+  // subjects_filter.
+  //
+  // Each mask value is a beam-peak EIRPSD cap in dBW per
+  // reference_bandwidth_hz, with the antenna pattern already accounted
+  // for; the cap bounds the main-lobe beam peak only. Values are
+  // non-monotonic (the cap is a worst case over protected directions), and
+  // the quiet-NaN sentinel means no applicable limit.
+  //
+  // A position-INDEPENDENT mask is the degenerate case: lat_count = 1,
+  // lon_count = 1, and one latitude row, typically carried inline.
+  //
+  // All fields, including those of the nested messages, are required.
+  PositionVaryingUvMask position_varying_uv_mask = 5;
+}
+
+message GetEirpsdMaskLimitRequest{
+  // The resource name of the EIRPSD mask limit to retrieve.
+  // Format: `eirpsdMaskLimits/{eirpsd_mask_limit}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/EirpsdMaskLimit"
+    }];
+}
+
+message ListEirpsdMaskLimitsRequest{
+}
+
+message ListEirpsdMaskLimitsResponse{
+  repeated EirpsdMaskLimit eirpsd_mask_limits = 1;
+}
+
+message CreateEirpsdMaskLimitRequest{
+  // The ID to use for the EIRPSD mask limit, which will become the final
+  // component of the EIRPSD mask limit's resource name.
+  //
+  // This value should be 1-63 characters, and valid characters
+  // are /[a-z][0-9]-/, specifically of the form
+  // "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$".
+  string mask_limit_id = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // The EIRPSD mask limit to create.
+  EirpsdMaskLimit eirpsd_mask_limit = 3 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+}
+
+message UpdateEirpsdMaskLimitRequest{
+  // The EirpsdMaskLimit to update.
+  //
+  // The EirpsdMaskLimit's `name` field is used to identify the
+  // EirpsdMaskLimit instance to be updated.
+  // Format: `eirpsdMaskLimits/{eirpsd_mask_limit}`
+  EirpsdMaskLimit eirpsd_mask_limit = 1 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+
+  // The list of fields to be updated.
+  google.protobuf.FieldMask update_mask = 2;
+
+  // If set to true, and the EirpsdMaskLimit named above is not found, a new
+  // instance will be created. In this situation, `update_mask` is ignored.
+  bool allow_missing = 3;
+}
+
+message DeleteEirpsdMaskLimitRequest{
+  // The resource name of the EIRPSD mask limit to delete.
+  // Format: `eirpsdMaskLimits/{eirpsd_mask_limit}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/EirpsdMaskLimit"
     }];
 }
