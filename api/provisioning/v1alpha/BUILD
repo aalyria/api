@@ -24,6 +24,7 @@ package(default_visibility = ["//visibility:public"])
 proto_library(
     name = "provisioning_proto",
     srcs = [
+        "position_varying_uv_mask.proto",
         "provisioning.proto",
         "te.proto",
     ],

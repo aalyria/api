@@ -59,6 +59,7 @@ type ProvisioningResources struct {
 	geographicRegions            map[string]*provapipb.GeographicRegion
 	emissionsLimits              map[string]*provapipb.EmissionsLimit
 	pointingConstraints          map[string]*provapipb.PointingConstraint
+	eirpsdMaskLimits             map[string]*provapipb.EirpsdMaskLimit
 }
 
 func (pr *ProvisioningResources) String() string {
@@ -74,6 +75,7 @@ func (pr *ProvisioningResources) String() string {
 		lo.Keys(pr.geographicRegions),
 		lo.Keys(pr.emissionsLimits),
 		lo.Keys(pr.pointingConstraints),
+		lo.Keys(pr.eirpsdMaskLimits),
 	)
 
 	if len(keys) == 0 {
@@ -104,6 +106,7 @@ func (pr *ProvisioningResources) MarshalledString(marshaller protoFormat) string
 		lo.Entries(marshalMap(pr.geographicRegions, marshaller)),
 		lo.Entries(marshalMap(pr.emissionsLimits, marshaller)),
 		lo.Entries(marshalMap(pr.pointingConstraints, marshaller)),
+		lo.Entries(marshalMap(pr.eirpsdMaskLimits, marshaller)),
 	)
 	slices.SortFunc(entries, func(e1, e2 lo.Entry[string, string]) int { return strings.Compare(e1.Key, e2.Key) })
 
@@ -126,6 +129,7 @@ func NewProvisioningResources() *ProvisioningResources {
 		geographicRegions:            map[string]*provapipb.GeographicRegion{},
 		emissionsLimits:              map[string]*provapipb.EmissionsLimit{},
 		pointingConstraints:          map[string]*provapipb.PointingConstraint{},
+		eirpsdMaskLimits:             map[string]*provapipb.EirpsdMaskLimit{},
 	}
 }
 
@@ -140,7 +144,8 @@ func (pr *ProvisioningResources) ResourceCount() int {
 		len(pr.links) +
 		len(pr.geographicRegions) +
 		len(pr.emissionsLimits) +
-		len(pr.pointingConstraints)
+		len(pr.pointingConstraints) +
+		len(pr.eirpsdMaskLimits)
 }
 
 func (pr *ProvisioningResources) InsertProvisioningResources(resources *provnbipb.ProvisioningResources) {
@@ -155,6 +160,7 @@ func (pr *ProvisioningResources) InsertProvisioningResources(resources *provnbip
 	pr.insertGeographicRegions(resources.GetGeographicRegions())
 	pr.insertEmissionsLimits(resources.GetEmissionsLimits())
 	pr.insertPointingConstraints(resources.GetPointingConstraints())
+	pr.insertEirpsdMaskLimits(resources.GetEirpsdMaskLimits())
 }
 
 func ProvisioningResourcesFromRemote(ctx context.Context, client provapipb.ProvisioningClient, listBar *progressBar) (*ProvisioningResources, error) {
@@ -162,7 +168,7 @@ func ProvisioningResourcesFromRemote(ctx context.Context, client provapipb.Provi
 
 	var (
 		totalMu       sync.Mutex
-		expandedTotal = 9
+		expandedTotal = 10
 	)
 	bumpTotal := func(delta int) {
 		totalMu.Lock()
@@ -278,6 +284,21 @@ func ProvisioningResourcesFromRemote(ctx context.Context, client provapipb.Provi
 		return nil
 	})
 
+	var eirpsdMaskLimits []*provapipb.EirpsdMaskLimit
+	p.Go(func() error {
+		result, err := client.ListEirpsdMaskLimits(ctx, &provapipb.ListEirpsdMaskLimitsRequest{})
+		if err != nil {
+			if isUnimplementedError(err) {
+				listBar.Incr()
+				return nil
+			}
+			return err
+		}
+		eirpsdMaskLimits = result.GetEirpsdMaskLimits()
+		listBar.Incr()
+		return nil
+	})
+
 	var (
 		p2pSrTePolicies   []*provapipb.P2PSrTePolicy
 		p2pCandidatePaths []*provapipb.P2PSrTePolicyCandidatePath
@@ -383,6 +404,7 @@ func ProvisioningResourcesFromRemote(ctx context.Context, client provapipb.Provi
 	pr.insertGeographicRegions(geographicRegions)
 	pr.insertEmissionsLimits(emissionsLimits)
 	pr.insertPointingConstraints(pointingConstraints)
+	pr.insertEirpsdMaskLimits(eirpsdMaskLimits)
 	pr.insertP2PSrTePolicies(p2pSrTePolicies)
 	pr.insertP2PSrTePolicyCandidatePaths(p2pCandidatePaths)
 	pr.insertP2MpSrTePolicies(p2mpSrTePolicies)
@@ -457,6 +479,12 @@ func (pr *ProvisioningResources) insertPointingConstraints(entries []*provapipb.
 	}
 }
 
+func (pr *ProvisioningResources) insertEirpsdMaskLimits(entries []*provapipb.EirpsdMaskLimit) {
+	for _, entry := range entries {
+		pr.eirpsdMaskLimits[entry.GetName()] = entry
+	}
+}
+
 func provisioningResourcesAreEquivalent[T proto.Message](a, b T) bool {
 	// TODO: find a more robust equivalency check.
 	return proto.Equal(a, b)
@@ -498,7 +526,7 @@ func ProvisioningSync(appCtx *cli.Context) error {
 	defer progress.Stop()
 
 	readBar := progress.AddBar("reading files", len(localFiles))
-	listBar := progress.AddBar("listing remote", 9)
+	listBar := progress.AddBar("listing remote", 10)
 	progress.Start()
 
 	w := progress.Writer()
@@ -553,6 +581,7 @@ func ProvisioningSync(appCtx *cli.Context) error {
 		"geographicRegions":           lo.Without(lo.Keys(localResources.geographicRegions), lo.Keys(remoteResources.geographicRegions)...),
 		"emissionsLimits":             lo.Without(lo.Keys(localResources.emissionsLimits), lo.Keys(remoteResources.emissionsLimits)...),
 		"pointingConstraints":         lo.Without(lo.Keys(localResources.pointingConstraints), lo.Keys(remoteResources.pointingConstraints)...),
+		"eirpsdMaskLimits":            lo.Without(lo.Keys(localResources.eirpsdMaskLimits), lo.Keys(remoteResources.eirpsdMaskLimits)...),
 	}
 
 	resourcesInCommon := map[string][]string{
@@ -565,6 +594,7 @@ func ProvisioningSync(appCtx *cli.Context) error {
 		"geographicRegions":           lo.Intersect(lo.Keys(localResources.geographicRegions), lo.Keys(remoteResources.geographicRegions)),
 		"emissionsLimits":             lo.Intersect(lo.Keys(localResources.emissionsLimits), lo.Keys(remoteResources.emissionsLimits)),
 		"pointingConstraints":         lo.Intersect(lo.Keys(localResources.pointingConstraints), lo.Keys(remoteResources.pointingConstraints)),
+		"eirpsdMaskLimits":            lo.Intersect(lo.Keys(localResources.eirpsdMaskLimits), lo.Keys(remoteResources.eirpsdMaskLimits)),
 	}
 
 	fmt.Fprintln(w, "\ncomparing local and remote resources:")
@@ -587,6 +617,7 @@ func ProvisioningSync(appCtx *cli.Context) error {
 			geographicRegions:           lo.Without(lo.Keys(remoteResources.geographicRegions), lo.Keys(localResources.geographicRegions)...),
 			emissionsLimits:             lo.Without(lo.Keys(remoteResources.emissionsLimits), lo.Keys(localResources.emissionsLimits)...),
 			pointingConstraints:         lo.Without(lo.Keys(remoteResources.pointingConstraints), lo.Keys(localResources.pointingConstraints)...),
+			eirpsdMaskLimits:            lo.Without(lo.Keys(remoteResources.eirpsdMaskLimits), lo.Keys(localResources.eirpsdMaskLimits)...),
 
 			w:              w,
 			printMode:      printMode,
@@ -605,6 +636,7 @@ func ProvisioningSync(appCtx *cli.Context) error {
 			deleteParams.geographicRegions,
 			deleteParams.emissionsLimits,
 			deleteParams.pointingConstraints,
+			deleteParams.eirpsdMaskLimits,
 		))
 		fmt.Fprintf(w, "- %d resources to be deleted\n", deleteTotal)
 
@@ -669,6 +701,13 @@ func ProvisioningSync(appCtx *cli.Context) error {
 		})
 		return err
 	})
+	updateRemoteResources(p, ctx, resourcesInCommon["eirpsdMaskLimits"], localResources.eirpsdMaskLimits, remoteResources.eirpsdMaskLimits, w, printMode, dryRunMode, syncBar.Incr, func(ctx context.Context, eirpsdMaskLimit *provapipb.EirpsdMaskLimit) error {
+		_, err := nextClient().UpdateEirpsdMaskLimit(ctx, &provapipb.UpdateEirpsdMaskLimitRequest{
+			EirpsdMaskLimit: eirpsdMaskLimit,
+			AllowMissing:    false,
+		})
+		return err
+	})
 
 	// Create P2P policies in this pool (candidate paths will be created after).
 	createRemoteResources(p, ctx, resourcesToBeAdded["p2pSrTePolicies"], localResources.p2pSrTePolicies, w, printMode, dryRunMode, syncBar.Incr, func(ctx context.Context, policy *provapipb.P2PSrTePolicy) error {
@@ -711,6 +750,13 @@ func ProvisioningSync(appCtx *cli.Context) error {
 		_, err := nextClient().UpdatePointingConstraint(ctx, &provapipb.UpdatePointingConstraintRequest{
 			PointingConstraint: pointingConstraint,
 			AllowMissing:       true,
+		})
+		return err
+	})
+	createRemoteResources(p, ctx, resourcesToBeAdded["eirpsdMaskLimits"], localResources.eirpsdMaskLimits, w, printMode, dryRunMode, syncBar.Incr, func(ctx context.Context, eirpsdMaskLimit *provapipb.EirpsdMaskLimit) error {
+		_, err := nextClient().UpdateEirpsdMaskLimit(ctx, &provapipb.UpdateEirpsdMaskLimitRequest{
+			EirpsdMaskLimit: eirpsdMaskLimit,
+			AllowMissing:    true,
 		})
 		return err
 	})
@@ -796,6 +842,7 @@ type deleteProvisioningParams struct {
 	geographicRegions           []string
 	emissionsLimits             []string
 	pointingConstraints         []string
+	eirpsdMaskLimits            []string
 
 	w              io.Writer
 	printMode      bool
@@ -875,6 +922,12 @@ func deleteProvisioning(ctx context.Context, params deleteProvisioningParams) er
 		})
 		return err
 	})
+	deleteRemoteResources(p, ctx, params.eirpsdMaskLimits, params.w, printMode, dryRunMode, params.onProgress, func(ctx context.Context, name string) error {
+		_, err := params.nextClient().DeleteEirpsdMaskLimit(ctx, &provapipb.DeleteEirpsdMaskLimitRequest{
+			Name: name,
+		})
+		return err
+	})
 
 	return p.Wait()
 }
@@ -924,7 +977,7 @@ func ProvisioningDeleteAll(appCtx *cli.Context) error {
 	defer closeAll()
 
 	progress := newSyncProgress(showProgress)
-	listBar := progress.AddBar("listing remote resources", 9)
+	listBar := progress.AddBar("listing remote resources", 10)
 	progress.Start()
 	defer progress.Stop()
 
@@ -950,6 +1003,7 @@ func ProvisioningDeleteAll(appCtx *cli.Context) error {
 		geographicRegions:           lo.Keys(remoteResources.geographicRegions),
 		emissionsLimits:             lo.Keys(remoteResources.emissionsLimits),
 		pointingConstraints:         lo.Keys(remoteResources.pointingConstraints),
+		eirpsdMaskLimits:            lo.Keys(remoteResources.eirpsdMaskLimits),
 	}
 
 	return deleteProvisioning(appCtx.Context, params)
@@ -995,6 +1049,7 @@ func ProvisioningDelete(appCtx *cli.Context) error {
 	params.geographicRegions = lo.Intersect(resourceNames, lo.Keys(remoteResources.geographicRegions))
 	params.emissionsLimits = lo.Intersect(resourceNames, lo.Keys(remoteResources.emissionsLimits))
 	params.pointingConstraints = lo.Intersect(resourceNames, lo.Keys(remoteResources.pointingConstraints))
+	params.eirpsdMaskLimits = lo.Intersect(resourceNames, lo.Keys(remoteResources.eirpsdMaskLimits))
 
 	deleteResourceNameSet := slices.Concat(
 		params.p2pSrTePolicies,
@@ -1006,6 +1061,7 @@ func ProvisioningDelete(appCtx *cli.Context) error {
 		params.geographicRegions,
 		params.emissionsLimits,
 		params.pointingConstraints,
+		params.eirpsdMaskLimits,
 	)
 
 	notFoundNames := lo.Without(resourceNames, deleteResourceNameSet...)
