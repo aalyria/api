@@ -202,6 +202,19 @@ message Beam {
   //
   // Each endpoint is the ID of a network node in Spacetime's network model.
   repeated Endpoint endpoints = 4;
+
+  // The beam candidate ID this beam was formed from (unique per source antenna
+  // and target). Used to reconstruct beam hopping context across scheduling
+  // intervals and workers.
+  optional string beam_candidate_id = 6;
+
+  // Control-signal offset (Δ) for this beam, in microseconds — a per-beam
+  // phase shift applied to the air interface's periodic control signals
+  // (e.g. SSB, SIB1, PRACH) so that beams sharing a port place their control
+  // occurrences in distinct timeslots rather than colliding. Held constant
+  // across scheduling quanta so UTs do not have to re-acquire control-signal
+  // timing.
+  optional int64 ctrl_offset_us = 7;
 }
 
 message RxConfiguration {
