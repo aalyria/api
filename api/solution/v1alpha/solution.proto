@@ -100,6 +100,9 @@ message P2pSrTePolicyCandidatePathQuery {
   // If set, the query will only match paths with `quantum >= quantum_min`.
   optional int64 quantum_min = 4;
 
+  // If set, the query will only match beams with `quantum < quantum_max`.
+  optional int64 quantum_max = 5;
+
   // If set, the query will only match paths that exist at the given timestamp.
   google.protobuf.Timestamp timestamp = 2;
 
@@ -110,7 +113,7 @@ message P2pSrTePolicyCandidatePathQuery {
       type: "provisioning.spacetimeapis.com/P2pSrTePolicyCandidatePath"
     }];
 
-  reserved 5 to max;
+  reserved 6 to max;
 }
 
 message QueryP2pSrTePolicyCandidatePathsRequest {
@@ -277,6 +280,9 @@ message BeamQuery {
   // If set, the query will only match beams with `quantum >= quantum_min`.
   optional int64 quantum_min = 5;
 
+  // If set, the query will only match beams with `quantum < quantum_max`.
+  optional int64 quantum_max = 6;
+
   // If set, the query will only match beams that exist at the given timestamp.
   google.protobuf.Timestamp timestamp = 2;
 
@@ -288,7 +294,7 @@ message BeamQuery {
   // any of the given ports.
   repeated string rx_port_ids = 4;
 
-  reserved 6 to max;
+  reserved 7 to max;
 }
 
 message QueryBeamsRequest {
