@@ -465,7 +465,16 @@ message RxConfiguration {
   //            |--RK_SUPPORTS--> CarrierConfiguration
   string carrier_config_id = 9;
 
+  // Expected received power under nominal closed-loop power control.
+  // Steady-state operating point the system is intended to maintain,
+  // derived from configured constraints (e.g., PFD limits).
   RxPower expected_rx_power = 8;
+
+  // Expected received power at signal acquisition, used to initialize receiver
+  // AGC before closed-loop power control converges. Computed from the link
+  // budget when the link is established and held constant while the link is
+  // active.
+  RxPower initial_rx_power = 13;
 
   // Symbol rate in Megasymbols per second.
   double symbol_rate_msps = 5;
@@ -504,7 +513,7 @@ message RxConfiguration {
     DvbS2Params dvbs2_params = 7;
   }
 
-  reserved 13 to max;
+  reserved 14 to max;
 }
 
 message TxConfiguration {

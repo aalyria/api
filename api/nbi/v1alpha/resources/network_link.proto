@@ -143,9 +143,18 @@ message RxRadioConfiguration {
 
   optional string initial_modcod = 7;
 
+  // Expected received power at signal acquisition, used to initialize receiver
+  // AGC before closed-loop power control converges. Computed from the link
+  // budget when the link is established and held constant while the link is
+  // active.
+  optional RxPower initial_rx_power = 8;
+
+  // Expected received power under nominal closed-loop power control.
+  // Steady-state operating point the system is intended to maintain,
+  // derived from configured constraints (e.g., PFD limits).
   optional RxPower expected_rx_power = 4;
 
-  reserved 8 to max;
+  reserved 9 to max;
 }
 
 message LinkEnd {

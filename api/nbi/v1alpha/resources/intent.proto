@@ -234,7 +234,16 @@ message RxConfiguration {
   // nmts.v1.ek.physical.CarrierConfigurations.
   optional string waveform = 4;
 
+  // Expected received power under nominal closed-loop power control.
+  // Steady-state operating point the system is intended to maintain,
+  // derived from configured constraints (e.g., PFD limits).
   optional RxPower expected_rx_power = 7;
+
+  // Expected received power at signal acquisition, used to initialize receiver
+  // AGC before closed-loop power control converges. Computed from the link
+  // budget when the link is established and held constant while the link is
+  // active.
+  optional RxPower initial_rx_power = 11;
 
   oneof other_parameters {
     DvbS2Params dvbs2_params = 10;
