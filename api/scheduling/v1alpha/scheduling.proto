@@ -513,7 +513,15 @@ message RxConfiguration {
     DvbS2Params dvbs2_params = 7;
   }
 
-  reserved 14 to max;
+  // The GSE label the receiving modem uses to filter this element's own stream
+  // from the multiplexed DVB-S2 carrier. This label is set based on the GSE
+  // label in a nmts.v1.ek.logical.LogicalPacketLink that the transmitting
+  // endpoint originates, if one exists. The transmitting endpoint would be
+  // modeled as:
+  // Interface --RK_ORIGINATES--> LogicalPacketLink (with GsePayload)
+  int32 gse_label = 14;
+
+  reserved 15 to max;
 }
 
 message TxConfiguration {
