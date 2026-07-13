@@ -1,0 +1,152 @@
+// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto2";
+
+package aalyria.spacetime.api.common;
+
+import "api/common/time.proto";
+
+option java_package = "com.aalyria.spacetime.api.common";
+option go_package = "aalyria.com/spacetime/api/common";
+
+// Next ID : 7
+message TransmitterState {
+  // Defines the center of the channel in Hz.
+  // For RF transceivers, this is the carrier frequency.
+  // For optical transceivers, this may be converted to wavelength.
+  optional uint64 center_frequency_hz = 5;
+
+  // Specifies the channel bandwidth or spacing configuration, in Hz.
+  optional uint64 channel_width_hz = 6;
+
+  // The transmitter power, in Watts.
+  optional double transmit_power_watts = 3;
+
+  reserved 1, 2, 4;
+}
+
+// Next ID : 6
+message ReceiverState {
+  // Defines the center of the channel in Hz.
+  // For RF transceivers, this is the carrier frequency.
+  // For optical transceivers, this may be converted to wavelength.
+  optional uint64 center_frequency_hz = 4;
+
+  // Specifies the channel bandwidth or spacing configuration, in Hz.
+  optional uint64 channel_width_hz = 5;
+
+  reserved 1, 2, 3;
+}
+
+// Defines a TDMA schedule for multiple access radios.
+// The schedule is a list of TdmaSlots that will be repeated in order by the
+// client radios.
+message TdmaSchedule {
+  enum ScheduleType {
+    UNKNOWN = 0;
+    TX_ONLY = 1;
+    RX_ONLY = 2;
+    TX_RX = 3;
+  }
+  optional ScheduleType type = 1;
+
+  // Defines a TDMA time slot.
+  message TdmaSlot {
+    optional Duration duration = 1;
+
+    // Transmits to a remote receiver.
+    message TxSlot {
+      enum TxSlotType {
+        UNKNOWN = 0;
+        UNICAST = 1;
+        BEACON = 2;
+        POLLED = 3;
+        CONTENTION = 4;
+      }
+      optional TxSlotType type = 1;
+      optional string remote_receiver_id = 2;
+    }
+
+    // Receives from a remote transmitter.
+    message RxSlot {
+      enum RxSlotType {
+        UNKNOWN = 0;
+        UNICAST = 1;
+        BROADCAST = 2;
+      }
+
+      optional RxSlotType type = 1;
+      optional string remote_transmitter_id = 2;
+    }
+
+    oneof slot_type {
+      TxSlot transmit = 2;
+      RxSlot receive = 3;
+    }
+  }
+
+  // The sum of the individual TdmaSlot.duration fields.
+  optional Duration schedule_duration = 2;
+  repeated TdmaSlot schedule = 3;
+}
+
+message RadioUpdate {
+  // A globally unique identifier for this radio config
+  optional string radio_config_id = 6;
+
+  // The ID of the interface whose transmitter and receiver settings are being
+  // updated.
+  optional string interface_id = 4;
+
+  // Configures the transmitter properties.
+  optional TransmitterState tx_state = 1;
+
+  // Configures the receiver properties.
+  optional ReceiverState rx_state = 2;
+
+  // Configures the TDMA schedule, if applicable.
+  optional TdmaSchedule tdma_schedule = 3;
+
+  // A unique string that identifies the adaptive data modem config id selected
+  // by the TS-SDN controller.  This field is provided to CDPI Agents to aid in
+  // selection of a specific modem profile, SDR firmware image, etc.  Note that
+  // this field is typically different from the band profile id.
+  optional string modem_config_id = 8;
+
+  // Optional monotonically increasing sequence number per interface.  This is
+  // not guaranteed to monontonically increase across different interfaces and
+  // is allowed to jump by more than 1.
+  optional int64 per_interface_sequence_number = 5;
+
+  reserved 7;
+}
+
+message RadioStates {
+  // Time at which the state was captured by the network element.
+  optional aalyria.spacetime.api.common.DateTime timestamp = 3;
+
+  message RadioState {
+    // A globally unique identifier for this radio config
+    optional string radio_config_id = 4;
+    optional TransmitterState tx_state = 1;
+    optional ReceiverState rx_state = 2;
+    optional TdmaSchedule tdma_schedule = 3;
+  }
+
+  // A mapping from interface_id to radio config id.
+  map<string, string> radio_config_id_by_interface_id = 4;
+
+  reserved 1, 2, 5 to max;
+}
