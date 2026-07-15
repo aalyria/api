@@ -100,17 +100,33 @@ message ReceiveRequestsMessageFromController {
     // Creates an entry in the agent's schedule. Note that entries are
     // immutable: once created, an entry may not changed, though it may be
     // deleted.
+    //
+    // The agent (or a proxy acting on its behalf) must use the CreateEntry
+    // request’s response status solely to indicate transport-level receipt of
+    // the request, and not to indicate whether the agent can, or will, achieve
+    // the requested configuration. An error status will cause Spacetime to
+    // resend the request message to the agent. 
     CreateEntryRequest create_entry = 2;
 
     // Deletes an entry from the agent's schedule.
+    //
+    // The agent (or a proxy acting on its behalf) must use the DeleteEntry
+    // request’s response status to indicate transport-level receipt of the
+    // request. An error status will cause Spacetime to resend the request
+    // message to the agent.
     DeleteEntryRequest delete_entry = 3;
 
     // Finalizes all schedule entries earlier than a specified time.
     //
     // Notifies the agent that all aspects of its schedule pertaining to the
-    // interval prior to a given instant will no longer be modified . This frees
+    // interval prior to a given instant will no longer be modified. This frees
     // the agent to garbage-collect all entries scheduled for before that
     // instant.
+    //
+    // The agent (or a proxy acting on its behalf) must use the Finalize
+    // request’s response status to indicate transport-level receipt of the
+    // request. An error status will cause Spacetime to resend the request
+    // message to the agent.
     FinalizeRequest finalize = 4;
   }
 }
