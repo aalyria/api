@@ -214,7 +214,9 @@ message P2pSrTePolicy {
   // it from the store of requests. Requests that are disabled will
   // not be provisioned by Spacetime, but evaluation of candidate
   // links and topologies may still be performed (to improve rapidity
-  // of provisioning once re-enabled).
+  // of provisioning once re-enabled). When a policy is disabled, the
+  // Scheduling API will send DeleteP2PSrTePolicyPath messages to remove
+  // all associated candidate path entries from agents.
   bool disabled = 4;
 
   // NMTS Entity IDs corresponding to the source and destination

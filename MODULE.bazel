@@ -128,7 +128,7 @@ register_toolchains("@llvm_toolchain//:all")
 
 go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
 go_sdk.download(
-    version = "1.26.4",
+    version = "1.26.5",
 )
 
 go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
