@@ -1,0 +1,112 @@
+# Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# This file defines bazelrc settings shared across workspaces.
+
+##
+# Make Bazel use an environment with a static value for PATH to facilitate
+# cross-user caching.
+#
+# Note that, at one point, this was the Bazel default, but that was reverted. See
+# https://github.com/bazelbuild/bazel/issues/7026.
+##
+build --incompatible_strict_action_env
+
+##
+# For information on C/C++ compiler warnings see:
+# https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html
+#
+# Set C++20 as the standard version to use
+build --cxxopt='-std=c++20'
+build --cxxopt='-Wall'
+build --cxxopt='-Werror'
+# The hermetic LLVM/clang toolchain (registered in MODULE.bazel) does not
+# recognize some GCC-only warning flags below (e.g. -Wno-class-memaccess) and
+# rejects them under -Werror via -Wunknown-warning-option. Tolerate unknown
+# warning flags so the same warning suppressions work under both compilers. This
+# must precede those flags to take effect. Mirrors //hermetic_cc.bazelrc.
+build --cxxopt='-Wno-unknown-warning-option'
+# The hermetic clang toolchain enables -Wthread-safety/-Wself-assign/
+# -Wunused-but-set-parameter and flags braced scalar initializers; the previous
+# toolchain did not. Preserve the pre-migration warning posture rather than
+# auditing the tree during the toolchain swap. Mirrors //hermetic_cc.bazelrc.
+build --cxxopt='-Wno-braced-scalar-init'
+build --cxxopt='-Wno-thread-safety'
+build --cxxopt='-Wno-self-assign'
+build --cxxopt='-Wno-unused-but-set-parameter'
+build --host_cxxopt='-std=c++20'
+
+# TODO: remove these flags when grpc builds without them.
+build --cxxopt='-Wno-comment'
+build --cxxopt='-Wno-class-memaccess'
+build --cxxopt='-Wno-unused-variable'
+build --cxxopt='-Wno-unused-function'
+# TODO: remove this flag when protobuf builds without it.
+# See: https://github.com/protocolbuffers/protobuf/issues/12432
+build --cxxopt='-Wno-sign-compare'
+# TODO: remove -Wno-deprecated-declarations and live a healthier, happier life.
+build --cxxopt='-Wno-deprecated-declarations'
+build --host_cxxopt=-Wno-deprecated-declarations
+
+##
+# Disable strict warnings in header files from external repositories.
+#   - feature request: https://github.com/bazelbuild/bazel/issues/12009
+#   - commit: https://github.com/bazelbuild/bazel/commit/08936aecb96f2937c61bdedfebcf1c5a41a0786d
+##
+build --features=external_include_paths
+
+# The hermetic clang toolchain enforces module-map strictness that the previous
+# toolchain did not. grpc includes zlib's module-private zconf.h/zlib.h, which
+# clang flags under -Wprivate-header.
+build --per_file_copt=external/grpc[~+]/.*@-Wno-private-header
+
+# opencensus-cpp (a grpc dependency) has an unused local variable
+# (cloud_trace_context.cc) that clang flags under -Wunused-variable. It is
+# third-party code.
+build --per_file_copt=external/opencensus-cpp[~+]/.*@-Wno-unused-variable
+
+# The hermetic clang toolchain enables Bazel's layering_check feature (module
+# strict-decluse), which neither this tree nor external deps like grpc declare
+# the layering dependencies for, so compiles fail with "module ... does not
+# depend on a module exporting ...". Disable it repo-wide. This is a feature,
+# not a -W flag, so it cannot be scoped per external repo via per_file_copt.
+build --features=-layering_check
+
+##
+# Enable hermetic testing and compilation of Java using a JVM downloaded from a
+# remote repository.
+##
+build --tool_java_runtime_version=remotejdk_21 --java_runtime_version=remotejdk_21
+
+##
+# Allow Java constructs compatible with the Java 21 specification.
+##
+build --tool_java_language_version=21 --java_language_version=21
+
+##
+# Don't automatically create __init__.py files in the runfiles of
+# Python targets.
+# See: https://github.com/bazelbuild/bazel/issues/10076
+#
+# This is motivated by our python proto library targets which produce
+# overlapping import paths.
+##
+build --incompatible_default_to_explicit_init_py
+
+# Explicitly set the Python version so that rules_python's
+# python_version_major_minor config setting resolves to "3.11".
+# This is required for py_cc_toolchain resolution when using aspect_rules_py.
+common --@rules_python//python/config_settings:python_version=3.11
+
+common --downloader_config=./bazel/bazel_downloader.cfg

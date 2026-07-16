@@ -1,0 +1,308 @@
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package aalyria.spacetime.api.solution.v1alpha;
+
+import "google/api/field_behavior.proto";
+import "google/api/resource.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+import "google/type/interval.proto";
+import "nmts/v1/proto/types/geophys/coordinates.proto";
+import "nmts/v1/proto/types/physical/polarization.proto";
+
+option go_package = "aalyria.com/spacetime/api/solution/v1alpha";
+option java_package = "com.aalyria.spacetime.api.solution.v1alpha";
+
+service Solution {
+  rpc GetP2pSrTePolicyCandidatePath(GetP2pSrTePolicyCandidatePathRequest) returns (P2pSrTePolicyCandidatePath) {}
+  rpc QueryP2pSrTePolicyCandidatePaths(QueryP2pSrTePolicyCandidatePathsRequest) returns (QueryP2pSrTePolicyCandidatePathsResponse) {}
+
+  rpc GetBeam(GetBeamRequest) returns (Beam) {}
+  rpc QueryBeams(QueryBeamsRequest) returns (QueryBeamsResponse) {}
+}
+
+message P2pSrTePolicyCandidatePath {
+  option (google.api.resource) = {
+    type: "solution.spacetimeapis.com/P2pSrTePolicyCandidatePath"
+    pattern: "p2pSrTePolicyCandidatePaths/{p2p_sr_te_policy_candidate_path}"
+  };
+
+  // The resource name of this candidate path.
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  // The quantum at which this candidate path applies.
+  //
+  // The quantum is an internal solver detail, from which the interval below is
+  // derived. Consumers of the solution can safely ignore this field in favor of
+  // those timestamps.
+  int64 quantum = 2;
+
+  // The interval for which this candidate path applies.
+  google.type.Interval interval = 3 [
+    (google.api.field_behavior) = OUTPUT_ONLY];
+
+  // The resource name of the provisioning P2pSrTePolicyCandidatePath request
+  // that this fulfills.
+  string provisioning_p2p_sr_te_policy_candidate_path = 4 [
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/P2pSrTePolicyCandidatePath"
+    }];
+
+  message Segment {
+    string origin_interface_id = 1;
+    string logical_packet_link_id = 2;
+    string termination_interface_id = 3;
+  }
+
+  // An ordered list of segments comprising the path.
+  repeated Segment segments = 5;
+
+  // Committed Information Rate (CIR) in bits per second.
+  int64 cir_bps = 6;
+
+  // Excess Information Rate (EIR) in bits per second.
+  int64 eir_bps = 7;
+
+  // Latency (one way frame delay).
+  google.protobuf.Duration latency = 8;
+}
+
+message GetP2pSrTePolicyCandidatePathRequest {
+  // The resource name of the candidate path to retrieve.
+  // Format: `p2pSrTePolicyCandidatePaths/{p2p_sr_te_policy_candidate_path}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "solution.spacetimeapis.com/P2pSrTePolicyCandidatePath"
+    }];
+}
+
+// If multiple query clauses are provided, the result will be the AND of all
+// clauses.
+message P2pSrTePolicyCandidatePathQuery {
+  // If set, the query will only match paths for the given quantum.
+  int64 quantum = 1;
+
+  // If set, the query will only match paths with `quantum >= quantum_min`.
+  optional int64 quantum_min = 4;
+
+  // If set, the query will only match beams with `quantum < quantum_max`.
+  optional int64 quantum_max = 5;
+
+  // If set, the query will only match paths that exist at the given timestamp.
+  google.protobuf.Timestamp timestamp = 2;
+
+  // If set, the query will only match P2pSrTePolicyCandidatePaths that fulfill
+  // the given provisioning P2pSrTePolicyCandidatePath request.
+  string provisioning_p2p_sr_te_policy_candidate_path = 3 [
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/P2pSrTePolicyCandidatePath"
+    }];
+
+  reserved 6 to max;
+}
+
+message QueryP2pSrTePolicyCandidatePathsRequest {
+  // If multiple queries are provided, the result will be the union of all
+  // queries.
+  repeated P2pSrTePolicyCandidatePathQuery queries = 1 [
+    (google.api.field_behavior) = REQUIRED];
+}
+
+message QueryP2pSrTePolicyCandidatePathsResponse {
+  repeated P2pSrTePolicyCandidatePath p2p_sr_te_policy_candidate_paths = 1;
+}
+
+message Beam {
+  option (google.api.resource) = {
+    type: "solution.spacetimeapis.com/Beam"
+    pattern: "beams/{beam}"
+  };
+
+  // The resource name of this beam.
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  // The quantum at which this beam applies.
+  //
+  // The quantum is an internal solver detail, from which the start and end
+  // times below are derived. Consumers of the solution can safely ignore this
+  // field in favor of those timestamps.
+  int64 quantum = 2;
+
+  // The interval for which this beam applies.
+  google.type.Interval interval = 3 [
+    (google.api.field_behavior) = OUTPUT_ONLY];
+
+  // The names of the provisioning resources that this beam fulfills.
+  repeated string provisioning_resources = 4 [
+    (google.api.resource_reference) = {
+      type: "*"
+    }];
+
+  // Identifies the pointing target for the beam to be aimed at & track.
+  BeamTarget target = 5;
+
+  // Identifies the antenna that is used to transmit and/or receive the beam.
+  string antenna_id = 6;
+
+  // Parameters specifying the configuration of the beam in the receive
+  // direction.
+  //
+  // Empty if the beam is to be used for transmit only.
+  repeated RxConfiguration rx_configurations = 7;
+
+  // Parameters specifying the configuration of the beam in the transmit
+  // direction.
+  //
+  // The string keys uniquely identify a corresponding TxConfiguration,
+  // and are present only for reference in FieldMask (update) operations.
+  //
+  // Empty if the beam is to be used for receiving only.
+  repeated TxConfiguration tx_configurations = 8;
+
+  // The collection of endpoints served by the beam.
+  // For example, a collection of user terminals (UTs) served.
+  repeated Endpoint endpoints = 9;
+
+  // Only present if beam-hopping is to be used.
+  BeamHoppingPlan beam_hopping_plan = 10;
+}
+
+message BeamTarget {
+  oneof target {
+    Cartesian cartesian = 1;
+    string platform = 2;
+  }
+}
+
+message Cartesian {
+  nmts.v1.types.geophys.CoordinateFrame reference_frame = 1;
+
+  double x_m = 2;
+  double y_m = 3;
+  double z_m = 4;
+}
+
+message RxConfiguration {
+  string port_id = 1;
+  string demodulator_id = 2;
+  string receiver_id = 3;
+
+  int64 center_frequency_hz = 4;
+  int64 channel_bandwidth_hz = 5;
+  nmts.v1.types.physical.Polarization polarization = 6;
+
+  // Symbol rate in Megasymbols per second.
+  double symbol_rate_msps = 7;
+  google.protobuf.Duration latency = 8;
+}
+
+message TxConfiguration {
+  string port_id = 1;
+  string modulator_id = 2;
+  string transmitter_id = 3;
+
+  int64 center_frequency_hz = 4;
+  int64 channel_bandwidth_hz = 5;
+  nmts.v1.types.physical.Polarization polarization = 6;
+
+  // Symbol rate in Megasymbols per second.
+  double symbol_rate_msps = 7;
+  google.protobuf.Duration latency = 8;
+}
+
+message Endpoint {
+  string modulator = 1;
+  string demodulator = 2;
+}
+
+message BeamHoppingPlan {
+  message Section {
+    // The length of the section, in number of time slots.
+    int32 length = 1;
+
+    // An entry in the beam-hopping plan section representing a time slot during
+    // which the associated beam is to be illuminated.
+    message Entry {
+      // The entry's time slot within the section.
+      int32 time_slot = 1;
+
+      string modem_id = 2;
+    }
+
+    // The entries in the beam-hopping plan section. The beam should not be
+    // illuminated during any time slot not represented in the collection of
+    // entries.
+    repeated Entry entries = 2;
+
+    // The number of extra times that the list of time slots defined by the
+    // section should be looped.  A zero value (no repeats) is assumed if not
+    // present, which means the entries are only visited once by the beam.  A
+    // value of 2 means the section is iterated through and then repeated
+    // twice (so all of the entries are visited three times by the beam).
+    // Negative values should not be used; the type is signed in accordance
+    int32 repeat_count = 3;
+  }
+
+  repeated Section sections = 1;
+}
+
+message GetBeamRequest {
+  // The resource name of the beam to retrieve.
+  // Format: `beams/{beam}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "solution.spacetimeapis.com/Beam"
+    }];
+}
+
+// If multiple query clauses are provided, the result will be the AND of all
+// clauses.
+message BeamQuery {
+  // If set, the query will only match beams for the given quantum.
+  int64 quantum = 1;
+
+  // If set, the query will only match beams with `quantum >= quantum_min`.
+  optional int64 quantum_min = 5;
+
+  // If set, the query will only match beams with `quantum < quantum_max`.
+  optional int64 quantum_max = 6;
+
+  // If set, the query will only match beams that exist at the given timestamp.
+  google.protobuf.Timestamp timestamp = 2;
+
+  // If set, the query will only match beams that have a TX configuration for
+  // any of the given ports.
+  repeated string tx_port_ids = 3;
+
+  // If set, the query will only match beams that have an RX configuration for
+  // any of the given ports.
+  repeated string rx_port_ids = 4;
+
+  reserved 7 to max;
+}
+
+message QueryBeamsRequest {
+  // If multiple queries are provided, the result will be the union of all
+  // queries.
+  repeated BeamQuery queries = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message QueryBeamsResponse {
+  repeated Beam beams = 1;
+}

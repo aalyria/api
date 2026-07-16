@@ -1,0 +1,263 @@
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto2";
+
+package aalyria.spacetime.api.common;
+
+import "api/common/coordinates.proto";
+import "api/common/platform_antenna.proto";
+import "google/protobuf/timestamp.proto";
+import "nmts/v1/proto/types/geophys/orbital.proto";
+
+option java_package = "com.aalyria.spacetime.api.common";
+option go_package = "aalyria.com/spacetime/api/common";
+
+// A single NtnSib19ValidityInterval describes one continuous period during
+// which a single NR cell is pointed at one quasi-Earth-fixed geographic
+// footprint and is carried by a single satellite.
+//
+// The interval has three layers of temporal structure:
+//
+//   Layer 1 — Interval constants. Fields directly on NtnSib19ValidityInterval
+//   (reference_location, t_service, distance_thresh, polarization, etc.)
+//   are fixed for the entire interval. If any of these would change, that
+//   is a new interval.
+//
+//   Layer 2 — Neighborhood configurations. The interval is subdivided into
+//   contiguous NeighborhoodConfigurations, each covering a sub-range during
+//   which the identity set {serving cell, neighbour cells} is stable. A new
+//   configuration starts whenever a neighbour cell's NTN-Config changes
+//   discontinuously — either because the neighbour was replaced by a
+//   different cell (different NR CGI / PCI / carrier_freq), or because the same
+//   logical neighbour cell switched to a different serving satellite
+//   (transparent payload), changing its ephemeris, TA, and koffset. Adjacent
+//   configurations must differ in at least one neighbour's identity or
+//   serving satellite.
+//
+//   Layer 3 — NTN-Config snapshots. Within each configuration, every member
+//   (serving cell + each neighbour) carries an ordered sequence of
+//   NtnConfigSnapshots. Each snapshot is a fresh ephemeris / TA / koffset
+//   reading that supersedes the previous one. Snapshot cadence is determined
+//   by the ephemeris propagation horizon — typically every few seconds for
+//   LEO, much slower for GEO.
+//
+// Regenerative payload: the gNB is on the satellite. A serving-satellite
+// change means a different gNB and a different cell (different NCGI), so
+// it produces a new interval naturally — one interval per (cell, satellite).
+//
+// Transparent payload: the gNB is on the ground; the satellite is a
+// bent-pipe relay. The cell's logical identity (NCGI, PCI, footprint,
+// neighbour set) may stay the same across a satellite swap, but the RF
+// path, ephemeris, Common TA, koffset, and SSB time alignment all change
+// discretely. A serving-satellite change therefore terminates the current
+// interval and starts a new one. For LEO transparent deployments, the
+// interval emission rate is bounded below by the serving-satellite handoff
+// cadence. The optional sat_switch_with_resync field on the outgoing interval
+// makes the boundary handoff seamless from the UE's perspective but does not
+// eliminate the need for the subsequent interval.
+message NtnSib19ValidityInterval {
+  // SIB19.referenceLocation-r17. WGS84 geodetic point.
+  // The agent encodes to the LPP Ellipsoid-Point OCTET STRING
+  // (per TS 37.355) at broadcast time. Encoding is lossy below
+  // ~5-10 m; ALTITUDE IS DROPPED — Ellipsoid-Point is 2D only.
+  optional aalyria.spacetime.api.common.GeodeticWgs84 reference_location = 1;
+
+  // When the serving satellite stops covering this cell.
+  // The agent converts to the TS 38.331 t-Service-r17 encoding
+  // (multiples of 10 ms since 1900-01-01 00:00:00 UTC) at
+  // broadcast time.
+  optional google.protobuf.Timestamp t_service = 2;
+
+  // SIB19.distanceThresh-r17. INTEGER(0..65525). Step = 50 m.
+  optional uint32 distance_thresh = 3;
+
+  // NTN-Config-r17.ntn-UlSyncValidityDuration-r17.
+  optional UlSyncValidityDuration ul_sync_validity_duration = 4;
+
+  // NTN-Config-r17.ntn-PolarizationDL-r17 / -UL-r17.
+  optional Polarization polarization_dl = 5;
+  optional Polarization polarization_ul = 6;
+
+  // NTN-Config-r17.kmac-r17. INTEGER(1..512). Typically absent
+  // for regenerative payloads.
+  optional uint32 kmac = 7;
+
+  // NTN-Config-r17.ta-Report-r17.
+  optional bool ta_report_enabled = 8;
+
+  // Neighborhood configurations: ordered, contiguous sub-intervals
+  // during which the {serving cell, neighbours} identity set is
+  // stable. Within a configuration, ephemerides / TA / koffset
+  // evolve via per-member sample sequences.
+  repeated NeighborhoodConfiguration neighborhood_configurations = 9;
+
+  // SIB19.satSwitchWithReSync-r18. Optional. Per TS 38.331
+  // clause 5.7.19 the procedure is initiated only if both this
+  // field AND t_service are present in SIB19. Intended for
+  // transparent payloads with same-PCI satellite switches.
+  optional SatSwitchWithReSync sat_switch_with_resync = 10;
+}
+
+// Neighborhood configuration: a sub-interval of an NtnSib19ValidityInterval
+// during which the {serving cell, neighbour cells} identity set is stable.
+message NeighborhoodConfiguration {
+  // Start of this configuration. First configuration's valid_from
+  // equals the service-interval start.
+  optional google.protobuf.Timestamp valid_from = 1;
+  optional ServingCellSamples serving = 2;
+
+  // Spec limit: maxCellNTN-r17 = 4 in NTN-NeighCellConfigList-r17,
+  // plus up to 4 more in ntn-NeighCellConfigListExt-v1720.
+  // Total <= 8.
+  repeated NeighborCellSamples neighbours = 3;
+}
+
+// Ordered NtnConfigSnapshot sequence for the serving cell within a
+// NeighborhoodConfiguration.
+message ServingCellSamples {
+  // snapshots[0].valid_from == enclosing configuration's valid_from.
+  repeated NtnConfigSnapshot snapshots = 1;
+}
+
+// Mirrors NTN-NeighCellConfig-r17. Identity is (carrier_freq,
+// phys_cell_id). NCGI / t-Service / referenceLocation /
+// polarisation are NOT in NTN-NeighCellConfig-r17 and are not
+// carried per-neighbour.
+//
+// Spec inheritance rule (NOT modelled here): if ntn-Config is
+// absent for a non-first neighbour entry in the broadcast list,
+// the previous entry's ntn-Config applies. The agent may exploit
+// this for SI compaction when adjacent neighbours share state;
+// the intent always carries explicit per-neighbour samples.
+message NeighborCellSamples {
+  // PhysCellId. 0..1007.
+  optional uint32 phys_cell_id = 1;
+
+  // ARFCN-ValueNR.
+  optional uint32 carrier_freq = 2;
+
+  repeated NtnConfigSnapshot snapshots = 3;
+}
+
+// NTN-Config snapshot: the time-varying subset of NTN-Config-r17 at a
+// single instant. Used for both serving and neighbour cell sample tracks.
+message NtnConfigSnapshot {
+  // When this snapshot becomes valid.
+  optional google.protobuf.Timestamp valid_from = 1;
+
+  // NTN-Config-r17.epochTime-r17. See EpochTime below for the
+  // SFN-vs-Timestamp choice.
+  optional EpochTime epoch_time = 2;
+
+  // NTN-Config-r17.ephemerisInfo-r17.
+  optional EphemerisInfo ephemeris = 3;
+
+  // NTN-Config-r17.ta-Info-r17.
+  optional TaInfo ta_info = 4;
+
+  // NTN-Config-r17.cellSpecificKoffset-r17. INTEGER(1..1023).
+  // If absent on the wire, UE assumes 0.
+  optional uint32 cell_specific_koffset = 5;
+}
+
+// SatSwitchWithReSync-r18. Carried on the outgoing NtnSib19ValidityInterval
+// to make the serving-satellite boundary handoff seamless.
+message SatSwitchWithReSync {
+  // SatSwitchWithReSync-r18.ntn-Config-r18. MANDATORY in spec.
+  // The complete TARGET-satellite NTN-Config as an
+  // NtnConfigSnapshot. Per spec, epochTime in this snapshot is
+  // in the timing of the cell served by the SOURCE satellite —
+  // i.e. when EpochTime here is given as a Timestamp, the agent
+  // converts to SFN using the SOURCE cell's SFN reference, not
+  // the target's.
+  optional NtnConfigSnapshot target_ntn_config = 1;
+
+  // When the UE may start DL acquisition with the target
+  // satellite. If set, the UE operates in overlap mode during
+  // [t_service_start, t_service]. If absent, the switch is hard
+  // at t_service. The agent converts to the TS 38.331
+  // t-ServiceStart-r18 encoding (multiples of 10 ms since
+  // 1900-01-01 00:00:00 UTC) at broadcast time.
+  optional google.protobuf.Timestamp t_service_start = 2;
+
+  // SatSwitchWithReSync-r18.ssb-TimeOffset-r18. 0..159.
+  // SSB time offset target-vs-source in subframes.
+  optional uint32 ssb_time_offset = 3;
+}
+
+// -------------------------------------------------------------------
+// Shared NTN value types
+// -------------------------------------------------------------------
+
+// Satellite ephemeris. The agent quantizes to TS 38.331
+// EphemerisInfo-r17 wire format at broadcast time.
+message EphemerisInfo {
+  oneof representation {
+    nmts.v1.types.geophys.KeplerianElements keplerian = 1;
+    nmts.v1.types.geophys.StateVector state_vector = 2;
+  }
+}
+
+// TA-Info-r17. ta_common is mandatory in spec.
+message TaInfo {
+  optional uint32 ta_common = 1;                 // 0..66485757
+  optional sint32 ta_common_drift = 2;           // -257303..257303
+  optional uint32 ta_common_drift_variant = 3;   // 0..28949
+}
+
+// EpochTime-r17.
+//
+// The spec form is (SFN, sub_frame_nr). The Timestamp arm is a
+// convenience for upstream callers that work in wall-clock; the
+// agent converts at broadcast time using the relevant cell's
+// SFN-0 reference (source cell for SatSwitchWithReSync, serving
+// cell otherwise).
+//
+// ROUNDING: when converting from Timestamp, the agent rounds
+// DOWN to the nearest subframe boundary at or before the
+// timestamp. Assistance information becomes valid no later than
+// the upstream caller intended.
+message EpochTime {
+  oneof representation {
+    Sfn sfn = 1;
+    google.protobuf.Timestamp timestamp = 2;
+  }
+}
+
+message Sfn {
+  optional uint32 sfn = 1;            // 0..1023
+  optional uint32 sub_frame_nr = 2;   // 0..9
+}
+
+// NTN-Config-r17.ntn-UlSyncValidityDuration-r17.
+enum UlSyncValidityDuration {
+  UL_SYNC_VALIDITY_DURATION_UNSPECIFIED = 0;
+  UL_SYNC_VALIDITY_DURATION_S5 = 1;
+  UL_SYNC_VALIDITY_DURATION_S10 = 2;
+  UL_SYNC_VALIDITY_DURATION_S15 = 3;
+  UL_SYNC_VALIDITY_DURATION_S20 = 4;
+  UL_SYNC_VALIDITY_DURATION_S25 = 5;
+  UL_SYNC_VALIDITY_DURATION_S30 = 6;
+  UL_SYNC_VALIDITY_DURATION_S35 = 7;
+  UL_SYNC_VALIDITY_DURATION_S40 = 8;
+  UL_SYNC_VALIDITY_DURATION_S45 = 9;
+  UL_SYNC_VALIDITY_DURATION_S50 = 10;
+  UL_SYNC_VALIDITY_DURATION_S55 = 11;
+  UL_SYNC_VALIDITY_DURATION_S60 = 12;
+  UL_SYNC_VALIDITY_DURATION_S120 = 13;
+  UL_SYNC_VALIDITY_DURATION_S180 = 14;
+  UL_SYNC_VALIDITY_DURATION_S240 = 15;
+  UL_SYNC_VALIDITY_DURATION_S900 = 16;
+}
