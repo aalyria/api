@@ -31,6 +31,20 @@ build --incompatible_strict_action_env
 build --cxxopt='-std=c++20'
 build --cxxopt='-Wall'
 build --cxxopt='-Werror'
+# The hermetic LLVM/clang toolchain (registered in MODULE.bazel) does not
+# recognize some GCC-only warning flags below (e.g. -Wno-class-memaccess) and
+# rejects them under -Werror via -Wunknown-warning-option. Tolerate unknown
+# warning flags so the same warning suppressions work under both compilers. This
+# must precede those flags to take effect. Mirrors //hermetic_cc.bazelrc.
+build --cxxopt='-Wno-unknown-warning-option'
+# The hermetic clang toolchain enables -Wthread-safety/-Wself-assign/
+# -Wunused-but-set-parameter and flags braced scalar initializers; the previous
+# toolchain did not. Preserve the pre-migration warning posture rather than
+# auditing the tree during the toolchain swap. Mirrors //hermetic_cc.bazelrc.
+build --cxxopt='-Wno-braced-scalar-init'
+build --cxxopt='-Wno-thread-safety'
+build --cxxopt='-Wno-self-assign'
+build --cxxopt='-Wno-unused-but-set-parameter'
 build --host_cxxopt='-std=c++20'
 
 # TODO: remove these flags when grpc builds without them.
