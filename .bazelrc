@@ -25,3 +25,7 @@ common --enable_bzlmod
 # Select the default venv for the aspect_rules_py uv hub.
 # This must be set globally because venv selection is a Bazel config flag.
 common --@python_deps//venv=default
+
+# grpc includes zlib's module-private zconf.h; clang-22 flags this under
+# -Wprivate-header (module-map strictness the zig toolchain did not enforce).
+build --per_file_copt=external/grpc[~+]/.*@-Wno-private-header
