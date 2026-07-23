@@ -40,6 +40,45 @@ bazel_dep(name = "aspect_rules_py", version = "1.8.4")
 bazel_dep(name = "toolchains_protoc", version = "0.4.3")
 bazel_dep(name = "toolchains_llvm", version = "1.4.0")
 
+# Patch protobuf v31.1 to fix constinit issue with zig-based hermetic toolchain.
+# The issue: protobuf's GlobalEmptyStringConstexpr uses constinit with heap allocation,
+# which is incompatible with zig's libc++ (similar to MSVC). This patch restores the
+# MSVC guard that was present in earlier versions and extends it to cover zig toolchains.
+# See: https://github.com/protocolbuffers/protobuf/issues/22065
+single_version_override(
+    module_name = "protobuf",
+    patch_strip = 1,
+    patches = ["//patches:protobuf_v31_1_zig_constinit_fix.patch"],
+    version = "31.1",
+)
+
+# Patch c-ares v1.19.1 to fix RBE build with strict header checking.
+# The issue: c-ares BUILD.bazel is missing include/ares_build.h in hdrs list,
+# which causes undeclared inclusion errors when building with RBE without
+# --remote_download_minimal flag.
+single_version_override(
+    module_name = "c-ares",
+    patch_strip = 0,
+    patches = ["//patches:c-ares_1_19_1_rbe_headers.patch"],
+    version = "1.19.1",
+)
+
+# grpc is pulled in transitively by rules_proto_grpc_*. Pin and patch it to match
+# the monorepo. The upb-gen include-shadowing patch drops grpc's committed
+# upb-gen include dirs, which otherwise shadow protobuf's generated upb headers
+# and cause "undeclared inclusion" failures under strict header checking (e.g.
+# when compiling cygrpc). The rbe_xds patch supplies header deps needed for
+# RBE + xDS builds.
+single_version_override(
+    module_name = "grpc",
+    patch_strip = 0,
+    patches = [
+        "//patches:grpc_1_74_1_rbe_xds_headers.patch",
+        "//patches:grpc_1_74_1_upb_gen_include_shadowing.patch",
+    ],
+    version = "1.74.1",
+)
+
 # Configure the protoc toolchain used by rules_proto_grpc to use protoc v31.1.
 # This ensures that the version agrees with the protobuf dependency version,
 # which is necessary because Protobuf C++ requires an exact match between its
