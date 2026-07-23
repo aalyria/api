@@ -21,7 +21,7 @@ import "google/api/resource.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 import "google/type/interval.proto";
-import "nmts/v1/proto/types/geophys/coordinates.proto";
+import "nmts/v1/proto/types/geophys/geodesy.proto";
 import "nmts/v1/proto/types/physical/polarization.proto";
 
 option go_package = "aalyria.com/spacetime/api/solution/v1alpha";
@@ -184,17 +184,11 @@ message Beam {
 
 message BeamTarget {
   oneof target {
-    Cartesian cartesian = 1;
     string platform = 2;
+    nmts.v1.types.geophys.GeodeticWgs84 geodetic_wgs84 = 3;
   }
-}
 
-message Cartesian {
-  nmts.v1.types.geophys.CoordinateFrame reference_frame = 1;
-
-  double x_m = 2;
-  double y_m = 3;
-  double z_m = 4;
+  reserved 1, 4 to max;
 }
 
 message RxConfiguration {
