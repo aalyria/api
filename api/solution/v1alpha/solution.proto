@@ -159,20 +159,20 @@ message Beam {
   // Identifies the antenna that is used to transmit and/or receive the beam.
   string antenna_id = 6;
 
-  // Parameters specifying the configuration of the beam in the receive
-  // direction.
-  //
-  // Empty if the beam is to be used for transmit only.
-  repeated RxConfiguration rx_configurations = 7;
+  string port_id = 13;
+  int64 center_frequency_hz = 14;
+  int64 channel_bandwidth_hz = 15;
+  nmts.v1.types.physical.Polarization polarization = 16;
 
-  // Parameters specifying the configuration of the beam in the transmit
-  // direction.
-  //
-  // The string keys uniquely identify a corresponding TxConfiguration,
-  // and are present only for reference in FieldMask (update) operations.
-  //
-  // Empty if the beam is to be used for receiving only.
-  repeated TxConfiguration tx_configurations = 8;
+  // Symbol rate in Megasymbols per second.
+  double symbol_rate_msps = 17;
+  google.protobuf.Duration latency = 18;
+
+  // Specifies the wireless configuration of the beam.
+  oneof config {
+    RxConfiguration rx_configuration = 11;
+    TxConfiguration tx_configuration = 12;
+  }
 
   // The collection of endpoints served by the beam.
   // For example, a collection of user terminals (UTs) served.
@@ -180,6 +180,8 @@ message Beam {
 
   // Only present if beam-hopping is to be used.
   BeamHoppingPlan beam_hopping_plan = 10;
+
+  reserved 7, 8, 19 to max;
 }
 
 message BeamTarget {
@@ -192,36 +194,23 @@ message BeamTarget {
 }
 
 message RxConfiguration {
-  string port_id = 1;
   string demodulator_id = 2;
   string receiver_id = 3;
 
-  int64 center_frequency_hz = 4;
-  int64 channel_bandwidth_hz = 5;
-  nmts.v1.types.physical.Polarization polarization = 6;
-
-  // Symbol rate in Megasymbols per second.
-  double symbol_rate_msps = 7;
-  google.protobuf.Duration latency = 8;
+  reserved 1, 4, 5, 6, 7, 8, 9 to max;
 }
 
 message TxConfiguration {
-  string port_id = 1;
   string modulator_id = 2;
   string transmitter_id = 3;
 
-  int64 center_frequency_hz = 4;
-  int64 channel_bandwidth_hz = 5;
-  nmts.v1.types.physical.Polarization polarization = 6;
-
-  // Symbol rate in Megasymbols per second.
-  double symbol_rate_msps = 7;
-  google.protobuf.Duration latency = 8;
+  reserved 1, 4, 5, 6, 7, 8, 9 to max;
 }
 
 message Endpoint {
-  string modulator = 1;
-  string demodulator = 2;
+  string modem_id = 3;
+
+  reserved 1, 2, 4 to max;
 }
 
 message BeamHoppingPlan {
@@ -280,15 +269,7 @@ message BeamQuery {
   // If set, the query will only match beams that exist at the given timestamp.
   google.protobuf.Timestamp timestamp = 2;
 
-  // If set, the query will only match beams that have a TX configuration for
-  // any of the given ports.
-  repeated string tx_port_ids = 3;
-
-  // If set, the query will only match beams that have an RX configuration for
-  // any of the given ports.
-  repeated string rx_port_ids = 4;
-
-  reserved 7 to max;
+  reserved 3, 4, 7 to max;
 }
 
 message QueryBeamsRequest {
