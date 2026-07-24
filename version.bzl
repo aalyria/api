@@ -39,3 +39,14 @@ BUILD = ""
 
 # Version uses Semantic Versioning 2.0.0 format. See: https://semver.org
 VERSION = "{0}.{1}.{2}+{3}".format(MAJOR, MINOR, PATCH, BUILD) if len(BUILD) > 0 else "{0}.{1}.{2}".format(MAJOR, MINOR, PATCH)
+
+# The MAJOR.MINOR prefix of VERSION, without the CICD-stamped PATCH/BUILD
+# segments. Targets that bake a version into build outputs (e.g. the binaries
+# inside container images) must use BASE_VERSION rather than VERSION so their
+# outputs stay byte-identical across commits that don't change their inputs;
+# the stamped segments reach those binaries through volatile workspace-status
+# stamping instead (the SPACETIME_VERSION key in
+# bazel/tools/get_workspace_status.sh, consumed by rules_go x_defs
+# placeholders and cc linkstamps — see //common/base). Depending on VERSION
+# invalidates the target on every main-branch CI run.
+BASE_VERSION = "{0}.{1}".format(MAJOR, MINOR)

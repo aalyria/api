@@ -17,7 +17,6 @@
 
 load("@rules_go//go:def.bzl", "go_library", "go_test")
 load("@rules_shell//shell:sh_test.bzl", "sh_test")
-load("//:version.bzl", "VERSION")
 
 go_library(
     name = "nbictl",
@@ -37,7 +36,11 @@ go_library(
     importpath = "aalyria.com/spacetime/tools/nbictl",
     visibility = ["//visibility:public"],
     x_defs = {
-        "Version": VERSION,
+        # Resolved by stamped link actions from the volatile SPACETIME_VERSION
+        # workspace-status key (bazel/tools/get_workspace_status.sh) so the
+        # binary's bytes stay identical across commits that don't change its
+        # inputs; unstamped builds keep the source default.
+        "Version": "{SPACETIME_VERSION}",
     },
     deps = [
         "//api/audit/v1alpha:audit_go_grpc",

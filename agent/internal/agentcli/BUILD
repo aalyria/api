@@ -13,7 +13,6 @@
 # limitations under the License.
 
 load("@rules_go//go:def.bzl", "go_library", "go_test")
-load("//:version.bzl", "VERSION")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -26,7 +25,11 @@ go_library(
     ],
     importpath = "aalyria.com/spacetime/agent/internal/agentcli",
     x_defs = {
-        "Version": VERSION,
+        # Resolved by stamped link actions from the volatile SPACETIME_VERSION
+        # workspace-status key (bazel/tools/get_workspace_status.sh) so the
+        # binary's bytes stay identical across commits that don't change its
+        # inputs; unstamped builds keep the source default.
+        "Version": "{SPACETIME_VERSION}",
     },
     deps = [
         "//agent",
