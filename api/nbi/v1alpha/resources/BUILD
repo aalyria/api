@@ -28,7 +28,6 @@ proto_library(
         "coverage.proto",
         "devices_in_region.proto",
         "intent.proto",
-        "motion_evaluation.proto",
         "network_element.proto",
         "network_link.proto",
         "service_request.proto",
