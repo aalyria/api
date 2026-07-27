@@ -1,0 +1,343 @@
+# Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# HELP node_netstat_Icmp6_InErrors Statistic Icmp6InErrors.
+# TYPE node_netstat_Icmp6_InErrors untyped
+node_netstat_Icmp6_InErrors 0
+# HELP node_netstat_Icmp6_InMsgs Statistic Icmp6InMsgs.
+# TYPE node_netstat_Icmp6_InMsgs untyped
+node_netstat_Icmp6_InMsgs 3
+# HELP node_netstat_Icmp6_OutMsgs Statistic Icmp6OutMsgs.
+# TYPE node_netstat_Icmp6_OutMsgs untyped
+node_netstat_Icmp6_OutMsgs 614
+# HELP node_netstat_Icmp_InErrors Statistic IcmpInErrors.
+# TYPE node_netstat_Icmp_InErrors untyped
+node_netstat_Icmp_InErrors 0
+# HELP node_netstat_Icmp_InMsgs Statistic IcmpInMsgs.
+# TYPE node_netstat_Icmp_InMsgs untyped
+node_netstat_Icmp_InMsgs 3
+# HELP node_netstat_Icmp_OutMsgs Statistic IcmpOutMsgs.
+# TYPE node_netstat_Icmp_OutMsgs untyped
+node_netstat_Icmp_OutMsgs 7
+# HELP node_netstat_Ip6_InOctets Statistic Ip6InOctets.
+# TYPE node_netstat_Ip6_InOctets untyped
+node_netstat_Ip6_InOctets 6.79806813e+08
+# HELP node_netstat_Ip6_OutOctets Statistic Ip6OutOctets.
+# TYPE node_netstat_Ip6_OutOctets untyped
+node_netstat_Ip6_OutOctets 6.79842197e+08
+# HELP node_netstat_IpExt_InOctets Statistic IpExtInOctets.
+# TYPE node_netstat_IpExt_InOctets untyped
+node_netstat_IpExt_InOctets 4.8954551592e+10
+# HELP node_netstat_IpExt_OutOctets Statistic IpExtOutOctets.
+# TYPE node_netstat_IpExt_OutOctets untyped
+node_netstat_IpExt_OutOctets 3.4504981937e+10
+# HELP node_netstat_Ip_Forwarding Statistic IpForwarding.
+# TYPE node_netstat_Ip_Forwarding untyped
+node_netstat_Ip_Forwarding 1
+# HELP node_netstat_TcpExt_ListenDrops Statistic TcpExtListenDrops.
+# TYPE node_netstat_TcpExt_ListenDrops untyped
+node_netstat_TcpExt_ListenDrops 0
+# HELP node_netstat_TcpExt_ListenOverflows Statistic TcpExtListenOverflows.
+# TYPE node_netstat_TcpExt_ListenOverflows untyped
+node_netstat_TcpExt_ListenOverflows 0
+# HELP node_netstat_TcpExt_SyncookiesFailed Statistic TcpExtSyncookiesFailed.
+# TYPE node_netstat_TcpExt_SyncookiesFailed untyped
+node_netstat_TcpExt_SyncookiesFailed 0
+# HELP node_netstat_TcpExt_SyncookiesRecv Statistic TcpExtSyncookiesRecv.
+# TYPE node_netstat_TcpExt_SyncookiesRecv untyped
+node_netstat_TcpExt_SyncookiesRecv 0
+# HELP node_netstat_TcpExt_SyncookiesSent Statistic TcpExtSyncookiesSent.
+# TYPE node_netstat_TcpExt_SyncookiesSent untyped
+node_netstat_TcpExt_SyncookiesSent 0
+# HELP node_netstat_TcpExt_TCPSynRetrans Statistic TcpExtTCPSynRetrans.
+# TYPE node_netstat_TcpExt_TCPSynRetrans untyped
+node_netstat_TcpExt_TCPSynRetrans 33
+# HELP node_netstat_TcpExt_TCPTimeouts Statistic TcpExtTCPTimeouts.
+# TYPE node_netstat_TcpExt_TCPTimeouts untyped
+node_netstat_TcpExt_TCPTimeouts 46
+# HELP node_netstat_Tcp_ActiveOpens Statistic TcpActiveOpens.
+# TYPE node_netstat_Tcp_ActiveOpens untyped
+node_netstat_Tcp_ActiveOpens 151734
+# HELP node_netstat_Tcp_CurrEstab Statistic TcpCurrEstab.
+# TYPE node_netstat_Tcp_CurrEstab untyped
+node_netstat_Tcp_CurrEstab 7
+# HELP node_netstat_Tcp_InErrs Statistic TcpInErrs.
+# TYPE node_netstat_Tcp_InErrs untyped
+node_netstat_Tcp_InErrs 0
+# HELP node_netstat_Tcp_InSegs Statistic TcpInSegs.
+# TYPE node_netstat_Tcp_InSegs untyped
+node_netstat_Tcp_InSegs 1.2577643e+07
+# HELP node_netstat_Tcp_OutRsts Statistic TcpOutRsts.
+# TYPE node_netstat_Tcp_OutRsts untyped
+node_netstat_Tcp_OutRsts 48906
+# HELP node_netstat_Tcp_OutSegs Statistic TcpOutSegs.
+# TYPE node_netstat_Tcp_OutSegs untyped
+node_netstat_Tcp_OutSegs 2.6822221e+07
+# HELP node_netstat_Tcp_PassiveOpens Statistic TcpPassiveOpens.
+# TYPE node_netstat_Tcp_PassiveOpens untyped
+node_netstat_Tcp_PassiveOpens 72763
+# HELP node_netstat_Tcp_RetransSegs Statistic TcpRetransSegs.
+# TYPE node_netstat_Tcp_RetransSegs untyped
+node_netstat_Tcp_RetransSegs 2798
+# HELP node_netstat_Udp6_InDatagrams Statistic Udp6InDatagrams.
+# TYPE node_netstat_Udp6_InDatagrams untyped
+node_netstat_Udp6_InDatagrams 0
+# HELP node_netstat_Udp6_InErrors Statistic Udp6InErrors.
+# TYPE node_netstat_Udp6_InErrors untyped
+node_netstat_Udp6_InErrors 0
+# HELP node_netstat_Udp6_NoPorts Statistic Udp6NoPorts.
+# TYPE node_netstat_Udp6_NoPorts untyped
+node_netstat_Udp6_NoPorts 3
+# HELP node_netstat_Udp6_OutDatagrams Statistic Udp6OutDatagrams.
+# TYPE node_netstat_Udp6_OutDatagrams untyped
+node_netstat_Udp6_OutDatagrams 3
+# HELP node_netstat_Udp6_RcvbufErrors Statistic Udp6RcvbufErrors.
+# TYPE node_netstat_Udp6_RcvbufErrors untyped
+node_netstat_Udp6_RcvbufErrors 0
+# HELP node_netstat_Udp6_SndbufErrors Statistic Udp6SndbufErrors.
+# TYPE node_netstat_Udp6_SndbufErrors untyped
+node_netstat_Udp6_SndbufErrors 0
+# HELP node_netstat_UdpLite6_InErrors Statistic UdpLite6InErrors.
+# TYPE node_netstat_UdpLite6_InErrors untyped
+node_netstat_UdpLite6_InErrors 0
+# HELP node_netstat_UdpLite_InErrors Statistic UdpLiteInErrors.
+# TYPE node_netstat_UdpLite_InErrors untyped
+node_netstat_UdpLite_InErrors 0
+# HELP node_netstat_Udp_InDatagrams Statistic UdpInDatagrams.
+# TYPE node_netstat_Udp_InDatagrams untyped
+node_netstat_Udp_InDatagrams 72154
+# HELP node_netstat_Udp_InErrors Statistic UdpInErrors.
+# TYPE node_netstat_Udp_InErrors untyped
+node_netstat_Udp_InErrors 0
+# HELP node_netstat_Udp_NoPorts Statistic UdpNoPorts.
+# TYPE node_netstat_Udp_NoPorts untyped
+node_netstat_Udp_NoPorts 3
+# HELP node_netstat_Udp_OutDatagrams Statistic UdpOutDatagrams.
+# TYPE node_netstat_Udp_OutDatagrams untyped
+node_netstat_Udp_OutDatagrams 72158
+# HELP node_netstat_Udp_RcvbufErrors Statistic UdpRcvbufErrors.
+# TYPE node_netstat_Udp_RcvbufErrors untyped
+node_netstat_Udp_RcvbufErrors 0
+# HELP node_netstat_Udp_SndbufErrors Statistic UdpSndbufErrors.
+# TYPE node_netstat_Udp_SndbufErrors untyped
+node_netstat_Udp_SndbufErrors 0
+# HELP node_network_address_assign_type Network device property: address_assign_type
+# TYPE node_network_address_assign_type gauge
+node_network_address_assign_type{device="docker0"} 3
+node_network_address_assign_type{device="ens4"} 0
+node_network_address_assign_type{device="lo"} 0
+# HELP node_network_carrier Network device property: carrier
+# TYPE node_network_carrier gauge
+node_network_carrier{device="docker0"} 0
+node_network_carrier{device="ens4"} 1
+node_network_carrier{device="lo"} 1
+# HELP node_network_carrier_changes_total Network device property: carrier_changes_total
+# TYPE node_network_carrier_changes_total counter
+node_network_carrier_changes_total{device="docker0"} 13
+node_network_carrier_changes_total{device="ens4"} 2
+node_network_carrier_changes_total{device="lo"} 0
+# HELP node_network_carrier_down_changes_total Network device property: carrier_down_changes_total
+# TYPE node_network_carrier_down_changes_total counter
+node_network_carrier_down_changes_total{device="docker0"} 7
+node_network_carrier_down_changes_total{device="ens4"} 1
+node_network_carrier_down_changes_total{device="lo"} 0
+# HELP node_network_carrier_up_changes_total Network device property: carrier_up_changes_total
+# TYPE node_network_carrier_up_changes_total counter
+node_network_carrier_up_changes_total{device="docker0"} 6
+node_network_carrier_up_changes_total{device="ens4"} 1
+node_network_carrier_up_changes_total{device="lo"} 0
+# HELP node_network_device_id Network device property: device_id
+# TYPE node_network_device_id gauge
+node_network_device_id{device="docker0"} 0
+node_network_device_id{device="ens4"} 0
+node_network_device_id{device="lo"} 0
+# HELP node_network_dormant Network device property: dormant
+# TYPE node_network_dormant gauge
+node_network_dormant{device="docker0"} 0
+node_network_dormant{device="ens4"} 0
+node_network_dormant{device="lo"} 0
+# HELP node_network_flags Network device property: flags
+# TYPE node_network_flags gauge
+node_network_flags{device="docker0"} 4099
+node_network_flags{device="ens4"} 4099
+node_network_flags{device="lo"} 9
+# HELP node_network_iface_id Network device property: iface_id
+# TYPE node_network_iface_id gauge
+node_network_iface_id{device="docker0"} 3
+node_network_iface_id{device="ens4"} 2
+node_network_iface_id{device="lo"} 1
+# HELP node_network_iface_link Network device property: iface_link
+# TYPE node_network_iface_link gauge
+node_network_iface_link{device="docker0"} 3
+node_network_iface_link{device="ens4"} 2
+node_network_iface_link{device="lo"} 1
+# HELP node_network_iface_link_mode Network device property: iface_link_mode
+# TYPE node_network_iface_link_mode gauge
+node_network_iface_link_mode{device="docker0"} 0
+node_network_iface_link_mode{device="ens4"} 0
+node_network_iface_link_mode{device="lo"} 0
+# HELP node_network_info Non-numeric data from /sys/class/net/<iface>, value is always 1.
+# TYPE node_network_info gauge
+node_network_info{address="00:00:00:00:00:00",broadcast="00:00:00:00:00:00",device="lo",duplex="",ifalias="",operstate="unknown"} 1
+node_network_info{address="02:42:fe:d5:4e:ae",broadcast="ff:ff:ff:ff:ff:ff",device="docker0",duplex="unknown",ifalias="",operstate="down"} 1
+node_network_info{address="42:01:0a:80:00:1c",broadcast="ff:ff:ff:ff:ff:ff",device="ens4",duplex="unknown",ifalias="",operstate="up"} 1
+# HELP node_network_mtu_bytes Network device property: mtu_bytes
+# TYPE node_network_mtu_bytes gauge
+node_network_mtu_bytes{device="docker0"} 1500
+node_network_mtu_bytes{device="ens4"} 1460
+node_network_mtu_bytes{device="lo"} 65536
+# HELP node_network_name_assign_type Network device property: name_assign_type
+# TYPE node_network_name_assign_type gauge
+node_network_name_assign_type{device="docker0"} 3
+node_network_name_assign_type{device="ens4"} 4
+node_network_name_assign_type{device="lo"} 2
+# HELP node_network_net_dev_group Network device property: net_dev_group
+# TYPE node_network_net_dev_group gauge
+node_network_net_dev_group{device="docker0"} 0
+node_network_net_dev_group{device="ens4"} 0
+node_network_net_dev_group{device="lo"} 0
+# HELP node_network_protocol_type Network device property: protocol_type
+# TYPE node_network_protocol_type gauge
+node_network_protocol_type{device="docker0"} 1
+node_network_protocol_type{device="ens4"} 1
+node_network_protocol_type{device="lo"} 772
+# HELP node_network_receive_bytes_total Network device statistic receive_bytes.
+# TYPE node_network_receive_bytes_total counter
+node_network_receive_bytes_total{device="docker0"} 4.602427e+06
+node_network_receive_bytes_total{device="ens4"} 4.9004717667e+10
+node_network_receive_bytes_total{device="lo"} 7.69496589e+08
+# HELP node_network_receive_compressed_total Network device statistic receive_compressed.
+# TYPE node_network_receive_compressed_total counter
+node_network_receive_compressed_total{device="docker0"} 0
+node_network_receive_compressed_total{device="ens4"} 0
+node_network_receive_compressed_total{device="lo"} 0
+# HELP node_network_receive_drop_total Network device statistic receive_drop.
+# TYPE node_network_receive_drop_total counter
+node_network_receive_drop_total{device="docker0"} 97
+node_network_receive_drop_total{device="ens4"} 12
+node_network_receive_drop_total{device="lo"} 0
+# HELP node_network_receive_errs_total Network device statistic receive_errs.
+# TYPE node_network_receive_errs_total counter
+node_network_receive_errs_total{device="docker0"} 12
+node_network_receive_errs_total{device="ens4"} 1337
+node_network_receive_errs_total{device="lo"} 0
+# HELP node_network_receive_fifo_total Network device statistic receive_fifo.
+# TYPE node_network_receive_fifo_total counter
+node_network_receive_fifo_total{device="docker0"} 0
+node_network_receive_fifo_total{device="ens4"} 0
+node_network_receive_fifo_total{device="lo"} 0
+# HELP node_network_receive_frame_total Network device statistic receive_frame.
+# TYPE node_network_receive_frame_total counter
+node_network_receive_frame_total{device="docker0"} 0
+node_network_receive_frame_total{device="ens4"} 0
+node_network_receive_frame_total{device="lo"} 0
+# HELP node_network_receive_multicast_total Network device statistic receive_multicast.
+# TYPE node_network_receive_multicast_total counter
+node_network_receive_multicast_total{device="docker0"} 0
+node_network_receive_multicast_total{device="ens4"} 0
+node_network_receive_multicast_total{device="lo"} 0
+# HELP node_network_receive_nohandler_total Network device statistic receive_nohandler.
+# TYPE node_network_receive_nohandler_total counter
+node_network_receive_nohandler_total{device="docker0"} 0
+node_network_receive_nohandler_total{device="ens4"} 0
+node_network_receive_nohandler_total{device="lo"} 0
+# HELP node_network_receive_packets_total Network device statistic receive_packets.
+# TYPE node_network_receive_packets_total counter
+node_network_receive_packets_total{device="docker0"} 70236
+node_network_receive_packets_total{device="ens4"} 1.0269729e+07
+node_network_receive_packets_total{device="lo"} 2.586281e+06
+# HELP node_network_speed_bytes Network device property: speed_bytes
+# TYPE node_network_speed_bytes gauge
+node_network_speed_bytes{device="docker0"} -125000
+node_network_speed_bytes{device="ens4"} -125000
+# HELP node_network_transmit_bytes_total Network device statistic transmit_bytes.
+# TYPE node_network_transmit_bytes_total counter
+node_network_transmit_bytes_total{device="docker0"} 2.895355422e+09
+node_network_transmit_bytes_total{device="ens4"} 2.8704733728e+10
+node_network_transmit_bytes_total{device="lo"} 7.69496589e+08
+# HELP node_network_transmit_carrier_total Network device statistic transmit_carrier.
+# TYPE node_network_transmit_carrier_total counter
+node_network_transmit_carrier_total{device="docker0"} 0
+node_network_transmit_carrier_total{device="ens4"} 0
+node_network_transmit_carrier_total{device="lo"} 0
+# HELP node_network_transmit_colls_total Network device statistic transmit_colls.
+# TYPE node_network_transmit_colls_total counter
+node_network_transmit_colls_total{device="docker0"} 0
+node_network_transmit_colls_total{device="ens4"} 0
+node_network_transmit_colls_total{device="lo"} 0
+# HELP node_network_transmit_compressed_total Network device statistic transmit_compressed.
+# TYPE node_network_transmit_compressed_total counter
+node_network_transmit_compressed_total{device="docker0"} 0
+node_network_transmit_compressed_total{device="ens4"} 0
+node_network_transmit_compressed_total{device="lo"} 0
+# HELP node_network_transmit_drop_total Network device statistic transmit_drop.
+# TYPE node_network_transmit_drop_total counter
+node_network_transmit_drop_total{device="docker0"} 132
+node_network_transmit_drop_total{device="ens4"} 37
+node_network_transmit_drop_total{device="lo"} 0
+# HELP node_network_transmit_errs_total Network device statistic transmit_errs.
+# TYPE node_network_transmit_errs_total counter
+node_network_transmit_errs_total{device="docker0"} 132
+node_network_transmit_errs_total{device="ens4"} 19
+node_network_transmit_errs_total{device="lo"} 0
+# HELP node_network_transmit_fifo_total Network device statistic transmit_fifo.
+# TYPE node_network_transmit_fifo_total counter
+node_network_transmit_fifo_total{device="docker0"} 0
+node_network_transmit_fifo_total{device="ens4"} 0
+node_network_transmit_fifo_total{device="lo"} 0
+# HELP node_network_transmit_packets_total Network device statistic transmit_packets.
+# TYPE node_network_transmit_packets_total counter
+node_network_transmit_packets_total{device="docker0"} 181958
+node_network_transmit_packets_total{device="ens4"} 5.638352e+06
+node_network_transmit_packets_total{device="lo"} 2.586281e+06
+# HELP node_network_transmit_queue_length Network device property: transmit_queue_length
+# TYPE node_network_transmit_queue_length gauge
+node_network_transmit_queue_length{device="docker0"} 0
+node_network_transmit_queue_length{device="ens4"} 1000
+node_network_transmit_queue_length{device="lo"} 1000
+# HELP node_network_up Value is 1 if operstate is 'up', 0 otherwise.
+# TYPE node_network_up gauge
+node_network_up{device="docker0"} 0
+node_network_up{device="ens4"} 1
+node_network_up{device="lo"} 0
+# HELP node_nf_conntrack_entries Number of currently allocated flow entries for connection tracking.
+# TYPE node_nf_conntrack_entries gauge
+node_nf_conntrack_entries 10
+# HELP node_nf_conntrack_entries_limit Maximum size of connection tracking table.
+# TYPE node_nf_conntrack_entries_limit gauge
+node_nf_conntrack_entries_limit 262144
+# HELP node_nf_conntrack_stat_drop Number of packets dropped due to conntrack failure.
+# TYPE node_nf_conntrack_stat_drop gauge
+node_nf_conntrack_stat_drop 0
+# HELP node_nf_conntrack_stat_early_drop Number of dropped conntrack entries to make room for new ones, if maximum table size was reached.
+# TYPE node_nf_conntrack_stat_early_drop gauge
+node_nf_conntrack_stat_early_drop 0
+# HELP node_nf_conntrack_stat_found Number of searched entries which were successful.
+# TYPE node_nf_conntrack_stat_found gauge
+node_nf_conntrack_stat_found 0
+# HELP node_nf_conntrack_stat_ignore Number of packets seen which are already connected to a conntrack entry.
+# TYPE node_nf_conntrack_stat_ignore gauge
+node_nf_conntrack_stat_ignore 0
+# HELP node_nf_conntrack_stat_insert Number of entries inserted into the list.
+# TYPE node_nf_conntrack_stat_insert gauge
+node_nf_conntrack_stat_insert 0
+# HELP node_nf_conntrack_stat_insert_failed Number of entries for which list insertion was attempted but failed.
+# TYPE node_nf_conntrack_stat_insert_failed gauge
+node_nf_conntrack_stat_insert_failed 0
+# HELP node_nf_conntrack_stat_invalid Number of packets seen which can not be tracked.
+# TYPE node_nf_conntrack_stat_invalid gauge
+node_nf_conntrack_stat_invalid 257
+# HELP node_nf_conntrack_stat_search_restart Number of conntrack table lookups which had to be restarted due to hashtable resizes.
+# TYPE node_nf_conntrack_stat_search_restart gauge
+node_nf_conntrack_stat_search_restart 190

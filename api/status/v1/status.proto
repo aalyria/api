@@ -1,0 +1,60 @@
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package aalyria.spacetime.api.status.v1;
+
+import "opentelemetry/proto/metrics/v1/metrics.proto";
+
+option go_package = "aalyria.com/spacetime/api/status/v1";
+option java_package = "com.aalyria.spacetime.api.status.v1";
+
+service StatusService {
+  // Retrieve the version of this Spacetime instance.
+  rpc GetVersion(GetVersionRequest) returns (GetVersionResponse) {}
+  
+  // Fetch all insight metrics from the system
+  rpc GetMetrics(GetMetricsRequest) returns (GetMetricsResponse) {}
+}
+
+message GetVersionRequest {
+}
+
+message GetVersionResponse {
+  // Version of the Spacetime build.
+  // Uses Semantic Versioning 2.0.0 format. See: https://semver.org/
+  optional string build_version = 1;
+}
+
+
+message GetMetricsRequest {
+}
+
+// GetMetricsResponse contains all the metrics data 
+// using the standard OpenTelemetry format
+message GetMetricsResponse {
+  // Total number of platform types in the system, broken down by:
+  // - `s7e.type`: 
+  //    (String) The type of the element as defined by the `catalog_type`
+  optional opentelemetry.proto.metrics.v1.Gauge platform_types = 2;
+
+  // Number of inbound messages received by Aalyria.
+  // No expected attributes
+  optional opentelemetry.proto.metrics.v1.Sum scheduling_inbound_count = 8;
+
+  // Number of outbound messages sent from Aalyria.
+  // No expected attributes
+  optional opentelemetry.proto.metrics.v1.Sum scheduling_outbound_count = 9;
+}

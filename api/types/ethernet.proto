@@ -1,0 +1,45 @@
+// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto2";
+
+package aalyria.spacetime.api.types;
+
+option java_package = "com.aalyria.spacetime.api.types";
+option go_package = "aalyria.com/spacetime/api/types";
+
+// Identifies an "EtherType" value.
+//
+// See also the IANA registry for IEEE 802 Numbers:
+//   https://www.iana.org/assignments/ieee-802-numbers/ieee-802-numbers.xhtml
+message EtherType {
+  // A collection of well-known EtherTypes.
+  enum Eth {
+    ETH_UNSPECIFIED = 0;
+    ETH_IPV4 = 2048;   // 0x0800
+    ETH_ARP = 2054;    // 0x0806
+    ETH_VLAN_CTAG = 33024;  // 0x8100 (IEEE 802.1Q)
+    ETH_IPV6 = 34525;  // 0x86dd
+    ETH_MPLS = 34887;  // 0x8847
+    // Formerly MPLS multicast; see RFC 5332.
+    ETH_MPLS_UPSTREAM = 34888;  // 0x8848; upstream-assigned label
+    ETH_VLAN_STAG = 34984;  // 0x88A8 (IEEE 802.1ad, "QinQ")
+    ETH_PBB = 35047;  // 0x88E7 (IEEE 802.1Q, Backbone Service Instance)
+  }
+
+  oneof value {
+    Eth well_known = 1;
+    uint32 explicit = 2;
+  }
+}

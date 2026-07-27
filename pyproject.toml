@@ -1,0 +1,16 @@
+[project]
+name = "aalyria-api"
+version = "0.0.0"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "cryptography",
+    "grpcio",
+    "pyjwt",
+]
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+
+[tool.uv]
+environments = ["sys_platform == 'linux'"]
