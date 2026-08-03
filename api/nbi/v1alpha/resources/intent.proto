@@ -77,7 +77,6 @@ message Intent {
     BearerIntent bearer = 19;
     ContractIntent contract = 23;
     MobilityIntent mobility = 21;
-    SignalProcessingChainConfigIntent signal_processing_chain_config = 24;
   }
   optional IntentState state = 7 [default = INSTALL_REQ];
 
@@ -128,21 +127,10 @@ message Intent {
   repeated aalyria.spacetime.api.common.ScheduledControlUpdate
     compiled_withdrawal_updates = 17;
 
-  reserved 2, 10, 12, 25 to max;  // Next IDs.
+  reserved 2, 10, 12, 24 to max;  // Next IDs.
 }
 
 // Models an intent to configure steerable beams and/or radio resources.
-// The beam configuration mode requested for an antenna interface group
-// (EK_SIGNAL_PROCESSING_CHAIN) over the intent's interval.
-message SignalProcessingChainConfigIntent {
-  // EK_SIGNAL_PROCESSING_CHAIN entity id.
-  optional string signal_processing_chain_id = 1;
-
-  // The selected profile, matching one
-  // ChannelBandwidthProfileConfiguration.BandwidthProfile.bandwidths_hz.
-  repeated int64 bandwidths_hz = 2;
-}
-
 message LinkIntent {
   oneof link_type {
     // Configures a single wireless interface.

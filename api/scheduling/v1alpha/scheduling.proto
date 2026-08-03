@@ -161,7 +161,6 @@ message CreateEntryRequest {
     DeleteP2pSrTePolicyPath delete_p2p_sr_te_policy_path = 21;
     UpdateIpRoute update_ip_route = 24;
     DeleteIpRoute delete_ip_route = 25;
-    UpdateBeamConfigurationMode update_beam_configuration_mode = 26;
   }
 
   reserved 7, 8, 11, 13, 14, 17;
@@ -358,23 +357,6 @@ message UpdateBeam {
 
 message DeleteBeam {
   string id = 1;
-}
-
-// The channel bandwidth profile an antenna interface group is configured for.
-message BeamConfigurationMode {
-  // EK_SIGNAL_PROCESSING_CHAIN entity ID of the antenna interface group.
-  string signal_processing_chain_id = 1;
-
-  // The selected profile, matching one of the chain's
-  // ChannelBandwidthProfileConfiguration.BandwidthProfile.bandwidths_hz.
-  repeated int64 bandwidths_hz = 2;
-}
-
-// A revision of an antenna interface group's beam configuration mode.
-message UpdateBeamConfigurationMode {
-  BeamConfigurationMode beam_configuration_mode = 1;
-
-  aalyria.spacetime.api.common.FieldMask update_mask = 2;
 }
 
 
