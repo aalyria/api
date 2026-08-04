@@ -1,0 +1,257 @@
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package aalyria.spacetime.api.permissions.v1alpha;
+
+import "google/api/field_behavior.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "aalyria.com/spacetime/api/permissions/v1alpha";
+option java_package = "com.aalyria.spacetime.api.permissions.v1alpha";
+
+// RESOURCE_PATTERNS: Resource identifiers support wildcard patterns using * for
+// flexible permission control. This applies to all resource types.
+//
+// Pattern matching rules:
+//   - * matches any single path segment
+//   - Concrete values match only themselves
+//   - Access is denied by default
+//   - If ANY pattern matches and grants the permission, access is allowed
+//
+// Examples:
+//   Authorization: "model/entity/*/*"
+//   Matches: "model/entity/router/123", "model/entity/switch/456", etc.
+//
+//   Authorization: "model/entity/router/*"
+//   Matches: "model/entity/router/123", "model/entity/router/456", etc.
+//
+//   Authorization: "model/entity/router/12345"
+//   Matches: "model/entity/router/12345" only
+//
+// Multiple authorizations:
+//   If a user has both "model/entity/router/*" with READ and "model/entity/*/*"
+//   with WRITE, they will have READ access to all routers and WRITE access to
+//   all entities (union of permissions).
+//
+// Available resource patterns (examples with wildcards):
+//
+// (NMTS) Model
+//   model/entity/*/*              (all entities)
+//   model/entity/<type>/*          (all entities of a specific type)
+//   model/entity/<type>/<id>       (specific entity)
+//   model/relationship/*/*/*       (all relationships)
+//
+//   Note on Permission Checks: When computing resource paths for
+//   authorization, the endpoints |a| and |z| are sorted lexicographically
+//   to ensure stable ordering. This means that a relationship from A→Z
+//   and a relationship from Z→A will produce the same resource path for
+//   permission evaluation, ensuring consistent access control regardless
+//   of endpoint ordering.
+//   model/relationship/<kind>/*/*  (all relationships of a specific kind)
+//
+// Provisioning
+//   provisioning/p2pSrTePolicy/*
+//   provisioning/p2pSrTePolicy/<policy_id>/candidatePath/*
+//   provisioning/p2mpSrTePolicy/*
+//   provisioning/p2mpSrTePolicy/<policy_id>/candidatePath/*
+//   provisioning/downtimes/*
+//   provisioning/protectionAssociationGroups/*
+//   provisioning/disjointAssociationGroups/*
+//   provisioning/links/*
+//   provisioning/geographicRegions/*
+//   provisioning/emissionsLimits/*
+//
+// Scheduling
+//   scheduling/*
+//   scheduling/<sdn_agent_id>
+//
+// Telemetry
+//   telemetry/*
+//   telemetry/<sdn_agent_id>
+//
+// Authorization Config Management
+//   authorization_config           (config upload/management)
+//
+// PERMISSION_WRITE on resource 'authorization_config' required
+// to update configs.
+// Note: On first update to an uninitialized system, this permission
+// is not required, but the config must grant PERMISSION_WRITE on
+// 'authorization_config' to the updater to prevent lockout.
+
+// Manages authorization permissions and configuration for a Spacetime
+// instance.
+service Permissions {
+  // Checks whether a principal has a specific permission on a resource.
+  rpc CheckPermission(CheckPermissionRequest) returns (CheckPermissionResponse);
+
+  // Checks permissions for multiple resources in a single call. Returns
+  // HAS_PERMISSION only if ALL permission checks pass.
+  rpc CheckPermissions(CheckPermissionsRequest)
+      returns (CheckPermissionsResponse);
+
+  // Updates the authorization configuration, creating a new revision if
+  // passing all checks.
+  rpc UpdateAuthorizationConfig(UpdateAuthorizationConfigRequest)
+      returns (AuthorizationConfig);
+
+  // Lists recent authorization configuration revisions.
+  rpc ListAuthorizationConfigRevisions(ListAuthorizationConfigRevisionsRequest)
+      returns (ListAuthorizationConfigRevisionsResponse);
+}
+
+// AuthorizationConfig is a standalone representation of the global
+// authorization config within a Spacetime instance.
+message AuthorizationConfig {
+  // Maps a principal to a set of permissions on a resource pattern.
+  message PrincipalAuthorization {
+    // The principal can be either an email address (matched against the JWT
+    // email claim) or a role identifier (matched against role claims specified
+    // in grant_claims).
+    string principal = 1 [(google.api.field_behavior) = REQUIRED];
+
+    // The set of permissions granted to this principal on the resource.
+    repeated Permission permissions = 2;
+
+    // The resource pattern this authorization applies to.
+    // See RESOURCE_PATTERNS documentation above for available patterns.
+    string resource = 3 [(google.api.field_behavior) = REQUIRED];
+  }
+
+  // The resource name of the authorization config singleton.
+  // Format: "authorizationConfig"
+  string name = 4;
+
+  // The list of principal-to-resource authorization mappings.
+  repeated PrincipalAuthorization authorizations = 1;
+
+  // JWT claim names to check for role membership (e.g., ["roles", "groups"]).
+  // If empty, defaults to ["roles"].
+  // Permission is granted if principal matches email OR any
+  // role in grant_claims.
+  repeated string grant_claims = 2;
+
+  // If true, this config was applied in bootstrap mode (no permission check).
+  // Indicates the system had no active permissions when this config was
+  // created.
+  bool was_bootstrap_mode = 3;
+}
+
+// Request message for CheckPermission.
+message CheckPermissionRequest {
+  // The permission to check.
+  Permission permission = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // The authentication token identifying the principal.
+  oneof token {
+    // A JSON Web Token identifying the principal.
+    string jwt = 2;
+  }
+
+  // The full concrete resource identifier to check permissions against.
+  // This must be a complete resource path without wildcards (e.g.,
+  // "model/entity/router/12345", not "model/entity/router/*").
+  // The permission check will evaluate this concrete resource against the
+  // patterns defined in the authorization configuration.
+  // Providing an empty resource will result in status.Denied
+  string resource = 3 [(google.api.field_behavior) = REQUIRED];
+}
+
+// Indicates whether the principal has the requested permission.
+enum Permissionship {
+  // Default value. This value is unused.
+  PERMISSIONSHIP_UNSPECIFIED = 0;
+  // The principal does not have the requested permission.
+  NO_PERMISSION = 1;
+  // The principal has the requested permission.
+  HAS_PERMISSION = 2;
+}
+
+// Response message for CheckPermission.
+message CheckPermissionResponse {
+  // The result of the permission check.
+  Permissionship permissionship = 1;
+}
+
+// Request message for CheckPermissions.
+message CheckPermissionsRequest {
+  // The list of permission checks to perform.
+  // All checks must pass for the request to be granted.
+  repeated CheckPermissionRequest requests = 1;
+}
+
+// Response message for CheckPermissions.
+message CheckPermissionsResponse {
+  // The aggregated result of all permission checks.
+  Permissionship permissionship = 1;
+}
+
+// Request message for UpdateAuthorizationConfig.
+message UpdateAuthorizationConfigRequest {
+  // The new authorization configuration to apply.
+  AuthorizationConfig config = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+// Request message for ListAuthorizationConfigRevisions.
+message ListAuthorizationConfigRevisionsRequest {
+  // The maximum number of revisions to return per page.
+  // If unspecified or zero, the server will default to 25.
+  int32 page_size = 1;
+
+  // A page token from a previous ListAuthorizationConfigRevisions response.
+  // If provided, the subsequent page of results will be returned.
+  string page_token = 2;
+}
+
+// A single revision of the authorization configuration.
+message AuthorizationConfigRevision {
+  // The resource name of the revision.
+  // Format: authorizationConfig/revisions/{revision_id}
+  string name = 1;
+
+  // The time the revision was created.
+  google.protobuf.Timestamp create_time = 2;
+
+  // Whether this revision is the currently active configuration.
+  bool active = 4;
+
+  // The authorization configuration for this revision.
+  AuthorizationConfig snapshot = 5;
+
+  reserved 3;
+  reserved "uploaded_by";
+}
+
+// Response message for ListAuthorizationConfigRevisions.
+message ListAuthorizationConfigRevisionsResponse {
+  // The list of authorization configuration revisions.
+  repeated AuthorizationConfigRevision revisions = 1;
+
+  // A token to retrieve the next page of results.
+  // Empty if there are no more results.
+  string next_page_token = 2;
+}
+
+// The type of permission that can be granted on a resource.
+enum Permission {
+  // Default value. This value is unused.
+  PERMISSION_UNSPECIFIED = 0;
+
+  // Read access to the resource.
+  PERMISSION_READ = 1;
+
+  // Write access to the resource.
+  PERMISSION_WRITE = 2;
+}
