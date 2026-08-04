@@ -140,3 +140,72 @@ sh_test(
         "//tools/nbictl/cmd/nbictl",
     ],
 )
+
+# Benchmarks-only sibling of :nbictl_test, routed to the Pool=bench Buildbarn
+# executors and published to Bencher. Written out longhand, not via
+# //bazel/bench:defs.bzl because this package is copybara-exported to
+# github.com/aalyria/api (tools/oss/github_api/copy.bara.sky) and bazel/bench
+# is not; a load() of it would leave an unresolvable label in the exported
+# workspace, whose CI runs a full `bazel test //...`. Keep in sync with
+# bazel/bench/defs.bzl. Gazelle manages go_test rules by name and only
+# generates ":nbictl_test", so it leaves this target alone -- but it also never
+# updates these deps. Keep them in sync with :nbictl_test above.
+go_test(
+    name = "nbictl_bench",
+    timeout = "eternal",
+    srcs = [
+        "config_test.go",
+        "connection_test.go",
+        "fake_model_store_test.go",
+        "fake_modelapi_server_test.go",
+        "fake_statusapi_server_test.go",
+        "generate_auth_token_test.go",
+        "generate_rsa_key_test.go",
+        "grpcurl_test.go",
+        "model_benchmark_test.go",
+        "model_sync_test.go",
+        "model_test.go",
+        "omni_fragment_test.go",
+        "progress_test.go",
+        "status_test.go",
+    ],
+    args = [
+        "-test.bench=.",
+        "-test.run=^$$",
+        "-test.benchtime=2s",
+        "-test.count=1",
+        "-test.benchmem",
+    ],
+    embed = [":nbictl"],
+    exec_properties = {"test.Pool": "bench"},
+    msan = "off",
+    race = "off",
+    tags = [
+        "bench",
+        "manual",
+        "no-cache",
+        "no_ci_pipeline",
+    ],
+    deps = [
+        "//api/model/v1:v1_go_proto",
+        "//api/status/v1:status_go_grpc",
+        "//tools/nbictl/proto:nbictl_go_proto",
+        "//tools/nbictl/proto:omni_fragment_go_proto",
+        "@com_github_golang_jwt_jwt_v5//:jwt",
+        "@com_github_google_go_cmp//cmp",
+        "@com_github_urfave_cli_v2//:cli",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//metadata",
+        "@org_golang_google_grpc//reflection",
+        "@org_golang_google_grpc//status",
+        "@org_golang_google_protobuf//encoding/prototext",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//testing/protocmp",
+        "@org_golang_google_protobuf//types/known/emptypb",
+        "@org_golang_x_sync//errgroup",
+        "@org_outernetcouncil_nmts//v1/proto:nmts_go_proto",
+        "@org_outernetcouncil_nmts//v1/proto/ek/physical:physical_go_proto",
+        "@rules_go//go/tools/bazel",
+    ],
+)
