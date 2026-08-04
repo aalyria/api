@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"slices"
 	"strings"
@@ -161,6 +162,23 @@ func (pr *ProvisioningResources) InsertProvisioningResources(resources *provnbip
 	pr.insertEmissionsLimits(resources.GetEmissionsLimits())
 	pr.insertPointingConstraints(resources.GetPointingConstraints())
 	pr.insertEirpsdMaskLimits(resources.GetEirpsdMaskLimits())
+}
+
+func (pr *ProvisioningResources) ToProto() (*provnbipb.ProvisioningResources, error) {
+	result := &provnbipb.ProvisioningResources{}
+	result.P2PSrTePolicies = slices.Collect(maps.Values(pr.p2pSrTePolicies))
+	result.P2PSrTePolicyCandidatePaths = slices.Collect(maps.Values(pr.p2pSrTePolicyCandidatePaths))
+	result.P2MpSrTePolicies = slices.Collect(maps.Values(pr.p2mpSrTePolicies))
+	result.P2MpSrTePolicyCandidatePaths = slices.Collect(maps.Values(pr.p2mpSrTePolicyCandidatePaths))
+	result.Downtimes = slices.Collect(maps.Values(pr.downtimes))
+	result.ProtectionAssociationGroups = slices.Collect(maps.Values(pr.protectionAssociationGroups))
+	result.DisjointAssociationGroups = slices.Collect(maps.Values(pr.disjointAssociationGroups))
+	result.Links = slices.Collect(maps.Values(pr.links))
+	result.GeographicRegions = slices.Collect(maps.Values(pr.geographicRegions))
+	result.EmissionsLimits = slices.Collect(maps.Values(pr.emissionsLimits))
+	result.PointingConstraints = slices.Collect(maps.Values(pr.pointingConstraints))
+	result.EirpsdMaskLimits = slices.Collect(maps.Values(pr.eirpsdMaskLimits))
+	return result, nil
 }
 
 func ProvisioningResourcesFromRemote(ctx context.Context, client provapipb.ProvisioningClient, listBar *progressBar) (*ProvisioningResources, error) {
@@ -827,7 +845,15 @@ func ProvisioningList(appCtx *cli.Context) error {
 		return err
 	}
 
-	fmt.Fprintf(appCtx.App.Writer, "\nfound remote resources:\n%s\n", remoteResources.MarshalledString(marshaller))
+	resourcesProto, err := remoteResources.ToProto()
+	if err != nil {
+		return err
+	}
+	resourcesString, err := marshaller.marshal(resourcesProto)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(appCtx.App.Writer, "\n%s\n", resourcesString)
 
 	return nil
 }
