@@ -33,6 +33,7 @@ import (
 	permissionspb "aalyria.com/spacetime/api/permissions/v1alpha"
 	provpb "aalyria.com/spacetime/api/provisioning/v1alpha"
 	schedpb "aalyria.com/spacetime/api/scheduling/v1alpha"
+	solutionpb "aalyria.com/spacetime/api/solution/v1alpha"
 	statuspb "aalyria.com/spacetime/api/status/v1"
 	telemetrypb "aalyria.com/spacetime/api/telemetry/v1alpha"
 )
@@ -228,6 +229,7 @@ func GRPCCall(appCtx *cli.Context) error {
 		permissionspb.File_api_permissions_v1alpha_permissions_proto,
 		provpb.File_api_provisioning_v1alpha_provisioning_proto,
 		schedpb.File_api_scheduling_v1alpha_scheduling_proto,
+		solutionpb.File_api_solution_v1alpha_solution_proto,
 		telemetrypb.File_api_telemetry_v1alpha_telemetry_proto,
 		statuspb.File_api_status_v1_status_proto,
 		auditpb.File_api_audit_v1alpha_audit_logs_proto,
@@ -255,17 +257,24 @@ func GRPCCall(appCtx *cli.Context) error {
 		return err
 	}
 
-	return grpcurl.InvokeRPC(
+	handler := &grpcurl.DefaultEventHandler{
+		Out:            appCtx.App.Writer,
+		Formatter:      formatter,
+		VerbosityLevel: 0,
+	}
+	if err := grpcurl.InvokeRPC(
 		appCtx.Context,
 		descSrc,
 		conn,
 		method,
 		[]string{},
-		&grpcurl.DefaultEventHandler{
-			Out:            appCtx.App.Writer,
-			Formatter:      formatter,
-			VerbosityLevel: 0,
-		},
+		handler,
 		reqParser.Next,
-	)
+	); err != nil {
+		return err
+	}
+	if err := handler.Status.Err(); err != nil {
+		return fmt.Errorf("rpc failed: %w", err)
+	}
+	return nil
 }

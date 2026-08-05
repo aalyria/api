@@ -49,6 +49,7 @@ go_library(
         "//api/permissions/v1alpha:permissions_go_grpc",
         "//api/provisioning/v1alpha:provisioning_go_grpc",
         "//api/scheduling/v1alpha:scheduling_go_grpc",
+        "//api/solution/v1alpha:solution_go_proto",
         "//api/status/v1:status_go_grpc",
         "//api/telemetry/v1alpha:telemetry_go_grpc",
         "//auth",
