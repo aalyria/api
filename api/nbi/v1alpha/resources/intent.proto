@@ -248,6 +248,13 @@ message RxConfiguration {
   oneof other_parameters {
     DvbS2Params dvbs2_params = 10;
   }
+
+  // The ID of the nmts.v1.ek.logical.LogicalPacketLink (MPLS layer) whose
+  // sr.adjacency_sid identifies the downlink to this receiver. The compiler
+  // follows RK_TRAVERSES from this link to the GSE-layer LogicalPacketLink to
+  // determine the GSE label the receiving modem uses to filter its own stream.
+  // This field is only set for user downlinks.
+  optional string mpls_logical_packet_link_id = 12;
 }
 
 message TxConfiguration {
