@@ -271,12 +271,8 @@ message TxConfiguration {
   // Transmit power the transmitter must not exceed in Watts.
   optional double max_power_w = 13;
 
-  // TODO: After the compiler has been migrated to read from
-  // initial_beam_peak_eirp_sd_dbw_per_mhz and
-  // max_beam_peak_eirp_sd_dbw_per_mhz, initial_power_w and max_power_w
-  // can be removed.
-  optional double initial_beam_peak_eirp_sd_dbw_per_mhz = 14;
-  optional double max_beam_peak_eirp_sd_dbw_per_mhz = 15;
+  // Per-quantum beam-peak EIRP spectral density over the intent's interval.
+  optional BeamPeakEirpSdSamples beam_peak_eirp_sd_samples = 16;
 
   // Symbol rate in Megasymbols per second.
   optional double symbol_rate_msps = 6;
@@ -292,7 +288,7 @@ message TxConfiguration {
     DvbS2Params dvbs2_params = 11;
   }
 
-  reserved 16 to max;
+  reserved 14, 15, 17 to max;
 }
 
 enum Polarization {

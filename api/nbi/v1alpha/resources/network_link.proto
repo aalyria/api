@@ -23,6 +23,7 @@ import "api/common/platform_antenna.proto";
 import "api/common/time.proto";
 import "api/common/wireless_transceiver.proto";
 import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
 import "google/type/interval.proto";
 
 option go_package = "aalyria.com/spacetime/api/nbi/v1alpha/resources";
@@ -73,6 +74,23 @@ message DvbS2Params {
   optional uint32 pilot_pl_scrambling_code = 2;
 }
 
+// Per-quantum beam-peak EIRP spectral density. Element i of each array covers
+// [sampling_start + i * sampling_resolution,
+// sampling_start + (i + 1) * sampling_resolution), and the final value holds
+// until time_to_withdraw. The two arrays are the same length, so element i of
+// each describes the same interval.
+//
+// sampling_start is not assumed to equal time_to_enact. Samples sit on a fixed
+// grid so that consecutive intents form a uniform run, while an intent may
+// begin partway into an interval, so sampling_start may precede time_to_enact
+// by less than one resolution.
+message BeamPeakEirpSdSamples {
+  optional google.protobuf.Timestamp sampling_start = 1;
+  optional google.protobuf.Duration sampling_resolution = 2;
+  repeated double initial_dbw_per_mhz = 3 [packed = true];
+  repeated double max_dbw_per_mhz = 4 [packed = true];
+}
+
 message Radio {
   // Defines the center of the channel in Hz.
   // For RF transceivers, this is the carrier frequency.
@@ -94,14 +112,8 @@ message Radio {
     // Transmit power the transmitter must not exceed in Watts.
     optional double max_power_w = 9;
 
-    // TODO: After the compiler has been migrated to read from
-    // initial_beam_peak_eirp_sd_dbw_per_mhz and
-    // max_beam_peak_eirp_sd_dbw_per_mhz, initial_power_w and max_power_w
-    // can be removed.
-    // Initial beam-peak EIRP spectral density in dBW/MHz.
-    optional double initial_beam_peak_eirp_sd_dbw_per_mhz = 10;
-    // Maximum beam-peak EIRP spectral density in dBW/MHz.
-    optional double max_beam_peak_eirp_sd_dbw_per_mhz = 11;
+    // Per-quantum beam-peak EIRP spectral density over the intent's interval.
+    optional BeamPeakEirpSdSamples beam_peak_eirp_sd_samples = 12;
 
     optional string port_id = 6;
     optional string modulator_id = 2;
@@ -117,7 +129,7 @@ message Radio {
 
     optional string lowest_supported_rx_modcod = 7;
 
-    reserved 12 to max;
+    reserved 10, 11, 13 to max;
   }
 
   optional TxRadioConfiguration tx_radio = 4;
