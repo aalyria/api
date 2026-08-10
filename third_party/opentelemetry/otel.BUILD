@@ -13,6 +13,8 @@
 # limitations under the License.
 load("@protobuf//bazel:proto_library.bzl", "proto_library")
 load("@rules_go//proto:def.bzl", "go_proto_library")
+load("@rules_proto_grpc_cpp//:defs.bzl", "cpp_proto_library")
+load("@rules_proto_grpc_java//:defs.bzl", "java_proto_library")
 load("@rules_proto_grpc_python//:defs.bzl", "python_proto_library")
 
 package(default_visibility = ["//visibility:public"])
@@ -25,6 +27,16 @@ proto_library(
 
 python_proto_library(
     name = "common_python_proto",
+    protos = [":common_proto"],
+)
+
+cpp_proto_library(
+    name = "common_cpp_proto",
+    protos = [":common_proto"],
+)
+
+java_proto_library(
+    name = "common_java_proto",
     protos = [":common_proto"],
 )
 
@@ -49,6 +61,18 @@ python_proto_library(
     name = "resource_python_proto",
     protos = [":resource_proto"],
     deps = [":common_python_proto"],
+)
+
+cpp_proto_library(
+    name = "resource_cpp_proto",
+    protos = [":resource_proto"],
+    deps = [":common_cpp_proto"],
+)
+
+java_proto_library(
+    name = "resource_java_proto",
+    protos = [":resource_proto"],
+    deps = [":common_java_proto"],
 )
 
 go_proto_library(
@@ -77,6 +101,24 @@ python_proto_library(
     deps = [
         ":common_python_proto",
         ":resource_python_proto",
+    ],
+)
+
+cpp_proto_library(
+    name = "metrics_cpp_proto",
+    protos = [":metrics_proto"],
+    deps = [
+        ":common_cpp_proto",
+        ":resource_cpp_proto",
+    ],
+)
+
+java_proto_library(
+    name = "metrics_java_proto",
+    protos = [":metrics_proto"],
+    deps = [
+        ":common_java_proto",
+        ":resource_java_proto",
     ],
 )
 

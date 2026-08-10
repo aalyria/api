@@ -14,6 +14,8 @@
 
 load("@protobuf//bazel:proto_library.bzl", "proto_library")
 load("@rules_go//proto:def.bzl", "go_proto_library")
+load("@rules_proto_grpc_cpp//:defs.bzl", "cpp_grpc_library")
+load("@rules_proto_grpc_java//:defs.bzl", "java_grpc_library")
 load("@rules_proto_grpc_python//:defs.bzl", "python_grpc_library")
 
 package(default_visibility = ["//visibility:public"])
@@ -26,6 +28,19 @@ proto_library(
     deps = [
         "@opentelemetry_proto//:metrics_proto",
     ],
+)
+
+cpp_grpc_library(
+    name = "status_cpp_grpc",
+    generate_mocks = True,
+    protos = [":status_proto"],
+    deps = ["@opentelemetry_proto//:metrics_cpp_proto"],
+)
+
+java_grpc_library(
+    name = "status_java_grpc",
+    protos = [":status_proto"],
+    deps = ["@opentelemetry_proto//:metrics_java_proto"],
 )
 
 go_proto_library(
