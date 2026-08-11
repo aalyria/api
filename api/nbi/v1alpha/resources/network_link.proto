@@ -265,7 +265,20 @@ message RxPlatform {
 message RxPower {
   oneof value {
     // Power Flux Density at receiver [dBW/m^2].
-    double pfd_dbw_per_m2 = 1;
+    //
+    // Deprecated: no longer populated. Retained only for backward compatibility
+    // so intents persisted before the switch to equivalent power flux density
+    // remain readable without requiring a migration.
+    double pfd_dbw_per_m2 = 1 [deprecated = true];
+
+    // Equivalent power flux density at the receiver [dBW/Hz/m^2].
+    // The per-link flux density that, arriving in the receive beam's
+    // peak-gain direction, would produce the observed received power density.
+    // For an endpoint offset from the receive beam peak, this differs from the
+    // physical flux density at the aperture by the beam roll-off. This is a
+    // single-link wanted-signal quantity, not an aggregate interference
+    // measure.
+    double epfd_dbw_per_hz_per_m2 = 2;
   }
 }
 
