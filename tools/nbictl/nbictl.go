@@ -333,11 +333,15 @@ func App() *cli.App {
 							},
 							&cli.StringFlag{
 								Name:  "auth_strategy",
-								Usage: "Authentication strategy. Allowed values: [none, jwt, oidc]. When 'none', no authentication credentials are sent.",
+								Usage: "Authentication strategy. Allowed values: [none, jwt, oidc, oidc_user]. When 'none', no authentication credentials are sent. Use 'oidc_user' with the `login` command to authenticate as a person.",
 							},
 							&cli.StringFlag{
 								Name:  "client_id",
-								Usage: "OIDC client ID (used with --auth_strategy=oidc).",
+								Usage: "OIDC client ID (used with --auth_strategy=oidc or --auth_strategy=oidc_user).",
+							},
+							&cli.StringFlag{
+								Name:  "issuer",
+								Usage: "OIDC issuer URL (used with --auth_strategy=oidc_user). Must be https.",
 							},
 							&cli.StringFlag{
 								Name:  "token_url",
@@ -670,6 +674,24 @@ func App() *cli.App {
 					},
 				}),
 				Action: GenerateAuthToken,
+			},
+			{
+				Name:      "login",
+				Usage:     "Log in to the Spacetime APIs with your own identity.",
+				UsageText: "Runs the OAuth 2.0 device authorization grant against the identity provider of the selected profile. The profile must use the `oidc_user` auth strategy. The command prints a URL and a code; open the URL on any device that has a browser and enter the code. The tokens are stored per profile, and every later command uses them until you run `logout`.",
+				Before:    before,
+				After:     after,
+				Flags:     commonFlags,
+				Action:    Login,
+			},
+			{
+				Name:      "logout",
+				Usage:     "End the session that `login` started.",
+				UsageText: "Asks the identity provider to revoke the refresh token, and then deletes the stored tokens of the selected profile. The tokens are deleted even when the revocation fails; the command then prints a warning.",
+				Before:    before,
+				After:     after,
+				Flags:     commonFlags,
+				Action:    Logout,
 			},
 		},
 	}

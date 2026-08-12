@@ -263,6 +263,25 @@ func mergeAuthStrategy(existing, incoming *nbictlpb.Config_AuthStrategy) *nbictl
 			Type: &nbictlpb.Config_AuthStrategy_OidcClientCredentials_{OidcClientCredentials: base},
 		}
 
+	case *nbictlpb.Config_AuthStrategy_OidcUser_:
+		var base *nbictlpb.Config_AuthStrategy_OidcUser
+		if exUser, ok := existing.GetType().(*nbictlpb.Config_AuthStrategy_OidcUser_); ok {
+			base = proto.Clone(exUser.OidcUser).(*nbictlpb.Config_AuthStrategy_OidcUser)
+		} else {
+			base = &nbictlpb.Config_AuthStrategy_OidcUser{}
+		}
+
+		if in.OidcUser.GetIssuer() != "" {
+			base.Issuer = in.OidcUser.GetIssuer()
+		}
+		if in.OidcUser.GetClientId() != "" {
+			base.ClientId = in.OidcUser.GetClientId()
+		}
+
+		return &nbictlpb.Config_AuthStrategy{
+			Type: &nbictlpb.Config_AuthStrategy_OidcUser_{OidcUser: base},
+		}
+
 	default:
 		return incoming
 	}
@@ -383,8 +402,17 @@ func SetConfig(appCtx *cli.Context) error {
 				},
 			},
 		}
+	case "oidc_user":
+		authStrategyPB = &nbictlpb.Config_AuthStrategy{
+			Type: &nbictlpb.Config_AuthStrategy_OidcUser_{
+				OidcUser: &nbictlpb.Config_AuthStrategy_OidcUser{
+					Issuer:   appCtx.String("issuer"),
+					ClientId: appCtx.String("client_id"),
+				},
+			},
+		}
 	default:
-		return fmt.Errorf("unexpected auth strategy: %s (allowed: none, jwt, oidc)", authStrategy)
+		return fmt.Errorf("unexpected auth strategy: %s (allowed: none, jwt, oidc, oidc_user)", authStrategy)
 	}
 
 	var endpointConfigPB *nbictlpb.Config_EndpointConfig
@@ -495,13 +523,25 @@ func setConfig(outWriter, errWriter io.Writer, confToCreate *nbictlpb.Config, co
 		return fmt.Errorf("unable to convert proto into textproto format: %w", err)
 	}
 
+	// The token store lives inside this directory, so neither the directory
+	// nor the config file may be readable by other local users.
 	contextDir := filepath.Dir(confFile)
-	if err = os.MkdirAll(contextDir, 0o777); err != nil {
+	if err = os.MkdirAll(contextDir, 0o700); err != nil {
 		return fmt.Errorf("unable to create directory: %w", err)
 	}
+	// MkdirAll leaves an existing directory's mode alone, so a directory made
+	// by an earlier version keeps its wider mode without this.
+	if err = os.Chmod(contextDir, 0o700); err != nil {
+		return fmt.Errorf("unable to restrict the permissions of the configuration directory: %w", err)
+	}
 
-	if err = os.WriteFile(confFile, nbiConfigTextProto, 0o777); err != nil {
+	if err = os.WriteFile(confFile, nbiConfigTextProto, 0o600); err != nil {
 		return fmt.Errorf("unable to update the configuration information: %w", err)
+	}
+	// os.WriteFile applies the mode only when it creates the file, so a config
+	// written by an earlier version keeps its old, wider mode without this.
+	if err = os.Chmod(confFile, 0o600); err != nil {
+		return fmt.Errorf("unable to restrict the permissions of the configuration file: %w", err)
 	}
 
 	protoMessage, err := prototext.MarshalOptions{Multiline: true}.Marshal(confToCreate)

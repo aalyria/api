@@ -571,6 +571,100 @@ func TestSetConfig_EndpointConfigUpdate(t *testing.T) {
 	assertProtosEqual(t, want, got)
 }
 
+func oidcUserAuthStrategy(issuer, clientID string) *nbictlpb.Config_AuthStrategy {
+	return &nbictlpb.Config_AuthStrategy{
+		Type: &nbictlpb.Config_AuthStrategy_OidcUser_{
+			OidcUser: &nbictlpb.Config_AuthStrategy_OidcUser{
+				Issuer:   issuer,
+				ClientId: clientID,
+			},
+		},
+	}
+}
+
+func TestSetConfig_OidcUser(t *testing.T) {
+	t.Parallel()
+
+	tmpDir, err := bazel.NewTmpDir("nbictl")
+	checkErr(t, err)
+
+	checkErr(t, newTestApp().Run([]string{
+		"nbictl", "--config_dir", tmpDir, "--context", "dev", "config", "set",
+		"--auth_strategy", "oidc_user",
+		"--issuer", "https://zitadel.example.com",
+		"--client_id", "client-1",
+		"--url", "nbi.example.com",
+	}))
+
+	got, err := readConfig("dev", filepath.Join(tmpDir, confFileName))
+	checkErr(t, err)
+
+	assertProtosEqual(t, &nbictlpb.Config{
+		Name:         "dev",
+		Url:          "nbi.example.com",
+		AuthStrategy: oidcUserAuthStrategy("https://zitadel.example.com", "client-1"),
+	}, got)
+}
+
+// TestSetConfig_OidcUserPartialUpdate makes sure that a second config set
+// command keeps the fields that it does not name.
+func TestSetConfig_OidcUserPartialUpdate(t *testing.T) {
+	t.Parallel()
+
+	tmpDir, err := bazel.NewTmpDir("nbictl")
+	checkErr(t, err)
+
+	checkErr(t, newTestApp().Run([]string{
+		"nbictl", "--config_dir", tmpDir, "--context", "dev", "config", "set",
+		"--auth_strategy", "oidc_user",
+		"--issuer", "https://zitadel.example.com",
+		"--client_id", "client-1",
+	}))
+	checkErr(t, newTestApp().Run([]string{
+		"nbictl", "--config_dir", tmpDir, "--context", "dev", "config", "set",
+		"--auth_strategy", "oidc_user",
+		"--client_id", "client-2",
+	}))
+
+	got, err := readConfig("dev", filepath.Join(tmpDir, confFileName))
+	checkErr(t, err)
+
+	assertProtosEqual(t, &nbictlpb.Config{
+		Name:         "dev",
+		AuthStrategy: oidcUserAuthStrategy("https://zitadel.example.com", "client-2"),
+	}, got)
+}
+
+// TestSetConfig_SwitchesFromJwtToOidcUser makes sure that a strategy change
+// replaces the strategy instead of merging the two.
+func TestSetConfig_SwitchesFromJwtToOidcUser(t *testing.T) {
+	t.Parallel()
+
+	tmpDir, err := bazel.NewTmpDir("nbictl")
+	checkErr(t, err)
+	confFile := filepath.Join(tmpDir, confFileName)
+
+	checkErr(t, setConfig(io.Discard, io.Discard, &nbictlpb.Config{
+		Name:         "dev",
+		AuthStrategy: jwtAuthStrategy("someone@example.com", "key-1", "/tmp/key.pem"),
+	}, confFile))
+
+	checkErr(t, newTestApp().Run([]string{
+		"nbictl", "--config_dir", tmpDir, "--context", "dev", "config", "set",
+		"--auth_strategy", "oidc_user",
+		"--issuer", "https://zitadel.example.com",
+		"--client_id", "client-1",
+	}))
+
+	got, err := readConfig("dev", confFile)
+	checkErr(t, err)
+
+	assertProtosEqual(t, &nbictlpb.Config{
+		Name:         "dev",
+		AuthStrategy: oidcUserAuthStrategy("https://zitadel.example.com", "client-1"),
+	}, got)
+}
+
 func TestSetConfig_EndpointConfigNoUpdatePreservesExisting(t *testing.T) {
 	t.Parallel()
 
@@ -607,4 +701,55 @@ func TestSetConfig_EndpointConfigNoUpdatePreservesExisting(t *testing.T) {
 		},
 	}
 	assertProtosEqual(t, want, got)
+}
+
+// TestSetConfig_TightensAnExistingDirectory covers the upgrade path. An
+// nbictl from before the permissions change created the config directory with
+// mode 0777, and os.MkdirAll leaves an existing directory's mode alone, so
+// without an explicit chmod those users keep a world-writable directory with
+// the token store inside it.
+func TestSetConfig_TightensAnExistingDirectory(t *testing.T) {
+	t.Parallel()
+
+	confDir := filepath.Join(t.TempDir(), "nbictl")
+	checkErr(t, os.MkdirAll(confDir, 0o777))
+	checkErr(t, os.Chmod(confDir, 0o777))
+
+	confFile := filepath.Join(confDir, confFileName)
+	checkErr(t, setConfig(io.Discard, io.Discard, &nbictlpb.Config{
+		Name: "dev",
+		Url:  "nbi.example.com",
+	}, confFile))
+
+	info, err := os.Stat(confDir)
+	checkErr(t, err)
+	if got := info.Mode().Perm(); got != 0o700 {
+		t.Errorf("the pre-existing config directory is still mode %o, want %o", got, 0o700)
+	}
+}
+
+// TestSetConfig_RestrictsThePermissions makes sure that the config directory
+// and file are not readable by other local users. The token store lives
+// inside this directory, so a permissive mode would let another user read a
+// refresh token, or rewrite the issuer of a profile.
+func TestSetConfig_RestrictsThePermissions(t *testing.T) {
+	t.Parallel()
+
+	confFile := filepath.Join(t.TempDir(), "nbictl", confFileName)
+	checkErr(t, setConfig(io.Discard, io.Discard, &nbictlpb.Config{
+		Name: "dev",
+		Url:  "nbi.example.com",
+	}, confFile))
+
+	fileInfo, err := os.Stat(confFile)
+	checkErr(t, err)
+	if got := fileInfo.Mode().Perm(); got != 0o600 {
+		t.Errorf("the config file mode is %o, want %o", got, 0o600)
+	}
+
+	dirInfo, err := os.Stat(filepath.Dir(confFile))
+	checkErr(t, err)
+	if got := dirInfo.Mode().Perm(); got != 0o700 {
+		t.Errorf("the config directory mode is %o, want %o", got, 0o700)
+	}
 }

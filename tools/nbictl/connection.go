@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -141,7 +142,7 @@ func readPrivateKeyFromSigningStrategy(ss *nbictlpb.Config_SigningStrategy) (*by
 	}
 }
 
-func resolvePerRPCCredentials(ctx context.Context, setting *nbictlpb.Config, isInsecure, useQUIC bool) (credentials.PerRPCCredentials, error) {
+func resolvePerRPCCredentials(ctx context.Context, setting *nbictlpb.Config, confDir string, httpClient *http.Client, isInsecure, useQUIC bool) (credentials.PerRPCCredentials, error) {
 	clock := clockwork.NewRealClock()
 
 	switch t := setting.GetAuthStrategy().GetType().(type) {
@@ -184,6 +185,16 @@ func resolvePerRPCCredentials(ctx context.Context, setting *nbictlpb.Config, isI
 		creds, err := auth.NewOIDCCredentials(ctx, config)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create OIDC credentials: %w", err)
+		}
+		return creds, nil
+
+	case *nbictlpb.Config_AuthStrategy_OidcUser_:
+		config := oidcUserConfig(setting, t.OidcUser, httpClient)
+		config.Clock = clock
+		config.SkipTransportSecurity = useQUIC || isInsecure
+		creds, err := auth.NewOIDCUserCredentials(ctx, config, newFileTokenStore(confDir, setting.GetName()))
+		if err != nil {
+			return nil, fmt.Errorf("unable to create OIDC user credentials: %w", err)
 		}
 		return creds, nil
 
@@ -241,7 +252,7 @@ func resolveAPIDialOpts(appCtx *cli.Context, svc serviceKey) (string, []grpc.Dia
 	if err != nil {
 		return "", nil, err
 	}
-	dialOpts, err := getDialOpts(appCtx.Context, resolved)
+	dialOpts, err := getDialOpts(appCtx.Context, resolved, appConfDir, httpClientFromMetadata(appCtx))
 	if err != nil {
 		return "", nil, fmt.Errorf("unable to construct dial options: %w", err)
 	}
@@ -282,8 +293,8 @@ func adjustURLForAPISubDomain(url string, apiSubDomain string) (string, error) {
 	return apiSubDomain + "." + url, nil
 }
 
-func dial(ctx context.Context, setting *nbictlpb.Config) (*grpc.ClientConn, error) {
-	dialOpts, err := getDialOpts(ctx, setting)
+func dial(ctx context.Context, setting *nbictlpb.Config, confDir string, httpClient *http.Client) (*grpc.ClientConn, error) {
+	dialOpts, err := getDialOpts(ctx, setting, confDir, httpClient)
 	if err != nil {
 		return nil, fmt.Errorf("unable to construct dial options: %w", err)
 	}
@@ -294,7 +305,7 @@ func dial(ctx context.Context, setting *nbictlpb.Config) (*grpc.ClientConn, erro
 	return conn, nil
 }
 
-func getDialOpts(ctx context.Context, setting *nbictlpb.Config) ([]grpc.DialOption, error) {
+func getDialOpts(ctx context.Context, setting *nbictlpb.Config, confDir string, httpClient *http.Client) ([]grpc.DialOption, error) {
 	dialOpts := []grpc.DialOption{
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(1024*1024*256), grpc.UseCompressor(gzip.Name)),
 		grpc.WithKeepaliveParams(keepalive.ClientParameters{
@@ -362,7 +373,7 @@ func getDialOpts(ctx context.Context, setting *nbictlpb.Config) ([]grpc.DialOpti
 	dialOpts = append(dialOpts, grpc.WithTransportCredentials(transportCreds))
 
 	_, isInsecure := setting.GetTransportSecurity().GetType().(*nbictlpb.Config_TransportSecurity_Insecure)
-	perRPCCreds, err := resolvePerRPCCredentials(ctx, setting, isInsecure, useQUIC)
+	perRPCCreds, err := resolvePerRPCCredentials(ctx, setting, confDir, httpClient, isInsecure, useQUIC)
 	if err != nil {
 		return nil, err
 	}

@@ -265,7 +265,13 @@ type expiringToken struct {
 }
 
 func (et *expiringToken) isStale(clock clockwork.Clock) bool {
-	return clock.Now().After(et.expiresAt.Add(-tokenExpirationWindow))
+	return isStale(clock, et.expiresAt)
+}
+
+// isStale reports whether a token that expires at expiresAt is inside
+// tokenExpirationWindow. Every auth strategy in this package shares the rule.
+func isStale(clock clockwork.Clock, expiresAt time.Time) bool {
+	return clock.Now().After(expiresAt.Add(-tokenExpirationWindow))
 }
 
 // HTTPDoer abstracts an HTTP client for testing.

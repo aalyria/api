@@ -19,6 +19,7 @@ go_library(
     srcs = [
         "auth.go",
         "doc.go",
+        "oidcuser.go",
     ],
     importpath = "aalyria.com/spacetime/auth",
     visibility = ["//visibility:public"],
@@ -27,18 +28,23 @@ go_library(
         "@com_github_google_uuid//:uuid",
         "@com_github_jonboulle_clockwork//:clockwork",
         "@org_golang_google_grpc//credentials",
+        "@org_golang_x_oauth2//:oauth2",
         "@org_golang_x_sync//singleflight",
     ],
 )
 
 go_test(
     name = "auth_test",
-    srcs = ["auth_test.go"],
+    srcs = [
+        "auth_test.go",
+        "oidcuser_test.go",
+    ],
     embed = [":auth"],
     tags = ["block-network"],
     deps = [
         "@com_github_golang_jwt_jwt_v5//:jwt",
         "@com_github_jonboulle_clockwork//:clockwork",
         "@org_golang_google_grpc//credentials",
+        "@org_golang_x_oauth2//:oauth2",
     ],
 )

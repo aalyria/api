@@ -94,6 +94,19 @@ message Config {
       SigningStrategy signing_strategy = 4;
     }
 
+    // OidcUser authenticates a person with an interactive OIDC login. The
+    // `nbictl login` command runs the login and stores the tokens; every
+    // other command sends the stored ID token.
+    message OidcUser {
+      // The OIDC issuer URL, e.g.
+      // https://zitadel.dev.infra.spacetime.aalyria.com. Must be https.
+      // Endpoints are read from the issuer's discovery document.
+      string issuer = 1;
+      // The OAuth client ID of the native application registered with the
+      // issuer.
+      string client_id = 2;
+    }
+
     oneof type {
       // The specifications for a JWT that should be generated and signed by the
       // agent.
@@ -105,6 +118,9 @@ message Config {
 
       // OIDC client_credentials token exchange.
       OidcClientCredentials oidc_client_credentials = 3;
+
+      // Interactive OIDC login with the identity of a person.
+      OidcUser oidc_user = 4;
     }
   }
 

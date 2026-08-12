@@ -75,17 +75,19 @@ Prints the NBI connection settings associated with the configuration profile giv
 
 Sets or updates a configuration profile settings. You can create multiple profiles by specifying the `--profile` flag (defaults to "DEFAULT").
 
-**--auth_strategy**="": Authentication strategy. Allowed values: [none, jwt, oidc]. When 'none', no authentication credentials are sent.
+**--auth_strategy**="": Authentication strategy. Allowed values: [none, jwt, oidc, oidc_user]. When 'none', no authentication credentials are sent. Use 'oidc_user' with the `login` command to authenticate as a person.
 
 **--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
 
-**--client_id**="": OIDC client ID (used with --auth_strategy=oidc).
+**--client_id**="": OIDC client ID (used with --auth_strategy=oidc or --auth_strategy=oidc_user).
 
 **--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
 
 **--default_url**="": Fallback URL for unlisted services (custom endpoint_config only).
 
 **--endpoint_config**="": Endpoint resolution strategy. Allowed values: [subdomain, single_domain, custom]
+
+**--issuer**="": OIDC issuer URL (used with --auth_strategy=oidc_user). Must be https.
 
 **--key_id**="": Key ID associated with the private key provided by Aalyria.
 
@@ -420,6 +422,30 @@ Generate a self-signed JWT token for API authentication.
 **--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
 
 **--expiration, --exp**="": The validity duration of token, from the time of creation. (default: 1h)
+
+**--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
+
+## login
+
+Log in to the Spacetime APIs with your own identity.
+
+>Runs the OAuth 2.0 device authorization grant against the identity provider of the selected profile. The profile must use the `oidc_user` auth strategy. The command prints a URL and a code; open the URL on any device that has a browser and enter the code. The tokens are stored per profile, and every later command uses them until you run `logout`.
+
+**--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
+
+**--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
+
+**--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
+
+## logout
+
+End the session that `login` started.
+
+>Asks the identity provider to revoke the refresh token, and then deletes the stored tokens of the selected profile. The tokens are deleted even when the revocation fails; the command then prints a warning.
+
+**--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
+
+**--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
 
 **--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
 

@@ -27,6 +27,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	modelpb "aalyria.com/spacetime/api/model/v1"
+	"aalyria.com/spacetime/auth"
 	"aalyria.com/spacetime/tools/nbictl/nbictlpb"
 )
 
@@ -106,7 +107,7 @@ func TestDial_insecure(t *testing.T) {
 			Type: &nbictlpb.Config_TransportSecurity_Insecure{},
 		},
 	}
-	conn, err := dial(ctx, nbiConf)
+	conn, err := dial(ctx, nbiConf, t.TempDir(), nil)
 	checkErr(t, err)
 	defer conn.Close()
 
@@ -163,7 +164,7 @@ func TestDial_serverCertificate(t *testing.T) {
 			},
 		},
 	}
-	conn, err := dial(ctx, nbiConf)
+	conn, err := dial(ctx, nbiConf, t.TempDir(), nil)
 	checkErr(t, err)
 	defer conn.Close()
 
@@ -215,7 +216,7 @@ func TestDial_TLSWithAuthNone(t *testing.T) {
 			Type: &nbictlpb.Config_AuthStrategy_None{},
 		},
 	}
-	conn, err := dial(ctx, nbiConf)
+	conn, err := dial(ctx, nbiConf, t.TempDir(), nil)
 	checkErr(t, err)
 	defer conn.Close()
 
@@ -275,7 +276,7 @@ func TestDial_TLSWithAuthJwt(t *testing.T) {
 			},
 		},
 	}
-	conn, err := dial(ctx, nbiConf)
+	conn, err := dial(ctx, nbiConf, t.TempDir(), nil)
 	checkErr(t, err)
 	defer conn.Close()
 
@@ -288,6 +289,144 @@ func TestDial_TLSWithAuthJwt(t *testing.T) {
 	}
 	if len(fakeGrpcServer.IncomingMetadata[0].Get(authHeader)) != 1 {
 		t.Fatal("Missing auth header with auth_strategy=jwt")
+	}
+}
+
+// TestDial_TLSWithAuthOidcUser covers the wiring that is unique to the
+// oidc_user strategy: the token that `login` stored under the profile's name
+// must reach the server as the bearer token on a real dial. The stored token
+// is well inside its expiry, so the credentials never contact the issuer.
+func TestDial_TLSWithAuthOidcUser(t *testing.T) {
+	t.Parallel()
+
+	tmpDir, err := bazel.NewTmpDir("nbictl")
+	checkErr(t, err)
+	serverCertPath := filepath.Join(tmpDir, "localhost.crt.tls")
+	checkErr(t, os.WriteFile(serverCertPath, LocalhostCert, 0o644))
+
+	confDir := t.TempDir()
+	idToken := testLoginIDToken(t, "joey@aalyria.com", time.Now().Add(time.Hour))
+	checkErr(t, newFileTokenStore(confDir, "test").Save(&auth.Tokens{
+		IDToken:      idToken,
+		RefreshToken: "refresh-token-1",
+		Expiry:       time.Now().Add(time.Hour),
+	}))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	g, ctx := errgroup.WithContext(ctx)
+	defer func() { checkErr(t, g.Wait()) }()
+	defer cancel()
+	cert, _ := tls.X509KeyPair(LocalhostCert, LocalhostKey)
+	lis, err := tls.Listen("tcp", "127.0.0.1:0", &tls.Config{Certificates: []tls.Certificate{cert}, NextProtos: []string{"h2"}})
+	checkErr(t, err)
+	fakeGrpcServer, err := startFakeModelServer(ctx, g, lis)
+	checkErr(t, err)
+
+	nbiConf := &nbictlpb.Config{
+		Url:  lis.Addr().String(),
+		Name: "test",
+		TransportSecurity: &nbictlpb.Config_TransportSecurity{
+			Type: &nbictlpb.Config_TransportSecurity_ServerCertificate_{
+				ServerCertificate: &nbictlpb.Config_TransportSecurity_ServerCertificate{
+					CertFilePath: serverCertPath,
+				},
+			},
+		},
+		AuthStrategy: oidcUserAuthStrategy("https://zitadel.example.com", "client-1"),
+	}
+	conn, err := dial(ctx, nbiConf, confDir, nil)
+	checkErr(t, err)
+	defer conn.Close()
+
+	client := modelpb.NewModelClient(conn)
+	_, err = client.ListEntities(ctx, &modelpb.ListEntitiesRequest{})
+	checkErr(t, err)
+
+	if fakeGrpcServer.NumCallsListEntities.Load() != 1 {
+		t.Fatal("ListEntities has not been invoked correctly")
+	}
+	got := fakeGrpcServer.IncomingMetadata[0].Get(authHeader)
+	if len(got) != 1 {
+		t.Fatalf("the %s header holds %d values, want exactly 1", authHeader, len(got))
+	}
+	if want := "Bearer " + idToken; got[0] != want {
+		t.Errorf("the %s header carries %q, want the stored ID token", authHeader, got[0])
+	}
+}
+
+// TestDial_TLSWithAuthOidcUserRefreshes covers the silent refresh on the dial
+// path, which is the whole point of the strategy and which no other test
+// reaches. The stored token is already expired, so the credentials must
+// exchange the refresh token at the issuer, send the new ID token, and write
+// the rotated refresh token back to the store.
+func TestDial_TLSWithAuthOidcUserRefreshes(t *testing.T) {
+	t.Parallel()
+
+	tmpDir, err := bazel.NewTmpDir("nbictl")
+	checkErr(t, err)
+	serverCertPath := filepath.Join(tmpDir, "localhost.crt.tls")
+	checkErr(t, os.WriteFile(serverCertPath, LocalhostCert, 0o644))
+
+	refreshedIDToken := testLoginIDToken(t, "joey@aalyria.com", time.Now().Add(time.Hour))
+	fi := newFakeIssuer(t, fakeIssuerConfig{
+		idToken:      refreshedIDToken,
+		refreshToken: "refresh-token-2",
+	})
+
+	confDir := t.TempDir()
+	store := newFileTokenStore(confDir, "test")
+	staleIDToken := testLoginIDToken(t, "joey@aalyria.com", time.Now().Add(-time.Hour))
+	checkErr(t, store.Save(&auth.Tokens{
+		IDToken:      staleIDToken,
+		RefreshToken: "refresh-token-1",
+		Expiry:       time.Now().Add(-time.Hour),
+	}))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	g, ctx := errgroup.WithContext(ctx)
+	defer func() { checkErr(t, g.Wait()) }()
+	defer cancel()
+	cert, _ := tls.X509KeyPair(LocalhostCert, LocalhostKey)
+	lis, err := tls.Listen("tcp", "127.0.0.1:0", &tls.Config{Certificates: []tls.Certificate{cert}, NextProtos: []string{"h2"}})
+	checkErr(t, err)
+	fakeGrpcServer, err := startFakeModelServer(ctx, g, lis)
+	checkErr(t, err)
+
+	nbiConf := &nbictlpb.Config{
+		Url:  lis.Addr().String(),
+		Name: "test",
+		TransportSecurity: &nbictlpb.Config_TransportSecurity{
+			Type: &nbictlpb.Config_TransportSecurity_ServerCertificate_{
+				ServerCertificate: &nbictlpb.Config_TransportSecurity_ServerCertificate{
+					CertFilePath: serverCertPath,
+				},
+			},
+		},
+		AuthStrategy: oidcUserAuthStrategy(fi.URL, "client-1"),
+	}
+	conn, err := dial(ctx, nbiConf, confDir, fi.Client())
+	checkErr(t, err)
+	defer conn.Close()
+
+	client := modelpb.NewModelClient(conn)
+	_, err = client.ListEntities(ctx, &modelpb.ListEntitiesRequest{})
+	checkErr(t, err)
+
+	got := fakeGrpcServer.IncomingMetadata[0].Get(authHeader)
+	if len(got) != 1 {
+		t.Fatalf("the %s header holds %d values, want exactly 1", authHeader, len(got))
+	}
+	if got[0] == "Bearer "+staleIDToken {
+		t.Fatal("the expired ID token was sent; the credentials did not refresh")
+	}
+	if want := "Bearer " + refreshedIDToken; got[0] != want {
+		t.Errorf("the %s header carries %q, want the refreshed ID token", authHeader, got[0])
+	}
+
+	stored, err := store.Load()
+	checkErr(t, err)
+	if stored.RefreshToken != "refresh-token-2" {
+		t.Errorf("the stored refresh token is %q, want the rotated %q", stored.RefreshToken, "refresh-token-2")
 	}
 }
 
