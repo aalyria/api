@@ -200,7 +200,8 @@ message Beam {
   // The collection of endpoints served by the beam.
   // For example, a collection of user terminals (UTs) served.
   //
-  // Each endpoint is the ID of a network node in Spacetime's network model.
+  // Each endpoint is identified by the ID of its platform in Spacetime's
+  // network model. See Endpoint.id.
   repeated Endpoint endpoints = 4;
 
   // The beam candidate ID this beam was formed from (unique per source antenna
@@ -298,6 +299,12 @@ enum Polarization {
 }
 
 message Endpoint {
+  // The NMTS entity ID of the nmts.v1.ek.physical.Platform to which this
+  // endpoint belongs.
+  //
+  // This ID is used as-is, without being resolved against the network model.
+  // It becomes Endpoint.platform_id in the Scheduling API, and the key of the
+  // map that holds it is derived from this ID.
   optional string id = 1;
   optional string lowest_supported_rx_modcod = 2;
   optional double rx_reference_throughput_bps = 3;
