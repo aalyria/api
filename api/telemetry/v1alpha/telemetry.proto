@@ -31,6 +31,7 @@ service Telemetry {
 message ExportMetricsRequest {
   repeated InterfaceMetrics interface_metrics = 1;
   repeated ModemMetrics modem_metrics = 2;
+  repeated BundleMetrics bundle_metrics = 3;
 }
 
 // A collection of metrics from a network interface.
@@ -266,6 +267,57 @@ message StandardInterfaceStatisticsDataPoint {
 
   // Number of packets dropped due to mismatch in destination MAC address.
   optional int64 rx_otherhost_dropped = 27;
+}
+
+// A collection of metrics from a Bundle Protocol agent.
+message BundleMetrics {
+  // Required. The EK_BP_AGENT_FN id, or one of its administrative EIDs.
+  optional string bp_agent_id = 1;
+
+  // Data points describing the BP agent's time-varying storage usage.
+  repeated BundleStorageDataPoint storage_data_points = 2;
+
+  // Data points describing the time-varying values of the BP agent's
+  // forwarding statistics.
+  repeated BundleForwardingStatisticsDataPoint
+    forwarding_statistics_data_points = 3;
+}
+
+// A data point in a timeseries that describes a BP agent's time-varying
+// storage usage.
+message BundleStorageDataPoint {
+  // Required. When the value was captured.
+  google.protobuf.Timestamp time = 1;
+
+  optional int64 bytes_used = 2;
+}
+
+// A data point in a timeseries that describes the time-varying values of
+// a BP agent's forwarding activities.
+message BundleForwardingStatisticsDataPoint {
+  // The start time of the sums.
+  google.protobuf.Timestamp start_time = 1;
+
+  // Required. When the statistics were captured.
+  google.protobuf.Timestamp time = 2;
+
+  // Number of good bundles received by the BP agent.
+  optional int64 rx_bundles = 3;
+
+  // Number of bundles successfully transmitted.
+  optional int64 tx_bundles = 4;
+
+  // Number of good received bytes, corresponding to rx_bundles.
+  optional int64 rx_bytes = 5;
+
+  // Number of good transmitted bytes, corresponding to tx_bundles.
+  optional int64 tx_bytes = 6;
+
+  // Total number of bad bundles received by this BP agent.
+  optional int64 rx_errors = 7;
+
+  // Total number of bundles encountering transmit problems.
+  optional int64 tx_errors = 8;
 }
 
 // A collection of metrics from a modem.
