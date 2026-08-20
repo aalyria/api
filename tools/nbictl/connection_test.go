@@ -15,8 +15,10 @@
 package nbictl
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -107,7 +109,7 @@ func TestDial_insecure(t *testing.T) {
 			Type: &nbictlpb.Config_TransportSecurity_Insecure{},
 		},
 	}
-	conn, err := dial(ctx, nbiConf, t.TempDir(), nil)
+	conn, err := dial(ctx, nbiConf, t.TempDir(), nil, io.Discard)
 	checkErr(t, err)
 	defer conn.Close()
 
@@ -164,7 +166,7 @@ func TestDial_serverCertificate(t *testing.T) {
 			},
 		},
 	}
-	conn, err := dial(ctx, nbiConf, t.TempDir(), nil)
+	conn, err := dial(ctx, nbiConf, t.TempDir(), nil, io.Discard)
 	checkErr(t, err)
 	defer conn.Close()
 
@@ -216,7 +218,7 @@ func TestDial_TLSWithAuthNone(t *testing.T) {
 			Type: &nbictlpb.Config_AuthStrategy_None{},
 		},
 	}
-	conn, err := dial(ctx, nbiConf, t.TempDir(), nil)
+	conn, err := dial(ctx, nbiConf, t.TempDir(), nil, io.Discard)
 	checkErr(t, err)
 	defer conn.Close()
 
@@ -276,7 +278,7 @@ func TestDial_TLSWithAuthJwt(t *testing.T) {
 			},
 		},
 	}
-	conn, err := dial(ctx, nbiConf, t.TempDir(), nil)
+	conn, err := dial(ctx, nbiConf, t.TempDir(), nil, io.Discard)
 	checkErr(t, err)
 	defer conn.Close()
 
@@ -305,7 +307,7 @@ func TestDial_TLSWithAuthOidcUser(t *testing.T) {
 	checkErr(t, os.WriteFile(serverCertPath, LocalhostCert, 0o644))
 
 	confDir := t.TempDir()
-	idToken := testLoginIDToken(t, "joey@aalyria.com", time.Now().Add(time.Hour))
+	idToken := testLoginIDToken(t, "user@example.com", time.Now().Add(time.Hour))
 	checkErr(t, newFileTokenStore(confDir, "test").Save(&auth.Tokens{
 		IDToken:      idToken,
 		RefreshToken: "refresh-token-1",
@@ -334,7 +336,7 @@ func TestDial_TLSWithAuthOidcUser(t *testing.T) {
 		},
 		AuthStrategy: oidcUserAuthStrategy("https://zitadel.example.com", "client-1"),
 	}
-	conn, err := dial(ctx, nbiConf, confDir, nil)
+	conn, err := dial(ctx, nbiConf, confDir, nil, io.Discard)
 	checkErr(t, err)
 	defer conn.Close()
 
@@ -367,7 +369,7 @@ func TestDial_TLSWithAuthOidcUserRefreshes(t *testing.T) {
 	serverCertPath := filepath.Join(tmpDir, "localhost.crt.tls")
 	checkErr(t, os.WriteFile(serverCertPath, LocalhostCert, 0o644))
 
-	refreshedIDToken := testLoginIDToken(t, "joey@aalyria.com", time.Now().Add(time.Hour))
+	refreshedIDToken := testLoginIDToken(t, "user@example.com", time.Now().Add(time.Hour))
 	fi := newFakeIssuer(t, fakeIssuerConfig{
 		idToken:      refreshedIDToken,
 		refreshToken: "refresh-token-2",
@@ -375,7 +377,7 @@ func TestDial_TLSWithAuthOidcUserRefreshes(t *testing.T) {
 
 	confDir := t.TempDir()
 	store := newFileTokenStore(confDir, "test")
-	staleIDToken := testLoginIDToken(t, "joey@aalyria.com", time.Now().Add(-time.Hour))
+	staleIDToken := testLoginIDToken(t, "user@example.com", time.Now().Add(-time.Hour))
 	checkErr(t, store.Save(&auth.Tokens{
 		IDToken:      staleIDToken,
 		RefreshToken: "refresh-token-1",
@@ -404,7 +406,7 @@ func TestDial_TLSWithAuthOidcUserRefreshes(t *testing.T) {
 		},
 		AuthStrategy: oidcUserAuthStrategy(fi.URL, "client-1"),
 	}
-	conn, err := dial(ctx, nbiConf, confDir, fi.Client())
+	conn, err := dial(ctx, nbiConf, confDir, fi.Client(), io.Discard)
 	checkErr(t, err)
 	defer conn.Close()
 
@@ -709,4 +711,72 @@ func TestResolveEndpoint_DoesNotMutateBase(t *testing.T) {
 
 func testingKey(s string) string {
 	return strings.ReplaceAll(s, "TESTING KEY", "PRIVATE KEY")
+}
+
+// TestResolvePerRPCCredentials_InsecureAndQUICAreNotInterchangeable pins the
+// one place where the two transport flags mean different things. The
+// deprecated configuration sends no credentials at all on an insecure
+// connection, but a QUIC connection is still authenticated: QUIC carries its
+// own transport security that gRPC cannot see, so it only relaxes the
+// credential's own check.
+//
+// Passing the two as separate adjacent bools let a call site transpose them
+// with no compiler complaint, and a transposition here would send a QUIC
+// connection out unauthenticated. transportMode's named fields make that
+// impossible; this test pins the behaviour the naming protects.
+func TestResolvePerRPCCredentials_InsecureAndQUICAreNotInterchangeable(t *testing.T) {
+	t.Parallel()
+
+	// No auth strategy and no private key: the deprecated path.
+	setting := &nbictlpb.Config{Name: "dev", Url: "nbi.example.com"}
+
+	creds, err := resolvePerRPCCredentials(
+		context.Background(), setting, t.TempDir(), nil, io.Discard,
+		transportMode{insecure: true})
+	if err != nil {
+		t.Fatalf("an insecure connection returned an error instead of no credentials: %v", err)
+	}
+	if creds != nil {
+		t.Errorf("an insecure connection returned credentials %v, want none", creds)
+	}
+
+	// The same setting over QUIC must still look for a credential rather than
+	// silently sending none.
+	if _, err := resolvePerRPCCredentials(
+		context.Background(), setting, t.TempDir(), nil, io.Discard,
+		transportMode{quic: true}); err == nil {
+		t.Error("a QUIC connection sent no credentials and reported no error, so it was treated as insecure")
+	}
+}
+
+// TestDial_ReportsAPermissiveKeyFileToTheGivenWriter pins that a warning
+// raised while the credentials are built reaches the caller's writer. dial
+// hardcoded os.Stderr, so the one warning nbictl raises about a key file's
+// mode went somewhere no caller could redirect and no test could read.
+func TestDial_ReportsAPermissiveKeyFileToTheGivenWriter(t *testing.T) {
+	t.Parallel()
+
+	confDir := t.TempDir()
+	keyPath := writeServiceAccountKeyFile(t, confDir)
+	if err := os.Chmod(keyPath, 0o644); err != nil {
+		t.Fatalf("relaxing the key file mode: %v", err)
+	}
+
+	setting := &nbictlpb.Config{
+		Name:              "robot",
+		Url:               "nbi.example.com",
+		TransportSecurity: &nbictlpb.Config_TransportSecurity{Type: &nbictlpb.Config_TransportSecurity_Insecure{}},
+		AuthStrategy:      oidcServiceAccountAuthStrategy("https://zitadel.example.com", "test-project", keyPath),
+	}
+
+	errs := &bytes.Buffer{}
+	conn, err := dial(context.Background(), setting, confDir, nil, errs)
+	if err != nil {
+		t.Fatalf("dial returned an unexpected error: %v", err)
+	}
+	t.Cleanup(func() { conn.Close() })
+
+	if !strings.Contains(errs.String(), keyPath) {
+		t.Errorf("the permissive key file warning did not reach the writer; it held %q", errs)
+	}
 }

@@ -19,6 +19,7 @@ go_library(
     srcs = [
         "auth.go",
         "doc.go",
+        "oidcserviceaccount.go",
         "oidcuser.go",
     ],
     importpath = "aalyria.com/spacetime/auth",
@@ -37,6 +38,7 @@ go_test(
     name = "auth_test",
     srcs = [
         "auth_test.go",
+        "oidcserviceaccount_test.go",
         "oidcuser_test.go",
     ],
     embed = [":auth"],

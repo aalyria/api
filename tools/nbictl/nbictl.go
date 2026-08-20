@@ -333,7 +333,7 @@ func App() *cli.App {
 							},
 							&cli.StringFlag{
 								Name:  "auth_strategy",
-								Usage: "Authentication strategy. Allowed values: [none, jwt, oidc, oidc_user]. When 'none', no authentication credentials are sent. Use 'oidc_user' with the `login` command to authenticate as a person.",
+								Usage: "Authentication strategy. Allowed values: [none, jwt, oidc, oidc_user, oidc_service_account]. When 'none', no authentication credentials are sent. Use 'oidc_user' with the `login` command to authenticate as a person.",
 							},
 							&cli.StringFlag{
 								Name:  "client_id",
@@ -341,11 +341,19 @@ func App() *cli.App {
 							},
 							&cli.StringFlag{
 								Name:  "issuer",
-								Usage: "OIDC issuer URL (used with --auth_strategy=oidc_user). Must be https.",
+								Usage: "OIDC issuer URL (used with --auth_strategy=oidc_user or --auth_strategy=oidc_service_account). Must be https.",
 							},
 							&cli.StringFlag{
 								Name:  "token_url",
 								Usage: "OIDC token endpoint URL (used with --auth_strategy=oidc).",
+							},
+							&cli.StringFlag{
+								Name:  "project_id",
+								Usage: "Identity provider project ID (used with --auth_strategy=oidc_service_account).",
+							},
+							&cli.StringFlag{
+								Name:  "service_account_key_file",
+								Usage: "Path to the identity provider's JSON key file (used with --auth_strategy=oidc_service_account).",
 							},
 							&cli.StringFlag{
 								Name:  "endpoint_config",

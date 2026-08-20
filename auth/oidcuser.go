@@ -34,10 +34,10 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-// ProviderMetadata is the subset of the OIDC discovery document that nbictl
-// reads. The field names are the discovery document's own, so [Discover]
+// providerMetadata is the subset of the OIDC discovery document that nbictl
+// reads. The field names are the discovery document's own, so [discover]
 // decodes the response straight into it.
-type ProviderMetadata struct {
+type providerMetadata struct {
 	Issuer                      string `json:"issuer"`
 	DeviceAuthorizationEndpoint string `json:"device_authorization_endpoint"`
 	TokenEndpoint               string `json:"token_endpoint"`
@@ -45,14 +45,22 @@ type ProviderMetadata struct {
 	RevocationEndpoint string `json:"revocation_endpoint"`
 }
 
-// Discover reads the OpenID Connect discovery document of the given issuer.
-// The issuer must be an https URL. A nil client selects
-// [http.DefaultClient].
-func Discover(ctx context.Context, issuer string, client *http.Client) (*ProviderMetadata, error) {
+// discover reads the OpenID Connect discovery document of the given issuer.
+// The issuer must be an https URL. A nil client selects [http.DefaultClient].
+//
+// The client is an [HTTPDoer] rather than an [http.Client] so that discovery
+// travels the same path as every other request its caller makes. Discovery only
+// needs Do. A caller that injects a fake, or a Doer that pins a certificate or
+// carries mTLS, would otherwise find its exchange going through that Doer while
+// discovery reached past it to [http.DefaultClient].
+func discover(ctx context.Context, issuer string, client HTTPDoer) (*providerMetadata, error) {
 	if !strings.HasPrefix(issuer, "https://") {
 		return nil, fmt.Errorf("the issuer %q must start with https://", issuer)
 	}
-	client = cmp.Or(client, http.DefaultClient)
+	// httpDoerOrDefault and not cmp.Or: a nil *http.Client held in an interface
+	// is not a nil interface, so cmp.Or would pass it through and Do would
+	// panic on it.
+	client = httpDoerOrDefault(client)
 
 	docURL := strings.TrimSuffix(issuer, "/") + "/.well-known/openid-configuration"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, docURL, nil)
@@ -75,7 +83,7 @@ func Discover(ctx context.Context, issuer string, client *http.Client) (*Provide
 		return nil, fmt.Errorf("the discovery endpoint %s returned status %d: %s", docURL, resp.StatusCode, truncateBody(body))
 	}
 
-	doc := &ProviderMetadata{}
+	doc := &providerMetadata{}
 	if err := json.Unmarshal(body, doc); err != nil {
 		return nil, fmt.Errorf("parsing the discovery document from %s: %w", docURL, err)
 	}
@@ -159,7 +167,7 @@ type OIDCUserConfig struct {
 	SkipTransportSecurity bool
 }
 
-func (c OIDCUserConfig) oauth2Config(meta *ProviderMetadata) *oauth2.Config {
+func (c OIDCUserConfig) oauth2Config(meta *providerMetadata) *oauth2.Config {
 	return &oauth2.Config{
 		ClientID: c.ClientID,
 		Scopes:   defaultOIDCUserScopes,
@@ -179,15 +187,15 @@ func (c OIDCUserConfig) withHTTPClient(ctx context.Context) context.Context {
 	return context.WithValue(ctx, oauth2.HTTPClient, c.HTTPClient)
 }
 
-// IDTokenClaims are the ID token claims that nbictl reads.
-type IDTokenClaims struct {
+// idTokenClaims are the email and exp claims of an ID token.
+type idTokenClaims struct {
 	Email     string
 	ExpiresAt time.Time
 }
 
-// ParseIDTokenClaims reads the email and exp claims of an ID token. It does
+// parseIDTokenClaims reads the email and exp claims of an ID token. It does
 // not verify the signature; the Spacetime server does that.
-func ParseIDTokenClaims(idToken string) (*IDTokenClaims, error) {
+func parseIDTokenClaims(idToken string) (*idTokenClaims, error) {
 	claims := jwt.MapClaims{}
 	if _, _, err := jwt.NewParser().ParseUnverified(idToken, claims); err != nil {
 		return nil, fmt.Errorf("parsing the ID token: %w", err)
@@ -202,7 +210,7 @@ func ParseIDTokenClaims(idToken string) (*IDTokenClaims, error) {
 	}
 
 	email, _ := claims["email"].(string)
-	return &IDTokenClaims{Email: email, ExpiresAt: expiresAt.Time}, nil
+	return &idTokenClaims{Email: email, ExpiresAt: expiresAt.Time}, nil
 }
 
 // tokensFromOAuth2 extracts the ID token and its claims from a token
@@ -213,7 +221,7 @@ func tokensFromOAuth2(tok *oauth2.Token) (*Tokens, error) {
 		return nil, errors.New("the identity provider returned no ID token; make sure the openid scope is granted and that the application's Auth Token Type is JWT")
 	}
 
-	claims, err := ParseIDTokenClaims(idToken)
+	claims, err := parseIDTokenClaims(idToken)
 	if err != nil {
 		return nil, err
 	}
@@ -255,7 +263,7 @@ func (c OIDCUserConfig) loginAgainHint() string {
 
 // Revoke asks the provider to invalidate a refresh token (RFC 7009).
 func Revoke(ctx context.Context, c OIDCUserConfig, refreshToken string) error {
-	meta, err := Discover(ctx, c.Issuer, c.HTTPClient)
+	meta, err := discover(ctx, c.Issuer, c.HTTPClient)
 	if err != nil {
 		return err
 	}
@@ -447,7 +455,7 @@ func (uc *oidcUserCredentials) getToken(ctx context.Context) (string, error) {
 }
 
 func (uc *oidcUserCredentials) refresh(ctx context.Context, refreshToken string) (*Tokens, error) {
-	meta, err := Discover(ctx, uc.config.Issuer, uc.config.HTTPClient)
+	meta, err := discover(ctx, uc.config.Issuer, uc.config.HTTPClient)
 	if err != nil {
 		return nil, uc.sessionExpired(err)
 	}
@@ -470,7 +478,7 @@ func (uc *oidcUserCredentials) refresh(ctx context.Context, refreshToken string)
 // it polls the token endpoint until the user approves the login, the code
 // expires, or ctx is cancelled.
 func DeviceLogin(ctx context.Context, c OIDCUserConfig, prompt func(DevicePrompt) error) (*Tokens, error) {
-	meta, err := Discover(ctx, c.Issuer, c.HTTPClient)
+	meta, err := discover(ctx, c.Issuer, c.HTTPClient)
 	if err != nil {
 		return nil, err
 	}

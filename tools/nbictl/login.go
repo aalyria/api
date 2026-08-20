@@ -45,15 +45,23 @@ type fileTokenStore struct {
 }
 
 func newFileTokenStore(confDir, profileName string) *fileTokenStore {
-	// Replacing the unsafe characters is not injective: "prod/x" and "prod_x"
-	// both reduce to "prod_x". The two profiles can name different issuers and
-	// different NBI hosts, so a shared file would send one profile's ID token
-	// to the other profile's endpoint. A digest of the original name keeps
-	// them apart.
+	return &fileTokenStore{path: filepath.Join(confDir, tokenDirName, profileFileName(profileName, ".json"))}
+}
+
+// profileFileName builds the name of a per-profile file in the token
+// directory.
+//
+// Replacing the unsafe characters is not injective: "prod/x" and "prod_x" both
+// reduce to "prod_x". The two profiles can name different issuers and
+// different NBI hosts, so a shared file would send one profile's token to the
+// other profile's endpoint. A digest of the original name keeps them apart.
+//
+// The suffix separates the kinds of token that one profile can hold. They are
+// not interchangeable, so neither must ever be parsed as the other.
+func profileFileName(profileName, suffix string) string {
 	digest := sha256.Sum256([]byte(profileName))
 	name := unsafeProfileChars.ReplaceAllString(profileName, "_")
-	fileName := fmt.Sprintf("%s-%x.json", name, digest[:4])
-	return &fileTokenStore{path: filepath.Join(confDir, tokenDirName, fileName)}
+	return fmt.Sprintf("%s-%x%s", name, digest[:4], suffix)
 }
 
 // storedTokens is the on-disk form of [auth.Tokens]. It restates the fields
@@ -133,10 +141,15 @@ func (s *fileTokenStore) Delete() error {
 }
 
 // httpClientFromMetadata returns the HTTP client that a test injects through
-// the app metadata. It returns nil in production, which selects
-// [http.DefaultClient].
+// the app metadata. In production the metadata holds none, and it returns
+// [http.DefaultClient]. It never returns nil: the result reaches an interface
+// field of the auth package, and a nil *http.Client in an interface is not a
+// nil interface.
 func httpClientFromMetadata(appCtx *cli.Context) *http.Client {
 	client, _ := appCtx.App.Metadata["oidcHTTPClient"].(*http.Client)
+	if client == nil {
+		return http.DefaultClient
+	}
 	return client
 }
 

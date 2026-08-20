@@ -279,6 +279,26 @@ type HTTPDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
+// httpDoerOrDefault returns the Doer that a config's HTTPClient field
+// selects, and [http.DefaultClient] when the field holds no usable client.
+//
+// A nil *http.Client that a caller assigns to an interface field makes an
+// interface that is not nil but holds a nil pointer, so `doer == nil` cannot
+// see it and the first Do call panics. The type assertion catches that case.
+// It catches only a nil *http.Client: a nil pointer of any other Doer type
+// comes back unchanged and still panics on the first Do call. That narrowness
+// is deliberate. Reflection would catch every type, and it is not worth the
+// complexity for a field that holds an *http.Client in every known caller.
+func httpDoerOrDefault(doer HTTPDoer) HTTPDoer {
+	if doer == nil {
+		return http.DefaultClient
+	}
+	if client, ok := doer.(*http.Client); ok && client == nil {
+		return http.DefaultClient
+	}
+	return doer
+}
+
 // OIDCConfig configures OIDC client_credentials token exchange.
 type OIDCConfig struct {
 	Clock                 clockwork.Clock
@@ -325,15 +345,10 @@ func NewOIDCCredentials(_ context.Context, c OIDCConfig) (credentials.PerRPCCred
 		return nil, err
 	}
 
-	httpClient := c.HTTPClient
-	if httpClient == nil {
-		httpClient = http.DefaultClient
-	}
-
 	return &oidcCredentials{
 		config: c,
 		pkey:   pkey,
-		client: httpClient,
+		client: httpDoerOrDefault(c.HTTPClient),
 	}, nil
 }
 

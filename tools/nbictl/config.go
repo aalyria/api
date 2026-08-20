@@ -210,6 +210,38 @@ func migrateDeprecatedAuthFields(conf *nbictlpb.Config) {
 	conf.PrivKey = ""
 }
 
+// checkAuthStrategyIsComplete refuses a merged oidc_service_account strategy
+// that is missing a field.
+//
+// The merge overwrites a field only when the new value is not empty, so a
+// switch to this strategy from another one leaves every omitted field unset,
+// and a switch back to it from another strategy would resurrect the key file
+// of whichever service account the profile last named. nbictl would then sign
+// an assertion with that key and post it to the newly named identity provider.
+// Every field is reported at once, because an operator who fills them in one
+// error at a time runs the command three times.
+func checkAuthStrategyIsComplete(strategy *nbictlpb.Config_AuthStrategy) error {
+	sa, ok := strategy.GetType().(*nbictlpb.Config_AuthStrategy_OidcServiceAccount_)
+	if !ok {
+		return nil
+	}
+
+	var missing []string
+	if sa.OidcServiceAccount.GetIssuer() == "" {
+		missing = append(missing, "--issuer")
+	}
+	if sa.OidcServiceAccount.GetProjectId() == "" {
+		missing = append(missing, "--project_id")
+	}
+	if sa.OidcServiceAccount.GetServiceAccountKeyFile() == "" {
+		missing = append(missing, "--service_account_key_file")
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("the oidc_service_account strategy needs %s; give every flag when the profile does not already use this strategy", strings.Join(missing, ", "))
+	}
+	return nil
+}
+
 func mergeAuthStrategy(existing, incoming *nbictlpb.Config_AuthStrategy) *nbictlpb.Config_AuthStrategy {
 	if _, ok := incoming.GetType().(*nbictlpb.Config_AuthStrategy_None); ok {
 		return incoming
@@ -280,6 +312,28 @@ func mergeAuthStrategy(existing, incoming *nbictlpb.Config_AuthStrategy) *nbictl
 
 		return &nbictlpb.Config_AuthStrategy{
 			Type: &nbictlpb.Config_AuthStrategy_OidcUser_{OidcUser: base},
+		}
+
+	case *nbictlpb.Config_AuthStrategy_OidcServiceAccount_:
+		var base *nbictlpb.Config_AuthStrategy_OidcServiceAccount
+		if exSA, ok := existing.GetType().(*nbictlpb.Config_AuthStrategy_OidcServiceAccount_); ok {
+			base = proto.Clone(exSA.OidcServiceAccount).(*nbictlpb.Config_AuthStrategy_OidcServiceAccount)
+		} else {
+			base = &nbictlpb.Config_AuthStrategy_OidcServiceAccount{}
+		}
+
+		if in.OidcServiceAccount.GetIssuer() != "" {
+			base.Issuer = in.OidcServiceAccount.GetIssuer()
+		}
+		if in.OidcServiceAccount.GetProjectId() != "" {
+			base.ProjectId = in.OidcServiceAccount.GetProjectId()
+		}
+		if in.OidcServiceAccount.GetServiceAccountKeyFile() != "" {
+			base.ServiceAccountKeyFile = in.OidcServiceAccount.GetServiceAccountKeyFile()
+		}
+
+		return &nbictlpb.Config_AuthStrategy{
+			Type: &nbictlpb.Config_AuthStrategy_OidcServiceAccount_{OidcServiceAccount: base},
 		}
 
 	default:
@@ -411,8 +465,18 @@ func SetConfig(appCtx *cli.Context) error {
 				},
 			},
 		}
+	case "oidc_service_account":
+		authStrategyPB = &nbictlpb.Config_AuthStrategy{
+			Type: &nbictlpb.Config_AuthStrategy_OidcServiceAccount_{
+				OidcServiceAccount: &nbictlpb.Config_AuthStrategy_OidcServiceAccount{
+					Issuer:                appCtx.String("issuer"),
+					ProjectId:             appCtx.String("project_id"),
+					ServiceAccountKeyFile: appCtx.String("service_account_key_file"),
+				},
+			},
+		}
 	default:
-		return fmt.Errorf("unexpected auth strategy: %s (allowed: none, jwt, oidc, oidc_user)", authStrategy)
+		return fmt.Errorf("unexpected auth strategy: %s (allowed: none, jwt, oidc, oidc_user, oidc_service_account)", authStrategy)
 	}
 
 	var endpointConfigPB *nbictlpb.Config_EndpointConfig
@@ -474,6 +538,10 @@ func setConfig(outWriter, errWriter io.Writer, confToCreate *nbictlpb.Config, co
 	}
 
 	migrateDeprecatedAuthFields(confToCreate)
+	// Whether this command names an auth strategy at all, recorded before the
+	// merge below replaces confToCreate with the stored profile. A command that
+	// names none must not be judged on the strategy the profile already holds.
+	authStrategyGiven := confToCreate.GetAuthStrategy() != nil
 
 	confProto, err := readConfigs(confFile)
 	if err != nil {
@@ -512,6 +580,12 @@ func setConfig(outWriter, errWriter io.Writer, confToCreate *nbictlpb.Config, co
 		found = true
 		confToCreate = confProto
 		break
+	}
+
+	if authStrategyGiven {
+		if err := checkAuthStrategyIsComplete(confToCreate.GetAuthStrategy()); err != nil {
+			return err
+		}
 	}
 
 	if !found {

@@ -529,6 +529,41 @@ func TestOIDCCredentials_TokenExchange(t *testing.T) {
 	}
 }
 
+// TestOIDCCredentials_NilHTTPClientPointer makes sure that a nil
+// *http.Client never reaches the token exchange. HTTPClient is an interface,
+// so a nil *http.Client stored in it is not a nil interface, and a plain nil
+// check takes it for a client that the caller injected. The first Do call on
+// it panics.
+func TestOIDCCredentials_NilHTTPClientPointer(t *testing.T) {
+	t.Parallel()
+
+	clock := clockwork.NewFakeClockAt(time.Date(2023, time.January, 1, 12, 0, 0, 0, time.UTC))
+	server := newFakeTokenServer(t, &testKey, "test-client", clock, nil)
+	defer server.Close()
+
+	creds, err := NewOIDCCredentials(context.Background(), OIDCConfig{
+		Clock:                 clock,
+		PrivateKey:            bytes.NewBuffer(testKey.privatePEM),
+		PrivateKeyID:          "test-key-id",
+		ClientID:              "test-client",
+		TokenURL:              server.URL,
+		HTTPClient:            (*http.Client)(nil),
+		SkipTransportSecurity: true,
+	})
+	if err != nil {
+		t.Fatalf("failed to create OIDC credentials: %v", err)
+	}
+
+	ctx := credentials.NewContextWithRequestInfo(context.Background(), credentials.RequestInfo{Method: "/service.Test/Method"})
+	metadata, err := creds.GetRequestMetadata(ctx, "https://api.example.com/service.Test")
+	if err != nil {
+		t.Fatalf("GetRequestMetadata failed: %v", err)
+	}
+	if got, want := metadata["authorization"], "Bearer fake-access-token"; got != want {
+		t.Errorf("authorization header: got %q, want %q", got, want)
+	}
+}
+
 func TestOIDCCredentials_TokenCaching(t *testing.T) {
 	t.Parallel()
 

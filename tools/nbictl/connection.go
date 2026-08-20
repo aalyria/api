@@ -21,6 +21,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -142,7 +143,32 @@ func readPrivateKeyFromSigningStrategy(ss *nbictlpb.Config_SigningStrategy) (*by
 	}
 }
 
-func resolvePerRPCCredentials(ctx context.Context, setting *nbictlpb.Config, confDir string, httpClient *http.Client, isInsecure, useQUIC bool) (credentials.PerRPCCredentials, error) {
+// transportMode describes how the connection to the NBI is secured.
+//
+// The two flags travel together in a struct because every strategy reads them
+// together, and because they do not mean the same thing: an insecure
+// connection sends no deprecated credential at all, while a QUIC connection is
+// still authenticated. As two adjacent bool parameters they were transposable
+// at a call site with no compiler complaint, and a transposition would have
+// sent a QUIC connection out unauthenticated. Named fields cannot be
+// transposed.
+type transportMode struct {
+	// insecure reports the operator's choice of a connection with no transport
+	// security.
+	insecure bool
+	// quic reports a QUIC connection, which carries transport security that
+	// gRPC does not see.
+	quic bool
+}
+
+// skipTransportSecurity reports that a credential must not insist on a private
+// and integrity-checked channel: either gRPC cannot see the security that is
+// there, or the operator asked for none.
+func (m transportMode) skipTransportSecurity() bool {
+	return m.quic || m.insecure
+}
+
+func resolvePerRPCCredentials(ctx context.Context, setting *nbictlpb.Config, confDir string, httpClient *http.Client, errWriter io.Writer, mode transportMode) (credentials.PerRPCCredentials, error) {
 	clock := clockwork.NewRealClock()
 
 	switch t := setting.GetAuthStrategy().GetType().(type) {
@@ -160,7 +186,7 @@ func resolvePerRPCCredentials(ctx context.Context, setting *nbictlpb.Config, con
 			PrivateKey:            privateKey,
 			PrivateKeyID:          jwt.GetPrivateKeyId(),
 			Email:                 jwt.GetEmail(),
-			SkipTransportSecurity: useQUIC || isInsecure,
+			SkipTransportSecurity: mode.skipTransportSecurity(),
 		}
 		creds, err := auth.NewCredentials(ctx, config)
 		if err != nil {
@@ -180,7 +206,7 @@ func resolvePerRPCCredentials(ctx context.Context, setting *nbictlpb.Config, con
 			PrivateKeyID:          oidc.GetPrivateKeyId(),
 			ClientID:              oidc.GetClientId(),
 			TokenURL:              oidc.GetTokenUrl(),
-			SkipTransportSecurity: useQUIC || isInsecure,
+			SkipTransportSecurity: mode.skipTransportSecurity(),
 		}
 		creds, err := auth.NewOIDCCredentials(ctx, config)
 		if err != nil {
@@ -191,16 +217,45 @@ func resolvePerRPCCredentials(ctx context.Context, setting *nbictlpb.Config, con
 	case *nbictlpb.Config_AuthStrategy_OidcUser_:
 		config := oidcUserConfig(setting, t.OidcUser, httpClient)
 		config.Clock = clock
-		config.SkipTransportSecurity = useQUIC || isInsecure
+		config.SkipTransportSecurity = mode.skipTransportSecurity()
 		creds, err := auth.NewOIDCUserCredentials(ctx, config, newFileTokenStore(confDir, setting.GetName()))
 		if err != nil {
 			return nil, fmt.Errorf("unable to create OIDC user credentials: %w", err)
 		}
 		return creds, nil
 
+	case *nbictlpb.Config_AuthStrategy_OidcServiceAccount_:
+		sa := t.OidcServiceAccount
+		key, err := readServiceAccountKey(errWriter, sa.GetServiceAccountKeyFile())
+		if err != nil {
+			return nil, err
+		}
+		identity := serviceAccountIdentity{
+			issuer:    sa.GetIssuer(),
+			projectID: sa.GetProjectId(),
+			userID:    key.UserID,
+			keyID:     key.KeyID,
+		}
+		config := auth.OIDCServiceAccountConfig{
+			Clock:                 clock,
+			Issuer:                sa.GetIssuer(),
+			ProjectID:             sa.GetProjectId(),
+			KeyID:                 key.KeyID,
+			UserID:                key.UserID,
+			PrivateKey:            bytes.NewBufferString(key.Key),
+			HTTPClient:            httpClient,
+			TokenStore:            newServiceAccountTokenStore(confDir, setting.GetName(), identity, errWriter),
+			SkipTransportSecurity: mode.skipTransportSecurity(),
+		}
+		creds, err := auth.NewOIDCServiceAccountCredentials(ctx, config)
+		if err != nil {
+			return nil, fmt.Errorf("unable to create OIDC service account credentials: %w", err)
+		}
+		return creds, nil
+
 	case nil:
 		// Backward compatibility: auth_strategy not set, use deprecated fields.
-		if isInsecure {
+		if mode.insecure {
 			return nil, nil
 		}
 		if setting.GetPrivKey() == "" {
@@ -215,7 +270,7 @@ func resolvePerRPCCredentials(ctx context.Context, setting *nbictlpb.Config, con
 			PrivateKey:            bytes.NewBuffer(pkeyBytes),
 			PrivateKeyID:          setting.GetKeyId(),
 			Email:                 setting.GetEmail(),
-			SkipTransportSecurity: useQUIC,
+			SkipTransportSecurity: mode.skipTransportSecurity(),
 		}
 		creds, err := auth.NewCredentials(ctx, config)
 		if err != nil {
@@ -252,7 +307,7 @@ func resolveAPIDialOpts(appCtx *cli.Context, svc serviceKey) (string, []grpc.Dia
 	if err != nil {
 		return "", nil, err
 	}
-	dialOpts, err := getDialOpts(appCtx.Context, resolved, appConfDir, httpClientFromMetadata(appCtx))
+	dialOpts, err := getDialOpts(appCtx.Context, resolved, appConfDir, httpClientFromMetadata(appCtx), appCtx.App.ErrWriter)
 	if err != nil {
 		return "", nil, fmt.Errorf("unable to construct dial options: %w", err)
 	}
@@ -293,8 +348,8 @@ func adjustURLForAPISubDomain(url string, apiSubDomain string) (string, error) {
 	return apiSubDomain + "." + url, nil
 }
 
-func dial(ctx context.Context, setting *nbictlpb.Config, confDir string, httpClient *http.Client) (*grpc.ClientConn, error) {
-	dialOpts, err := getDialOpts(ctx, setting, confDir, httpClient)
+func dial(ctx context.Context, setting *nbictlpb.Config, confDir string, httpClient *http.Client, errWriter io.Writer) (*grpc.ClientConn, error) {
+	dialOpts, err := getDialOpts(ctx, setting, confDir, httpClient, errWriter)
 	if err != nil {
 		return nil, fmt.Errorf("unable to construct dial options: %w", err)
 	}
@@ -305,7 +360,7 @@ func dial(ctx context.Context, setting *nbictlpb.Config, confDir string, httpCli
 	return conn, nil
 }
 
-func getDialOpts(ctx context.Context, setting *nbictlpb.Config, confDir string, httpClient *http.Client) ([]grpc.DialOption, error) {
+func getDialOpts(ctx context.Context, setting *nbictlpb.Config, confDir string, httpClient *http.Client, errWriter io.Writer) ([]grpc.DialOption, error) {
 	dialOpts := []grpc.DialOption{
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(1024*1024*256), grpc.UseCompressor(gzip.Name)),
 		grpc.WithKeepaliveParams(keepalive.ClientParameters{
@@ -373,7 +428,8 @@ func getDialOpts(ctx context.Context, setting *nbictlpb.Config, confDir string, 
 	dialOpts = append(dialOpts, grpc.WithTransportCredentials(transportCreds))
 
 	_, isInsecure := setting.GetTransportSecurity().GetType().(*nbictlpb.Config_TransportSecurity_Insecure)
-	perRPCCreds, err := resolvePerRPCCredentials(ctx, setting, confDir, httpClient, isInsecure, useQUIC)
+	perRPCCreds, err := resolvePerRPCCredentials(ctx, setting, confDir, httpClient, errWriter,
+		transportMode{insecure: isInsecure, quic: useQUIC})
 	if err != nil {
 		return nil, err
 	}

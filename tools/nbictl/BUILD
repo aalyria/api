@@ -32,6 +32,7 @@ go_library(
         "nbictl.go",
         "progress.go",
         "provisioning.go",
+        "serviceaccount.go",
         "status.go",
     ],
     importpath = "aalyria.com/spacetime/tools/nbictl",
@@ -104,6 +105,7 @@ go_test(
         "model_test.go",
         "omni_fragment_test.go",
         "progress_test.go",
+        "serviceaccount_test.go",
         "status_test.go",
     ],
     embed = [":nbictl"],
@@ -173,6 +175,7 @@ go_test(
         "model_test.go",
         "omni_fragment_test.go",
         "progress_test.go",
+        "serviceaccount_test.go",
         "status_test.go",
     ],
     args = [

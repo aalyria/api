@@ -75,7 +75,7 @@ Prints the NBI connection settings associated with the configuration profile giv
 
 Sets or updates a configuration profile settings. You can create multiple profiles by specifying the `--profile` flag (defaults to "DEFAULT").
 
-**--auth_strategy**="": Authentication strategy. Allowed values: [none, jwt, oidc, oidc_user]. When 'none', no authentication credentials are sent. Use 'oidc_user' with the `login` command to authenticate as a person.
+**--auth_strategy**="": Authentication strategy. Allowed values: [none, jwt, oidc, oidc_user, oidc_service_account]. When 'none', no authentication credentials are sent. Use 'oidc_user' with the `login` command to authenticate as a person.
 
 **--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
 
@@ -87,7 +87,7 @@ Sets or updates a configuration profile settings. You can create multiple profil
 
 **--endpoint_config**="": Endpoint resolution strategy. Allowed values: [subdomain, single_domain, custom]
 
-**--issuer**="": OIDC issuer URL (used with --auth_strategy=oidc_user). Must be https.
+**--issuer**="": OIDC issuer URL (used with --auth_strategy=oidc_user or --auth_strategy=oidc_service_account). Must be https.
 
 **--key_id**="": Key ID associated with the private key provided by Aalyria.
 
@@ -97,7 +97,11 @@ Sets or updates a configuration profile settings. You can create multiple profil
 
 **--priv_key**="": Path to the private key to use for authentication.
 
+**--project_id**="": Identity provider project ID (used with --auth_strategy=oidc_service_account).
+
 **--provisioning_url**="": URL for the Provisioning API (custom endpoint_config only).
+
+**--service_account_key_file**="": Path to the identity provider's JSON key file (used with --auth_strategy=oidc_service_account).
 
 **--status_url**="": URL for the Status API (custom endpoint_config only).
 

@@ -17,7 +17,11 @@ package nbictl
 import (
 	"cmp"
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"net/http"
@@ -333,7 +337,7 @@ func TestLogin_StoresTheTokens(t *testing.T) {
 
 	expiry := time.Now().Add(time.Hour).Truncate(time.Second)
 	fi := newFakeIssuer(t, fakeIssuerConfig{
-		idToken:      testLoginIDToken(t, "joey@aalyria.com", expiry),
+		idToken:      testLoginIDToken(t, "user@example.com", expiry),
 		refreshToken: "refresh-token-1",
 	})
 
@@ -348,7 +352,7 @@ func TestLogin_StoresTheTokens(t *testing.T) {
 	if got := app.stderr.String(); !strings.Contains(got, fi.URL+"/device") {
 		t.Errorf("the error output %q does not hold the verification URI", got)
 	}
-	if got := app.stdout.String(); !strings.Contains(got, "joey@aalyria.com") {
+	if got := app.stdout.String(); !strings.Contains(got, "user@example.com") {
 		t.Errorf("the output %q does not name the user", got)
 	}
 	if got := app.stdout.String(); strings.Contains(got, "WXYZ-1234") {
@@ -375,7 +379,7 @@ func TestLogin_WarnsWithNoRefreshToken(t *testing.T) {
 	t.Parallel()
 
 	fi := newFakeIssuer(t, fakeIssuerConfig{
-		idToken: testLoginIDToken(t, "joey@aalyria.com", time.Now().Add(time.Hour)),
+		idToken: testLoginIDToken(t, "user@example.com", time.Now().Add(time.Hour)),
 	})
 
 	confDir := t.TempDir()
@@ -522,7 +526,7 @@ func TestLogin_ShowsWhenTheCodeExpires(t *testing.T) {
 	t.Parallel()
 
 	fi := newFakeIssuer(t, fakeIssuerConfig{
-		idToken:      testLoginIDToken(t, "joey@aalyria.com", time.Now().Add(time.Hour)),
+		idToken:      testLoginIDToken(t, "user@example.com", time.Now().Add(time.Hour)),
 		refreshToken: "refresh-token-1",
 	})
 
@@ -566,13 +570,108 @@ func TestResolvePerRPCCredentials_OidcUser(t *testing.T) {
 		AuthStrategy: oidcUserAuthStrategy("https://zitadel.example.com", "client-1"),
 	}
 
-	creds, err := resolvePerRPCCredentials(context.Background(), setting, confDir, nil, false, false)
+	creds, err := resolvePerRPCCredentials(context.Background(), setting, confDir, nil, io.Discard, transportMode{})
 	checkErr(t, err)
 	if creds == nil {
 		t.Fatal("resolvePerRPCCredentials returned no credentials for the oidc_user strategy")
 	}
 	if !creds.RequireTransportSecurity() {
 		t.Error("RequireTransportSecurity: got false, want true")
+	}
+}
+
+// useDefaultHTTPClient points [http.DefaultClient] at the fake identity
+// provider for the rest of the test, and restores it afterwards. A profile
+// that injects no client falls back to [http.DefaultClient], and the fake
+// provider serves TLS with a certificate that the process-wide default client
+// does not trust.
+//
+// A test that calls this must not call t.Parallel. The testing package runs
+// every sequential test while every parallel test is paused, so no other test
+// body observes the swap.
+func useDefaultHTTPClient(t *testing.T, client *http.Client) {
+	t.Helper()
+
+	saved := http.DefaultClient
+	http.DefaultClient = client
+	t.Cleanup(func() { http.DefaultClient = saved })
+}
+
+// newFakeServiceAccountIssuer is a test identity provider that serves a
+// discovery document and an RFC 7523 token endpoint.
+func newFakeServiceAccountIssuer(t *testing.T, accessToken string) *httptest.Server {
+	t.Helper()
+
+	mux := http.NewServeMux()
+	srv := httptest.NewTLSServer(mux)
+	t.Cleanup(srv.Close)
+
+	mux.HandleFunc("/.well-known/openid-configuration", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"issuer": %q, "token_endpoint": "%s/oauth/v2/token"}`, srv.URL, srv.URL)
+	})
+	mux.HandleFunc("/oauth/v2/token", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"access_token": %q, "token_type": "Bearer", "expires_in": 43200}`, accessToken)
+	})
+	return srv
+}
+
+// writeServiceAccountKeyFile writes a Zitadel JSON key file that holds a
+// usable RSA private key, and returns its path.
+func writeServiceAccountKeyFile(t *testing.T, dir string) string {
+	t.Helper()
+
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("generating the test private key: %v", err)
+	}
+	pemBytes := pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(key),
+	})
+	contents, err := json.Marshal(map[string]string{
+		"keyId":  "key-1",
+		"key":    string(pemBytes),
+		"userId": "user-1",
+	})
+	if err != nil {
+		t.Fatalf("encoding the test key file: %v", err)
+	}
+	return writeKeyFile(t, dir, "service-account.json", string(contents), 0o600)
+}
+
+// TestResolvePerRPCCredentials_OidcServiceAccountWithNoHTTPClient makes sure
+// that a profile which injects no HTTP client still exchanges a token. The
+// production path passes no client, and the auth package takes a nil
+// *http.Client in its HTTPClient interface field for an injected one, so the
+// exchange panicked before it sent a byte.
+func TestResolvePerRPCCredentials_OidcServiceAccountWithNoHTTPClient(t *testing.T) {
+	const accessToken = "aGVhZGVy.cGF5bG9hZA.c2lnbmF0dXJl"
+
+	srv := newFakeServiceAccountIssuer(t, accessToken)
+	useDefaultHTTPClient(t, srv.Client())
+
+	confDir := t.TempDir()
+	setting := &nbictlpb.Config{
+		Name:         "dev",
+		Url:          "nbi.example.com",
+		AuthStrategy: oidcServiceAccountAuthStrategy(srv.URL, "project-1", writeServiceAccountKeyFile(t, confDir)),
+	}
+
+	creds, err := resolvePerRPCCredentials(context.Background(), setting, confDir, nil, io.Discard, transportMode{insecure: true})
+	checkErr(t, err)
+	if creds == nil {
+		t.Fatal("resolvePerRPCCredentials returned no credentials for the oidc_service_account strategy")
+	}
+
+	ctx := credentials.NewContextWithRequestInfo(context.Background(), credentials.RequestInfo{
+		Method: "/test.Service/Method",
+	})
+	md, err := creds.GetRequestMetadata(ctx, "https://nbi.example.com/test.Service")
+	checkErr(t, err)
+	if got, want := md["authorization"], "Bearer "+accessToken; got != want {
+		t.Errorf("authorization header: got %q, want %q", got, want)
 	}
 }
 
@@ -588,7 +687,7 @@ func TestResolvePerRPCCredentials_OidcUserNotLoggedIn(t *testing.T) {
 		AuthStrategy: oidcUserAuthStrategy("https://zitadel.example.com", "client-1"),
 	}
 
-	creds, err := resolvePerRPCCredentials(context.Background(), setting, confDir, nil, true, false)
+	creds, err := resolvePerRPCCredentials(context.Background(), setting, confDir, nil, io.Discard, transportMode{insecure: true})
 	checkErr(t, err)
 
 	ctx := credentials.NewContextWithRequestInfo(context.Background(), credentials.RequestInfo{

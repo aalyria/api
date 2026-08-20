@@ -98,13 +98,28 @@ message Config {
     // `nbictl login` command runs the login and stores the tokens; every
     // other command sends the stored ID token.
     message OidcUser {
-      // The OIDC issuer URL, e.g.
-      // https://zitadel.dev.infra.spacetime.aalyria.com. Must be https.
+      // The OIDC issuer URL, e.g. https://zitadel.example.com. Must be https.
       // Endpoints are read from the issuer's discovery document.
       string issuer = 1;
       // The OAuth client ID of the native application registered with the
       // issuer.
       string client_id = 2;
+    }
+
+    // OidcServiceAccount authenticates a machine as an identity provider
+    // service account. nbictl signs an RFC 7523 assertion with the private key
+    // from the provider's key file and exchanges it for an access token.
+    message OidcServiceAccount {
+      // The OIDC issuer URL, e.g. https://zitadel.example.com. Must be https.
+      // Endpoints are read from the issuer's discovery document.
+      string issuer = 1;
+      // The identity provider's project ID. It names the project in the token
+      // request's scopes, which is what makes the provider emit the roles
+      // claim.
+      string project_id = 2;
+      // The path to the JSON key file the identity provider issued for this
+      // service account. It holds the key ID, the private key and the user ID.
+      string service_account_key_file = 3;
     }
 
     oneof type {
@@ -121,6 +136,9 @@ message Config {
 
       // Interactive OIDC login with the identity of a person.
       OidcUser oidc_user = 4;
+
+      // RFC 7523 private-key assertion exchange for machine authentication.
+      OidcServiceAccount oidc_service_account = 5;
     }
   }
 

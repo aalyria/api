@@ -23,6 +23,7 @@ import (
 
 	"github.com/bazelbuild/rules_go/go/tools/bazel"
 	"github.com/google/go-cmp/cmp"
+	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 
@@ -751,5 +752,223 @@ func TestSetConfig_RestrictsThePermissions(t *testing.T) {
 	checkErr(t, err)
 	if got := dirInfo.Mode().Perm(); got != 0o700 {
 		t.Errorf("the config directory mode is %o, want %o", got, 0o700)
+	}
+}
+
+func oidcServiceAccountAuthStrategy(issuer, projectID, keyFile string) *nbictlpb.Config_AuthStrategy {
+	return &nbictlpb.Config_AuthStrategy{
+		Type: &nbictlpb.Config_AuthStrategy_OidcServiceAccount_{
+			OidcServiceAccount: &nbictlpb.Config_AuthStrategy_OidcServiceAccount{
+				Issuer:                issuer,
+				ProjectId:             projectID,
+				ServiceAccountKeyFile: keyFile,
+			},
+		},
+	}
+}
+
+// TestSetConfig_OidcServiceAccount verifies that the three flags are stored
+// in the correct proto fields.
+func TestSetConfig_OidcServiceAccount(t *testing.T) {
+	t.Parallel()
+
+	tmpDir, err := bazel.NewTmpDir("nbictl")
+	checkErr(t, err)
+
+	checkErr(t, newTestApp().Run([]string{
+		"nbictl", "--config_dir", tmpDir, "--context", "robot", "config", "set",
+		"--auth_strategy", "oidc_service_account",
+		"--issuer", "https://zitadel.example.com",
+		"--project_id", "test-project",
+		"--service_account_key_file", "/path/to/zitadel-key.json",
+	}))
+
+	got, err := readConfig("robot", filepath.Join(tmpDir, confFileName))
+	checkErr(t, err)
+
+	assertProtosEqual(t, &nbictlpb.Config{
+		Name:         "robot",
+		AuthStrategy: oidcServiceAccountAuthStrategy("https://zitadel.example.com", "test-project", "/path/to/zitadel-key.json"),
+	}, got)
+}
+
+// TestSetConfig_OidcServiceAccountPartialUpdate is deletion test 13: a second
+// config set with only --project_id must leave issuer and key file intact. The
+// default: arm at mergeAuthStrategy replaces the whole strategy and makes this
+// test fail when the OidcServiceAccount_ case is absent.
+func TestSetConfig_OidcServiceAccountPartialUpdate(t *testing.T) {
+	t.Parallel()
+
+	tmpDir, err := bazel.NewTmpDir("nbictl")
+	checkErr(t, err)
+
+	checkErr(t, newTestApp().Run([]string{
+		"nbictl", "--config_dir", tmpDir, "--context", "robot", "config", "set",
+		"--auth_strategy", "oidc_service_account",
+		"--issuer", "https://zitadel.example.com",
+		"--project_id", "project-1",
+		"--service_account_key_file", "/path/to/key.json",
+	}))
+	checkErr(t, newTestApp().Run([]string{
+		"nbictl", "--config_dir", tmpDir, "--context", "robot", "config", "set",
+		"--auth_strategy", "oidc_service_account",
+		"--project_id", "project-2",
+	}))
+
+	got, err := readConfig("robot", filepath.Join(tmpDir, confFileName))
+	checkErr(t, err)
+
+	assertProtosEqual(t, &nbictlpb.Config{
+		Name:         "robot",
+		AuthStrategy: oidcServiceAccountAuthStrategy("https://zitadel.example.com", "project-2", "/path/to/key.json"),
+	}, got)
+}
+
+// TestSetConfig_OidcServiceAccountUnknownStrategy verifies that the allowed
+// list in the error message names oidc_service_account.
+func TestSetConfig_OidcServiceAccountUnknownStrategy(t *testing.T) {
+	t.Parallel()
+
+	tmpDir, err := bazel.NewTmpDir("nbictl")
+	checkErr(t, err)
+
+	err = newTestApp().Run([]string{
+		"nbictl", "--config_dir", tmpDir, "--context", "dev", "config", "set",
+		"--auth_strategy", "nonsense",
+	})
+	if err == nil {
+		t.Fatal("expected an error for an unknown auth strategy, got nil")
+	}
+	if !strings.Contains(err.Error(), "oidc_service_account") {
+		t.Errorf("error %q does not mention oidc_service_account in the allowed list", err.Error())
+	}
+}
+
+// TestSetConfig_OidcServiceAccountRestrictsPermissions is deletion test 12:
+// after a config set with the new strategy, the directory must be 0700 and
+// the file must be 0600.
+func TestSetConfig_OidcServiceAccountRestrictsPermissions(t *testing.T) {
+	t.Parallel()
+
+	confFile := filepath.Join(t.TempDir(), "nbictl", confFileName)
+	checkErr(t, setConfig(io.Discard, io.Discard, &nbictlpb.Config{
+		Name:         "robot",
+		AuthStrategy: oidcServiceAccountAuthStrategy("https://zitadel.example.com", "proj-1", "/tmp/key.json"),
+	}, confFile))
+
+	fileInfo, err := os.Stat(confFile)
+	checkErr(t, err)
+	if got := fileInfo.Mode().Perm(); got != 0o600 {
+		t.Errorf("config file mode is %o, want %o", got, 0o600)
+	}
+
+	dirInfo, err := os.Stat(filepath.Dir(confFile))
+	checkErr(t, err)
+	if got := dirInfo.Mode().Perm(); got != 0o700 {
+		t.Errorf("config directory mode is %o, want %o", got, 0o700)
+	}
+}
+
+// TestSetConfig_OidcServiceAccountRefusesAPartialSwitch pins the one case the
+// per-field merge gets wrong. A profile that already names another strategy
+// has no service account fields to merge with, so a switch that omits
+// --service_account_key_file would keep whatever key file the profile held. nbictl
+// would then sign an assertion with that key and disclose it to a different
+// identity provider.
+func TestSetConfig_OidcServiceAccountRefusesAPartialSwitch(t *testing.T) {
+	t.Parallel()
+
+	tmpDir, err := bazel.NewTmpDir("nbictl")
+	checkErr(t, err)
+
+	checkErr(t, newTestApp().Run([]string{
+		"nbictl", "--config_dir", tmpDir, "--context", "robot", "config", "set",
+		"--auth_strategy", "oidc_service_account",
+		"--issuer", "https://prod.example.com",
+		"--project_id", "prod-project",
+		"--service_account_key_file", "/path/to/prod-key.json",
+	}))
+	checkErr(t, newTestApp().Run([]string{
+		"nbictl", "--config_dir", tmpDir, "--context", "robot", "config", "set",
+		"--auth_strategy", "oidc_user",
+		"--issuer", "https://other.example.com",
+		"--client_id", "the-client",
+	}))
+
+	err = newTestApp().Run([]string{
+		"nbictl", "--config_dir", tmpDir, "--context", "robot", "config", "set",
+		"--auth_strategy", "oidc_service_account",
+		"--issuer", "https://other.example.com",
+		"--project_id", "other-project",
+	})
+	if err == nil {
+		t.Fatal("config set switched to oidc_service_account without a service account key")
+	}
+	if !strings.Contains(err.Error(), "service_account_key_file") {
+		t.Errorf("error %q does not name the missing flag", err.Error())
+	}
+}
+
+// TestSetConfig_OidcServiceAccountRefusesAnEmptyStrategy pins a new profile.
+// Without the three flags the strategy holds nothing, and the profile fails
+// later at dial time rather than here, where the operator can act on it.
+func TestSetConfig_OidcServiceAccountRefusesAnEmptyStrategy(t *testing.T) {
+	t.Parallel()
+
+	tmpDir, err := bazel.NewTmpDir("nbictl")
+	checkErr(t, err)
+
+	err = newTestApp().Run([]string{
+		"nbictl", "--config_dir", tmpDir, "--context", "robot", "config", "set",
+		"--auth_strategy", "oidc_service_account",
+	})
+	if err == nil {
+		t.Fatal("config set stored an oidc_service_account strategy with no fields")
+	}
+	for _, flag := range []string{"issuer", "project_id", "service_account_key_file"} {
+		if !strings.Contains(err.Error(), flag) {
+			t.Errorf("error %q does not name the missing flag %q", err.Error(), flag)
+		}
+	}
+}
+
+// TestSetConfig_UrlUpdateIgnoresTheStoredAuthStrategy pins the scope of the
+// completeness check. A command that names no auth strategy must not be judged
+// on the one the profile already holds, or an unrelated --url update fails and
+// blames a flag the operator never gave.
+func TestSetConfig_UrlUpdateIgnoresTheStoredAuthStrategy(t *testing.T) {
+	t.Parallel()
+
+	tmpDir, err := bazel.NewTmpDir("nbictl")
+	checkErr(t, err)
+
+	// Written directly, because setConfig itself now refuses to store a
+	// profile in this state. A hand-edited config can still hold one.
+	confFile := filepath.Join(tmpDir, confFileName)
+	stored, err := prototext.Marshal(&nbictlpb.AppConfig{Configs: []*nbictlpb.Config{{
+		Name: "robot",
+		Url:  "old.example.com",
+		AuthStrategy: &nbictlpb.Config_AuthStrategy{
+			Type: &nbictlpb.Config_AuthStrategy_OidcServiceAccount_{
+				OidcServiceAccount: &nbictlpb.Config_AuthStrategy_OidcServiceAccount{
+					Issuer:    "https://zitadel.example.com",
+					ProjectId: "project-1",
+					// No key file: a profile an earlier build could store.
+				},
+			},
+		},
+	}}})
+	checkErr(t, err)
+	checkErr(t, os.WriteFile(confFile, stored, 0o600))
+
+	checkErr(t, newTestApp().Run([]string{
+		"nbictl", "--config_dir", tmpDir, "--context", "robot", "config", "set",
+		"--url", "new.example.com",
+	}))
+
+	got, err := readConfig("robot", confFile)
+	checkErr(t, err)
+	if got.GetUrl() != "new.example.com" {
+		t.Errorf("url = %q, want new.example.com", got.GetUrl())
 	}
 }

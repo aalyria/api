@@ -65,9 +65,9 @@ func TestDiscover_Success(t *testing.T) {
 
 	srv := newIssuerServer(t, fullDiscoveryDoc)
 
-	got, err := Discover(context.Background(), srv.URL, srv.Client())
+	got, err := discover(context.Background(), srv.URL, srv.Client())
 	if err != nil {
-		t.Fatalf("Discover returned an unexpected error: %v", err)
+		t.Fatalf("discover returned an unexpected error: %v", err)
 	}
 	if got.Issuer != srv.URL {
 		t.Errorf("Issuer: got %q, want %q", got.Issuer, srv.URL)
@@ -90,9 +90,9 @@ func TestDiscover_NoRevocationEndpoint(t *testing.T) {
 		return fmt.Sprintf(`{"issuer": %q, "token_endpoint": "%s/token"}`, issuer, issuer)
 	})
 
-	got, err := Discover(context.Background(), srv.URL, srv.Client())
+	got, err := discover(context.Background(), srv.URL, srv.Client())
 	if err != nil {
-		t.Fatalf("Discover returned an unexpected error: %v", err)
+		t.Fatalf("discover returned an unexpected error: %v", err)
 	}
 	if got.RevocationEndpoint != "" {
 		t.Errorf("RevocationEndpoint: got %q, want an empty string", got.RevocationEndpoint)
@@ -132,9 +132,9 @@ func TestDiscover_Errors(t *testing.T) {
 
 			srv := newIssuerServer(t, tc.docFn)
 
-			_, err := Discover(context.Background(), srv.URL, srv.Client())
+			_, err := discover(context.Background(), srv.URL, srv.Client())
 			if err == nil {
-				t.Fatalf("Discover succeeded, but an error that contains %q was expected", tc.wantPart)
+				t.Fatalf("discover succeeded, but an error that contains %q was expected", tc.wantPart)
 			}
 			if !strings.Contains(err.Error(), tc.wantPart) {
 				t.Errorf("error %q does not contain %q", err.Error(), tc.wantPart)
@@ -151,9 +151,9 @@ func TestDiscover_ServerError(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	_, err := Discover(context.Background(), srv.URL, srv.Client())
+	_, err := discover(context.Background(), srv.URL, srv.Client())
 	if err == nil {
-		t.Fatal("Discover succeeded against a server that returns HTTP 500")
+		t.Fatal("discover succeeded against a server that returns HTTP 500")
 	}
 	if !strings.Contains(err.Error(), "500") {
 		t.Errorf("error %q does not name the status code", err.Error())
@@ -163,9 +163,9 @@ func TestDiscover_ServerError(t *testing.T) {
 func TestDiscover_RejectsNonHTTPSIssuer(t *testing.T) {
 	t.Parallel()
 
-	_, err := Discover(context.Background(), "http://zitadel.example.com", nil)
+	_, err := discover(context.Background(), "http://zitadel.example.com", nil)
 	if err == nil {
-		t.Fatal("Discover accepted an http:// issuer")
+		t.Fatal("discover accepted an http:// issuer")
 	}
 	if !strings.Contains(err.Error(), "must start with https://") {
 		t.Errorf("error %q does not explain the https requirement", err.Error())
@@ -207,9 +207,9 @@ func TestDiscover_RejectsNonHTTPSEndpoints(t *testing.T) {
 
 			srv := newIssuerServer(t, tc.docFn)
 
-			_, err := Discover(context.Background(), srv.URL, srv.Client())
+			_, err := discover(context.Background(), srv.URL, srv.Client())
 			if err == nil {
-				t.Fatalf("Discover accepted an http:// %s", tc.wantPart)
+				t.Fatalf("discover accepted an http:// %s", tc.wantPart)
 			}
 			if !strings.Contains(err.Error(), tc.wantPart) {
 				t.Errorf("error %q does not name the %s", err.Error(), tc.wantPart)
@@ -230,9 +230,9 @@ func TestDiscover_TruncatesALongErrorBody(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	_, err := Discover(context.Background(), srv.URL, srv.Client())
+	_, err := discover(context.Background(), srv.URL, srv.Client())
 	if err == nil {
-		t.Fatal("Discover succeeded against a server that returns HTTP 500")
+		t.Fatal("discover succeeded against a server that returns HTTP 500")
 	}
 	if len(err.Error()) > 2_000 {
 		t.Errorf("the error is %d bytes long; a provider body must be truncated before it reaches an error", len(err.Error()))
@@ -376,7 +376,7 @@ func TestDeviceLogin_Success(t *testing.T) {
 	expiry := time.Date(2026, time.August, 11, 13, 0, 0, 0, time.UTC)
 	ds := newDeviceServer(t, deviceServerConfig{
 		pendingPolls:  1,
-		tokenResponse: successBody(testIDToken(t, "joey@aalyria.com", expiry), "refresh-token-1"),
+		tokenResponse: successBody(testIDToken(t, "user@example.com", expiry), "refresh-token-1"),
 	})
 
 	var prompts []DevicePrompt
@@ -417,7 +417,7 @@ func TestDeviceLogin_RequestsOfflineAccess(t *testing.T) {
 	t.Parallel()
 
 	ds := newDeviceServer(t, deviceServerConfig{
-		tokenResponse: successBody(testIDToken(t, "joey@aalyria.com", time.Now().Add(time.Hour)), "refresh-token-1"),
+		tokenResponse: successBody(testIDToken(t, "user@example.com", time.Now().Add(time.Hour)), "refresh-token-1"),
 	})
 
 	if _, err := DeviceLogin(context.Background(), testUserConfig(ds), func(DevicePrompt) error { return nil }); err != nil {
@@ -436,7 +436,7 @@ func TestDeviceLogin_NoRefreshTokenStillSucceeds(t *testing.T) {
 	t.Parallel()
 
 	ds := newDeviceServer(t, deviceServerConfig{
-		tokenResponse: successBody(testIDToken(t, "joey@aalyria.com", time.Now().Add(time.Hour)), ""),
+		tokenResponse: successBody(testIDToken(t, "user@example.com", time.Now().Add(time.Hour)), ""),
 	})
 
 	tokens, err := DeviceLogin(context.Background(), testUserConfig(ds), func(DevicePrompt) error { return nil })
@@ -602,7 +602,7 @@ func TestDeviceLogin_PromptErrorStopsTheLogin(t *testing.T) {
 	t.Parallel()
 
 	ds := newDeviceServer(t, deviceServerConfig{
-		tokenResponse: successBody(testIDToken(t, "joey@aalyria.com", time.Now().Add(time.Hour)), "r"),
+		tokenResponse: successBody(testIDToken(t, "user@example.com", time.Now().Add(time.Hour)), "r"),
 	})
 
 	wantErr := errors.New("the writer is broken")
@@ -616,12 +616,12 @@ func TestParseIDTokenClaims(t *testing.T) {
 	t.Parallel()
 
 	expiry := time.Date(2026, time.August, 11, 13, 0, 0, 0, time.UTC)
-	claims, err := ParseIDTokenClaims(testIDToken(t, "joey@aalyria.com", expiry))
+	claims, err := parseIDTokenClaims(testIDToken(t, "user@example.com", expiry))
 	if err != nil {
-		t.Fatalf("ParseIDTokenClaims returned an unexpected error: %v", err)
+		t.Fatalf("parseIDTokenClaims returned an unexpected error: %v", err)
 	}
-	if claims.Email != "joey@aalyria.com" {
-		t.Errorf("Email: got %q, want %q", claims.Email, "joey@aalyria.com")
+	if claims.Email != "user@example.com" {
+		t.Errorf("Email: got %q, want %q", claims.Email, "user@example.com")
 	}
 	if !claims.ExpiresAt.Equal(expiry) {
 		t.Errorf("ExpiresAt: got %v, want %v", claims.ExpiresAt, expiry)
@@ -631,8 +631,8 @@ func TestParseIDTokenClaims(t *testing.T) {
 func TestParseIDTokenClaims_Malformed(t *testing.T) {
 	t.Parallel()
 
-	if _, err := ParseIDTokenClaims("this is not a jwt"); err == nil {
-		t.Fatal("ParseIDTokenClaims accepted a malformed token")
+	if _, err := parseIDTokenClaims("this is not a jwt"); err == nil {
+		t.Fatal("parseIDTokenClaims accepted a malformed token")
 	}
 }
 
@@ -761,7 +761,7 @@ func TestOIDCUserCredentials_SendsValidToken(t *testing.T) {
 	t.Parallel()
 
 	clock := clockwork.NewFakeClockAt(time.Date(2026, time.August, 11, 12, 0, 0, 0, time.UTC))
-	idToken := testIDToken(t, "joey@aalyria.com", clock.Now().Add(time.Hour))
+	idToken := testIDToken(t, "user@example.com", clock.Now().Add(time.Hour))
 	store := &memoryStore{tokens: &Tokens{IDToken: idToken, RefreshToken: "r", Expiry: clock.Now().Add(time.Hour)}}
 
 	creds, err := NewOIDCUserCredentials(context.Background(), OIDCUserConfig{
@@ -795,7 +795,7 @@ func TestOIDCUserCredentials_CachesAValidToken(t *testing.T) {
 	t.Parallel()
 
 	clock := clockwork.NewFakeClockAt(time.Date(2026, time.August, 11, 12, 0, 0, 0, time.UTC))
-	idToken := testIDToken(t, "joey@aalyria.com", clock.Now().Add(time.Hour))
+	idToken := testIDToken(t, "user@example.com", clock.Now().Add(time.Hour))
 	store := &memoryStore{tokens: &Tokens{
 		IDToken:      idToken,
 		RefreshToken: "refresh-token-1",
@@ -857,7 +857,7 @@ func TestOIDCUserCredentials_RefreshesAndSaves(t *testing.T) {
 	t.Parallel()
 
 	clock := clockwork.NewFakeClockAt(time.Date(2026, time.August, 11, 12, 0, 0, 0, time.UTC))
-	refreshedIDToken := testIDToken(t, "joey@aalyria.com", clock.Now().Add(time.Hour))
+	refreshedIDToken := testIDToken(t, "user@example.com", clock.Now().Add(time.Hour))
 	ds := newDeviceServer(t, deviceServerConfig{
 		tokenResponse: successBody(refreshedIDToken, "refresh-token-2"),
 	})
@@ -865,7 +865,7 @@ func TestOIDCUserCredentials_RefreshesAndSaves(t *testing.T) {
 	// The stored token expires inside tokenExpirationWindow, so the
 	// credentials must refresh it.
 	store := &memoryStore{tokens: &Tokens{
-		IDToken:      testIDToken(t, "joey@aalyria.com", clock.Now().Add(time.Minute)),
+		IDToken:      testIDToken(t, "user@example.com", clock.Now().Add(time.Minute)),
 		RefreshToken: "refresh-token-1",
 		Expiry:       clock.Now().Add(time.Minute),
 	}}
@@ -915,7 +915,7 @@ func TestOIDCUserCredentials_ExpiredSessionIsActionable(t *testing.T) {
 
 	clock := clockwork.NewFakeClockAt(time.Date(2026, time.August, 11, 12, 0, 0, 0, time.UTC))
 	store := &memoryStore{tokens: &Tokens{
-		IDToken:      testIDToken(t, "joey@aalyria.com", clock.Now().Add(time.Minute)),
+		IDToken:      testIDToken(t, "user@example.com", clock.Now().Add(time.Minute)),
 		RefreshToken: "refresh-token-1",
 		Expiry:       clock.Now().Add(time.Minute),
 	}}
@@ -948,9 +948,9 @@ func TestOIDCUserCredentials_RefreshLostToAnotherProcess(t *testing.T) {
 	ds := newDeviceServer(t, deviceServerConfig{terminalError: "invalid_grant"})
 
 	clock := clockwork.NewFakeClockAt(time.Date(2026, time.August, 11, 12, 0, 0, 0, time.UTC))
-	freshIDToken := testIDToken(t, "joey@aalyria.com", clock.Now().Add(time.Hour))
+	freshIDToken := testIDToken(t, "user@example.com", clock.Now().Add(time.Hour))
 	store := &memoryStore{tokens: &Tokens{
-		IDToken:      testIDToken(t, "joey@aalyria.com", clock.Now().Add(time.Minute)),
+		IDToken:      testIDToken(t, "user@example.com", clock.Now().Add(time.Minute)),
 		RefreshToken: "refresh-token-1",
 		Expiry:       clock.Now().Add(time.Minute),
 	}}
@@ -990,7 +990,7 @@ func TestOIDCUserCredentials_NoRefreshTokenReportsExpiry(t *testing.T) {
 
 	clock := clockwork.NewFakeClockAt(time.Date(2026, time.August, 11, 12, 0, 0, 0, time.UTC))
 	store := &memoryStore{tokens: &Tokens{
-		IDToken: testIDToken(t, "joey@aalyria.com", clock.Now().Add(time.Minute)),
+		IDToken: testIDToken(t, "user@example.com", clock.Now().Add(time.Minute)),
 		Expiry:  clock.Now().Add(time.Minute),
 	}}
 
@@ -1018,11 +1018,11 @@ func TestOIDCUserCredentials_ConcurrentRefresh(t *testing.T) {
 
 	clock := clockwork.NewFakeClockAt(time.Date(2026, time.August, 11, 12, 0, 0, 0, time.UTC))
 	ds := newDeviceServer(t, deviceServerConfig{
-		tokenResponse: successBody(testIDToken(t, "joey@aalyria.com", clock.Now().Add(time.Hour)), "refresh-token-2"),
+		tokenResponse: successBody(testIDToken(t, "user@example.com", clock.Now().Add(time.Hour)), "refresh-token-2"),
 	})
 
 	store := &memoryStore{tokens: &Tokens{
-		IDToken:      testIDToken(t, "joey@aalyria.com", clock.Now().Add(time.Minute)),
+		IDToken:      testIDToken(t, "user@example.com", clock.Now().Add(time.Minute)),
 		RefreshToken: "refresh-token-1",
 		Expiry:       clock.Now().Add(time.Minute),
 	}}
