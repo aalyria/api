@@ -362,7 +362,7 @@ func dial(ctx context.Context, setting *nbictlpb.Config, confDir string, httpCli
 
 func getDialOpts(ctx context.Context, setting *nbictlpb.Config, confDir string, httpClient *http.Client, errWriter io.Writer) ([]grpc.DialOption, error) {
 	dialOpts := []grpc.DialOption{
-		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(1024*1024*256), grpc.UseCompressor(gzip.Name)),
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(1024*1024*512), grpc.UseCompressor(gzip.Name)),
 		grpc.WithKeepaliveParams(keepalive.ClientParameters{
 			Time:                30 * time.Second,
 			Timeout:             10 * time.Second,
