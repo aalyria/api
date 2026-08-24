@@ -1,0 +1,13 @@
+--- src/core/BUILD
++++ src/core/BUILD
+@@ -5864,6 +5864,10 @@ grpc_cc_library(
+     ],
+     tags = ["nofixdeps"],
+     deps = [
++        "//:envoy_admin_upb",
++        "//:envoy_config_core_upb",
++        "//:envoy_config_route_upb",
++        "//:envoy_service_status_upb",
+         "grpc_matchers",
+         "match",
+         "time",

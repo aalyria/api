@@ -1,0 +1,141 @@
+// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// This file contains messages used to model wireless transceivers.
+
+syntax = "proto2";
+
+package aalyria.spacetime.api.common;
+
+import "api/common/platform_antenna.proto";
+import "api/common/wireless_receiver.proto";
+import "api/common/wireless_transmitter.proto";
+
+option java_package = "com.aalyria.spacetime.api.common";
+option go_package = "aalyria.com/spacetime/api/common";
+
+// This message models a transceiver, composed of a transmitter,
+// receiver, and antenna.
+//
+// This message is used by Spacetime to model the transmission and reception of 
+// wireless signals. For the transceiver to participate in the orchestrated 
+// network, it must be referenced by at least one wireless interface on a
+// NETWORK_NODE entity. A transceiver can be referenced by multiple wireless
+// interfaces if the transceiver supports the formation of multiple beams.  
+// Wireless interfaces are defined in 
+// aalyria.spacetime.api.nbi.v1alpha.resources.NetworkInterface.
+//
+// This model is treated as a regenerative payload
+// in Spacetime's wireless propagation analysis.
+message TransceiverModel {
+  // An identifier for the transceiver model that must be unique
+  // among the set of transceiver models on the 
+  // aalyria.spacetime.api.common.PlatformDefinition that contains 
+  // contains this model. 
+  // Required.
+  optional string id = 1;
+
+  // Defines the parameters of the wireless transmitter.
+  // This field is required to model a transceiver's ability to transmit
+  // a signal.
+  optional TransmitterDefinition transmitter = 2;
+
+  // Defines the parameters of the wireless receiver.
+  // This field is required to model a transceiver's ability to receive
+  // a signal.
+  optional ReceiverDefinition receiver = 3;
+
+  // Defines the parameters of the antenna.
+  // Required.
+  optional AntennaDefinition antenna = 5;
+
+  // Defines the set of interoperable transceivers with which this
+  // transceiver can form a link.
+  // This field is required to be non-empty in order for the transceiver 
+  // to participate in a mesh.
+  repeated WirelessMac macs = 6;
+
+  message Impairment {
+    // An identifier that must be unique within the list of impairments
+    // on this transceiver.
+    optional string id = 1;
+    // The time this impairment was added to the transceiver model.
+    optional int64 timestamp_usec = 3;
+    // The reason for this impairment.
+    optional string reason = 4;
+  }
+  // Multiple operational impairements can be recorded by different actors
+  // (e.g. network operators or monitoring sub-systems in the onboard software).
+  // The existence of an impairment prevents this transceiver from being
+  // used in the network. 
+  // Optional.
+  repeated Impairment operational_impairments = 7;
+
+  reserved 4;
+}
+
+// Uniquely identifies a transceiver model within the parent 
+// aalyria.spacetime.api.common.PlatformDefinition.
+message TransceiverModelId {
+  // The globally unique ID of the PLATFORM_DEFINITION 
+  // aalyria.spacetime.api.nbi.v1alpha.Entity that contains this 
+  // transceiver model.
+  //
+  // NOTE: There does not necessarily need to be a 1:1 relationship
+  // between a PLATFORM_DEFINITION entity and a NETWORK_NODE entity.
+  //
+  // For example, it might be desirable to model geostationary satellites and
+  // their antennas for the purpose of asserting non-interference (i.e. in
+  // accordance with ITU Radio Regulations Article 22). In this example, each
+  // geostationary satellite might have its own PLATFORM_DEFINITION entity 
+  // (and one or more antennas) but would not need any corresponding 
+  // NETWORK_NODE entity as it would not need to be represented in a network
+  // graph.
+  // Required.
+  optional string platform_id = 1;
+
+  // The locally scoped ID of the TransceiverModel.
+  // Required.
+  optional string transceiver_model_id = 2;
+}
+
+// In order for two transceivers to close a link, the transceivers
+// must have at least one pair of WirelessMacs that satisfy the following
+// properties:
+// 1) The type fields are equal.
+// 2) The role fields are not equal to each other. An unset role is 
+//    considered compatible with all other roles.
+// 3) The max_connections field is non-zero. An unset max_connections
+//    is considered as allowing infinite connections.
+// TODO: Provide an option to allow users to define custom schemes
+// for determining whether a pair of transceivers is interoperable. 
+message WirelessMac {
+  // The MAC type in your network, e.g. “DVB-S2”, 
+  // “DVB-S2X”, "802.11", "5G-NR", "Link-16", "CCSDS-AOS", etc.
+  // Required.
+  optional string type = 1;    
+
+  // The role in the MAC layer, e.g. "HUB", “REMOTE”, “AP”,
+  // “CLIENT”, etc. If this field is omitted, the role is  
+  // considered compatible with all other roles.   
+  // Optional.
+  optional string role = 2;
+
+  // The maximum number of concurrent connections this transceiver can 
+  // participate in. If this field is less than or equal to 0, 
+  // the interface with this MAC protocol cannot form a link. If  
+  // this field is unset, the number of links is unbounded.
+  // Optional.
+  optional int32 max_connections = 3;
+}
