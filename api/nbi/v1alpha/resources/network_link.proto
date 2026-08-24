@@ -108,9 +108,16 @@ message Radio {
 
   message TxRadioConfiguration {
     // Initial transmit power in Watts.
-    optional double initial_power_w = 8;
+    //
+    // Deprecated: no longer populated. Use beam_peak_eirp_sd_samples, which
+    // expresses commanded transmit power as a beam-peak EIRP spectral density.
+    optional double initial_power_w = 8 [deprecated = true];
     // Transmit power the transmitter must not exceed in Watts.
-    optional double max_power_w = 9;
+    //
+    // Deprecated: no longer populated. Use beam_peak_eirp_sd_samples, which
+    // expresses the transmitter's capability as a beam-peak EIRP spectral
+    // density.
+    optional double max_power_w = 9 [deprecated = true];
 
     // Per-quantum beam-peak EIRP spectral density over the intent's interval.
     optional BeamPeakEirpSdSamples beam_peak_eirp_sd_samples = 12;
