@@ -277,7 +277,28 @@ message SdnAgent {
   // E2 enactment driver configuration (currently empty, for future use).
   message E2Enactment {
   }
-  
+
+
+  // PfSenseEnactment configures the pfSense router enactment driver.
+  message PfSenseEnactment {
+    // The pfSense API endpoint.
+    string api_endpoint = 1;
+
+    // Username for pfSense API authentication.
+    string username = 2;
+
+    // API key for pfSense API authentication
+    string api_key = 3;
+
+    // Timeout for API requests.
+    google.protobuf.Duration timeout = 4;
+
+    // Number of retry attempts for failed requests.
+    int32 retries = 5;
+
+    // Skip TLS certificate verification (insecure, use only for testing).
+    bool insecure_skip_verify = 6;
+  }
 
   // An EnactmentDriver is responsible for processing incoming enactments for
   // a given node.
@@ -301,6 +322,9 @@ message SdnAgent {
 
       // Use E2 interface for enactments to RAN nodes.
       E2Enactment e2 = 7;
+
+      // Use pfSense router APIs to process enactments.
+      PfSenseEnactment pfsense = 8;
     }
   }
 
@@ -332,6 +356,30 @@ message SdnAgent {
 
     // The port on which the metrics will be scrapable as Prometheus metrics.
     int32 prometheus_port = 4;
+  }
+
+  // PfSenseTelemetry configures the pfSense router telemetry driver.
+  message PfSenseTelemetry {
+    // How often the metrics will be gathered and reported.
+    google.protobuf.Duration collection_period = 1;
+
+    // The pfSense API endpoint.
+    string api_endpoint = 2;
+
+    // Username for pfSense API authentication.
+    string username = 3;
+
+    // API key for pfSense API authentication
+    string api_key = 4;
+
+    // Timeout for API requests.
+    google.protobuf.Duration timeout = 5;
+
+    // Max number of retry attempts for failed requests.
+    int32 retries = 6;
+
+    // Skip TLS certificate verification (insecure, use only for testing).
+    bool insecure_skip_verify = 7;
   }
 
   // E2 telemetry driver configuration.
@@ -372,6 +420,9 @@ message SdnAgent {
 
       // Use E2 interface for telemetry from RAN nodes.
       E2Telemetry e2 = 7;
+
+      // Use pfSense router APIs to gather telemetry.
+      PfSenseTelemetry pfsense = 8;
     }
   }
 

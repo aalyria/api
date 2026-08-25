@@ -506,6 +506,18 @@ enactmentSwitch:
 	case *configpb.SdnAgent_EnactmentDriver_Snmp:
 		fmt.Print("TODO: SdnAgent_EnactmentDriver_Snmp")
 
+	case *configpb.SdnAgent_EnactmentDriver_Pfsense:
+		dialOpts, err := getDialOpts(ctx, node.EnactmentDriver.GetConnectionParams(), clock)
+		if err != nil {
+			return nil, err
+		}
+
+		ed, err := newPfSenseEnactmentDriver(ctx, clock, node.GetId(), conf.Pfsense)
+		if err != nil {
+			return nil, err
+		}
+		nodeOpts = append(nodeOpts, agent.WithEnactmentDriver(node.GetEnactmentDriver().GetConnectionParams().EndpointUri, ed, dialOpts...))
+
 	case *configpb.SdnAgent_EnactmentDriver_Dynamic:
 		dialOpts, err := getDialOpts(ctx, node.EnactmentDriver.GetConnectionParams(), clock)
 		if err != nil {
@@ -571,6 +583,19 @@ telemetrySwitch:
 			return nil, err
 		}
 		nodeOpts = append(nodeOpts, agent.WithTelemetryDriver(node.GetTelemetryDriver().GetConnectionParams().EndpointUri, td, dialOpts...))
+
+	case *configpb.SdnAgent_TelemetryDriver_Pfsense:
+		dialOpts, err := getDialOpts(ctx, node.TelemetryDriver.GetConnectionParams(), clock)
+		if err != nil {
+			return nil, err
+		}
+
+		td, err := newPfSenseTelemetryDriver(ctx, clock, node.GetId(), conf.Pfsense)
+		if err != nil {
+			return nil, err
+		}
+		nodeOpts = append(nodeOpts, agent.WithTelemetryDriver(node.GetTelemetryDriver().GetConnectionParams().EndpointUri, td, dialOpts...))
+
 	case *configpb.SdnAgent_TelemetryDriver_Dynamic:
 		dialOpts, err := getDialOpts(ctx, node.TelemetryDriver.GetConnectionParams(), clock)
 		if err != nil {
