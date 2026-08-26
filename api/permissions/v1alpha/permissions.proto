@@ -117,9 +117,45 @@ service Permissions {
 message AuthorizationConfig {
   // Maps a principal to a set of permissions on a resource pattern.
   message PrincipalAuthorization {
-    // The principal can be either an email address (matched against the JWT
-    // email claim) or a role identifier (matched against role claims specified
-    // in grant_claims).
+    // PrincipalKind is the category of a principal. An entry matches a
+    // principal only when the kind and the name are both equal.
+    enum PrincipalKind {
+      // The entry does not state the kind. The service then calculates the
+      // kind from the name. A name that contains an "@" is an EMAIL. A
+      // different name that contains a "." is a DOMAIN. Each other name is a
+      // ROLE.
+      //
+      // A wrong calculated kind is not safe. The entry does not grant what you
+      // intended. It grants to each caller who presents a principal of the
+      // calculated kind. Each name below needs an explicit kind.
+      //
+      // - A role name that contains a ".", such as "platform.admin". The
+      //   service calculates DOMAIN. The entry then grants to each caller
+      //   whose email claim ends in "@platform.admin". Set ROLE.
+      // - A domain that contains no ".", such as a single-label intranet
+      //   domain. The service calculates ROLE. The entry then grants to each
+      //   holder of a role with that name. Set DOMAIN.
+      // - A role or group name that is an email address, such as
+      //   "netops@example.com". The service calculates EMAIL. The entry then
+      //   grants to the holder of that address. Set ROLE.
+      // - A user name that is not an email address. An identity provider can
+      //   put such a name in the email claim. The service calculates ROLE. The
+      //   entry then grants to each holder of a role with that name. Set
+      //   EMAIL.
+      PRINCIPAL_KIND_UNSPECIFIED = 0;
+      // An email address. It matches the email claim of the JWT.
+      EMAIL = 1;
+      // A domain. It matches the part of the email claim after the last "@".
+      // It does not match a sub-domain: a grant to "example.com" does not
+      // match a token for "user@sub.example.com".
+      DOMAIN = 2;
+      // A role identifier. It matches a name in one of the claims that
+      // grant_claims specifies.
+      ROLE = 3;
+    }
+
+    // The name of the principal. See PrincipalKind for the kinds of name. The
+    // service compares the name as exact bytes and applies no normalization.
     string principal = 1 [(google.api.field_behavior) = REQUIRED];
 
     // The set of permissions granted to this principal on the resource.
@@ -128,6 +164,9 @@ message AuthorizationConfig {
     // The resource pattern this authorization applies to.
     // See RESOURCE_PATTERNS documentation above for available patterns.
     string resource = 3 [(google.api.field_behavior) = REQUIRED];
+
+    // The kind of principal that the principal field gives.
+    PrincipalKind kind = 4;
   }
 
   // The resource name of the authorization config singleton.
@@ -139,8 +178,8 @@ message AuthorizationConfig {
 
   // JWT claim names to check for role membership (e.g., ["roles", "groups"]).
   // If empty, defaults to ["roles"].
-  // Permission is granted if principal matches email OR any
-  // role in grant_claims.
+  // Each name in these claims becomes a PRINCIPAL_KIND_ROLE principal. Thus it
+  // matches only an entry of that kind.
   repeated string grant_claims = 2;
 
   // If true, this config was applied in bootstrap mode (no permission check).
