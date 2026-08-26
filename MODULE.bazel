@@ -128,7 +128,7 @@ register_toolchains("@llvm_toolchain//:all")
 
 go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
 go_sdk.download(
-    version = "1.26.5",
+    version = "1.27.0",
 )
 
 go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
@@ -223,16 +223,18 @@ rs_toolchains.toolchain(
     # -Clink-self-contained=no: link with the registered cc toolchain's linker.
     # rules_rs's rustc does not ship the self-contained linker (rust-lld) in its
     # sysroot, so self-contained linking (the default) fails for tool/bin targets.
+    # Keep this x86_64-only, and out of extra_rustc_flags: the aarch64 rustc
+    # rejects the option outright ("option `-C link-self-contained` is not
+    # supported on this target") whatever --target it is given, so an aarch64
+    # executor must never see it. The aarch64 link works without it.
     extra_exec_rustc_flags = {
         "x86_64-unknown-linux-gnu": ["-Clink-self-contained=no"],
     },
     # Must match nmts/MODULE.bazel's toolchain tag exactly: rules_rs shares this
     # tag across the module graph and rejects conflicting same-name tags.
     extra_rustc_flags = {
-        "x86_64-unknown-linux-gnu": [
-            "-Clink-self-contained=no",
-            "-Ctarget-cpu=x86-64-v3",
-        ],
+        "aarch64-unknown-linux-gnu": ["-Ctarget-cpu=neoverse-n1"],
+        "x86_64-unknown-linux-gnu": ["-Ctarget-cpu=x86-64-v3"],
     },
     version = RUST_VERSION,
 )
@@ -274,8 +276,8 @@ use_repo(crate, "st_crates")
 bazel_dep(name = "org_outernetcouncil_nmts")
 archive_override(
     module_name = "org_outernetcouncil_nmts",
-    strip_prefix = "nmts-1.11.0",
-    urls = ["https://github.com/outernetcouncil/nmts/archive/refs/tags/v1.11.0.tar.gz"],
+    strip_prefix = "nmts-1.12.0",
+    urls = ["https://github.com/outernetcouncil/nmts/archive/refs/tags/v1.12.0.tar.gz"],
 )
 
 http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")

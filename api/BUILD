@@ -30,10 +30,17 @@ _all_protos = [
 doc_template_compile(
     name = "api.html",
     protos = _all_protos,
+    # rules_proto_grpc_doc picks protoc-gen-doc by target architecture rather
+    # than exec architecture, so under //bazel/platforms:arm64_neoverse_n1 it
+    # hands an aarch64 plugin to the x86_64 executor. The rendered docs are
+    # architecture-independent, so build them for x86_64 only.
+    target_compatible_with = ["@platforms//cpu:x86_64"],
     template = "//api/resources:html.tmpl",
 )
 
 doc_markdown_compile(
     name = "api.md",
     protos = _all_protos,
+    # See api.html.
+    target_compatible_with = ["@platforms//cpu:x86_64"],
 )
