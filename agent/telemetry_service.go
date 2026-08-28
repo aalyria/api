@@ -35,7 +35,7 @@ func (nc *nodeController) newTelemetryService(tc telemetrypb.TelemetryClient, td
 	}
 }
 
-func (ts *telemetryService) Stats() interface{} { return ts.td.Stats() }
+func (ts *telemetryService) Stats() any { return ts.td.Stats() }
 
 func (ts *telemetryService) run(ctx context.Context) error {
 	reportMetrics := func(report *telemetrypb.ExportMetricsRequest) error {

@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"strings"
 	"time"
@@ -285,9 +286,7 @@ func (c *APIClientV2) UpdateStaticRoute(ctx context.Context, routeID string, rou
 	// PATCH identifies the route to update by its id, sent in the body alongside
 	// the fields being changed.
 	body := make(map[string]any, len(routeData)+1)
-	for k, v := range routeData {
-		body[k] = v
-	}
+	maps.Copy(body, routeData)
 	body["id"] = routeID
 
 	return c.Patch(ctx, "/api/v2/routing/static_route/", body)
@@ -347,10 +346,7 @@ func (c *APIClientV2) do(ctx context.Context, method, path string, body any) (*p
 	// other methods get a single attempt.
 	attempts := 1
 	if method == http.MethodGet {
-		attempts = c.retries + 1
-		if attempts < 1 {
-			attempts = 1
-		}
+		attempts = max(c.retries+1, 1)
 	}
 
 	var lastErr error

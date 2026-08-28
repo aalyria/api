@@ -48,7 +48,7 @@ func check(t *testing.T, err error) {
 	}
 }
 
-func assertProtosEqual(t *testing.T, want, got interface{}) {
+func assertProtosEqual(t *testing.T, want, got any) {
 	t.Helper()
 
 	if diff := cmp.Diff(want, got, protocmp.Transform()); diff != "" {

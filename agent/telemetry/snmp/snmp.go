@@ -41,7 +41,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"google.golang.org/protobuf/encoding/prototext"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -89,7 +88,7 @@ func NewDriver(ctx context.Context, snmpStruct *gosnmp.GoSNMP, snmpMetrics []snm
 	}, clock, collectionPeriod)
 }
 
-func (rg *reportGenerator) Stats() interface{} {
+func (rg *reportGenerator) Stats() any {
 	log := zerolog.Ctx(rg.ctx).With().Str("driver", "snmp").Logger()
 
 	err := rg.snmpStruct.Connect()
@@ -298,8 +297,8 @@ func (rg *reportGenerator) GenerateReport(ctx context.Context, nodeID string) (*
 				// If addNewInterfaceMetrics, then we need to add a new InterfaceMetrics object to the map.
 				if addNewInterfaceMetrics {
 					textNetIfaceID, err := prototext.Marshal(&apipb.NetworkInterfaceId{
-						NodeId:      proto.String(nodeKey),
-						InterfaceId: proto.String(constraintInterfaceID),
+						NodeId:      new(nodeKey),
+						InterfaceId: new(constraintInterfaceID),
 					})
 					if err != nil {
 						log.Err(err).Msg("marshalling textproto interface ID")
@@ -307,7 +306,7 @@ func (rg *reportGenerator) GenerateReport(ctx context.Context, nodeID string) (*
 					}
 
 					nodeInterfaceKeyToInterfaceMetricsMap[nodeInterfaceKey] = &telemetrypb.InterfaceMetrics{
-						InterfaceId: proto.String(string(textNetIfaceID)),
+						InterfaceId: new(string(textNetIfaceID)),
 						OperationalStateDataPoints: []*telemetrypb.IfOperStatusDataPoint{{
 							Time:  timestamppb.New(ts),
 							Value: operStatus,

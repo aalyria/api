@@ -108,8 +108,6 @@ func TestEnactments(t *testing.T) {
 	t.Parallel()
 
 	for _, tc := range testCases {
-		tc := tc
-
 		t.Run(tc.desc, func(t *testing.T) {
 			t.Parallel()
 			tc.runTest(t)
@@ -158,7 +156,7 @@ func newDelegatingBackend() *delegatingBackend {
 
 func (d *delegatingBackend) Init(context.Context) error { return nil }
 func (d *delegatingBackend) Close() error               { return nil }
-func (d *delegatingBackend) Stats() interface{}         { return nil }
+func (d *delegatingBackend) Stats() any                 { return nil }
 
 func (d *delegatingBackend) checkNoUnhandledUpdates(t *testing.T) {
 	if err := errors.Join(d.errs...); err != nil {

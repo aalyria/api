@@ -41,8 +41,8 @@ type nodeController struct {
 	clock    clockwork.Clock
 	services []task.Task
 
-	enactmentStats func() interface{}
-	telemetryStats func() interface{}
+	enactmentStats func() any
+	telemetryStats func() any
 
 	closers []func() error
 
@@ -54,8 +54,8 @@ func (a *Agent) newNodeController(node *node, done func()) (*nodeController, err
 		id:             node.id,
 		done:           done,
 		clock:          a.clock,
-		enactmentStats: func() interface{} { return nil },
-		telemetryStats: func() interface{} { return nil },
+		enactmentStats: func() any { return nil },
+		telemetryStats: func() any { return nil },
 		newToken:       uuid.NewString,
 	}
 
@@ -135,11 +135,11 @@ func (nc *nodeController) run(ctx context.Context) (resErr error) {
 }
 
 type nodeControllerStats struct {
-	Enactment interface{}
-	Telemetry interface{}
+	Enactment any
+	Telemetry any
 }
 
-func (nc *nodeController) Stats() interface{} {
+func (nc *nodeController) Stats() any {
 	return nodeControllerStats{
 		Enactment: nc.enactmentStats(),
 		Telemetry: nc.telemetryStats(),

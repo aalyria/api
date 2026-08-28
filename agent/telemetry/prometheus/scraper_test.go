@@ -47,9 +47,9 @@ var (
 			metrics:     nodeExporterMetrics,
 			expected: func(clock clockwork.Clock) *apipb.NetworkStatsReport {
 				return &apipb.NetworkStatsReport{
-					NodeId: proto.String("it's me, a cool node"),
+					NodeId: new("it's me, a cool node"),
 					Timestamp: &apipb.DateTime{
-						UnixTimeUsec: proto.Int64(clock.Now().UnixMicro()),
+						UnixTimeUsec: new(clock.Now().UnixMicro()),
 					},
 					InterfaceStatsById: map[string]*apipb.InterfaceStats{
 						"docker0": {
@@ -89,7 +89,7 @@ var (
 	}
 )
 
-func assertProtosEqual(t *testing.T, want, got interface{}) {
+func assertProtosEqual(t *testing.T, want, got any) {
 	t.Helper()
 
 	if diff := cmp.Diff(want, got, protocmp.Transform()); diff != "" {

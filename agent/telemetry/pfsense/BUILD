@@ -26,7 +26,6 @@ go_library(
         "//api/telemetry/v1alpha:telemetry_go_grpc",
         "@com_github_rs_zerolog//:zerolog",
         "@org_golang_google_protobuf//encoding/prototext",
-        "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//types/known/timestamppb",
     ],
 )

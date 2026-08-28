@@ -26,7 +26,6 @@ import (
 	"github.com/jonboulle/clockwork"
 	promcli "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prom2json"
-	"google.golang.org/protobuf/proto"
 )
 
 // ScraperConfig represents the configuration for a prometheus scraper.
@@ -91,7 +90,7 @@ func (s *Scraper) scrape(ctx context.Context) error {
 	return s.conf.Callback(&apipb.NetworkStatsReport{
 		NodeId: &s.conf.NodeID,
 		Timestamp: &apipb.DateTime{
-			UnixTimeUsec: proto.Int64(s.conf.Clock.Now().UnixMicro()),
+			UnixTimeUsec: new(s.conf.Clock.Now().UnixMicro()),
 		},
 		InterfaceStatsById: ifaceStats,
 	})
@@ -178,7 +177,7 @@ func (s *Scraper) extractInterfaceStats(stats []*prom2json.Family) (map[string]*
 				return nil, err
 			}
 			valAsInt, _ := flt.Int64()
-			addMetricToReport(rep, proto.Int64(valAsInt))
+			addMetricToReport(rep, new(valAsInt))
 		}
 	}
 

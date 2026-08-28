@@ -56,28 +56,28 @@ func TestSimpleProto(t *testing.T) {
 }
 
 func TestStructProto(t *testing.T) {
-	orig := map[string]interface{}{
+	orig := map[string]any{
 		"firstName": "John",
 		"lastName":  "Smith",
 		"isAlive":   true,
 		"age":       float64(27),
-		"address": map[string]interface{}{
+		"address": map[string]any{
 			"streetAddress": "21 2nd Street",
 			"city":          "New York",
 			"state":         "NY",
 			"postalCode":    "10021-3100",
 		},
-		"phoneNumbers": []interface{}{
-			map[string]interface{}{
+		"phoneNumbers": []any{
+			map[string]any{
 				"type":   "home",
 				"number": "212 555-1234",
 			},
-			map[string]interface{}{
+			map[string]any{
 				"type":   "office",
 				"number": "646 555-4567",
 			},
 		},
-		"children": []interface{}{},
+		"children": []any{},
 		"spouse":   nil,
 	}
 
@@ -86,18 +86,18 @@ func TestStructProto(t *testing.T) {
 		t.Fatal("error creating struct from map[string]interface:", err)
 	}
 
-	gotPayload := map[string]interface{}{}
+	gotPayload := map[string]any{}
 	if err := json.Unmarshal(encode("msg", m), &gotPayload); err != nil {
 		t.Error("unmarshalling error", err)
 	}
-	if diff := cmp.Diff(orig, gotPayload["msg"].(map[string]interface{})["proto"]); diff != "" {
+	if diff := cmp.Diff(orig, gotPayload["msg"].(map[string]any)["proto"]); diff != "" {
 		t.Errorf("mismatch: (-want +got):\n%s", diff)
 		t.FailNow()
 	}
 }
 
 func TestStructProtoWithExtraSpaces(t *testing.T) {
-	orig := map[string]interface{}{
+	orig := map[string]any{
 		"a field with carriage returns": "Hello\rWorld",
 	}
 
@@ -105,11 +105,11 @@ func TestStructProtoWithExtraSpaces(t *testing.T) {
 	if err != nil {
 		t.Fatal("error creating struct from map[string]interface:", err)
 	}
-	payload := map[string]interface{}{}
+	payload := map[string]any{}
 	if err := json.Unmarshal(encode("msg", m), &payload); err != nil {
 		t.Error("unmarshalling error", err)
 	}
-	got := payload["msg"].(map[string]interface{})["proto"]
+	got := payload["msg"].(map[string]any)["proto"]
 	if diff := cmp.Diff(orig, got); diff != "" {
 		t.Errorf("mismatch: (-want +got):\n%s", diff)
 		t.FailNow()

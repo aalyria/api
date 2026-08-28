@@ -28,7 +28,6 @@ go_library(
         "@com_github_rs_zerolog//:zerolog",
         "@com_github_vishvananda_netlink//:netlink",
         "@org_golang_google_protobuf//encoding/prototext",
-        "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//types/known/timestamppb",
         "@org_golang_x_sys//unix",
     ],

@@ -47,7 +47,7 @@ func NewDriver(args []string, format protofmt.Format, collectionPeriod time.Dura
 	}, clockwork.NewRealClock(), collectionPeriod)
 }
 
-func (rg *reportGenerator) Stats() interface{} {
+func (rg *reportGenerator) Stats() any {
 	return struct {
 		Type   string
 		Args   []string

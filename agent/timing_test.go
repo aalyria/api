@@ -32,8 +32,6 @@ func TestHzToDuration(t *testing.T) {
 		100:  10 * time.Millisecond,
 		1000: 1 * time.Millisecond,
 	} {
-		hz, want := hz, want
-
 		t.Run(fmt.Sprintf("%fhz = %s", hz, want), func(t *testing.T) {
 			t.Parallel()
 			got := hzToDuration(hz)

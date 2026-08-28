@@ -15,7 +15,6 @@
 package netlink
 
 import (
-	"context"
 	"net"
 	"slices"
 	"testing"
@@ -652,7 +651,6 @@ func TestNetlink(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			// t.Parallel()
 
@@ -700,8 +698,7 @@ func TestNetlink(t *testing.T) {
 			}
 			backend := New(config)
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			for i, cc := range tc.configChanges {
 				err := backend.Dispatch(ctx, cc)

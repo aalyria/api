@@ -26,7 +26,7 @@ import (
 )
 
 type ReportGenerator interface {
-	Stats() interface{}
+	Stats() any
 	GenerateReport(ctx context.Context, nodeID string) (*telemetrypb.ExportMetricsRequest, error)
 }
 

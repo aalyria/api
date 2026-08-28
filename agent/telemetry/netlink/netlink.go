@@ -28,7 +28,6 @@ import (
 	vnl "github.com/vishvananda/netlink"
 	"golang.org/x/sys/unix"
 	"google.golang.org/protobuf/encoding/prototext"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -67,8 +66,8 @@ func (rg *reportGenerator) GenerateReport(ctx context.Context, nodeID string) (*
 		log := log.With().Str("interfaceID", interfaceID).Logger()
 
 		textNetIfaceID, err := prototext.Marshal(&apipb.NetworkInterfaceId{
-			NodeId:      proto.String(nodeID),
-			InterfaceId: proto.String(interfaceID),
+			NodeId:      new(nodeID),
+			InterfaceId: new(interfaceID),
 		})
 		if err != nil {
 			log.Err(err).Msg("marshalling textproto interface ID")
@@ -94,21 +93,21 @@ func (rg *reportGenerator) GenerateReport(ctx context.Context, nodeID string) (*
 		}
 
 		interfaceMetrics = append(interfaceMetrics, &telemetrypb.InterfaceMetrics{
-			InterfaceId: proto.String(string(textNetIfaceID)),
+			InterfaceId: new(string(textNetIfaceID)),
 			OperationalStateDataPoints: []*telemetrypb.IfOperStatusDataPoint{{
 				Time:  timestamppb.New(ts),
 				Value: netlinkOperStateToTelemetryOperState(attrs).Enum(),
 			}},
 			StandardInterfaceStatisticsDataPoints: []*telemetrypb.StandardInterfaceStatisticsDataPoint{{
 				Time:      timestamppb.New(ts),
-				RxPackets: proto.Int64(int64(stats.RxPackets)),
-				TxPackets: proto.Int64(int64(stats.TxPackets)),
-				RxBytes:   proto.Int64(int64(stats.RxBytes)),
-				TxBytes:   proto.Int64(int64(stats.TxBytes)),
-				TxErrors:  proto.Int64(int64(stats.TxErrors)),
-				RxErrors:  proto.Int64(int64(stats.RxErrors)),
-				RxDropped: proto.Int64(int64(stats.RxDropped)),
-				TxDropped: proto.Int64(int64(stats.TxDropped)),
+				RxPackets: new(int64(stats.RxPackets)),
+				TxPackets: new(int64(stats.TxPackets)),
+				RxBytes:   new(int64(stats.RxBytes)),
+				TxBytes:   new(int64(stats.TxBytes)),
+				TxErrors:  new(int64(stats.TxErrors)),
+				RxErrors:  new(int64(stats.RxErrors)),
+				RxDropped: new(int64(stats.RxDropped)),
+				TxDropped: new(int64(stats.TxDropped)),
 			}},
 		})
 	}

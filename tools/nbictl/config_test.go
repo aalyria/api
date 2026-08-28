@@ -450,7 +450,7 @@ func TestSetConfig_PartialJwtUpdate(t *testing.T) {
 	assertProtosEqual(t, want, got)
 }
 
-func assertProtosEqual(t *testing.T, want, got interface{}) {
+func assertProtosEqual(t *testing.T, want, got any) {
 	t.Helper()
 
 	if diff := cmp.Diff(want, got, protocmp.Transform()); diff != "" {

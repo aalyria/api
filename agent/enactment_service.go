@@ -70,7 +70,7 @@ func (nc *nodeController) newEnactmentService(sc schedpb.SchedulingClient, ed en
 	}
 }
 
-func (es *enactmentService) Stats() interface{} {
+func (es *enactmentService) Stats() any {
 	return struct {
 		Driver                    any
 		Schedule                  *scheduleManager

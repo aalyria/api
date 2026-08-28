@@ -22,7 +22,6 @@ import (
 
 	"github.com/rs/zerolog"
 	"google.golang.org/protobuf/encoding/prototext"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"aalyria.com/spacetime/agent/internal/pfsense"
@@ -182,8 +181,8 @@ func (d *Driver) convertToInterfaceMetrics(ctx context.Context, nodeID string, s
 		// snmp drivers); emitting the bare pfSense name would leave the exported
 		// metrics with no node association.
 		interfaceID, err := prototext.Marshal(&apipb.NetworkInterfaceId{
-			NodeId:      proto.String(nodeID),
-			InterfaceId: proto.String(stat.Name),
+			NodeId:      new(nodeID),
+			InterfaceId: new(stat.Name),
 		})
 		if err != nil {
 			log.Err(err).Str("interface", stat.Name).Msg("marshalling textproto interface ID")
@@ -216,7 +215,7 @@ func (d *Driver) convertToInterfaceMetrics(ctx context.Context, nodeID string, s
 
 		// Create interface metrics
 		interfaceMetric := &telemetrypb.InterfaceMetrics{
-			InterfaceId: proto.String(string(interfaceID)),
+			InterfaceId: new(string(interfaceID)),
 			StandardInterfaceStatisticsDataPoints: []*telemetrypb.StandardInterfaceStatisticsDataPoint{
 				dataPoint,
 			},

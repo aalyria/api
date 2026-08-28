@@ -120,7 +120,7 @@ func TestGenerateAuthToken_happyPath(t *testing.T) {
 		"nbictl", "--config_dir", tmpDir, "generate-auth-token", "--audience", "providedAudience",
 	}))
 
-	token, err := jwt.Parse(string(app.stdout.Bytes()), func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.Parse(string(app.stdout.Bytes()), func(token *jwt.Token) (any, error) {
 		return cert.PublicKey, nil
 	},
 		jwt.WithSubject("user1"),

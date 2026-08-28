@@ -231,7 +231,7 @@ func (b *Driver) Init(ctx context.Context) error {
 	return nil
 }
 
-func (d *Driver) Stats() interface{} {
+func (d *Driver) Stats() any {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 

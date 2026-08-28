@@ -159,7 +159,7 @@ func CreateMetrics(ctx context.Context, snmpObjects []*configpb.SnmpObject) []Me
 	metricValues := []Metric{}
 
 	// Using range causes a lock copy.
-	for i := 0; i < len(snmpObjects); i++ {
+	for i := range snmpObjects {
 		snmpObject := snmpObjects[i]
 		snmpMetric := Metric{
 			Oid:         snmpObject.Oid,

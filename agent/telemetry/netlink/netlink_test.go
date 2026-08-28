@@ -69,27 +69,25 @@ func TestNetlink(t *testing.T) {
 			interfaceIDs: []string{"cargo-bay-door"},
 			linkByName: linkByNameFromMap(map[string]vnl.Link{
 				"cargo-bay-door": &vnl.Dummy{
-					LinkAttrs: vnl.LinkAttrs{
-						Statistics: &vnl.LinkStatistics{
-							TxPackets: 1,
-							RxPackets: 2,
-							TxBytes:   3,
-							RxBytes:   4,
-							TxDropped: 5,
-							RxDropped: 6,
-							TxErrors:  7,
-							RxErrors:  8,
-						},
-						OperState: vnl.OperUp,
+					Statistics: &vnl.LinkStatistics{
+						TxPackets: 1,
+						RxPackets: 2,
+						TxBytes:   3,
+						RxBytes:   4,
+						TxDropped: 5,
+						RxDropped: 6,
+						TxErrors:  7,
+						RxErrors:  8,
 					},
+					OperState: vnl.OperUp,
 				},
 			}),
 			nodeID: "serenity",
 			wantMetrics: &telemetrypb.ExportMetricsRequest{
 				InterfaceMetrics: []*telemetrypb.InterfaceMetrics{{
-					InterfaceId: proto.String(textNetworkIfaceID(&commonpb.NetworkInterfaceId{
-						NodeId:      proto.String("serenity"),
-						InterfaceId: proto.String("cargo-bay-door"),
+					InterfaceId: new(textNetworkIfaceID(&commonpb.NetworkInterfaceId{
+						NodeId:      new("serenity"),
+						InterfaceId: new("cargo-bay-door"),
 					})),
 					OperationalStateDataPoints: []*telemetrypb.IfOperStatusDataPoint{{
 						Time:  timestamppb.New(clock.Now()),
@@ -114,57 +112,51 @@ func TestNetlink(t *testing.T) {
 			interfaceIDs: []string{"gemini", "apollo", "IDSS"},
 			linkByName: linkByNameFromMap(map[string]vnl.Link{
 				"gemini": &vnl.Dummy{
-					LinkAttrs: vnl.LinkAttrs{
-						OperState: vnl.OperDown,
-						Statistics: &vnl.LinkStatistics{
-							TxPackets: 1,
-							RxPackets: 2,
-							TxBytes:   3,
-							RxBytes:   4,
-							TxDropped: 5,
-							RxDropped: 6,
-							TxErrors:  7,
-							RxErrors:  8,
-						},
+					OperState: vnl.OperDown,
+					Statistics: &vnl.LinkStatistics{
+						TxPackets: 1,
+						RxPackets: 2,
+						TxBytes:   3,
+						RxBytes:   4,
+						TxDropped: 5,
+						RxDropped: 6,
+						TxErrors:  7,
+						RxErrors:  8,
 					},
 				},
 				"apollo": &vnl.Dummy{
-					LinkAttrs: vnl.LinkAttrs{
-						OperState: vnl.OperLowerLayerDown,
-						Statistics: &vnl.LinkStatistics{
-							TxPackets: 10,
-							RxPackets: 20,
-							TxBytes:   30,
-							RxBytes:   40,
-							TxDropped: 50,
-							RxDropped: 60,
-							TxErrors:  70,
-							RxErrors:  80,
-						},
+					OperState: vnl.OperLowerLayerDown,
+					Statistics: &vnl.LinkStatistics{
+						TxPackets: 10,
+						RxPackets: 20,
+						TxBytes:   30,
+						RxBytes:   40,
+						TxDropped: 50,
+						RxDropped: 60,
+						TxErrors:  70,
+						RxErrors:  80,
 					},
 				},
 				"IDSS": &vnl.Dummy{
-					LinkAttrs: vnl.LinkAttrs{
-						OperState: vnl.OperDormant,
-						Statistics: &vnl.LinkStatistics{
-							TxPackets: 100,
-							RxPackets: 200,
-							TxBytes:   300,
-							RxBytes:   400,
-							TxDropped: 500,
-							RxDropped: 600,
-							TxErrors:  700,
-							RxErrors:  800,
-						},
+					OperState: vnl.OperDormant,
+					Statistics: &vnl.LinkStatistics{
+						TxPackets: 100,
+						RxPackets: 200,
+						TxBytes:   300,
+						RxBytes:   400,
+						TxDropped: 500,
+						RxDropped: 600,
+						TxErrors:  700,
+						RxErrors:  800,
 					},
 				},
 			}),
 			nodeID: "ISS",
 			wantMetrics: &telemetrypb.ExportMetricsRequest{
 				InterfaceMetrics: []*telemetrypb.InterfaceMetrics{{
-					InterfaceId: proto.String(textNetworkIfaceID(&commonpb.NetworkInterfaceId{
-						NodeId:      proto.String("ISS"),
-						InterfaceId: proto.String("gemini"),
+					InterfaceId: new(textNetworkIfaceID(&commonpb.NetworkInterfaceId{
+						NodeId:      new("ISS"),
+						InterfaceId: new("gemini"),
 					})),
 					OperationalStateDataPoints: []*telemetrypb.IfOperStatusDataPoint{{
 						Time:  timestamppb.New(clock.Now()),
@@ -182,9 +174,9 @@ func TestNetlink(t *testing.T) {
 						RxErrors:  proto.Int64(8),
 					}},
 				}, {
-					InterfaceId: proto.String(textNetworkIfaceID(&commonpb.NetworkInterfaceId{
-						NodeId:      proto.String("ISS"),
-						InterfaceId: proto.String("apollo"),
+					InterfaceId: new(textNetworkIfaceID(&commonpb.NetworkInterfaceId{
+						NodeId:      new("ISS"),
+						InterfaceId: new("apollo"),
 					})),
 					OperationalStateDataPoints: []*telemetrypb.IfOperStatusDataPoint{{
 						Time:  timestamppb.New(clock.Now()),
@@ -204,9 +196,9 @@ func TestNetlink(t *testing.T) {
 						},
 					},
 				}, {
-					InterfaceId: proto.String(textNetworkIfaceID(&commonpb.NetworkInterfaceId{
-						NodeId:      proto.String("ISS"),
-						InterfaceId: proto.String("IDSS"),
+					InterfaceId: new(textNetworkIfaceID(&commonpb.NetworkInterfaceId{
+						NodeId:      new("ISS"),
+						InterfaceId: new("IDSS"),
 					})),
 					OperationalStateDataPoints: []*telemetrypb.IfOperStatusDataPoint{{
 						Time:  timestamppb.New(clock.Now()),
@@ -233,27 +225,25 @@ func TestNetlink(t *testing.T) {
 			interfaceIDs: []string{"dry-dock", "transporter-room"},
 			linkByName: linkByNameFromMap(map[string]vnl.Link{
 				"dry-dock": &vnl.Dummy{
-					LinkAttrs: vnl.LinkAttrs{
-						OperState: vnl.OperTesting,
-						Statistics: &vnl.LinkStatistics{
-							TxPackets: 1,
-							RxPackets: 2,
-							TxBytes:   3,
-							RxBytes:   4,
-							TxDropped: 5,
-							RxDropped: 6,
-							TxErrors:  7,
-							RxErrors:  8,
-						},
+					OperState: vnl.OperTesting,
+					Statistics: &vnl.LinkStatistics{
+						TxPackets: 1,
+						RxPackets: 2,
+						TxBytes:   3,
+						RxBytes:   4,
+						TxDropped: 5,
+						RxDropped: 6,
+						TxErrors:  7,
+						RxErrors:  8,
 					},
 				},
 			}),
 			nodeID: "enterprise",
 			wantMetrics: &telemetrypb.ExportMetricsRequest{
 				InterfaceMetrics: []*telemetrypb.InterfaceMetrics{{
-					InterfaceId: proto.String(textNetworkIfaceID(&commonpb.NetworkInterfaceId{
-						NodeId:      proto.String("enterprise"),
-						InterfaceId: proto.String("dry-dock"),
+					InterfaceId: new(textNetworkIfaceID(&commonpb.NetworkInterfaceId{
+						NodeId:      new("enterprise"),
+						InterfaceId: new("dry-dock"),
 					})),
 					OperationalStateDataPoints: []*telemetrypb.IfOperStatusDataPoint{{
 						Time:  timestamppb.New(clock.Now()),
@@ -278,19 +268,17 @@ func TestNetlink(t *testing.T) {
 			interfaceIDs: []string{"dry-dock", "transporter-room"},
 			linkByName: linkByNameFromMap(map[string]vnl.Link{
 				"dry-dock": &vnl.Dummy{
-					LinkAttrs: vnl.LinkAttrs{
-						OperState: vnl.OperUnknown,
-						RawFlags:  unix.IFF_RUNNING,
-						Statistics: &vnl.LinkStatistics{
-							TxPackets: 1,
-							RxPackets: 2,
-							TxBytes:   3,
-							RxBytes:   4,
-							TxDropped: 5,
-							RxDropped: 6,
-							TxErrors:  7,
-							RxErrors:  8,
-						},
+					OperState: vnl.OperUnknown,
+					RawFlags:  unix.IFF_RUNNING,
+					Statistics: &vnl.LinkStatistics{
+						TxPackets: 1,
+						RxPackets: 2,
+						TxBytes:   3,
+						RxBytes:   4,
+						TxDropped: 5,
+						RxDropped: 6,
+						TxErrors:  7,
+						RxErrors:  8,
 					},
 				},
 				"transporter-room": &vnl.Dummy{},
@@ -298,9 +286,9 @@ func TestNetlink(t *testing.T) {
 			nodeID: "enterprise",
 			wantMetrics: &telemetrypb.ExportMetricsRequest{
 				InterfaceMetrics: []*telemetrypb.InterfaceMetrics{{
-					InterfaceId: proto.String(textNetworkIfaceID(&commonpb.NetworkInterfaceId{
-						NodeId:      proto.String("enterprise"),
-						InterfaceId: proto.String("dry-dock"),
+					InterfaceId: new(textNetworkIfaceID(&commonpb.NetworkInterfaceId{
+						NodeId:      new("enterprise"),
+						InterfaceId: new("dry-dock"),
 					})),
 					OperationalStateDataPoints: []*telemetrypb.IfOperStatusDataPoint{{
 						Time:  timestamppb.New(clock.Now()),
@@ -325,19 +313,17 @@ func TestNetlink(t *testing.T) {
 			interfaceIDs: []string{"dry-dock", "transporter-room"},
 			linkByName: linkByNameFromMap(map[string]vnl.Link{
 				"dry-dock": &vnl.Dummy{
-					LinkAttrs: vnl.LinkAttrs{
-						OperState: vnl.OperUnknown,
-						RawFlags:  unix.IFF_DORMANT,
-						Statistics: &vnl.LinkStatistics{
-							TxPackets: 1,
-							RxPackets: 2,
-							TxBytes:   3,
-							RxBytes:   4,
-							TxDropped: 5,
-							RxDropped: 6,
-							TxErrors:  7,
-							RxErrors:  8,
-						},
+					OperState: vnl.OperUnknown,
+					RawFlags:  unix.IFF_DORMANT,
+					Statistics: &vnl.LinkStatistics{
+						TxPackets: 1,
+						RxPackets: 2,
+						TxBytes:   3,
+						RxBytes:   4,
+						TxDropped: 5,
+						RxDropped: 6,
+						TxErrors:  7,
+						RxErrors:  8,
 					},
 				},
 				"transporter-room": &vnl.Dummy{},
@@ -345,9 +331,9 @@ func TestNetlink(t *testing.T) {
 			nodeID: "enterprise",
 			wantMetrics: &telemetrypb.ExportMetricsRequest{
 				InterfaceMetrics: []*telemetrypb.InterfaceMetrics{{
-					InterfaceId: proto.String(textNetworkIfaceID(&commonpb.NetworkInterfaceId{
-						NodeId:      proto.String("enterprise"),
-						InterfaceId: proto.String("dry-dock"),
+					InterfaceId: new(textNetworkIfaceID(&commonpb.NetworkInterfaceId{
+						NodeId:      new("enterprise"),
+						InterfaceId: new("dry-dock"),
 					})),
 					OperationalStateDataPoints: []*telemetrypb.IfOperStatusDataPoint{{
 						Time:  timestamppb.New(clock.Now()),
@@ -372,19 +358,17 @@ func TestNetlink(t *testing.T) {
 			interfaceIDs: []string{"dry-dock", "transporter-room"},
 			linkByName: linkByNameFromMap(map[string]vnl.Link{
 				"dry-dock": &vnl.Dummy{
-					LinkAttrs: vnl.LinkAttrs{
-						OperState: vnl.OperUnknown,
-						Flags:     0,
-						Statistics: &vnl.LinkStatistics{
-							TxPackets: 1,
-							RxPackets: 2,
-							TxBytes:   3,
-							RxBytes:   4,
-							TxDropped: 5,
-							RxDropped: 6,
-							TxErrors:  7,
-							RxErrors:  8,
-						},
+					OperState: vnl.OperUnknown,
+					Flags:     0,
+					Statistics: &vnl.LinkStatistics{
+						TxPackets: 1,
+						RxPackets: 2,
+						TxBytes:   3,
+						RxBytes:   4,
+						TxDropped: 5,
+						RxDropped: 6,
+						TxErrors:  7,
+						RxErrors:  8,
 					},
 				},
 				"transporter-room": &vnl.Dummy{},
@@ -392,9 +376,9 @@ func TestNetlink(t *testing.T) {
 			nodeID: "enterprise",
 			wantMetrics: &telemetrypb.ExportMetricsRequest{
 				InterfaceMetrics: []*telemetrypb.InterfaceMetrics{{
-					InterfaceId: proto.String(textNetworkIfaceID(&commonpb.NetworkInterfaceId{
-						NodeId:      proto.String("enterprise"),
-						InterfaceId: proto.String("dry-dock"),
+					InterfaceId: new(textNetworkIfaceID(&commonpb.NetworkInterfaceId{
+						NodeId:      new("enterprise"),
+						InterfaceId: new("dry-dock"),
 					})),
 					OperationalStateDataPoints: []*telemetrypb.IfOperStatusDataPoint{{
 						Time:  timestamppb.New(clock.Now()),
@@ -419,18 +403,16 @@ func TestNetlink(t *testing.T) {
 			interfaceIDs: []string{"dry-dock", "transporter-room"},
 			linkByName: linkByNameFromMap(map[string]vnl.Link{
 				"dry-dock": &vnl.Dummy{
-					LinkAttrs: vnl.LinkAttrs{
-						OperState: vnl.OperNotPresent,
-						Statistics: &vnl.LinkStatistics{
-							TxPackets: 1,
-							RxPackets: 2,
-							TxBytes:   3,
-							RxBytes:   4,
-							TxDropped: 5,
-							RxDropped: 6,
-							TxErrors:  7,
-							RxErrors:  8,
-						},
+					OperState: vnl.OperNotPresent,
+					Statistics: &vnl.LinkStatistics{
+						TxPackets: 1,
+						RxPackets: 2,
+						TxBytes:   3,
+						RxBytes:   4,
+						TxDropped: 5,
+						RxDropped: 6,
+						TxErrors:  7,
+						RxErrors:  8,
 					},
 				},
 				"transporter-room": &vnl.Dummy{
@@ -440,9 +422,9 @@ func TestNetlink(t *testing.T) {
 			nodeID: "enterprise",
 			wantMetrics: &telemetrypb.ExportMetricsRequest{
 				InterfaceMetrics: []*telemetrypb.InterfaceMetrics{{
-					InterfaceId: proto.String(textNetworkIfaceID(&commonpb.NetworkInterfaceId{
-						NodeId:      proto.String("enterprise"),
-						InterfaceId: proto.String("dry-dock"),
+					InterfaceId: new(textNetworkIfaceID(&commonpb.NetworkInterfaceId{
+						NodeId:      new("enterprise"),
+						InterfaceId: new("dry-dock"),
 					})),
 					OperationalStateDataPoints: []*telemetrypb.IfOperStatusDataPoint{{
 						Time:  timestamppb.New(clock.Now()),

@@ -110,13 +110,13 @@ var testCasesStatusApi = []testCaseStatusApi{
 		fileContents:  nil,
 		responseError: nil,
 		responseMessage: &statuspb.GetVersionResponse{
-			BuildVersion: proto.String("2.1.0"),
+			BuildVersion: new("2.1.0"),
 		},
 		cmdLineArgs:  []string{"status-v1", "get-version"},
 		wantAppError: false,
 		wantRequest:  &statuspb.GetVersionRequest{},
 		expectFn: expectTextProto(&statuspb.GetVersionResponse{
-			BuildVersion: proto.String("2.1.0"),
+			BuildVersion: new("2.1.0"),
 		}),
 	},
 	{
@@ -124,7 +124,7 @@ var testCasesStatusApi = []testCaseStatusApi{
 		fileContents:  nil,
 		responseError: nil,
 		responseMessage: &statuspb.GetVersionResponse{
-			BuildVersion: proto.String("2.9.0"),
+			BuildVersion: new("2.9.0"),
 		},
 		cmdLineArgs:  []string{"status-v1", "get-version", "--format", "json"},
 		wantAppError: false,

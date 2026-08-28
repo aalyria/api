@@ -32,7 +32,7 @@ type constantGenerator struct {
 	clock clockwork.Clock
 }
 
-func (cg *constantGenerator) Stats() interface{} { return nil }
+func (cg *constantGenerator) Stats() any { return nil }
 func (cg *constantGenerator) GenerateReport(ctx context.Context, nodeID string) (*telemetrypb.ExportMetricsRequest, error) {
 	return &telemetrypb.ExportMetricsRequest{
 		ModemMetrics: []*telemetrypb.ModemMetrics{{

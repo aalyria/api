@@ -33,7 +33,6 @@ go_library(
         "@com_github_prometheus_client_golang//prometheus/promhttp",
         "@com_github_rs_zerolog//:zerolog",
         "@org_golang_google_protobuf//encoding/prototext",
-        "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//types/known/timestamppb",
     ],
 )

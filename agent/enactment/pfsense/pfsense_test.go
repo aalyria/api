@@ -832,7 +832,7 @@ func TestDriver_ConcurrentAccess(t *testing.T) {
 
 	// Test concurrent access to stats
 	done := make(chan bool, 10)
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		go func() {
 			defer func() { done <- true }()
 
@@ -854,7 +854,7 @@ func TestDriver_ConcurrentAccess(t *testing.T) {
 	}
 
 	// Wait for all goroutines to complete
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		<-done
 	}
 

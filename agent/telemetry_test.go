@@ -34,8 +34,8 @@ import (
 
 func textPBIfaceID(t *testing.T, nodeID, ifaceID string) string {
 	b, _ := prototext.Marshal(&apipb.NetworkInterfaceId{
-		NodeId:      proto.String(nodeID),
-		InterfaceId: proto.String(ifaceID),
+		NodeId:      new(nodeID),
+		InterfaceId: new(ifaceID),
 	})
 	return string(b)
 }
@@ -50,7 +50,7 @@ func newManualReportDriver() *manualReportDriver {
 	}
 }
 
-func (mrd *manualReportDriver) Stats() interface{} { return nil }
+func (mrd *manualReportDriver) Stats() any { return nil }
 func (mrd *manualReportDriver) Run(ctx context.Context, nodeID string, reportMetrics func(*telemetrypb.ExportMetricsRequest) error) error {
 	for {
 		select {
@@ -80,7 +80,7 @@ func TestRelaysMetricsFromDriverToController(t *testing.T) {
 
 	servedReport := &telemetrypb.ExportMetricsRequest{
 		InterfaceMetrics: []*telemetrypb.InterfaceMetrics{{
-			InterfaceId: proto.String(textPBIfaceID(t, "foobar", "lo0")),
+			InterfaceId: new(textPBIfaceID(t, "foobar", "lo0")),
 			StandardInterfaceStatisticsDataPoints: []*telemetrypb.StandardInterfaceStatisticsDataPoint{{
 				TxBytes: proto.Int64(1),
 				RxBytes: proto.Int64(12),

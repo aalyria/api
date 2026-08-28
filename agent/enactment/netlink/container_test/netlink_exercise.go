@@ -40,7 +40,7 @@ const (
 // which can be used to simulate the behaviour of real Linux network interfaces
 func setupInterface(nlHandle *vnl.Handle, ifaceIndex int, ifaceName string, ifaceIP4 string, ifaceIP6 string) {
 	// Generate synthetic link environment for test
-	link := vnl.Dummy{LinkAttrs: vnl.LinkAttrs{Index: ifaceIndex, Name: ifaceName}}
+	link := vnl.Dummy{Index: ifaceIndex, Name: ifaceName}
 	err := nlHandle.LinkAdd(&link)
 	if err != nil {
 		log.Fatalf("nlHandle.LinkAdd(Dummy(%s)) failed with: %s", ifaceName, err)
@@ -109,7 +109,7 @@ func checkNetlinkIpRulePriorityJumpsToTable(priority int) {
 			log.Fatalf("Error running '%v': %v (%v)\n", cmd.String(), strings.TrimSpace(err.Error()), string(output))
 		} else {
 			linePrefix := fmt.Sprintf("%v:", strconv.Itoa(priority))
-			for _, line := range strings.Split(string(output), "\n") {
+			for line := range strings.SplitSeq(string(output), "\n") {
 				if strings.HasPrefix(line, linePrefix) {
 					fmt.Printf("ip %v rule: %v\n", ipVersion, line)
 				}

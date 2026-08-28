@@ -1065,17 +1065,18 @@ func ProvisioningDelete(appCtx *cli.Context) error {
 		maxConcurrency: maxConcurrency,
 		nextClient:     nextClient,
 		onProgress:     func() {},
+
+		p2pSrTePolicies:             lo.Intersect(resourceNames, lo.Keys(remoteResources.p2pSrTePolicies)),
+		p2pSrTePolicyCandidatePaths: lo.Intersect(resourceNames, lo.Keys(remoteResources.p2pSrTePolicyCandidatePaths)),
+		downtimes:                   lo.Intersect(resourceNames, lo.Keys(remoteResources.downtimes)),
+		protectionAssociationGroups: lo.Intersect(resourceNames, lo.Keys(remoteResources.protectionAssociationGroups)),
+		disjointAssociationGroups:   lo.Intersect(resourceNames, lo.Keys(remoteResources.disjointAssociationGroups)),
+		links:                       lo.Intersect(resourceNames, lo.Keys(remoteResources.links)),
+		geographicRegions:           lo.Intersect(resourceNames, lo.Keys(remoteResources.geographicRegions)),
+		emissionsLimits:             lo.Intersect(resourceNames, lo.Keys(remoteResources.emissionsLimits)),
+		pointingConstraints:         lo.Intersect(resourceNames, lo.Keys(remoteResources.pointingConstraints)),
+		eirpsdMaskLimits:            lo.Intersect(resourceNames, lo.Keys(remoteResources.eirpsdMaskLimits)),
 	}
-	params.p2pSrTePolicies = lo.Intersect(resourceNames, lo.Keys(remoteResources.p2pSrTePolicies))
-	params.p2pSrTePolicyCandidatePaths = lo.Intersect(resourceNames, lo.Keys(remoteResources.p2pSrTePolicyCandidatePaths))
-	params.downtimes = lo.Intersect(resourceNames, lo.Keys(remoteResources.downtimes))
-	params.protectionAssociationGroups = lo.Intersect(resourceNames, lo.Keys(remoteResources.protectionAssociationGroups))
-	params.disjointAssociationGroups = lo.Intersect(resourceNames, lo.Keys(remoteResources.disjointAssociationGroups))
-	params.links = lo.Intersect(resourceNames, lo.Keys(remoteResources.links))
-	params.geographicRegions = lo.Intersect(resourceNames, lo.Keys(remoteResources.geographicRegions))
-	params.emissionsLimits = lo.Intersect(resourceNames, lo.Keys(remoteResources.emissionsLimits))
-	params.pointingConstraints = lo.Intersect(resourceNames, lo.Keys(remoteResources.pointingConstraints))
-	params.eirpsdMaskLimits = lo.Intersect(resourceNames, lo.Keys(remoteResources.eirpsdMaskLimits))
 
 	deleteResourceNameSet := slices.Concat(
 		params.p2pSrTePolicies,

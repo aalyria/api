@@ -25,7 +25,6 @@ go_library(
         "@com_github_jonboulle_clockwork//:clockwork",
         "@com_github_prometheus_client_model//go",
         "@com_github_prometheus_prom2json//:prom2json",
-        "@org_golang_google_protobuf//proto",
     ],
 )
 
