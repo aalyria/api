@@ -453,10 +453,17 @@ func isNotFoundError(err error) bool {
 	return st.Code() == codes.NotFound
 }
 
+// defaultRPCTimeout bounds a single attempt of a typical unary NBI RPC.
+const defaultRPCTimeout = 30 * time.Second
+
 func withRetry(ctx context.Context, fn func(ctx context.Context) error) error {
+	return withRetryTimeout(ctx, defaultRPCTimeout, fn)
+}
+
+func withRetryTimeout(ctx context.Context, timeout time.Duration, fn func(ctx context.Context) error) error {
 	var err error
 	for attempt := range 3 {
-		rpcCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		rpcCtx, cancel := context.WithTimeout(ctx, timeout)
 		err = fn(rpcCtx)
 		cancel()
 		if err == nil {

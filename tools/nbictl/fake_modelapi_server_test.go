@@ -141,6 +141,18 @@ func (s *FakeModelServer) DeleteRelationship(ctx context.Context, req *modelpb.D
 	return handleCall[*emptypb.Empty](s, ctx, req)
 }
 
+func (s *FakeModelServer) UpsertFragment(ctx context.Context, req *modelpb.UpsertFragmentRequest) (*modelpb.UpsertFragmentResponse, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.RequestMessage = req
+	s.UpsertedEntities = append(s.UpsertedEntities, req.GetFragment().GetEntity()...)
+	s.CreatedRelationships = append(s.CreatedRelationships, req.GetFragment().GetRelationship()...)
+	if s.ResponseError != nil {
+		return nil, s.ResponseError
+	}
+	return &modelpb.UpsertFragmentResponse{}, nil
+}
+
 func (s *FakeModelServer) GetEntity(ctx context.Context, req *modelpb.GetEntityRequest) (*nmtspb.Entity, error) {
 	return handleCall[*nmtspb.Entity](s, ctx, req)
 }

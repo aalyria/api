@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 	"sync/atomic"
+	"time"
 
 	set "github.com/deckarep/golang-set/v2"
 	"github.com/samber/lo"
@@ -34,6 +35,10 @@ import (
 	modelpb "aalyria.com/spacetime/api/model/v1"
 	omnipb "aalyria.com/spacetime/tools/nbictl/omnipb"
 )
+
+// upsertFragmentTimeout is larger than defaultRPCTimeout because each request
+// carries a batch of entities and relationships.
+const upsertFragmentTimeout = 90 * time.Second
 
 // normalizeOmniFragment collapses an OmniFragment, which permissively accepts
 // both the singular (`entity`/`relationship`) and pluralized
@@ -664,16 +669,17 @@ func ModelSync(appCtx *cli.Context) error {
 		deleteRelsTotal = remoteRelationshipKeys.Difference(localRelationshipKeys).Cardinality()
 	}
 
-	upsertTotal := len(localEntities)
+	deleteEntitiesTotal := 0
 	if deleteMode {
-		upsertTotal += remoteEntityKeys.Difference(localEntityKeys).Cardinality()
+		deleteEntitiesTotal = remoteEntityKeys.Difference(localEntityKeys).Cardinality()
 	}
 
 	addRelsTotal := localRelationshipKeys.Difference(remoteRelationshipKeys).Cardinality()
 
 	applyProgress := newSyncProgress(showProgress)
 	deleteRelsBar := applyProgress.AddBar("deleting relationships", deleteRelsTotal)
-	upsertBar := applyProgress.AddBar("applying changes to remote", upsertTotal)
+	upsertEntitiesBar := applyProgress.AddBar("upserting entities", len(localEntities))
+	deleteEntitiesBar := applyProgress.AddBar("deleting entities", deleteEntitiesTotal)
 	addRelsBar := applyProgress.AddBar("adding relationships", addRelsTotal)
 
 	applyProgress.Start()
@@ -705,21 +711,31 @@ func ModelSync(appCtx *cli.Context) error {
 	// relationships that might create difficult-to-analyze graphs.
 	errs = append(errs, deleteRelationshipsPool.Wait())
 
-	// Upsert all local entities + delete remote-only entities.
+	// Upsert all local entities via batched UpsertFragment calls, then delete
+	// remote-only entities per element (delete is not batched). Batches are built
+	// from the deduplicated localEntities map -- never the raw parsedFragments --
+	// so UpsertFragment never sees a duplicate entity id.
 	upsertPool := pool.New().WithErrors().WithMaxGoroutines(maxConcurrency)
+
+	entitiesFragment := &nmtspb.Fragment{Entity: make([]*nmtspb.Entity, 0, len(localEntities))}
 	for _, entity := range localEntities {
+		entitiesFragment.Entity = append(entitiesFragment.Entity, entity)
+	}
+	for _, batch := range er.SplitBySize(entitiesFragment, er.MaxFragmentUpsertBytes, er.MaxFragmentUpsertElements) {
 		upsertPool.Go(func() error {
 			var err error
 			if !dryRunMode {
-				err = withRetry(appCtx.Context, func(ctx context.Context) error {
-					_, err := nextClient().UpdateEntity(ctx, &modelpb.UpdateEntityRequest{
-						Entity:       entity,
-						AllowMissing: true,
-					})
+				err = withRetryTimeout(appCtx.Context, upsertFragmentTimeout, func(ctx context.Context) error {
+					_, err := nextClient().UpsertFragment(ctx, &modelpb.UpsertFragmentRequest{Fragment: batch})
 					return err
 				})
 			}
-			upsertBar.Incr()
+			// Advance by the committed batch's element count only on success, so
+			// the bar never shows partial-within-batch progress and stops short
+			// on failure.
+			if err == nil {
+				upsertEntitiesBar.IncrBy(len(batch.GetEntity()))
+			}
 			return err
 		})
 	}
@@ -740,7 +756,7 @@ func ModelSync(appCtx *cli.Context) error {
 						err = nil
 					}
 				}
-				upsertBar.Incr()
+				deleteEntitiesBar.Incr()
 				return err
 			})
 		}
@@ -748,21 +764,28 @@ func ModelSync(appCtx *cli.Context) error {
 
 	errs = append(errs, upsertPool.Wait())
 
-	// Add relationships.
+	// Add relationships via batched UpsertFragment calls. Only the delta
+	// (local - remote) is sent, built from the deduplicated relationship set.
+	// The upsertPool.Wait() above is the entities-before-relationships barrier:
+	// every entity a delta relationship references is already committed.
 	addRelationshipsPool := pool.New().WithErrors().WithMaxGoroutines(maxConcurrency)
 	relationshipsToBeAdded := localRelationshipKeys.Difference(remoteRelationshipKeys)
+	relsFragment := &nmtspb.Fragment{Relationship: make([]*nmtspb.Relationship, 0, relationshipsToBeAdded.Cardinality())}
 	for relationship := range relationshipsToBeAdded.Iter() {
+		relsFragment.Relationship = append(relsFragment.Relationship, relationship.ToProto())
+	}
+	for _, batch := range er.SplitBySize(relsFragment, er.MaxFragmentUpsertBytes, er.MaxFragmentUpsertElements) {
 		addRelationshipsPool.Go(func() error {
 			var err error
 			if !dryRunMode {
-				err = withRetry(appCtx.Context, func(ctx context.Context) error {
-					_, err := nextClient().CreateRelationship(ctx, &modelpb.CreateRelationshipRequest{
-						Relationship: relationship.ToProto(),
-					})
+				err = withRetryTimeout(appCtx.Context, upsertFragmentTimeout, func(ctx context.Context) error {
+					_, err := nextClient().UpsertFragment(ctx, &modelpb.UpsertFragmentRequest{Fragment: batch})
 					return err
 				})
 			}
-			addRelsBar.Incr()
+			if err == nil {
+				addRelsBar.IncrBy(len(batch.GetRelationship()))
+			}
 			return err
 		})
 	}

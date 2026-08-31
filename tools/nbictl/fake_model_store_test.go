@@ -28,8 +28,11 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	modelpb "aalyria.com/spacetime/api/model/v1"
+	"outernetcouncil.org/nmts/v1/lib/validation"
 	nmtspb "outernetcouncil.org/nmts/v1/proto"
+	nmtsphypb "outernetcouncil.org/nmts/v1/proto/ek/physical"
+
+	modelpb "aalyria.com/spacetime/api/model/v1"
 )
 
 type relationshipKey struct {
@@ -206,6 +209,40 @@ func (s *InMemoryModelServer) ListRelationships(_ context.Context, _ *modelpb.Li
 	return &modelpb.ListRelationshipsResponse{Relationships: rels}, nil
 }
 
+func (s *InMemoryModelServer) UpsertFragment(_ context.Context, req *modelpb.UpsertFragmentRequest) (*modelpb.UpsertFragmentResponse, error) {
+	fragment := req.GetFragment()
+	if len(fragment.GetEntity()) == 0 && len(fragment.GetRelationship()) == 0 {
+		return nil, status.Errorf(codes.InvalidArgument, "fragment has no entities or relationships")
+	}
+
+	// Apply the same admission checks the real ModelFE runs before it touches
+	// storage, so a fragment this fake accepts is one the service would accept.
+	if err := validation.ValidateFragment(fragment); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid fragment: %v", err)
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	resp := &modelpb.UpsertFragmentResponse{}
+	for _, e := range fragment.GetEntity() {
+		if _, exists := s.entities[e.GetId()]; exists {
+			resp.EntitiesUpdated++
+		} else {
+			resp.EntitiesCreated++
+		}
+		s.entities[e.GetId()] = proto.Clone(e).(*nmtspb.Entity)
+	}
+	for _, r := range fragment.GetRelationship() {
+		key := relationshipKey{A: r.GetA(), Z: r.GetZ(), Kind: r.GetKind()}
+		if _, exists := s.relationships[key]; !exists {
+			resp.RelationshipsCreated++
+		}
+		s.relationships[key] = proto.Clone(r).(*nmtspb.Relationship)
+	}
+	return resp, nil
+}
+
 func startInMemoryModelServer(ctx context.Context, g *errgroup.Group, listener net.Listener) (*InMemoryModelServer, error) {
 	srv := newInMemoryModelServer()
 	srv.listener = listener
@@ -231,9 +268,15 @@ func startInMemoryModelServer(ctx context.Context, g *errgroup.Group, listener n
 func generateSyntheticModel(numEntities int) ([]*nmtspb.Entity, []*nmtspb.Relationship) {
 	entities := make([]*nmtspb.Entity, numEntities)
 	for i := range numEntities {
-		entities[i] = &nmtspb.Entity{
-			Id: fmt.Sprintf("entity-%04d", i),
+		entity := &nmtspb.Entity{Id: fmt.Sprintf("entity-%04d", i)}
+		// The first entity contains every other one, a pairing the model permits
+		// between a platform and its ports.
+		if i == 0 {
+			entity.Kind = &nmtspb.Entity_EkPlatform{EkPlatform: &nmtsphypb.Platform{}}
+		} else {
+			entity.Kind = &nmtspb.Entity_EkPort{EkPort: &nmtsphypb.Port{}}
 		}
+		entities[i] = entity
 	}
 
 	var relationships []*nmtspb.Relationship

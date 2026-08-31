@@ -105,6 +105,20 @@ func (pb *progressBar) Incr() {
 	}
 }
 
+// IncrBy advances the bar by n. Batched phases call this once per committed
+// batch so the bar moves in discrete jumps matching the number of elements the
+// batch committed. It applies n atomic single-step increments (rather than a
+// read-add-set) so concurrent calls from multiple batch goroutines advancing the
+// same bar cannot lose updates.
+func (pb *progressBar) IncrBy(n int) {
+	if pb.bar == nil {
+		return
+	}
+	for range n {
+		pb.bar.Incr()
+	}
+}
+
 func (pb *progressBar) SetTotal(total int) {
 	if pb.bar != nil {
 		pb.bar.Total = total

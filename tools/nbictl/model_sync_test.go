@@ -264,3 +264,51 @@ relationship { a: "platform-1" z: "platform-2" kind: RK_CONTAINS }
 		t.Errorf("RelationshipCount = %d, want 1", got)
 	}
 }
+
+func TestModelSync_CrossFileDuplicates(t *testing.T) {
+	t.Parallel()
+
+	env := setupSyncTestEnv(t)
+
+	env.writeEntityFile(t, "a.txtpb", `
+entity { id: "platform-1" ek_platform {} }
+entity { id: "platform-2" ek_platform {} }
+relationship { a: "platform-1" z: "platform-2" kind: RK_CONTAINS }
+`)
+	env.writeEntityFile(t, "b.txtpb", `
+entity { id: "platform-1" ek_platform {} }
+relationship { a: "platform-1" z: "platform-2" kind: RK_CONTAINS }
+`)
+
+	if err := newTestApp().Run(env.syncArgs()); err != nil {
+		t.Fatalf("sync failed: %v", err)
+	}
+	if got := env.srv.EntityCount(); got != 2 {
+		t.Errorf("EntityCount = %d, want 2", got)
+	}
+	if got := env.srv.RelationshipCount(); got != 1 {
+		t.Errorf("RelationshipCount = %d, want 1", got)
+	}
+}
+
+func TestModelSync_LargeModelSpansMultipleBatches(t *testing.T) {
+	t.Parallel()
+
+	env := setupSyncTestEnv(t)
+
+	const numEntities = 1500
+	entities, relationships := generateSyntheticModel(numEntities)
+	if err := writeFragmentFiles(env.dataDir, entities, relationships, 5); err != nil {
+		t.Fatalf("writing fragment files: %v", err)
+	}
+
+	if err := newTestApp().Run(env.syncArgs()); err != nil {
+		t.Fatalf("sync failed: %v", err)
+	}
+	if got := env.srv.EntityCount(); got != numEntities {
+		t.Errorf("EntityCount = %d, want %d", got, numEntities)
+	}
+	if got := env.srv.RelationshipCount(); got != numEntities-1 {
+		t.Errorf("RelationshipCount = %d, want %d", got, numEntities-1)
+	}
+}
