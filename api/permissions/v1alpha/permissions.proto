@@ -135,6 +135,12 @@ message AuthorizationConfig {
       // A role identifier. It matches a name in one of the claims that
       // grant_claims specifies.
       ROLE = 3;
+      // A workload identity. It matches the sub claim of a token from a trust
+      // anchor that declares a workload subject. A Kubernetes cluster spells
+      // the claim "system:serviceaccount:<namespace>:<name>". The match is
+      // exact bytes, so two service accounts with the same name in two
+      // namespaces are two principals.
+      WORKLOAD = 4;
     }
 
     // The name of the principal. See PrincipalKind for the kinds of name. The
