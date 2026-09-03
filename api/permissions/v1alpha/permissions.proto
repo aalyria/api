@@ -86,10 +86,10 @@ option java_package = "com.aalyria.spacetime.api.permissions.v1alpha";
 //   authorization_config           (config upload/management)
 //
 // PERMISSION_WRITE on resource 'authorization_config' required
-// to update configs.
-// Note: On first update to an uninitialized system, this permission
-// is not required, but the config must grant PERMISSION_WRITE on
+// to update configs. The config must grant PERMISSION_WRITE on
 // 'authorization_config' to the updater to prevent lockout.
+// On a system that holds no config, only the principal that the deployment
+// names may write the first config.
 
 // Manages authorization permissions and configuration for a Spacetime
 // instance.
@@ -107,7 +107,10 @@ service Permissions {
   rpc UpdateAuthorizationConfig(UpdateAuthorizationConfigRequest)
       returns (AuthorizationConfig);
 
-  // Lists recent authorization configuration revisions.
+  // Lists recent authorization configuration revisions. The caller needs
+  // PERMISSION_WRITE on resource 'authorization_config'. The service waives
+  // that requirement while it holds no configuration, because it then has no
+  // revision to report.
   rpc ListAuthorizationConfigRevisions(ListAuthorizationConfigRevisionsRequest)
       returns (ListAuthorizationConfigRevisionsResponse);
 }
@@ -120,28 +123,8 @@ message AuthorizationConfig {
     // PrincipalKind is the category of a principal. An entry matches a
     // principal only when the kind and the name are both equal.
     enum PrincipalKind {
-      // The entry does not state the kind. The service then calculates the
-      // kind from the name. A name that contains an "@" is an EMAIL. A
-      // different name that contains a "." is a DOMAIN. Each other name is a
-      // ROLE.
-      //
-      // A wrong calculated kind is not safe. The entry does not grant what you
-      // intended. It grants to each caller who presents a principal of the
-      // calculated kind. Each name below needs an explicit kind.
-      //
-      // - A role name that contains a ".", such as "platform.admin". The
-      //   service calculates DOMAIN. The entry then grants to each caller
-      //   whose email claim ends in "@platform.admin". Set ROLE.
-      // - A domain that contains no ".", such as a single-label intranet
-      //   domain. The service calculates ROLE. The entry then grants to each
-      //   holder of a role with that name. Set DOMAIN.
-      // - A role or group name that is an email address, such as
-      //   "netops@example.com". The service calculates EMAIL. The entry then
-      //   grants to the holder of that address. Set ROLE.
-      // - A user name that is not an email address. An identity provider can
-      //   put such a name in the email claim. The service calculates ROLE. The
-      //   entry then grants to each holder of a role with that name. Set
-      //   EMAIL.
+      // The kind is not stated. The service refuses an entry with this value at
+      // upload, and it drops such an entry at load.
       PRINCIPAL_KIND_UNSPECIFIED = 0;
       // An email address. It matches the email claim of the JWT.
       EMAIL = 1;
@@ -166,7 +149,7 @@ message AuthorizationConfig {
     string resource = 3 [(google.api.field_behavior) = REQUIRED];
 
     // The kind of principal that the principal field gives.
-    PrincipalKind kind = 4;
+    PrincipalKind kind = 4 [(google.api.field_behavior) = REQUIRED];
   }
 
   // The resource name of the authorization config singleton.
@@ -241,6 +224,10 @@ message CheckPermissionsResponse {
 message UpdateAuthorizationConfigRequest {
   // The new authorization configuration to apply.
   AuthorizationConfig config = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // The reason for the change. The service records it with the revision and
+  // in the audit log. An empty reason is refused.
+  string reason = 2 [(google.api.field_behavior) = REQUIRED];
 }
 
 // Request message for ListAuthorizationConfigRevisions.
@@ -268,6 +255,16 @@ message AuthorizationConfigRevision {
 
   // The authorization configuration for this revision.
   AuthorizationConfig snapshot = 5;
+
+  // The identity that wrote this revision, as "<issuer>#<subject>".
+  string actor = 6;
+
+  // The email address of the identity that wrote this revision. It is empty
+  // for a machine identity.
+  string actor_email = 7;
+
+  // The reason the writer gave for this revision.
+  string reason = 8;
 
   reserved 3;
   reserved "uploaded_by";
