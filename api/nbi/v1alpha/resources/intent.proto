@@ -77,6 +77,7 @@ message Intent {
     BearerIntent bearer = 19;
     ContractIntent contract = 23;
     MobilityIntent mobility = 21;
+    ChannelBandwidthProfileIntent channel_bandwidth_profile = 24;
   }
   optional IntentState state = 7 [default = INSTALL_REQ];
 
@@ -127,7 +128,7 @@ message Intent {
   repeated aalyria.spacetime.api.common.ScheduledControlUpdate
     compiled_withdrawal_updates = 17;
 
-  reserved 2, 10, 12, 24 to max;  // Next IDs.
+  reserved 2, 10, 12, 25 to max;  // Next IDs.
 }
 
 // Models an intent to configure steerable beams and/or radio resources.
@@ -623,6 +624,17 @@ message MobilityIntent {
   // procedures should begin at T-2 seconds to ensure the network is ready
   // when the handover actually occurs.
   optional google.protobuf.Duration handover_lead_time = 5;
+}
+
+// The beam configuration mode requested for an antenna interface group
+// (EK_SIGNAL_PROCESSING_CHAIN) over the intent's interval.
+message ChannelBandwidthProfileIntent {
+  // EK_SIGNAL_PROCESSING_CHAIN entity id.
+  optional string signal_processing_chain_id = 1;
+
+  // The selected profile, matching one
+  // ChannelBandwidthProfileConfiguration.BandwidthProfile.bandwidths_hz.
+  repeated int64 bandwidths_hz = 2;
 }
 
 

@@ -161,6 +161,8 @@ message CreateEntryRequest {
     DeleteP2pSrTePolicyPath delete_p2p_sr_te_policy_path = 21;
     UpdateIpRoute update_ip_route = 24;
     DeleteIpRoute delete_ip_route = 25;
+    UpdateChannelBandwidthProfile update_channel_bandwidth_profile = 26;
+    DeleteChannelBandwidthProfile delete_channel_bandwidth_profile = 27;
   }
 
   reserved 7, 8, 11, 13, 14, 17;
@@ -252,6 +254,51 @@ message DeleteIpRoute {
   // The resource name of the IpRoute to delete.
   // Format: ipRoutes/{ip_route_id}
   string name = 1;
+}
+
+// Selects the channel bandwidth profile that a signal processing chain's
+// nmts.v1.ek.physical.ChannelBandwidthProfileConfiguration element is to 
+// operate in.
+//
+// Conceptually, each profile corresponds to one permutation
+// of a set of RF switches selecting among banks of filters, where each
+// permutation admits a different set of channel bandwidths.
+//
+// This abstraction is deliberately independent of how a payload realizes the
+// behavior. The routing may occur in the analog domain via discrete
+// electronics or digitally within a channelizer, and it may be a distinct
+// subsystem or a property of one.
+message ChannelBandwidthProfile {
+  // nmts.v1.ek.physical.SignalProcessingChain entity ID. The
+  // signal processing chain must have a
+  // nmts.v1.ek.physical.ChannelBandwidthProfileConfiguration element and a
+  // nmts.v1.RK_CONTROLS relationship from an nmts.v1.ek.logical.SdnAgent.
+  string signal_processing_chain_id = 1;
+
+  // The selected profile, matching one of the chain's
+  // ChannelBandwidthProfileConfiguration.BandwidthProfile.bandwidths_hz.
+  repeated int64 bandwidths_hz = 2;
+}
+
+// Selects Spacetime's assertion of a channel bandwidth profile for a signal
+// processing chain.
+message UpdateChannelBandwidthProfile {
+  ChannelBandwidthProfile channel_bandwidth_profile = 1;
+}
+
+// Withdraws Spacetime's assertion of a channel bandwidth profile for a signal
+// processing chain.
+//
+// This entry is scheduled at or after the time the last beam transiting the
+// chain is removed.
+//
+// Because no traffic depends on the chain while the assertion is withdrawn,
+// the agent is free to take whatever action suits the payload, including
+// powering the element down, leaving it in its current profile, or reverting
+// to a local default.
+message DeleteChannelBandwidthProfile {
+  // nmts.v1.ek.physical.SignalProcessingChain entity ID.
+  string signal_processing_chain_id = 1;
 }
 
 // A transmit and/or receive beam of RF energy operating on a set of channels,
