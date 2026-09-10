@@ -53,13 +53,16 @@ const (
 	serviceModel        serviceKey = "model"
 	serviceStatus       serviceKey = "status"
 	serviceProvisioning serviceKey = "provisioning"
-	grpcReceiveLimitMB  int        = 2048
+	serviceSolution     serviceKey = "solution"
+
+	grpcReceiveLimitMB int = 2048
 )
 
 var serviceToSubdomain = map[serviceKey]string{
 	serviceModel:        "model-v1",
 	serviceStatus:       "status-v1",
 	serviceProvisioning: "provisioning-v1alpha",
+	serviceSolution:     "solution-v1alpha",
 }
 
 func subdomainForService(svc serviceKey) string {
@@ -122,6 +125,8 @@ func lookupServiceEndpoint(custom *nbictlpb.Config_CustomEndpoints, svc serviceK
 		se = custom.GetStatus()
 	case serviceProvisioning:
 		se = custom.GetProvisioning()
+	case serviceSolution:
+		se = custom.GetSolution()
 	}
 	if se == nil {
 		se = custom.GetDefault()

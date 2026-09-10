@@ -80,6 +80,21 @@ func marshallerForFormat(format string) (protoFormat, error) {
 	}
 }
 
+// marshalToAppWriter marshals m using the format selected by the --format flag
+// and writes it to the app's writer.
+func marshalToAppWriter(appCtx *cli.Context, m proto.Message) error {
+	marshaller, err := marshallerForFormat(appCtx.String("format"))
+	if err != nil {
+		return err
+	}
+	marshalled, err := marshaller.marshal(m)
+	if err != nil {
+		return err
+	}
+	fmt.Fprint(appCtx.App.Writer, string(marshalled))
+	return nil
+}
+
 func App() *cli.App {
 	formatFlag := &cli.StringFlag{
 		Name:     "format",
@@ -372,6 +387,10 @@ func App() *cli.App {
 								Usage: "URL for the Provisioning API (custom endpoint_config only).",
 							},
 							&cli.StringFlag{
+								Name:  "solution_url",
+								Usage: "URL for the Solution API (custom endpoint_config only).",
+							},
+							&cli.StringFlag{
 								Name:  "default_url",
 								Usage: "Fallback URL for unlisted services (custom endpoint_config only).",
 							},
@@ -612,6 +631,60 @@ func App() *cli.App {
 				},
 			},
 			{
+				Name:  "solution-v1alpha",
+				Usage: "Subcommands for Solution API v1alpha, to inspect the solver's solution resources.",
+				Subcommands: []*cli.Command{
+					{
+						Name:      "get-beam",
+						Usage:     "Retrieve one solution beam by resource name.",
+						Action:    SolutionGetBeam,
+						Args:      true,
+						ArgsUsage: "beams/{beam}",
+						Before:    before,
+						After:     after,
+						Flags: slices.Concat(commonFlags, []cli.Flag{
+							formatFlag,
+						}),
+					},
+					{
+						Name:   "query-beams",
+						Usage:  "Query solution beams, optionally at a single point in time. Without --timestamp, returns the full retained history.",
+						Action: SolutionQueryBeams,
+						Before: before,
+						After:  after,
+						Flags: slices.Concat(commonFlags, []cli.Flag{
+							formatFlag,
+						}, solutionQueryFlags),
+					},
+					{
+						Name:      "get-p2p-candidate-path",
+						Usage:     "Retrieve one solved P2P SR-TE policy candidate path by resource name.",
+						Action:    SolutionGetP2PSrTePolicyCandidatePath,
+						Args:      true,
+						ArgsUsage: "p2pSrTePolicyCandidatePaths/{path}",
+						Before:    before,
+						After:     after,
+						Flags: slices.Concat(commonFlags, []cli.Flag{
+							formatFlag,
+						}),
+					},
+					{
+						Name:   "query-p2p-candidate-paths",
+						Usage:  "Query solved P2P SR-TE policy candidate paths, optionally for one provisioning request and/or a single point in time. Without flags, returns the full retained history.",
+						Action: SolutionQueryP2PSrTePolicyCandidatePaths,
+						Before: before,
+						After:  after,
+						Flags: slices.Concat(commonFlags, []cli.Flag{
+							formatFlag,
+							&cli.StringFlag{
+								Name:  "provisioning-p2p-candidate-path",
+								Usage: "Only match paths fulfilling this provisioning candidate path (p2pSrTePolicies/{policy}/candidatePaths/{path}).",
+							},
+						}, solutionQueryFlags),
+					},
+				},
+			},
+			{
 				Name:  "grpcurl",
 				Usage: "Provides curl-like equivalents for interacting with the Spacetime APIs.",
 				Flags: []cli.Flag{
@@ -712,4 +785,14 @@ func validateProtoFormat(_ *cli.Context, f string) error {
 	default:
 		return fmt.Errorf("unknown format %q", f)
 	}
+}
+
+// requireOneResourceName returns the single positional argument, or an error
+// describing the expected resource name format if exactly one argument was not
+// provided.
+func requireOneResourceName(appCtx *cli.Context, format string) (string, error) {
+	if appCtx.NArg() != 1 {
+		return "", fmt.Errorf("expected exactly one resource name argument (format: %s)", format)
+	}
+	return appCtx.Args().First(), nil
 }

@@ -163,6 +163,8 @@ message Config {
     // (e.g. grpcurl --api=<arbitrary>). When unset, falls back to the
     // parent Config's url with no subdomain prefix.
     ServiceEndpoint default = 4;
+
+    ServiceEndpoint solution = 5;
   }
 
   // Describes endpoint resolution strategy.

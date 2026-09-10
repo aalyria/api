@@ -103,6 +103,8 @@ Sets or updates a configuration profile settings. You can create multiple profil
 
 **--service_account_key_file**="": Path to the identity provider's JSON key file (used with --auth_strategy=oidc_service_account).
 
+**--solution_url**="": URL for the Solution API (custom endpoint_config only).
+
 **--status_url**="": URL for the Status API (custom endpoint_config only).
 
 **--token_url**="": OIDC token endpoint URL (used with --auth_strategy=oidc).
@@ -374,6 +376,64 @@ Retrieve the insight metrics of this Spacetime instance.
 **--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
 
 **--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
+
+## solution-v1alpha
+
+Subcommands for Solution API v1alpha, to inspect the solver's solution resources.
+
+### get-beam
+
+Retrieve one solution beam by resource name.
+
+**--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
+
+**--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
+
+**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
+
+**--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
+
+### query-beams
+
+Query solution beams, optionally at a single point in time. Without --timestamp, returns the full retained history.
+
+**--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
+
+**--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
+
+**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
+
+**--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
+
+**--timestamp**="": Only match solutions that exist at this RFC3339 timestamp (e.g. 2026-08-05T12:00:00Z). Without it, the full retained solution history is returned.
+
+### get-p2p-candidate-path
+
+Retrieve one solved P2P SR-TE policy candidate path by resource name.
+
+**--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
+
+**--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
+
+**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
+
+**--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
+
+### query-p2p-candidate-paths
+
+Query solved P2P SR-TE policy candidate paths, optionally for one provisioning request and/or a single point in time. Without flags, returns the full retained history.
+
+**--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
+
+**--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
+
+**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
+
+**--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
+
+**--provisioning-p2p-candidate-path**="": Only match paths fulfilling this provisioning candidate path (p2pSrTePolicies/{policy}/candidatePaths/{path}).
+
+**--timestamp**="": Only match solutions that exist at this RFC3339 timestamp (e.g. 2026-08-05T12:00:00Z). Without it, the full retained solution history is returned.
 
 ## grpcurl
 

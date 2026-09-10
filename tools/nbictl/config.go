@@ -506,6 +506,9 @@ func SetConfig(appCtx *cli.Context) error {
 		if u := appCtx.String("provisioning_url"); u != "" {
 			custom.Provisioning = &nbictlpb.Config_ServiceEndpoint{Url: u}
 		}
+		if u := appCtx.String("solution_url"); u != "" {
+			custom.Solution = &nbictlpb.Config_ServiceEndpoint{Url: u}
+		}
 		if u := appCtx.String("default_url"); u != "" {
 			custom.Default = &nbictlpb.Config_ServiceEndpoint{Url: u}
 		}
