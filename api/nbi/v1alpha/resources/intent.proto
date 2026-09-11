@@ -76,6 +76,7 @@ message Intent {
     ModemIntent modem = 18;
     BearerIntent bearer = 19;
     ContractIntent contract = 23;
+    TransportPriorityIntent transport_priority = 25;
     MobilityIntent mobility = 21;
     ChannelBandwidthProfileIntent channel_bandwidth_profile = 24;
   }
@@ -128,7 +129,7 @@ message Intent {
   repeated aalyria.spacetime.api.common.ScheduledControlUpdate
     compiled_withdrawal_updates = 17;
 
-  reserved 2, 10, 12, 25 to max;  // Next IDs.
+  reserved 2, 10, 12, 26 to max;  // Next IDs.
 }
 
 // Models an intent to configure steerable beams and/or radio resources.
@@ -409,6 +410,22 @@ message ContractIntent {
   repeated string logical_packet_link_ids = 7;
 
   reserved 8 to max;  // Next IDs.
+}
+
+// A transport priority intent represents an intent to prioritize available
+// transport services for redundant transport failover.
+message TransportPriorityIntent {
+  // NMTS entity ID identifying the parent network node for the available
+  // transport options.
+  optional string parent_network_node_id = 1;
+
+  // The parent network node is assumed to have logical packet interfaces
+  // to the child transport network nodes.  This field represents the 
+  // ordered list of transport network node ids for the transport 
+  // prioritization plan.
+  repeated string transport_network_node_ids = 2;
+
+  reserved 3 to max;  // Next IDs.
 }
 
 // A bearer intent represents an intent to establish a bearer towards a
