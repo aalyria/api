@@ -22,6 +22,12 @@ try-import %workspace%/cache.bazelrc
 # using a MODULE.bazel file instead of the legacy WORKSPACE system.
 common --enable_bzlmod
 
+# Stamped builds (the release workflow passes --stamp) read the
+# SPACETIME_VERSION key from this script to fill the x_defs placeholder
+# in //tools/nbictl and //agent. Without it every binary reports the
+# source default, 0.0.0+development.
+build --workspace_status_command=bazel/tools/get_workspace_status.sh
+
 # Select the default venv for the aspect_rules_py uv hub.
 # This must be set globally because venv selection is a Bazel config flag.
 common --@python_deps//venv=default
