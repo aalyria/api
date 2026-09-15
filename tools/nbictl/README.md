@@ -419,6 +419,8 @@ Query solution beams, optionally at a single point in time. Without --timestamp,
 
 **--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
 
+**--provisioning-resource**="": Only match beams fulfilling this provisioning resource.
+
 **--timestamp**="": Only match solutions that exist at this RFC3339 timestamp (e.g. 2026-08-05T12:00:00Z). Without it, the full retained solution history is returned.
 
 ### get-p2p-candidate-path

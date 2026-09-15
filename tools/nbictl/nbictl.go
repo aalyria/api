@@ -682,6 +682,10 @@ func App() *cli.App {
 						After:  after,
 						Flags: slices.Concat(commonFlags, []cli.Flag{
 							formatFlag,
+							&cli.StringFlag{
+								Name:  "provisioning-resource",
+								Usage: "Only match beams fulfilling this provisioning resource.",
+							},
 						}, solutionQueryFlags),
 					},
 					{

@@ -83,7 +83,10 @@ func SolutionQueryBeams(appCtx *cli.Context) error {
 	}
 	return runSolutionRPC(appCtx, func(ctx context.Context, c solutionpb.SolutionClient) (*solutionpb.QueryBeamsResponse, error) {
 		return c.QueryBeams(ctx, &solutionpb.QueryBeamsRequest{
-			Queries: []*solutionpb.BeamQuery{{Timestamp: timestamp}},
+			Queries: []*solutionpb.BeamQuery{{
+				Timestamp:            timestamp,
+				ProvisioningResource: appCtx.String("provisioning-resource"),
+			}},
 		})
 	})
 }
