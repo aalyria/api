@@ -26,6 +26,7 @@ import io.grpc.TlsChannelCredentials;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.outernetcouncil.nmts.v1.proto.Nmts.Entity;
@@ -35,15 +36,36 @@ public class ModelClient {
   private static final int MAX_MESSAGE_SIZE = 1024 * 1024 * 256;
 
   /**
-   * Lists entities from the Model API.
+   * Reads every entity in the model, one page at a time.
+   *
+   * <p>ListEntities answers with a page of entities and, when more remain, a token naming where the
+   * next page begins. A caller that wants the whole model has to follow those tokens until the
+   * response carries none, which is what the loop below does.
    *
    * @param stub the gRPC stub for the Model service
-   * @return list of entities
+   * @param pageSize the number of entities to request per page; 0 lets the server choose
+   * @return every entity in the model
    */
-  public static List<Entity> listEntities(ModelGrpc.ModelBlockingStub stub) {
-    ListEntitiesRequest request = ListEntitiesRequest.newBuilder().build();
-    ListEntitiesResponse response = stub.listEntities(request);
-    return response.getEntitiesList();
+  public static List<Entity> listEntities(ModelGrpc.ModelBlockingStub stub, int pageSize) {
+    List<Entity> entities = new ArrayList<>();
+    ListEntitiesRequest.Builder request = ListEntitiesRequest.newBuilder().setPageSize(pageSize);
+    while (true) {
+      ListEntitiesResponse response = stub.listEntities(request.build());
+      entities.addAll(response.getEntitiesList());
+      if (response.getNextPageToken().isEmpty()) {
+        return entities;
+      }
+      // A cursor that fails to advance would walk the same page forever.
+      // Returning the entities read so far would look like the whole model to a
+      // caller that acts on it, so this fails instead.
+      if (response.getNextPageToken().equals(request.getPageToken())) {
+        throw new IllegalStateException(
+            "ListEntities repeated the page token it was given ("
+                + entities.size()
+                + " entities read); the walk cannot advance");
+      }
+      request.setPageToken(response.getNextPageToken());
+    }
   }
 
   /**
@@ -79,13 +101,16 @@ public class ModelClient {
 
   public static void main(String[] args) {
     if (args.length < 4) {
-      System.err.println("Usage: ModelClient <target> <email> <key_id> <private_key_path>");
+      System.err.println(
+          "Usage: ModelClient <target> <email> <key_id> <private_key_path> [page_size]");
       System.err.println(
           "  target: The target URL of the Spacetime Model API (e.g., 'api.example.com' or"
               + " 'api.example.com:8080')");
       System.err.println("  email: Client email for Spacetime authentication");
       System.err.println("  key_id: Client key ID for Spacetime authentication");
       System.err.println("  private_key_path: Path to the private key file");
+      System.err.println(
+          "  page_size: The number of entities to request per page. 0 lets the server choose");
       System.exit(1);
     }
 
@@ -93,6 +118,7 @@ public class ModelClient {
     String email = args[1];
     String keyId = args[2];
     String privateKeyPath = args[3];
+    int pageSize = args.length > 4 ? Integer.parseInt(args[4]) : 0;
 
     try {
       // The private key should start with "-----BEGIN RSA PRIVATE KEY-----" and
@@ -104,7 +130,7 @@ public class ModelClient {
       ModelGrpc.ModelBlockingStub stub = establishConnection(target, email, keyId, privateKey);
 
       // List entities
-      List<Entity> entities = listEntities(stub);
+      List<Entity> entities = listEntities(stub, pageSize);
 
       System.out.println("ListEntitiesResponse received:\n" + entities.toString());
 

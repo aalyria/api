@@ -56,6 +56,15 @@ const (
 	serviceSolution     serviceKey = "solution"
 
 	grpcReceiveLimitMB int = 2048
+
+	// Number of retries for an RPC action
+	defaultRetryAttempts int = 3
+
+	// Default delay for exponential backoff in between retries
+	defaultRetryBackoff = 100 * time.Millisecond
+
+	// Max delay for exponential backoff in between retries
+	maxRetryBackoff = 15 * time.Second
 )
 
 var serviceToSubdomain = map[serviceKey]string{
@@ -467,22 +476,43 @@ func withRetry(ctx context.Context, fn func(ctx context.Context) error) error {
 }
 
 func withRetryTimeout(ctx context.Context, timeout time.Duration, fn func(ctx context.Context) error) error {
+	return withRetryAttempts(ctx, defaultRetryAttempts, defaultRetryBackoff, timeout, fn)
+}
+
+// withRetryAttempts calls fn up to attempts times, retrying only codes.Unavailable.
+// Between attempts it backs off exponentially from baseBackoff, capped at
+// maxRetryBackoff so that a large attempt count cannot overflow into an unbounded
+// sleep. Each attempt is bounded by contextTimeout and the backoff observes ctx.
+func withRetryAttempts(ctx context.Context, attempts int, baseBackoff time.Duration, contextTimeout time.Duration, fn func(ctx context.Context) error) error {
+	if attempts < 1 {
+		attempts = 1
+	}
+
 	var err error
-	for attempt := range 3 {
-		rpcCtx, cancel := context.WithTimeout(ctx, timeout)
+	for attempt := range attempts {
+		rpcCtx, cancel := context.WithTimeout(ctx, contextTimeout)
 		err = fn(rpcCtx)
 		cancel()
 		if err == nil {
 			return nil
 		}
+
 		st, ok := status.FromError(err)
 		if !ok || st.Code() != codes.Unavailable {
 			return err
 		}
-		delay := time.Duration(1<<attempt) * 100 * time.Millisecond
+		if attempt == attempts-1 {
+			break
+		}
+		delay := maxRetryBackoff
+		if attempt < 20 {
+			if d := time.Duration(1<<attempt) * baseBackoff; d < maxRetryBackoff {
+				delay = d
+			}
+		}
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return context.Cause(ctx)
 		case <-time.After(delay):
 		}
 	}

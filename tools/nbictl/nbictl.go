@@ -16,6 +16,7 @@ package nbictl
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"runtime"
 	"runtime/pprof"
@@ -32,6 +33,17 @@ var Version = "0.0.0+development"
 
 const (
 	confFileName = "config.textproto"
+
+	// defaultCLIPageSize is the page size the list commands ask for when the
+	// caller does not name one. The server applies its own default when a
+	// request carries no page size, but naming one here keeps the paging walk
+	// visible to anyone reading the wire.
+	//
+	// Every command that lists walks the whole model before it does anything
+	// with it, so the fewest, largest pages the server will serve is the cheapest
+	// way through. A server that serves smaller pages than this clamps the
+	// request down and the walk still completes, just in more round trips.
+	defaultCLIPageSize = 10000
 
 	// modified from
 	// https://github.com/urfave/cli/blob/c023d9bc5a3122830c9355a0a8c17137e0c8556f/template.go#L98
@@ -137,6 +149,19 @@ func App() *cli.App {
 			default:
 				return fmt.Errorf("unknown progress mode %q, must be one of: auto, on, off", val)
 			}
+		},
+	}
+	pageSizeFlag := &cli.IntFlag{
+		Name:  "page-size",
+		Usage: "Set page size returned by list-entities or list-relationship commands. 0 lets the server choose.",
+		Value: defaultCLIPageSize,
+		Action: func(_ *cli.Context, val int) error {
+			// The field is an int32 on the wire, so a larger value would wrap
+			// and read as a negative page size the server treats as unset.
+			if val < 0 || val > math.MaxInt32 {
+				return fmt.Errorf("--page-size must be between 0 and %d, got %d", math.MaxInt32, val)
+			}
+			return nil
 		},
 	}
 
@@ -474,7 +499,7 @@ func App() *cli.App {
 						Action:   ModelListEntities,
 						Before:   before,
 						After:    after,
-						Flags:    slices.Concat(commonFlags, []cli.Flag{formatFlag}),
+						Flags:    slices.Concat(commonFlags, []cli.Flag{formatFlag, pageSizeFlag, verboseFlag}),
 					},
 					{
 						Name:     "list-relationships",
@@ -483,7 +508,7 @@ func App() *cli.App {
 						Action:   ModelListRelationships,
 						Before:   before,
 						After:    after,
-						Flags:    slices.Concat(commonFlags, []cli.Flag{formatFlag}),
+						Flags:    slices.Concat(commonFlags, []cli.Flag{formatFlag, pageSizeFlag, verboseFlag}),
 						// TODO: support filter param
 					},
 					{
@@ -499,6 +524,8 @@ func App() *cli.App {
 							dryrunFlag,
 							concurrencyFlag,
 							progressFlag,
+							pageSizeFlag,
+							verboseFlag,
 							&cli.BoolFlag{
 								Name:    "delete",
 								Usage:   "delete entities and relationships from remote instance not present in local sources",
@@ -524,6 +551,7 @@ func App() *cli.App {
 							verboseFlag,
 							concurrencyFlag,
 							progressFlag,
+							pageSizeFlag,
 						}),
 					},
 				},

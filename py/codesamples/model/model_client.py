@@ -27,10 +27,29 @@ import nmts.v1.proto.nmts_pb2 as nmts_pb2
 from py.authentication import auth
 
 
-def list_entities(stub: model_pb2_grpc.ModelStub) -> list[nmts_pb2.Entity]:
-  request = model_pb2.ListEntitiesRequest()
-  response = stub.ListEntities(request)
-  return [entity for entity in response.entities]
+def list_entities(stub: model_pb2_grpc.ModelStub, page_size: int = 0) -> list[nmts_pb2.Entity]:
+  """Reads every entity in the model, one page at a time.
+
+  ListEntities answers with a page of entities and, when more remain, a token
+  naming where the next page begins. A caller that wants the whole model has to
+  follow those tokens until the response carries none, which is what the loop
+  below does. Passing a page_size of 0 lets the server choose the page size.
+  """
+  entities = []
+  request = model_pb2.ListEntitiesRequest(page_size=page_size)
+  while True:
+    response = stub.ListEntities(request)
+    entities.extend(response.entities)
+    if not response.next_page_token:
+      return entities
+    # A cursor that fails to advance would walk the same page forever. Returning
+    # the entities read so far would look like the whole model to a caller that
+    # acts on it, so this fails instead.
+    if response.next_page_token == request.page_token:
+      raise RuntimeError(
+        f"ListEntities repeated the page token it was given ({len(entities)} entities read); the walk cannot advance"
+      )
+    request.page_token = response.next_page_token
 
 
 def establish_connection(target: str, email: str, key_id: str, private_key: str) -> model_pb2_grpc.ModelStub:
@@ -77,6 +96,12 @@ def main():
     type=str,
     help="The Client Key File Path for Spacetime Auth.",
   )
+  parser.add_argument(
+    "--page_size",
+    type=int,
+    default=0,
+    help="The number of entities to request per page. 0 lets the server choose.",
+  )
   args = parser.parse_args()
 
   # The private key should start with "-----BEGIN RSA PRIVATE KEY-----" and
@@ -85,7 +110,7 @@ def main():
   private_key = Path(args.private_key_path).read_text()
 
   stub = establish_connection(args.target, args.email, args.key_id, private_key)
-  entities = list_entities(stub)
+  entities = list_entities(stub, args.page_size)
   print("ListEntitiesResponse received:\n", entities)
 
 

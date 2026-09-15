@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -39,6 +40,15 @@ import (
 // upsertFragmentTimeout is larger than defaultRPCTimeout because each request
 // carries a batch of entities and relationships.
 const upsertFragmentTimeout = 90 * time.Second
+
+// listPageTimeout is larger than defaultRPCTimeout because a single page can
+// carry up to the server's maximum page size worth of entities.
+const listPageTimeout = 10 * time.Minute
+
+// listMaxRetryAttempts applies to listAllEntities and listAllRelationships, this
+// dictates how many times a query for a specific page from storage can be retried
+// before the query is aborted.
+const listMaxRetryAttempts = 3
 
 // normalizeOmniFragment collapses an OmniFragment, which permissively accepts
 // both the singular (`entity`/`relationship`) and pluralized
@@ -290,6 +300,98 @@ func ModelGetEntity(appCtx *cli.Context) error {
 	return nil
 }
 
+// verboseLogf returns a progress logger for the paging walks. It writes to w,
+// which must not be the stream carrying the marshalled fragment, and does
+// nothing at all unless verbose is set.
+func verboseLogf(w io.Writer, verbose bool) func(string, ...any) {
+	if !verbose {
+		return func(string, ...any) {}
+	}
+	var mu sync.Mutex
+	return func(format string, args ...any) {
+		mu.Lock()
+		defer mu.Unlock()
+		fmt.Fprintf(w, format, args...)
+	}
+}
+
+// listAllEntities walks through all pages from ListEntities and returns the entire model set. The service paginates its
+// list endpoints, so the caller should read through all pages rather than read the entire model in a single call.
+func listAllEntities(ctx context.Context, client modelpb.ModelClient, pageSize int32, logf func(string, ...any)) ([]*nmtspb.Entity, error) {
+	var entities []*nmtspb.Entity
+
+	logf("ListEntities returning up to %d entities per page\n", pageSize)
+	request := &modelpb.ListEntitiesRequest{PageSize: pageSize}
+	for pageNumber := 0; ; pageNumber++ {
+		logf("Querying page number %d\n", pageNumber)
+		var resp *modelpb.ListEntitiesResponse
+		err := withRetryAttempts(ctx, listMaxRetryAttempts+1, defaultRetryBackoff, listPageTimeout,
+			func(ctx context.Context) error {
+				var err error
+				resp, err = client.ListEntities(ctx, request)
+				return err
+			})
+		if err != nil {
+			return nil, err
+		}
+
+		entities = append(entities, resp.GetEntities()...)
+		logf("Page %d returned %d entities.\n",
+			pageNumber, len(resp.GetEntities()))
+		if resp.GetNextPageToken() == "" {
+			return entities, nil
+		}
+
+		// A cursor that fails to advance would walk the same page forever.
+		// Returning what has been read so far would look like the whole model
+		// to a caller that acts on it, so this fails instead.
+		if resp.GetNextPageToken() == request.PageToken {
+			return nil, fmt.Errorf(
+				"ListEntities repeated the page token it was given after page %d (%d entities read); the walk cannot advance",
+				pageNumber, len(entities))
+		}
+		request.PageToken = resp.GetNextPageToken()
+	}
+}
+
+// listAllRelationships walks through all pages provided by ListRelationships and returns the entire model set. The
+// service paginates its list endpoints, so the caller should read through all pages rather than read the entire model
+// in a single call.
+func listAllRelationships(ctx context.Context, client modelpb.ModelClient, filter string, pageSize int32, logf func(string, ...any)) ([]*nmtspb.Relationship, error) {
+	var relationships []*nmtspb.Relationship
+
+	logf("ListRelationships returning up to %d relationships per page\n", pageSize)
+	request := &modelpb.ListRelationshipsRequest{Filter: filter, PageSize: pageSize}
+	for pageNumber := 0; ; pageNumber++ {
+		logf("Querying page number %d\n", pageNumber)
+		var resp *modelpb.ListRelationshipsResponse
+		err := withRetryAttempts(ctx, listMaxRetryAttempts+1, defaultRetryBackoff, listPageTimeout,
+			func(ctx context.Context) error {
+				var err error
+				resp, err = client.ListRelationships(ctx, request)
+				return err
+			})
+		if err != nil {
+			return nil, err
+		}
+
+		relationships = append(relationships, resp.GetRelationships()...)
+		logf("Page %d returned %d relationships.\n",
+			pageNumber, len(resp.GetRelationships()))
+		if resp.GetNextPageToken() == "" {
+			return relationships, nil
+		}
+		// See listAllEntities: a cursor that fails to advance is an error
+		// rather than a short result that reads as the whole model.
+		if resp.GetNextPageToken() == request.PageToken {
+			return nil, fmt.Errorf(
+				"ListRelationships repeated the page token it was given after page %d (%d relationships read); the walk cannot advance",
+				pageNumber, len(relationships))
+		}
+		request.PageToken = resp.GetNextPageToken()
+	}
+}
+
 func ModelListEntities(appCtx *cli.Context) error {
 	marshaller, err := marshallerForFormat(appCtx.String("format"))
 	if err != nil {
@@ -303,14 +405,15 @@ func ModelListEntities(appCtx *cli.Context) error {
 	defer conn.Close()
 	modelClient := modelpb.NewModelClient(conn)
 
-	response, err := modelClient.ListEntities(appCtx.Context, &modelpb.ListEntitiesRequest{})
+	entities, err := listAllEntities(appCtx.Context, modelClient, int32(appCtx.Int("page-size")),
+		verboseLogf(appCtx.App.ErrWriter, appCtx.Bool("verbose")))
 	if err != nil {
 		return err
 	}
 
 	// Emit a normalized native nmts.v1.Fragment so the output can be fed
 	// directly back into `sync` or `upsert-fragment`.
-	fragment := &nmtspb.Fragment{Entity: response.GetEntities()}
+	fragment := &nmtspb.Fragment{Entity: entities}
 	marshalled, err := marshaller.marshal(fragment)
 	if err != nil {
 		return err
@@ -332,14 +435,15 @@ func ModelListRelationships(appCtx *cli.Context) error {
 	defer conn.Close()
 	modelClient := modelpb.NewModelClient(conn)
 
-	response, err := modelClient.ListRelationships(appCtx.Context, &modelpb.ListRelationshipsRequest{})
+	relationships, err := listAllRelationships(appCtx.Context, modelClient, "", int32(appCtx.Int("page-size")),
+		verboseLogf(appCtx.App.ErrWriter, appCtx.Bool("verbose")))
 	if err != nil {
 		return err
 	}
 
 	// Emit a normalized native nmts.v1.Fragment so the output can be fed
 	// directly back into `sync` or `upsert-fragment`.
-	fragment := &nmtspb.Fragment{Relationship: response.GetRelationships()}
+	fragment := &nmtspb.Fragment{Relationship: relationships}
 	marshalled, err := marshaller.marshal(fragment)
 	if err != nil {
 		return err
@@ -354,6 +458,7 @@ func ModelDeleteAll(appCtx *cli.Context) error {
 	printMode := dryRunMode || verboseMode
 	maxConcurrency := appCtx.Int("max-concurrency")
 	showProgress := shouldShowProgress(appCtx)
+	pageSize := int32(appCtx.Int("page-size"))
 
 	target, dialOpts, err := resolveAPIDialOpts(appCtx, serviceModel)
 	if err != nil {
@@ -376,19 +481,20 @@ func ModelDeleteAll(appCtx *cli.Context) error {
 	listProgress := newSyncProgress(showProgress)
 	listEntBar := listProgress.AddBar("listing remote entities     ", 1)
 	listRelBar := listProgress.AddBar("listing remote relationships", 1)
+	logf := verboseLogf(listProgress.Writer(), verboseMode)
 
 	listProgress.Start()
 
 	listPool := pool.New().WithErrors()
 
-	var entityIds []string
+	var entityIDs []string
 	listPool.Go(func() error {
-		entityList, err := clients[0].ListEntities(appCtx.Context, &modelpb.ListEntitiesRequest{})
+		entities, err := listAllEntities(appCtx.Context, clients[0], pageSize, logf)
 		if err != nil {
 			return err
 		}
 
-		entityIds = lo.Map(entityList.Entities, func(item *nmtspb.Entity, _ int) string {
+		entityIDs = lo.Map(entities, func(item *nmtspb.Entity, _ int) string {
 			return item.GetId()
 		})
 
@@ -397,12 +503,12 @@ func ModelDeleteAll(appCtx *cli.Context) error {
 	})
 	var relationships []*nmtspb.Relationship
 	listPool.Go(func() error {
-		relationshipList, err := clients[1%maxConcurrency].ListRelationships(appCtx.Context, &modelpb.ListRelationshipsRequest{})
+		var err error
+		relationships, err = listAllRelationships(appCtx.Context, clients[1%maxConcurrency], "", pageSize, logf)
 		if err != nil {
 			return err
 		}
 
-		relationships = relationshipList.GetRelationships()
 		listRelBar.Incr()
 		return nil
 	})
@@ -416,15 +522,15 @@ func ModelDeleteAll(appCtx *cli.Context) error {
 
 	deleteProgress := newSyncProgress(showProgress)
 	deleteRelsBar := deleteProgress.AddBar("deleting relationships", len(relationships))
-	deleteEntsBar := deleteProgress.AddBar("deleting entities", len(entityIds))
+	deleteEntsBar := deleteProgress.AddBar("deleting entities", len(entityIDs))
 
 	deleteProgress.Start()
 	defer deleteProgress.Stop()
 
 	w := deleteProgress.Writer()
 
-	refCount := make(map[string]*atomic.Int32, len(entityIds))
-	for _, id := range entityIds {
+	refCount := make(map[string]*atomic.Int32, len(entityIDs))
+	for _, id := range entityIDs {
 		refCount[id] = &atomic.Int32{}
 	}
 	for _, rel := range relationships {
@@ -439,7 +545,7 @@ func ModelDeleteAll(appCtx *cli.Context) error {
 	// Buffer sized for every entity, since each is sent at most once. Sends
 	// from relationship workers therefore never block, which is what prevents
 	// the self-feeding deadlock the single-pool design had.
-	entityCh := make(chan string, len(entityIds))
+	entityCh := make(chan string, len(entityIDs))
 	for id, refs := range refCount {
 		if refs.Load() == 0 {
 			entityCh <- id
@@ -528,6 +634,8 @@ func ModelSync(appCtx *cli.Context) error {
 	dryRunMode := appCtx.Bool("dry-run")
 	maxConcurrency := appCtx.Int("max-concurrency")
 	showProgress := shouldShowProgress(appCtx)
+	pageSize := int32(appCtx.Int("page-size"))
+	verboseMode := appCtx.Bool("verbose")
 
 	marshaller, err := marshallerForFormat(appCtx.String("format"))
 	if err != nil {
@@ -567,6 +675,7 @@ func ModelSync(appCtx *cli.Context) error {
 	readBar := readProgress.AddBar("reading local files         ", len(localFiles))
 	listRelBar := readProgress.AddBar("listing remote relationships", 1)
 	listEntBar := readProgress.AddBar("listing remote entities     ", 1)
+	logf := verboseLogf(readProgress.Writer(), verboseMode)
 
 	readProgress.Start()
 
@@ -576,8 +685,10 @@ func ModelSync(appCtx *cli.Context) error {
 	}
 
 	parsedFragments := make([]parsedFragment, len(localFiles))
-	remoteEntities := map[string]*nmtspb.Entity{}
-	remoteRelationships := er.NewRelationshipSet()
+	// Only the identities of the remote elements are needed, to diff against the
+	// local ones; the bodies are never read.
+	remoteEntityKeys := set.NewSet[string]()
+	remoteRelationshipKeys := set.NewSet[er.Relationship]()
 
 	initialReadPool := pool.New().WithErrors()
 
@@ -609,12 +720,12 @@ func ModelSync(appCtx *cli.Context) error {
 
 	// List remote entities.
 	initialReadPool.Go(func() error {
-		entityList, err := clients[0].ListEntities(appCtx.Context, &modelpb.ListEntitiesRequest{})
+		entities, err := listAllEntities(appCtx.Context, clients[0], pageSize, logf)
 		if err != nil {
 			return err
 		}
-		for _, entity := range entityList.GetEntities() {
-			remoteEntities[entity.GetId()] = entity
+		for _, entity := range entities {
+			remoteEntityKeys.Add(entity.GetId())
 		}
 		listEntBar.Incr()
 		return nil
@@ -622,12 +733,12 @@ func ModelSync(appCtx *cli.Context) error {
 
 	// List remote relationships.
 	initialReadPool.Go(func() error {
-		relationshipList, err := clients[1%maxConcurrency].ListRelationships(appCtx.Context, &modelpb.ListRelationshipsRequest{})
+		relationships, err := listAllRelationships(appCtx.Context, clients[1%maxConcurrency], "", pageSize, logf)
 		if err != nil {
 			return err
 		}
-		for _, relationship := range relationshipList.GetRelationships() {
-			remoteRelationships.Insert(er.RelationshipFromProto(relationship))
+		for _, relationship := range relationships {
+			remoteRelationshipKeys.Add(er.RelationshipFromProto(relationship))
 		}
 		listRelBar.Incr()
 		return nil
@@ -639,29 +750,27 @@ func ModelSync(appCtx *cli.Context) error {
 	}
 	readProgress.Stop()
 
-	// Merge parsed fragments into local maps.
+	// Merge parsed fragments into local collections. The entity bodies are kept
+	// because they are the UpsertFragment payload; local relationships, like the
+	// remote ones, are only diffed.
 	localEntities := map[string]*nmtspb.Entity{}
-	localRelationships := er.NewRelationshipSet()
+	localRelationshipKeys := set.NewSet[er.Relationship]()
 	for _, pf := range parsedFragments {
 		for _, entity := range pf.entities {
 			localEntities[entity.GetId()] = entity
 		}
 		for _, relationship := range pf.relationships {
-			localRelationships.Insert(er.RelationshipFromProto(relationship))
+			localRelationshipKeys.Add(er.RelationshipFromProto(relationship))
 		}
 	}
 
 	if len(localEntities) == 0 && !deleteMode {
 		return fmt.Errorf("no local entities to sync to remote instance and --delete is false")
 	}
-	if len(localRelationships.Relations) == 0 {
+	if localRelationshipKeys.IsEmpty() {
 		fmt.Fprintf(appCtx.App.ErrWriter, "# Warning: no local relationship to sync to remote instance")
 	}
 	localEntityKeys := set.NewSetFromMapKeys(localEntities)
-	localRelationshipKeys := set.NewSetFromMapKeys(localRelationships.Relations)
-
-	remoteEntityKeys := set.NewSetFromMapKeys(remoteEntities)
-	remoteRelationshipKeys := set.NewSetFromMapKeys(remoteRelationships.Relations)
 
 	// Step 3: compute and print/enact differences.
 	var deleteRelsTotal int

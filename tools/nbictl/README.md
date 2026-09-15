@@ -217,6 +217,10 @@ List all model entities.
 
 **--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
 
+**--page-size**="": Set page size returned by list-entities or list-relationship commands. 0 lets the server choose. (default: 10000)
+
+**--verbose, -v**: increase verbosity
+
 ### list-relationships
 
 List all model relationships.
@@ -228,6 +232,10 @@ List all model relationships.
 **--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
 
 **--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
+
+**--page-size**="": Set page size returned by list-entities or list-relationship commands. 0 lets the server choose. (default: 10000)
+
+**--verbose, -v**: increase verbosity
 
 ### sync, rsync
 
@@ -247,9 +255,13 @@ Sync all model entities and relationships from file and directory arguments.
 
 **--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
 
+**--page-size**="": Set page size returned by list-entities or list-relationship commands. 0 lets the server choose. (default: 10000)
+
 **--progress**="": Show progress bars during sync. One of [auto, on, off]. 'auto' enables when stderr is a TTY. (default: "auto")
 
 **--recursive, -r**: descend recursively into directory arguments
+
+**--verbose, -v**: increase verbosity
 
 ### delete-all, clear
 
@@ -264,6 +276,8 @@ Delete all model entities and relationships from remote.
 **--max-concurrency, -j, --max_concurrency**="": Limit the number of in-flight requests at once. (default: 100)
 
 **--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
+
+**--page-size**="": Set page size returned by list-entities or list-relationship commands. 0 lets the server choose. (default: 10000)
 
 **--progress**="": Show progress bars during sync. One of [auto, on, off]. 'auto' enables when stderr is a TTY. (default: "auto")
 

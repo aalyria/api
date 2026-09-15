@@ -74,8 +74,10 @@ service Model {
   // is not in the model.
   rpc GetEntity(GetEntityRequest) returns (nmts.v1.Entity) {}
 
+  // List the entities in the model, one page at a time.
   rpc ListEntities(ListEntitiesRequest) returns (ListEntitiesResponse) {}
 
+  // List the relationships in the model, one page at a time.
   rpc ListRelationships(ListRelationshipsRequest)
     returns (ListRelationshipsResponse) {}
 }
@@ -116,19 +118,49 @@ message GetEntityRequest {
 }
 
 message ListEntitiesRequest {
+  // The maximum number of entities to return. The server may return fewer.
+  //
+  // A page size greater than the max allowed by the server is reduced to the
+  // server's max allowed number of items per page. A negative page size is
+  // rejected with INVALID_ARGUMENT rather than read as unset.
+  int32 page_size = 1;
+
+  // Opaque, url-safe token naming where the next page begins. Empty on the
+  // first request; thereafter the next_page_token of the previous response.
+  string page_token = 2;
 }
 
 message ListEntitiesResponse {
   repeated nmts.v1.Entity entities = 1;
+
+  // Pass this as the next request's page_token to fetch the following page. If
+  // empty there are no more pages matching the query.
+  string next_page_token = 2;
 }
 
 message ListRelationshipsRequest {
   // Filter the relationships using Common Expression Language (CEL).
   string filter = 1;
+
+  // The maximum number of relationships to return per page in the query. The
+  // server may return fewer records.
+  //
+  // A page size greater than the max allowed by the server is reduced to the
+  // server's max allowed number of items per page. A negative page size is
+  // rejected with INVALID_ARGUMENT rather than read as unset.
+  int32 page_size = 2;
+
+  // Opaque, url-safe token naming where the next page begins. Empty on the
+  // first request; thereafter the next_page_token of the previous response.
+  string page_token = 3;
 }
 
 message ListRelationshipsResponse {
   repeated nmts.v1.Relationship relationships = 1;
+
+  // Pass this as the next request's page_token to fetch the following page. If
+  // empty there are no more pages matching the query.
+  string next_page_token = 2;
 }
 
 message UpsertFragmentRequest {

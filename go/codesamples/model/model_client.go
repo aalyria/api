@@ -19,6 +19,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"strings"
 	"time"
@@ -58,16 +59,37 @@ func NewCredentialsFromPrivateKey(email, privateKeyID, privateKey string) (crede
 	return auth.NewCredentials(ctx, authConfig)
 }
 
-// listEntities calls the Model API to list entities.
-func listEntities(ctx context.Context, client model.ModelClient) ([]*nmts.Entity, error) {
-	req := &model.ListEntitiesRequest{}
+// listPageTimeout bounds one page of a walk. A whole model takes as many
+// requests as it has pages, so a deadline covering the walk would have to grow
+// with the model; one that covers a single page does not.
+const listPageTimeout = 30 * time.Second
 
-	resp, err := client.ListEntities(ctx, req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list entities: %w", err)
+// listEntities calls the Model API to list entities, walking every page and returning the entities from all of them.
+// The page size comes from the -page_size flag; 0 lets the server choose.
+func listEntities(ctx context.Context, client model.ModelClient, pageSize int32) ([]*nmts.Entity, error) {
+	var entities []*nmts.Entity
+
+	req := &model.ListEntitiesRequest{PageSize: pageSize}
+
+	for {
+		pageCtx, cancel := context.WithTimeout(ctx, listPageTimeout)
+		resp, err := client.ListEntities(pageCtx, req)
+		cancel()
+		if err != nil {
+			return nil, fmt.Errorf("failed to list entities: %w", err)
+		}
+		entities = append(entities, resp.GetEntities()...)
+		if resp.GetNextPageToken() == "" {
+			return entities, nil
+		}
+		// A cursor that fails to advance would walk the same page forever.
+		// Returning the entities read so far would look like the whole model
+		// to a caller that acts on it, so this fails instead.
+		if resp.GetNextPageToken() == req.PageToken {
+			return nil, fmt.Errorf("ListEntities repeated the page token it was given (%d entities read); the walk cannot advance", len(entities))
+		}
+		req.PageToken = resp.GetNextPageToken()
 	}
-
-	return resp.GetEntities(), nil
 }
 
 // establishConnection creates a gRPC connection to the Model API with authentication.
@@ -110,6 +132,7 @@ func run() error {
 		email          = flag.String("email", "", "Client email for Spacetime authentication")
 		keyID          = flag.String("key_id", "", "Client key ID for Spacetime authentication")
 		privateKeyPath = flag.String("private_key_path", "", "Path to the private key file")
+		pageSize       = flag.Int("page_size", 1000, "Page size to limit query to; default = 1000")
 	)
 	flag.Parse()
 
@@ -118,6 +141,11 @@ func run() error {
 		fmt.Fprintf(os.Stderr, "Usage: %s -target <target> -email <email> -key_id <key_id> -private_key_path <private_key_path>\n", os.Args[0])
 		flag.PrintDefaults()
 		return fmt.Errorf("missing required arguments")
+	}
+
+	// Validate page size argument
+	if *pageSize < 0 || *pageSize > math.MaxInt32 {
+		return fmt.Errorf("page size is expected to be between 0 and %v, received: %v", math.MaxInt32, *pageSize)
 	}
 
 	// Read private key
@@ -137,12 +165,12 @@ func run() error {
 	// Create client
 	client := model.NewModelClient(conn)
 
-	// Create context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+	// Each page of the walk below is bounded by its own deadline, so the walk
+	// itself runs for as long as the model needs.
+	ctx := context.Background()
 
 	// List entities
-	entities, err := listEntities(ctx, client)
+	entities, err := listEntities(ctx, client, int32(*pageSize))
 	if err != nil {
 		return fmt.Errorf("error listing entities: %w", err)
 	}

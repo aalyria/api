@@ -452,7 +452,18 @@ var testCases = []testCase{
 		responseMessage: &modelpb.ListEntitiesResponse{},
 		cmdLineArgs:     []string{"model-v1", "list-entities"},
 		wantAppError:    false,
-		wantRequest:     &modelpb.ListEntitiesRequest{},
+		// A response with no next_page_token ends the walk, so the request the
+		// API sees is the first page, carrying the --page-size default.
+		wantRequest: &modelpb.ListEntitiesRequest{PageSize: defaultCLIPageSize},
+	},
+	{
+		desc:            "'model list-entities --page-size' forwards the page size",
+		fileContents:    nil,
+		responseError:   nil,
+		responseMessage: &modelpb.ListEntitiesResponse{},
+		cmdLineArgs:     []string{"model-v1", "list-entities", "--page-size", "25"},
+		wantAppError:    false,
+		wantRequest:     &modelpb.ListEntitiesRequest{PageSize: 25},
 	},
 	{
 		desc:            "'model list-relationships' calls API as expected",
@@ -461,7 +472,24 @@ var testCases = []testCase{
 		responseMessage: &modelpb.ListRelationshipsResponse{},
 		cmdLineArgs:     []string{"model-v1", "list-relationships"},
 		wantAppError:    false,
-		wantRequest:     &modelpb.ListRelationshipsRequest{},
+		wantRequest:     &modelpb.ListRelationshipsRequest{PageSize: defaultCLIPageSize},
+	},
+	{
+		desc:            "'model list-relationships --page-size' forwards the page size",
+		fileContents:    nil,
+		responseError:   nil,
+		responseMessage: &modelpb.ListRelationshipsResponse{},
+		cmdLineArgs:     []string{"model-v1", "list-relationships", "--page-size", "25"},
+		wantAppError:    false,
+		wantRequest:     &modelpb.ListRelationshipsRequest{PageSize: 25},
+	},
+	{
+		desc:            "'model list-entities' rejects a page size that does not fit in an int32",
+		fileContents:    nil,
+		responseError:   nil,
+		responseMessage: &modelpb.ListEntitiesResponse{},
+		cmdLineArgs:     []string{"model-v1", "list-entities", "--page-size", "3000000000"},
+		wantAppError:    true,
 	},
 }
 
