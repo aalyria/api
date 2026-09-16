@@ -204,44 +204,118 @@ message DeleteRoute {
   string to = 2;
 }
 
-// An IP forwarding entry to be installed in an EK_ROUTE_FN's forwarding table.
+// An IP forwarding rule to be installed in an EK_ROUTE_FN.
+//
+// Rules are modeled as an ordered access control list in the style of
+// RFC 8519 rather than as a hierarchical, destination-based routing table
+// (RFC 8349): each rule pairs a `classifier` that selects packets with an
+// `action` that determines their disposition, and rules are evaluated in
+// `sequence_id` order.
 //
 // The time associated with a revision of an IpRoute resource in a schedule
-// dictates the earliest time at which the agent should install the route into
-// the indicated EK_ROUTE_FN. A route persists until superseded by a later
+// dictates the earliest time at which the agent should install the rule into
+// the indicated EK_ROUTE_FN. A rule persists until superseded by a later
 // IpRoute revision with the same name or removed by a DeleteIpRoute entry.
 message IpRoute {
+  // Selects the packets to which the rule applies.
+  message Classifier {
+    // Matches on both the source and destination of a packet.
+    message SrcDst {
+      // The source to match.
+      //
+      // An IPv4 or IPv6 address optionally followed by a slash and the prefix
+      // length.
+      string src = 1;
+
+      // The destination to match.
+      //
+      // An IPv4 or IPv6 address optionally followed by a slash and the prefix
+      // length.
+      string dst = 2;
+    }
+
+    oneof match {
+      // Matches on the destination of a packet only.
+      //
+      // An IPv4 or IPv6 address optionally followed by a slash and the prefix
+      // length.
+      string dst = 1;
+
+      SrcDst src_dst = 2;
+    }
+  }
+
+  // The disposition of packets selected by the rule's classifier.
+  message Action {
+    // Forward the packet toward a nexthop.
+    message Via {
+      // The output device name.
+      string dev = 1;
+
+      // The address of the nexthop router.
+      //
+      // An IPv4 or IPv6 address.
+      string next_hop = 2;
+    }
+
+    // The ICMP error to signal when discarding a packet. The agent selects the
+    // ICMPv4 (RFC 792) or ICMPv6 (RFC 4443) type and code appropriate to the
+    // packet's address family.
+    enum Reject {
+      // The agent chooses a platform-appropriate error.
+      REJECT_UNSPECIFIED = 0;
+
+      // ICMPv4 type 3 code 0; ICMPv6 type 1 code 0.
+      NO_ROUTE = 1;
+
+      // ICMPv4 type 3 code 13; ICMPv6 type 1 code 1.
+      ADMIN_PROHIBITED = 2;
+
+      // ICMPv4 type 3 code 1; ICMPv6 type 1 code 3.
+      ADDRESS_UNREACHABLE = 3;
+    }
+
+    oneof action {
+      Via via = 1;
+
+      // Discard the packet silently.
+      google.protobuf.Empty drop = 2;
+
+      // Discard the packet and signal the failure to its sender with an ICMP
+      // error.
+      Reject reject = 3;
+    }
+  }
+
   // The resource name of the IpRoute.
   // Format: ipRoutes/{ip_route_id}
+  //
+  // The `ip_route_id` is opaque to the receiver and may be a UUID. Agents
+  // MUST NOT infer anything from its structure; it serves only to identify
+  // the IpRoute.
   //
   // Names are unique within a schedule. Two IpRoutes in the same schedule will
   // never share a name even if the IpRoutes exist at different times.
   string name = 1;
 
   // Identifies which EK_ROUTE_FN entity controlled by the receiving
-  // EK_SDN_AGENT this route is installed on. Required: producers MUST
+  // EK_SDN_AGENT this rule is installed on. Required: producers MUST
   // populate this field; agents MUST reject an IpRoute that omits it.
   string route_fn_id = 2;
 
-  // The source prefix of the route.
+  // Determines the order in which rules within the same EK_ROUTE_FN are
+  // evaluated, in the manner of OpenConfig's ACL `sequence-id`: a packet is
+  // subject to the action of the matching rule with the lowest `sequence_id`.
   //
-  // An IPv4 or IPv6 address optionally followed by a slash and the prefix
-  // length.
-  string from = 3;
+  // An implementation backed by a conventional routing stack may map the
+  // `sequence_id` onto whatever ordering primitive that stack provides, such as
+  // a policy-routing rule priority, a route metric, or an administrative
+  // distance, provided the lowest-`sequence_id`-wins semantics are preserved.
+  int64 sequence_id = 3;
 
-  // The destination prefix of the route.
-  //
-  // An IPv4 or IPv6 address optionally followed by a slash and the prefix
-  // length.
-  string to = 4;
+  Classifier classifier = 4;
 
-  // The output device name.
-  string dev = 5;
-
-  // The address of the nexthop router.
-  //
-  // An IPv4 or IPv6 address.
-  string via = 6;
+  Action action = 5;
 }
 
 message UpdateIpRoute {
