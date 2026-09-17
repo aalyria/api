@@ -105,7 +105,7 @@ message ReceiveRequestsMessageFromController {
     // request’s response status solely to indicate transport-level receipt of
     // the request, and not to indicate whether the agent can, or will, achieve
     // the requested configuration. An error status will cause Spacetime to
-    // resend the request message to the agent. 
+    // resend the request message to the agent.
     CreateEntryRequest create_entry = 2;
 
     // Deletes an entry from the agent's schedule.
@@ -163,6 +163,10 @@ message CreateEntryRequest {
     DeleteIpRoute delete_ip_route = 25;
     UpdateChannelBandwidthProfile update_channel_bandwidth_profile = 26;
     DeleteChannelBandwidthProfile delete_channel_bandwidth_profile = 27;
+    UpdateBpPeerEntry update_bp_peer_entry = 28;
+    DeleteBpPeerEntry delete_bp_peer_entry = 29;
+    UpdateBpFwdEntry update_bp_fwd_entry = 30;
+    DeleteBpFwdEntry delete_bp_fwd_entry = 31;
   }
 
   reserved 7, 8, 11, 13, 14, 17;
@@ -331,7 +335,7 @@ message DeleteIpRoute {
 }
 
 // Selects the channel bandwidth profile that a signal processing chain's
-// nmts.v1.ek.physical.ChannelBandwidthProfileConfiguration element is to 
+// nmts.v1.ek.physical.ChannelBandwidthProfileConfiguration element is to
 // operate in.
 //
 // Conceptually, each profile corresponds to one permutation
@@ -373,6 +377,212 @@ message UpdateChannelBandwidthProfile {
 message DeleteChannelBandwidthProfile {
   // nmts.v1.ek.physical.SignalProcessingChain entity ID.
   string signal_processing_chain_id = 1;
+}
+
+// A Bundle Protocol peer to be installed in an EK_BP_AGENT_FN.
+//
+// The time associated with a revision of a BpPeerEntry resource in a schedule
+// dictates the earliest time at which the agent should install the peer into
+// the indicated EK_BP_AGENT_FN. A peer persists until superseded by a later
+// BpPeerEntry revision with the same name or removed by a DeleteBpPeerEntry
+// entry.
+message BpPeerEntry {
+  // A TCP convergence-layer (RFC 9174) session to the peer.
+  message TcpCl4Session {
+    oneof endpoint {
+      // An IP address and port, for example "[2001:db8::1]:4556".
+      string ip_and_port = 1;
+
+      // A hostname, to be prefixed with "_dtn-bundle._tcp" and resolved via
+      // the DNS for an SRV record.
+      string dns_srv_name = 2;
+    }
+  }
+
+  // A bundle-in-bundle encapsulation (BIBE) tunnel to the peer.
+  message BibeClSession {
+    // The EID of the BIBE decapsulation service (tunnel endpoint).
+    string decap_eid = 1;
+  }
+
+  // The resource name of the BpPeerEntry.
+  // Format: bpPeerEntries/{bp_peer_entry_id}
+  //
+  // The `bp_peer_entry_id` is opaque to the receiver and may be a UUID. Agents
+  // MUST NOT infer anything from its structure; it serves only to identify
+  // the BpPeerEntry.
+  //
+  // Names are unique within a schedule. Two BpPeerEntries in the same schedule
+  // will never share a name even if the BpPeerEntries exist at different
+  // times.
+  string name = 1;
+
+  // Identifies which EK_BP_AGENT_FN entity controlled by the receiving
+  // EK_SDN_AGENT this peer is installed on. Required: producers MUST
+  // populate this field; agents MUST reject a BpPeerEntry that omits it.
+  string bp_agent_fn_id = 2;
+
+  // The name of the convergence-layer adapter originating the session to the
+  // peer.
+  string cla_name = 3;
+
+  // The node ID (administrative EID) of the peer.
+  string peer_admin_eid = 4;
+
+  oneof cl_session {
+    TcpCl4Session tcp_cl4 = 5;
+
+    BibeClSession bibe_cl = 6;
+  }
+}
+
+message UpdateBpPeerEntry {
+  BpPeerEntry bp_peer_entry = 1;
+
+  aalyria.spacetime.api.common.FieldMask update_mask = 2;
+}
+
+message DeleteBpPeerEntry {
+  // The resource name of the BpPeerEntry to delete.
+  // Format: bpPeerEntries/{bp_peer_entry_id}
+  string name = 1;
+}
+
+// A Bundle Protocol forwarding rule to be installed in an EK_BP_AGENT_FN.
+//
+// Rules are modeled as an ordered access control list in the style of
+// RFC 8519, in the same manner as IpRoute: each rule pairs a `classifier`
+// that selects bundles with an `action` that determines their disposition,
+// and rules are evaluated in `sequence_id` order.
+//
+// The time associated with a revision of a BpFwdEntry resource in a schedule
+// dictates the earliest time at which the agent should install the rule into
+// the indicated EK_BP_AGENT_FN. A rule persists until superseded by a later
+// BpFwdEntry revision with the same name or removed by a DeleteBpFwdEntry
+// entry.
+message BpFwdEntry {
+  // Selects the bundles to which the rule applies.
+  //
+  // Each match field is an EID pattern in the text form of
+  // draft-ietf-dtn-eid-pattern: a "|"-delimited set of items that matches an
+  // EID if any one item matches. A single-item pattern has the same text form
+  // as that item, so an exact EID is itself a valid pattern.
+  //
+  // See also:
+  //   * https://datatracker.ietf.org/doc/html/draft-ietf-dtn-eid-pattern
+  message Classifier {
+    // Matches on both the source node and the destination of a bundle.
+    message SrcDst {
+      // The source to match.
+      //
+      // An EID pattern matched against the bundle's source node ID.
+      string src = 1;
+
+      // The destination to match.
+      //
+      // An EID pattern matched against the bundle's destination EID.
+      string dst = 2;
+    }
+
+    oneof match {
+      // Matches on the destination of a bundle only.
+      //
+      // An EID pattern matched against the bundle's destination EID.
+      string dst = 1;
+
+      SrcDst src_dst = 2;
+    }
+  }
+
+  // The disposition of bundles selected by the rule's classifier.
+  message Action {
+    // Forward the bundle toward a next-hop node.
+    message Via {
+      // The node ID of the next-hop node.
+      //
+      // Matches the `peer_admin_eid` of a BpPeerEntry installed on the same
+      // EK_BP_AGENT_FN.
+      string next_hop = 1;
+    }
+
+    // The reason cited when deleting a bundle. Each value's number is the
+    // corresponding Bundle Status Report Reason Code from RFC 9171 §6.1.1
+    // (Table 1) and the IANA "Bundle Status Report Reason Codes" registry
+    // (RFC 9171 §9.5).
+    //
+    // Only reasons that express a routing or administrative decision are
+    // offered. Reasons that describe a condition of an individual bundle
+    // (lifetime expired, hop limit exceeded, block unintelligible, and so
+    // on) are determined by the node itself and are not programmable.
+    enum Reject {
+      // Reason code 0, "No additional information".
+      REJECT_UNSPECIFIED = 0;
+
+      // Reason code 5, "Destination endpoint ID unavailable".
+      DESTINATION_ENDPOINT_ID_UNAVAILABLE = 5;
+
+      // Reason code 6, "No known route to destination from here".
+      NO_KNOWN_ROUTE = 6;
+
+      // Reason code 10, "Traffic pared".
+      TRAFFIC_PARED = 10;
+    }
+
+    oneof action {
+      Via via = 1;
+
+      // Discard the bundle silently. No bundle status report is generated,
+      // even if the bundle requests one.
+      google.protobuf.Empty drop = 2;
+
+      // Delete the bundle per the Bundle Deletion procedure of RFC 9171
+      // §5.10, citing the given reason. A bundle deletion status report is
+      // generated if the bundle requests one.
+      Reject reject = 3;
+    }
+  }
+
+  // The resource name of the BpFwdEntry.
+  // Format: bpFwdEntries/{bp_fwd_entry_id}
+  //
+  // The `bp_fwd_entry_id` is opaque to the receiver and may be a UUID. Agents
+  // MUST NOT infer anything from its structure; it serves only to identify
+  // the BpFwdEntry.
+  //
+  // Names are unique within a schedule. Two BpFwdEntries in the same schedule
+  // will never share a name even if the BpFwdEntries exist at different times.
+  string name = 1;
+
+  // Identifies which EK_BP_AGENT_FN entity controlled by the receiving
+  // EK_SDN_AGENT this rule is installed on. Required: producers MUST
+  // populate this field; agents MUST reject a BpFwdEntry that omits it.
+  string bp_agent_fn_id = 2;
+
+  // Determines the order in which rules within the same EK_BP_AGENT_FN are
+  // evaluated, in the manner of OpenConfig's ACL `sequence-id`: a bundle is
+  // subject to the action of the matching rule with the lowest `sequence_id`.
+  //
+  // An implementation backed by a bundle protocol agent's native forwarding
+  // or routing table may map the `sequence_id` onto whatever ordering
+  // primitive that agent provides, provided the lowest-`sequence_id`-wins
+  // semantics are preserved.
+  int64 sequence_id = 3;
+
+  Classifier classifier = 4;
+
+  Action action = 5;
+}
+
+message UpdateBpFwdEntry {
+  BpFwdEntry bp_fwd_entry = 1;
+
+  aalyria.spacetime.api.common.FieldMask update_mask = 2;
+}
+
+message DeleteBpFwdEntry {
+  // The resource name of the BpFwdEntry to delete.
+  // Format: bpFwdEntries/{bp_fwd_entry_id}
+  string name = 1;
 }
 
 // A transmit and/or receive beam of RF energy operating on a set of channels,
@@ -422,10 +632,10 @@ message Beam {
   // The collection of endpoints served by the beam.
   // For example, a collection of user terminals (UTs) served.
   //
-  // Each key uniquely identifies the Endpoint and remains stable across 
-  // schedule revisions for the same endpoint. This stability allows an 
-  // UpdateBeam message to use a FieldMask path of "endpoints.<UUID>" to 
-  // selectively update only that endpoint's mutable fields, leaving all 
+  // Each key uniquely identifies the Endpoint and remains stable across
+  // schedule revisions for the same endpoint. This stability allows an
+  // UpdateBeam message to use a FieldMask path of "endpoints.<UUID>" to
+  // selectively update only that endpoint's mutable fields, leaving all
   // other endpoints in the agent's current state unchanged.
   map<string, Endpoint> endpoints = 5;
 
@@ -487,7 +697,7 @@ message DeleteBeam {
 // BeamTarget type will be populated according to the Antenna.pointing_format
 // field specified in the relevant Model entities.
 //
-// This message will not be populated when the antenna's pointing format is 
+// This message will not be populated when the antenna's pointing format is
 // unset.
 message BeamTarget {
   oneof target {
@@ -755,7 +965,7 @@ message DvbS2Params {
   // Identifies the physical layer scrambling codes used for payload data and
   // pilot symbols.  Mapping to particular sequences may be user-defined.
   uint32 payload_pl_scrambling_code = 1;
-  uint32 pilot_pl_scrambling_code = 2; 
+  uint32 pilot_pl_scrambling_code = 2;
 }
 
 // The Endpoint.platform_id is immutable and will never be updated in place
