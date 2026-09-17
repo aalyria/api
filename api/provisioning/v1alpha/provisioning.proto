@@ -20,6 +20,7 @@ import "api/provisioning/v1alpha/position_varying_uv_mask.proto";
 import "api/provisioning/v1alpha/te.proto";
 import "google/api/field_behavior.proto";
 import "google/api/resource.proto";
+import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/field_mask.proto";
 import "google/type/interval.proto";
@@ -156,11 +157,21 @@ service Provisioning {
   rpc UpdateEirpsdMaskLimit(UpdateEirpsdMaskLimitRequest) returns (EirpsdMaskLimit) {}
   rpc DeleteEirpsdMaskLimit(DeleteEirpsdMaskLimitRequest) returns (google.protobuf.Empty) {}
 
+  // Bundle Protocol (BPv7) connectivity service provisioning.
+  //
+  // RFC 9171 (BPv7); RFC 4838 (DTN architecture).
+  //
+  // Manage resources under `bundleServices/{bundle_service}`.
+  rpc GetBundleService(GetBundleServiceRequest) returns (BundleService) {}
+  rpc ListBundleServices(ListBundleServicesRequest) returns (ListBundleServicesResponse) {}
+  rpc CreateBundleService(CreateBundleServiceRequest) returns (BundleService) {}
+  rpc UpdateBundleService(UpdateBundleServiceRequest) returns (BundleService) {}
+  rpc DeleteBundleService(DeleteBundleServiceRequest) returns (google.protobuf.Empty) {}
+
   // TODO: Consider RFC 8623 P2MP TE -like request
   // TODO: Consider PHY-layer requests (bent pipe, etc)
   // TODO: Add a DigitalTransparentService request (details TBD)
   // TODO: NativeIpForwardingRequest
-  // TODO: BundleProtocolServiceRequest
   // TODO: MEF E-{Line,Tree,LAN} services
   // TODO: 3GPP services
 }
@@ -1601,5 +1612,169 @@ message DeleteEirpsdMaskLimitRequest{
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
       type: "provisioning.spacetimeapis.com/EirpsdMaskLimit"
+    }];
+}
+
+// A Bundle Protocol (BPv7) connectivity service request.
+//
+// Requests delay-tolerant, store-carry-forward delivery of bundles from a
+// source BP agent to a destination BP agent over `interval`.
+//
+// Like a P2P SR-TE Policy, this asks for connectivity between two endpoints
+// and leaves the realization to Spacetime. Unlike an SR-TE Policy, which is
+// realized as a concurrent end-to-end path carrying a continuous rate, a
+// Bundle Service is realized as a sequence of contacts that need not overlap
+// in time. Bundles are stored at intermediate nodes between contacts, so the
+// commitment is a volume of contact capacity over a window, not a rate.
+// Spacetime ensures the convergence-layer adjacencies and contacts needed to
+// meet the request exist and are scheduled; the resulting contact plan is
+// exposed via the Scheduling API, not here.
+//
+// See also RFC 9171 (BPv7) and RFC 4838 (DTN architecture).
+message BundleService {
+  option (google.api.resource) = {
+    type: "provisioning.spacetimeapis.com/BundleService"
+    pattern: "bundleServices/{bundle_service}"
+  };
+
+  // The resource name of this Bundle Protocol service request.
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  // The priority field allows the requester to specify the order in
+  // which requests for Provisioning resources are satisfied relative
+  // to all other requests.
+  //
+  // A request will be treated as having a higher priority if the
+  // value of this field is arithmetically greater than that of
+  // another service request.
+  //
+  // Users may want to directly map this to some utility metric of
+  // relevance to their network operations, e.g. estimated revenue,
+  // number of customers served, etc.
+  //
+  // Cf. RFC 9256 S2.12's re-compute priority.
+  double priority = 2;
+
+  // The time interval over which this service is requested.
+  //
+  // If start_time is empty the service is requested to be provisioned
+  // at the earliest possible time it may be realized in the network.
+  //
+  // If end_time is empty the service is requested to be provisioned
+  // until this specific request is canceled or this interval field
+  // is updated with a non-empty end_time.
+  google.type.Interval interval = 3;
+
+  // A simple way to temporarily disable this request without deleting
+  // it from the store of requests.
+  bool disabled = 4;
+
+  // NMTS Entity ID of the source EK_BP_AGENT_FN.
+  string source = 5;
+
+  // NMTS Entity ID of the destination EK_BP_AGENT_FN.
+  string destination = 6;
+
+  // Optional floor on provisioned contact capacity.
+  //
+  // This commits the contact plan to provide the capacity, not that any
+  // bundles are sent or delivered; whether the source fills it is outside
+  // the controller's visibility. It is a volume rather than a rate because
+  // DTN delivery occurs during discrete contacts.
+  message Demand {
+    // Volume of usable contact capacity to provision per averaging window.
+    int64 size_bytes = 1;
+
+    // The window over which `size_bytes` of capacity must be sustained.
+    //
+    // If unset, `size_bytes` is a total to be provisioned once over
+    // `interval` (requires a bounded `interval.end_time`).
+    //
+    // If set, `size_bytes` per `averaging_window` defines a sustained
+    // average-capacity floor (i.e. a drain rate of
+    // size_bytes/averaging_window), suitable for open-ended requests with
+    // no `interval.end_time`. Spacetime verifies the contact plan meets
+    // this average and, using modeled source-node storage, that the
+    // resulting contact cadence keeps peak backlog within that storage.
+    google.protobuf.Duration averaging_window = 2;
+
+    // TODO: Consider promoting these if program SLA semantics
+    // ("at least X contacts of N duration every day/week/month") are
+    // required. Traditional contact-cadence SLAs assume a known, fixed
+    // link rate; these express the same commitments rate-independently,
+    // in volume/time terms.
+    //
+    // // Optional bound on the time between successive qualifying
+    // // contacts. Bounds worst-case delivery latency and source-node
+    // // backlog. If unset, only the average capacity floor above is
+    // // enforced.
+    // google.protobuf.Duration max_contact_gap = 3;
+    //
+    // // A contact counts toward this service (including toward
+    // // `max_contact_gap`) only if it can deliver at least this many
+    // // bytes. Guards against satisfying the demand with contacts too
+    // // small to be operationally useful.
+    // int64 min_contact_volume_bytes = 4;
+  }
+  Demand demand = 7;
+}
+
+message GetBundleServiceRequest{
+  // The resource name of the Bundle Protocol service to retrieve.
+  // Format: `bundleServices/{bundle_service}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/BundleService"
+    }];
+}
+
+message ListBundleServicesRequest{
+}
+
+message ListBundleServicesResponse{
+  repeated BundleService bundle_services = 1;
+}
+
+message CreateBundleServiceRequest{
+  // The ID to use for the Bundle Protocol service, which will become the
+  // final component of the Bundle Protocol service's resource name.
+  //
+  // This value should be 1-63 characters, and valid characters
+  // are /[a-z][0-9]-/, specifically of the form
+  // "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$".
+  string bundle_service_id = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // The Bundle Protocol service to create.
+  BundleService bundle_service = 3 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+}
+
+message UpdateBundleServiceRequest{
+  // The BundleService to update.
+  //
+  // The BundleService's `name` field is used to identify the
+  // BundleService instance to be updated.
+  // Format: `bundleServices/{bundle_service}`
+  BundleService bundle_service = 1 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+
+  // The list of fields to be updated.
+  google.protobuf.FieldMask update_mask = 2;
+
+  // If set to true, and the BundleService named above is not found, a new
+  // instance will be created. In this situation, `update_mask` is ignored.
+  bool allow_missing = 3;
+}
+
+message DeleteBundleServiceRequest{
+  // The resource name of the Bundle Protocol service to delete.
+  // Format: `bundleServices/{bundle_service}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/BundleService"
     }];
 }

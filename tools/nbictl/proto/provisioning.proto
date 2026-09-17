@@ -40,6 +40,7 @@ message ProvisioningResources {
   repeated aalyria.spacetime.api.provisioning.v1alpha.EmissionsLimit emissions_limits = 8;
   repeated aalyria.spacetime.api.provisioning.v1alpha.PointingConstraint pointing_constraints = 12;
   repeated aalyria.spacetime.api.provisioning.v1alpha.EirpsdMaskLimit eirpsd_mask_limits = 13;
+  repeated aalyria.spacetime.api.provisioning.v1alpha.BundleService bundle_services = 14;
 
   reserved 9;
 }
