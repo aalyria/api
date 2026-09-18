@@ -276,6 +276,8 @@ type deviceServerConfig struct {
 	// terminalError, when not empty, is the OAuth error code that the token
 	// endpoint returns instead of a success.
 	terminalError string
+	// loginV2Device, when true, serves the Zitadel login v2 device page.
+	loginV2Device bool
 }
 
 // deviceServer is a fake identity provider that supports the device grant.
@@ -315,6 +317,12 @@ func newDeviceServer(t *testing.T, cfg deviceServerConfig) *deviceServer {
 			"interval": 1
 		}`, ds.URL, ds.URL)
 	})
+	if cfg.loginV2Device {
+		mux.HandleFunc("/ui/v2/login/device", func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "text/html")
+			fmt.Fprint(w, "<html>device</html>")
+		})
+	}
 	mux.HandleFunc("/oauth/v2/token", func(w http.ResponseWriter, r *http.Request) {
 		ds.tokenRequests.Add(1)
 		if err := r.ParseForm(); err != nil {
@@ -410,6 +418,66 @@ func TestDeviceLogin_Success(t *testing.T) {
 	form := ds.lastTokenForm.Load()
 	if got := form.Get("grant_type"); got != "urn:ietf:params:oauth:grant-type:device_code" {
 		t.Errorf("grant_type: got %q, want the device code grant", got)
+	}
+}
+
+// TestDeviceLogin_PrefersTheLoginV2DevicePage covers a Zitadel issuer that
+// serves the login v2 UI. The verification URI that Zitadel returns opens the
+// login v1 UI, so the prompt must point at the v2 device page instead.
+func TestDeviceLogin_PrefersTheLoginV2DevicePage(t *testing.T) {
+	t.Parallel()
+
+	expiry := time.Date(2026, time.August, 11, 13, 0, 0, 0, time.UTC)
+	ds := newDeviceServer(t, deviceServerConfig{
+		tokenResponse: successBody(testIDToken(t, "user@example.com", expiry), "refresh-token-1"),
+		loginV2Device: true,
+	})
+
+	var prompts []DevicePrompt
+	if _, err := DeviceLogin(context.Background(), testUserConfig(ds), func(p DevicePrompt) error {
+		prompts = append(prompts, p)
+		return nil
+	}); err != nil {
+		t.Fatalf("DeviceLogin returned an unexpected error: %v", err)
+	}
+
+	if len(prompts) != 1 {
+		t.Fatalf("the prompt ran %d times, but exactly 1 was expected", len(prompts))
+	}
+	if want := ds.URL + "/ui/v2/login/device"; prompts[0].VerificationURI != want {
+		t.Errorf("VerificationURI: got %q, want %q", prompts[0].VerificationURI, want)
+	}
+	if want := ds.URL + "/ui/v2/login/device?user_code=ABCD-EFGH"; prompts[0].VerificationURIComplete != want {
+		t.Errorf("VerificationURIComplete: got %q, want %q", prompts[0].VerificationURIComplete, want)
+	}
+	if prompts[0].UserCode != "ABCD-EFGH" {
+		t.Errorf("UserCode: got %q, want %q", prompts[0].UserCode, "ABCD-EFGH")
+	}
+}
+
+// TestDeviceLogin_KeepsTheIssuerPromptWithoutLoginV2 covers an issuer that
+// does not serve the login v2 device page. The prompt stays as returned.
+func TestDeviceLogin_KeepsTheIssuerPromptWithoutLoginV2(t *testing.T) {
+	t.Parallel()
+
+	expiry := time.Date(2026, time.August, 11, 13, 0, 0, 0, time.UTC)
+	ds := newDeviceServer(t, deviceServerConfig{
+		tokenResponse: successBody(testIDToken(t, "user@example.com", expiry), ""),
+	})
+
+	var prompts []DevicePrompt
+	if _, err := DeviceLogin(context.Background(), testUserConfig(ds), func(p DevicePrompt) error {
+		prompts = append(prompts, p)
+		return nil
+	}); err != nil {
+		t.Fatalf("DeviceLogin returned an unexpected error: %v", err)
+	}
+
+	if want := ds.URL + "/device"; prompts[0].VerificationURI != want {
+		t.Errorf("VerificationURI: got %q, want %q", prompts[0].VerificationURI, want)
+	}
+	if want := ds.URL + "/device?user_code=ABCD-EFGH"; prompts[0].VerificationURIComplete != want {
+		t.Errorf("VerificationURIComplete: got %q, want %q", prompts[0].VerificationURIComplete, want)
 	}
 }
 

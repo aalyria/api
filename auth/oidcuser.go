@@ -494,12 +494,12 @@ func DeviceLogin(ctx context.Context, c OIDCUserConfig, prompt func(DevicePrompt
 		return nil, fmt.Errorf("requesting a device code from %s: %w", meta.DeviceAuthorizationEndpoint, err)
 	}
 
-	if err := prompt(DevicePrompt{
+	if err := prompt(c.loginV2DevicePrompt(ctx, DevicePrompt{
 		VerificationURI:         deviceAuth.VerificationURI,
 		VerificationURIComplete: deviceAuth.VerificationURIComplete,
 		UserCode:                deviceAuth.UserCode,
 		ExpiresAt:               deviceAuth.Expiry,
-	}); err != nil {
+	})); err != nil {
 		return nil, err
 	}
 
@@ -508,6 +508,47 @@ func DeviceLogin(ctx context.Context, c OIDCUserConfig, prompt func(DevicePrompt
 		return nil, c.deviceAccessTokenError(err)
 	}
 	return tokensFromOAuth2(tok)
+}
+
+// zitadelLoginV2DevicePath is the device page of the Zitadel login v2 UI.
+const zitadelLoginV2DevicePath = "/ui/v2/login/device"
+
+// loginV2ProbeTimeout bounds the request that looks for the login v2 UI.
+const loginV2ProbeTimeout = 5 * time.Second
+
+// loginV2DevicePrompt points a Zitadel device prompt at the login v2 UI.
+//
+// Zitadel returns <issuer>/device as the verification URI. That path opens
+// the login v1 UI, also on an instance that requires login v2. The v1 UI
+// calls an external identity provider back on a v1 path, which a login v2
+// deployment does not register with the provider, so the sign-in fails. When
+// the issuer serves the login v2 device page, the prompt uses that page. Any
+// other case keeps the prompt that the issuer returned.
+func (c OIDCUserConfig) loginV2DevicePrompt(ctx context.Context, p DevicePrompt) DevicePrompt {
+	issuer := strings.TrimSuffix(c.Issuer, "/")
+	if p.VerificationURI != issuer+"/device" {
+		return p
+	}
+	v2 := issuer + zitadelLoginV2DevicePath
+
+	ctx, cancel := context.WithTimeout(ctx, loginV2ProbeTimeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, v2, nil)
+	if err != nil {
+		return p
+	}
+	resp, err := httpDoerOrDefault(c.HTTPClient).Do(req)
+	if err != nil {
+		return p
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return p
+	}
+
+	p.VerificationURI = v2
+	p.VerificationURIComplete = v2 + "?user_code=" + url.QueryEscape(p.UserCode)
+	return p
 }
 
 // deviceAccessTokenError names the next action when a device login ends
