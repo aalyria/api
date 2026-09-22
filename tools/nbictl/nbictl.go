@@ -676,7 +676,7 @@ func App() *cli.App {
 					},
 					{
 						Name:   "query-beams",
-						Usage:  "Query solution beams, optionally at a single point in time. Without --timestamp, returns the full retained history.",
+						Usage:  "Query solution beams. Query can be narrowed using flags; omitting query flags will return all beams.",
 						Action: SolutionQueryBeams,
 						Before: before,
 						After:  after,
@@ -702,7 +702,7 @@ func App() *cli.App {
 					},
 					{
 						Name:   "query-p2p-candidate-paths",
-						Usage:  "Query solved P2P SR-TE policy candidate paths, optionally for one provisioning request and/or a single point in time. Without flags, returns the full retained history.",
+						Usage:  "Query solved P2P SR-TE policy candidate paths. Query can be narrowed using flags; omitting query flags will return all paths.",
 						Action: SolutionQueryP2PSrTePolicyCandidatePaths,
 						Before: before,
 						After:  after,

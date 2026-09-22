@@ -409,7 +409,7 @@ Retrieve one solution beam by resource name.
 
 ### query-beams
 
-Query solution beams, optionally at a single point in time. Without --timestamp, returns the full retained history.
+Query solution beams. Query can be narrowed using flags; omitting query flags will return all beams.
 
 **--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
 
@@ -417,11 +417,15 @@ Query solution beams, optionally at a single point in time. Without --timestamp,
 
 **--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
 
+**--interval-end**="": Only match solutions that exist before this RFC3339 timestamp (e.g. 2026-08-05T13:00:00Z), exclusive: solutions that only begin at the timestamp are not included. May be combined with --interval-start.
+
+**--interval-start**="": Only match solutions that exist at or after this RFC3339 timestamp (e.g. 2026-08-05T12:00:00Z), inclusive: solutions overlapping the timestamp are included. May be combined with --interval-end.
+
 **--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
 
 **--provisioning-resource**="": Only match beams fulfilling this provisioning resource.
 
-**--timestamp**="": Only match solutions that exist at this RFC3339 timestamp (e.g. 2026-08-05T12:00:00Z). Without it, the full retained solution history is returned.
+**--timestamp**="": Only match solutions that exist at this RFC3339 timestamp (e.g. 2026-08-05T12:00:00Z).
 
 ### get-p2p-candidate-path
 
@@ -437,7 +441,7 @@ Retrieve one solved P2P SR-TE policy candidate path by resource name.
 
 ### query-p2p-candidate-paths
 
-Query solved P2P SR-TE policy candidate paths, optionally for one provisioning request and/or a single point in time. Without flags, returns the full retained history.
+Query solved P2P SR-TE policy candidate paths. Query can be narrowed using flags; omitting query flags will return all paths.
 
 **--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
 
@@ -445,11 +449,15 @@ Query solved P2P SR-TE policy candidate paths, optionally for one provisioning r
 
 **--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
 
+**--interval-end**="": Only match solutions that exist before this RFC3339 timestamp (e.g. 2026-08-05T13:00:00Z), exclusive: solutions that only begin at the timestamp are not included. May be combined with --interval-start.
+
+**--interval-start**="": Only match solutions that exist at or after this RFC3339 timestamp (e.g. 2026-08-05T12:00:00Z), inclusive: solutions overlapping the timestamp are included. May be combined with --interval-end.
+
 **--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
 
 **--provisioning-p2p-candidate-path**="": Only match paths fulfilling this provisioning candidate path (p2pSrTePolicies/{policy}/candidatePaths/{path}).
 
-**--timestamp**="": Only match solutions that exist at this RFC3339 timestamp (e.g. 2026-08-05T12:00:00Z). Without it, the full retained solution history is returned.
+**--timestamp**="": Only match solutions that exist at this RFC3339 timestamp (e.g. 2026-08-05T12:00:00Z).
 
 ## grpcurl
 
