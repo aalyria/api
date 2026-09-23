@@ -23,8 +23,7 @@ go_library(
     deps = [
         "//api/common:common_go_proto",
         "@com_github_jonboulle_clockwork//:clockwork",
-        "@com_github_prometheus_common//expfmt",
-        "@com_github_prometheus_common//model",
+        "@com_github_prometheus_client_model//go",
         "@com_github_prometheus_prom2json//:prom2json",
     ],
 )
@@ -39,7 +38,6 @@ go_test(
         "//api/common:common_go_proto",
         "@com_github_google_go_cmp//cmp",
         "@com_github_jonboulle_clockwork//:clockwork",
-        "@com_github_prometheus_common//expfmt",
         "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//testing/protocmp",
     ],

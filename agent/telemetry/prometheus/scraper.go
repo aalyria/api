@@ -16,7 +16,6 @@ package prometheus
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"math/big"
 	"net/http"
@@ -25,8 +24,7 @@ import (
 	apipb "aalyria.com/spacetime/api/common"
 
 	"github.com/jonboulle/clockwork"
-	"github.com/prometheus/common/expfmt"
-	"github.com/prometheus/common/model"
+	promcli "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prom2json"
 )
 
@@ -112,19 +110,23 @@ func (s *Scraper) fetchMetrics(ctx context.Context) ([]*prom2json.Family, error)
 	return parseReader(resp.Body)
 }
 
-// parseReader parses the Prometheus text exposition format into prom2json
-// families.
+// parseReader wraps the asynchronous prom2json.ParseReader function in a
+// synchronous interface.
 func parseReader(r io.Reader) ([]*prom2json.Family, error) {
-	parser := expfmt.NewTextParser(model.UTF8Validation)
-	metricFamilies, err := parser.TextToMetricFamilies(r)
-	if err != nil {
-		return nil, fmt.Errorf("reading text format failed: %w", err)
-	}
-	stats := make([]*prom2json.Family, 0, len(metricFamilies))
-	for _, mf := range metricFamilies {
-		stats = append(stats, prom2json.NewFamily(mf))
-	}
-	return stats, nil
+	inCh := make(chan *promcli.MetricFamily)
+	outCh := make(chan []*prom2json.Family)
+
+	go func() {
+		stats := []*prom2json.Family{}
+		for s := range inCh {
+			stats = append(stats, prom2json.NewFamily(s))
+		}
+		outCh <- stats
+	}()
+
+	err := prom2json.ParseReader(r, inCh)
+	stats := <-outCh
+	return stats, err
 }
 
 func (s *Scraper) extractInterfaceStats(stats []*prom2json.Family) (map[string]*apipb.InterfaceStats, error) {

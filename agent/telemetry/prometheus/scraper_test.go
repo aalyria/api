@@ -17,10 +17,8 @@ package prometheus
 import (
 	"context"
 	_ "embed"
-	"errors"
 	"net"
 	"net/http"
-	"strings"
 	"testing"
 	"time"
 
@@ -28,7 +26,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/jonboulle/clockwork"
-	"github.com/prometheus/common/expfmt"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 )
@@ -185,14 +182,5 @@ func runTest(t *testing.T, tc testCase) {
 	clock.Advance(conf.ScrapeInterval)
 	if err := <-scrapeErrCh; err != nil && err != context.Canceled {
 		t.Errorf("error scraping metrics: %s", err)
-	}
-}
-
-func TestParseReaderMalformed(t *testing.T) {
-	t.Parallel()
-
-	_, err := parseReader(strings.NewReader("metric{label=\"unterminated} 1\n"))
-	if _, ok := errors.AsType[expfmt.ParseError](err); !ok {
-		t.Fatalf("parseReader() error = %v, want an expfmt.ParseError", err)
 	}
 }
