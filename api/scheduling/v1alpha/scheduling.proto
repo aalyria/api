@@ -101,6 +101,13 @@ message ReceiveRequestsMessageFromController {
     // immutable: once created, an entry may not changed, though it may be
     // deleted.
     //
+    // To revise configuration in a future section of the schedule that was
+    // previously distributed, Spacetime will issue a DeleteEntryRequest for
+    // the existing entry and a CreateEntryRequest for the new configuration.
+    // If the new configuration replaces the existing configuration at the same
+    // scheduled time, the DeleteEntryRequest will have a lower `seqno` than the
+    // CreateEntryRequest.
+    //
     // The agent (or a proxy acting on its behalf) must use the CreateEntry
     // request’s response status solely to indicate transport-level receipt of
     // the request, and not to indicate whether the agent can, or will, achieve
