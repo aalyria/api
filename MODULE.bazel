@@ -149,6 +149,7 @@ use_repo(
     "com_github_mattn_go_isatty",
     "com_github_prometheus_client_golang",
     "com_github_prometheus_client_model",
+    "com_github_prometheus_common",
     "com_github_prometheus_prom2json",
     "com_github_quic_go_quic_go",
     "com_github_rs_zerolog",

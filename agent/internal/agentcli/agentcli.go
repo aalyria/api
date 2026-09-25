@@ -262,10 +262,11 @@ func injectTracer(ctx context.Context, params *configpb.AgentParams) (newCtx con
 		return task.InjectTracerProvider(ctx, oteltracenoop.NewTracerProvider()), func() {}, nil
 	}
 
+	// A schemaless resource never conflicts with resource.Default()'s schema
+	// URL, which changes on OTel SDK upgrades.
 	res, err := resource.Merge(
 		resource.Default(),
-		resource.NewWithAttributes(
-			semconv.SchemaURL,
+		resource.NewSchemaless(
 			semconv.ServiceName("sbi-agent"),
 			semconv.ServiceNamespaceKey.String("spacetime"),
 			semconv.ServiceVersion("v0.1.0"),
