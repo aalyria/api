@@ -28,6 +28,7 @@ proto_library(
     deps = [
         "//api/common:common_proto",
         "@googleapis//google/rpc:status_proto",
+        "@googleapis//google/type:interval_proto",
         "@org_outernetcouncil_nmts//v1/proto/types/geophys:coordinates_proto",
         "@org_outernetcouncil_nmts//v1/proto/types/geophys:geodesy_proto",
         "@protobuf//:duration_proto",
@@ -57,6 +58,7 @@ go_proto_library(
     proto = ":scheduling_proto",
     deps = [
         "//api/common:common_go_proto",
+        "@org_golang_google_genproto//googleapis/type/interval",
         "@org_golang_google_genproto_googleapis_rpc//status",
         "@org_outernetcouncil_nmts//v1/proto/types/geophys:geophys_go_proto",
     ],

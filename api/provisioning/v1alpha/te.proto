@@ -17,6 +17,7 @@ syntax = "proto3";
 package aalyria.spacetime.api.provisioning.v1alpha;
 
 import "google/protobuf/duration.proto";
+import "google/protobuf/empty.proto";
 
 option java_package = "com.aalyria.spacetime.api.provisioning.v1alpha";
 option go_package = "aalyria.com/spacetime/api/provisioning/v1alpha";

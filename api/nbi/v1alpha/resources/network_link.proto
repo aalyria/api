@@ -24,6 +24,7 @@ import "api/common/time.proto";
 import "api/common/wireless_transceiver.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
+import "google/type/interval.proto";
 
 option go_package = "aalyria.com/spacetime/api/nbi/v1alpha/resources";
 option java_package = "com.aalyria.spacetime.api.nbi.v1alpha.resources";
