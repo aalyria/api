@@ -1,0 +1,193 @@
+// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto2";
+
+package aalyria.spacetime.api.common;
+
+import "google/protobuf/empty.proto";
+
+option java_package = "com.aalyria.spacetime.api.common";
+option go_package = "aalyria.com/spacetime/api/common";
+
+// Uniquely identifies a network interface.
+message NetworkInterfaceId {
+  // The unique ID of the node on which the interface is installed.
+  optional string node_id = 1;
+
+  // The node-unique interface ID.
+  optional string interface_id = 2;
+}
+
+// Defines rules for classifying a packet.
+message PacketClassifier {
+  // If high is not specified, the range contains a single value, specified by
+  // low. If low and high are both specified, the range is [low, high]; the high
+  // value is part of the range. If low == high, it represents the single value
+  // of low (same as not providing a high value).
+  message ValueRange {
+    optional uint32 low = 1;
+    optional uint32 high = 2;  // default is same value as "low"
+    // If high < low, the range is empty.
+    reserved 3 to max;  // Next IDs.
+  }
+
+  // Classifier for IPv4 or IPv6 packet headers.
+  message IpHeader {
+    // This field is represented as an ASCII IPRange.
+    optional string src_ip_range = 1;
+
+    // This field is represented as an ASCII IPRange.
+    optional string dst_ip_range = 2;
+
+    // IP protocol number.
+    optional uint32 protocol = 3;
+
+    reserved 4 to max;  // Next IDs.
+  }
+  optional IpHeader ip_header = 1;
+
+  // Used to match ports for protocols TCP, UDP, SCTP, etc.
+  message GenericLayer4Header {
+    repeated ValueRange source_port = 1;
+    repeated ValueRange destination_port = 2;
+    reserved 3 to max;  // Next IDs.
+  }
+  optional GenericLayer4Header l4_header = 2;
+
+  message EthernetHeader {
+    // To match a multicast address set the multicast field. Alternatively, set
+    // the desired matching address in the address field.
+    oneof destination {
+      google.protobuf.Empty multicast = 1;
+
+      // Ethernet address in readable colon separated format. e.g.
+      // "1:23:45:67:89:ab" or "01:23:45:67:89:ab"
+      string address = 2;
+    }
+    reserved 3 to max;  // Next IDs.
+  }
+  optional EthernetHeader ethernet_header = 3;
+
+  // [RFC 3032](https://rfc-editor.org/rfc/rfc3032)
+  message MplsLabelStackEntry {
+    optional uint32 label = 1;  // restricted to unsigned 20-bit values
+
+    // TODO: Consider https://rfc-editor.org/rfc/rfc5462 field.
+    // optional uint32 traffic_class = 2; unsigned 3-bit values only
+
+    // If this MplsLabelStackEntry is last in an ordered list of entries,
+    // then it may be inferred that it is the bottom of the stack. Whether
+    // the Bottom-of-Stack bit is to be set or not may require additional
+    // context.
+    //
+    // TODO: Consider explicit Bottom of Stack indicator.
+    // optional bool s = 3;
+  }
+  optional MplsLabelStackEntry mpls_label_stack_entry = 4;
+
+  reserved 5 to max;  // Next IDs.
+}
+
+// A subnet that can be expressed explicitly as an IP range, as a node ID, or as
+// an interface ID. In the case of a node ID, the intent compiler will resolve
+// the node ID to all the address ranges that the node represents. In the case
+// of an interface ID, the intent compiler will resolve the interface ID to an
+// address range of only the interface address.
+message Subnet {
+  oneof subnet {
+    string ip_range = 1;
+    string node_id = 2;
+    // TODO: Remove when we can more cleanly specify a tunnel packet
+    // classifier with node ID when multiple subnets are associated with a node.
+    NetworkInterfaceId interface_id = 3;
+  }
+  reserved 4 to max;  // Next IDs.
+}
+
+// Classifier for IPv4 or IPv6 flows.
+message IpFlowClassifier {
+  optional Subnet src = 1;
+  optional Subnet dst = 2;
+
+  // IP protocol number.
+  optional uint32 protocol = 3;
+  reserved 4 to max;  // Next IDs.
+}
+
+// MEF EVC E-Line Flow Classifier
+//
+// Suitable for describing a MEF 10.4 section 8.3.1 Point-to-Point EVC,
+// specifically:
+//
+//    * "Ethernet Private Line Service (EPL)
+//       Point-to-Point EVC, all to one bundling"
+//
+//       See also: MEF 6.3 Section 9.1, MEF 7.4 Section 11.1
+//
+//    * "Ethernet Virtual Private Line (EVPL)
+//       Point-to-Point EVC, bundling and/or multiplexing"
+//
+//       See also: MEF 6.3 Section 9.2, MEF 7.4 Section 11.2
+message EvcElineFlowClassifier {
+  // A locally meaningful name for traffic described by this classifier.
+  //
+  // Possible examples include:
+  //   * the MEF 10.4 section 10.1 EVC EP ID service attribute that
+  //     corresponds to the UNI and Map service attributes below, or
+  //   * an identifier for an SR Policy or a specific pseudowire that
+  //     will carry this traffic.
+  //
+  // This does not appear anywhere in the data plane and the value is
+  // opaque to rest of the system.
+  optional string id = 1;
+
+  // E.g., MEF 10.4 section 10.2 EVC EP UNI service attribute.
+  // Node-local interface name; node MUST be inferred from additional
+  // context (e.g. ServiceRequest or ScheduledControlUpdate).
+  optional string uni = 2;
+
+  // MEF 10.4 section 10.4 EVC EP Map service attribute.
+  //
+  // For section 10.4.1 "EVC EP Map Service Attribute = List", add
+  // all applicable non-zero, non-4095 Customer Edge VLAN IDs.
+  //
+  // For section 10.4.2 "EVC EP Map service attribute = All", leave
+  // this list empty.
+  //
+  // For section 10.4.3 "EVC EP Map service attribute = UT/PT", use
+  // only a single VLAN ID, either 0 (zero) or the value of the UNI's
+  // Default CE-VLAN ID attribute (MEF 10.3 and earlier), whichever
+  // has local meaning.
+  repeated uint32 vlan_ids = 3;
+
+  // For use if Ethernet service frames are classified by another
+  // network element and encapsulated inside an MPLS label stack
+  // that uniquely identifies the flow.
+  //
+  repeated PacketClassifier.MplsLabelStackEntry mpls_stack = 4;
+}
+
+// Rules for matching a network flow.
+message FlowClassifier {
+  optional IpFlowClassifier ip_classifier = 1;
+
+  optional PacketClassifier.GenericLayer4Header l4_classifier = 2;
+
+  optional PacketClassifier.EthernetHeader ethernet_classifier = 3;
+
+  optional EvcElineFlowClassifier evc_eline_classifier = 4;
+
+  reserved 5 to max;  // Next IDs.
+}

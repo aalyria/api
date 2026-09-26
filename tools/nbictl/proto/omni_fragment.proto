@@ -1,0 +1,52 @@
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package aalyria.spacetime.tools.nbictl.model.v1;
+
+import "nmts/v1/proto/nmts.proto";
+
+option java_package = "com.aalyria.spacetime.tools.nbictl.model.v1";
+option go_package = "aalyria.com/spacetime/tools/nbictl/omnipb";
+
+// OmniFragment is a permissive container for NMTS Entities and Relationships
+// understood only by the nbictl command-line tool. It exists to bridge the
+// field-name mismatch between the model API's list responses and the native
+// nmts.v1.Fragment message:
+//
+//   - nmts.v1.Fragment uses singular, non-pluralized field names (`entity`,
+//     `relationship`).
+//   - The model API's ListEntitiesResponse / ListRelationshipsResponse use
+//     pluralized field names (`entities`, `relationships`).
+//
+// By accepting both spellings, OmniFragment lets a user pipe the output of
+// `nbictl model-v1 list-entities` (or list-relationships) straight back into
+// `nbictl model-v1 sync` / `upsert-fragment` without first renaming fields.
+// The singular fields share field numbers with nmts.v1.Fragment so that
+// binary-encoded native Fragments decode cleanly as OmniFragments.
+//
+// nbictl always emits the normalized native nmts.v1.Fragment format on output;
+// the pluralized fields exist purely so that legacy and list-response inputs
+// continue to parse.
+message OmniFragment {
+  // Singular field names, matching nmts.v1.Fragment.
+  repeated nmts.v1.Entity entity = 1;
+  repeated nmts.v1.Relationship relationship = 2;
+
+  // Pluralized field names, matching the model API's list responses.
+  repeated nmts.v1.Entity entities = 3;
+
+  repeated nmts.v1.Relationship relationships = 4;
+}

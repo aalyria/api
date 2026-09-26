@@ -1,0 +1,161 @@
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// This file contains PositionVaryingUvMask: a 2-D (u, v) beam-pointing grid
+// of values, tabulated per platform (lat, lon) position, whose
+// per-latitude-row values are carried either inline or in external object
+// storage. The physical meaning and units of the values are defined by the
+// message that carries the mask (e.g. EirpsdMaskLimit).
+
+syntax = "proto3";
+
+package aalyria.spacetime.api.provisioning.v1alpha;
+
+option java_package = "com.aalyria.spacetime.api.provisioning.v1alpha";
+option go_package = "aalyria.com/spacetime/api/provisioning/v1alpha";
+
+// A position-varying 2-D (u, v) mask: for each sampled platform
+// (lat, lon) position, a grid of values over beam-pointing direction.
+//
+// Each grid samples beam pointing as direction cosines (u, v) over the unit
+// disk inscribed in [-1, 1]; the third cosine w = sqrt(1 - u^2 - v^2) is the
+// implicit +Z axis. A producer whose native convention differs must re-index
+// to this convention (a lossless, axis-aligned transpose/reflect).
+//
+// Each value is a float64 whose physical meaning and units are defined by
+// the message that carries this mask; the mask itself is value-agnostic.
+// "No applicable value" is the canonical quiet-NaN sentinel
+// 0x7FF8000000000000 (little-endian).
+//
+// A mask uses only the position dimensions it needs: an unused axis
+// collapses to a single sample (count = 1). A fully position-INDEPENDENT
+// mask has lat_count = 1 and lon_count = 1, with its single latitude row
+// typically carried via inline_object.
+//
+// All fields, including those of the nested messages, are required.
+message PositionVaryingUvMask {
+  // Physical reference frame in which the mask grid's (u, v, w) direction
+  // cosines are expressed. w is the direction cosine along the frame's +Z axis.
+  enum UvGridReferenceFrame {
+    UV_GRID_REFERENCE_FRAME_UNSPECIFIED = 0;
+
+    // Local-Vertical/Local-Horizontal orbital frame: +Z points to nadir,
+    // +X is along-track, and +Y completes the right-handed triad.
+    LVLH = 1;
+  }
+
+  // Latitude and longitude sampling axes, regular and dense: sample
+  // i = start + i*step for i in [0, count). Positions are geodetic,
+  // referenced to the reference ellipsoid of the central body the
+  // platform orbits (WGS84 for Earth): (lat, lon) is the platform's
+  // geodetic position (equivalently its geodetic sub-point).
+  double lat_start_deg = 1;
+  double lat_step_deg = 2;
+  int32 lat_count = 3;
+
+  double lon_start_deg = 4;
+  double lon_step_deg = 5;
+  int32 lon_count = 6;
+
+  // Sample spacing in direction cosines. 2/uv_step must be a positive
+  // integer; the sample count is 2/uv_step + 1 and the grid center and
+  // unit-disk radius are both 1/uv_step (e.g. uv_step 0.02 -> count 101,
+  // center = radius = 50).
+  double uv_step = 7;
+
+  // The physical frame the (u, v) direction cosines are referenced to.
+  UvGridReferenceFrame uv_reference_frame = 8;
+
+  // The mask values, one LatitudeRow per sample of the latitude axis.
+  repeated LatitudeRow latitude_rows = 9;
+
+  // One latitude row: the (u, v) grids for all lon_count longitudes at
+  // latitude sample lat_index, in ascending-longitude order, framed as a
+  // single "row object" (byte format below). The object bytes are carried
+  // either by reference (uri) or by value (inline_object). Both carry
+  // EXACTLY the same bytes -- the full framed format including the 64-byte
+  // header -- so producers and Spacetime share one codec and format_version
+  // always travels with the values.
+  //
+  // ==================== Object format (version 1) =====================
+  //
+  // The object is a framed binary file: a fixed 64-byte header, then one
+  // fixed-stride record per longitude. Each record carries its own checksum
+  // trailer, so a reader fetching a single grid by byte range (e.g. an HTTP
+  // Range-GET) can verify it loaded a correctly framed grid and not
+  // arbitrary bytes.
+  //
+  // Notation: all integer fields are unsigned little-endian; all grid values
+  // are IEEE-754 little-endian float64. CRC32C is the Castagnoli CRC
+  // (polynomial 0x1EDC6F41) -- the same checksum GCS and S3 use natively.
+  //
+  //   object   = header | record[0] | record[1] | ... | record[lon_count-1]
+  //   record k = values[k] | trailer[k]
+  //
+  // Header -- 64 bytes at offset 0:
+  //
+  //   bytes  0-3   magic           ASCII "UVGR"
+  //   bytes  4-7   format_version  uint32, = 1
+  //   bytes  8-11  uv_count        uint32, = 2/uv_step + 1
+  //   bytes 12-15  lon_count       uint32, = this mask's lon_count
+  //   bytes 16-59  reserved        must be zero
+  //   bytes 60-63  header_crc32c   uint32, CRC32C of header bytes 0-59
+  //
+  // values[k] -- longitude k's (u, v) grid, uv_count^2 * 8 bytes: the value
+  // for (u_index, v_index) at flat index v_index * uv_count + u_index (the
+  // full grid); grid points with no applicable value, including the
+  // out-of-disk corners, carry the quiet-NaN sentinel 0x7FF8000000000000.
+  //
+  // trailer[k] -- 16 bytes:
+  //
+  //   bytes  0-3   magic           ASCII "UVGT"
+  //   bytes  4-7   lon_index       uint32, = k
+  //   bytes  8-11  grid_crc32c     uint32, CRC32C of values[k] followed by
+  //                                trailer bytes 0-7 (magic + lon_index)
+  //   bytes 12-15  reserved        must be zero
+  //
+  // Offsets: every record in an object has the same size, so
+  //
+  //   stride     = uv_count^2 * 8 + 16
+  //   record k   starts at byte 64 + k * stride
+  //   total size = 64 + lon_count * stride
+  //
+  // The header and trailer sizes are multiples of 8, so every float64 value
+  // in the file is 8-byte-aligned.
+  //
+  // Example (uv_step 0.02, lon_count 720): uv_count = 101, values[k] =
+  // 10,201 * 8 = 81,608 bytes, stride = 81,624 bytes, total size =
+  // 64 + 720 * 81,624 = 58,769,344 bytes.
+  message LatitudeRow {
+    // Row index into the latitude axis (0 .. lat_count - 1).
+    int32 lat_index = 1;
+
+    // How the row object's bytes are carried.
+    oneof object {
+      // URI of the external object holding this row's bytes. The referenced
+      // object should be immutable: Spacetime does not monitor it
+      // for changes and may cache what it reads indefinitely, so changing
+      // the content behind an unchanged URI can lead to unexpected behavior
+      // and stale copies. To publish new values, upload a new object and
+      // update this URI.
+      string uri = 2;
+
+      // The row object's bytes carried inline, byte-identical to what an
+      // external object would contain (including the 64-byte header).
+      // Intended for small or degenerate masks; large masks must use `uri`
+      // (inline bytes count against message size limits).
+      bytes inline_object = 3;
+    }
+  }
+}

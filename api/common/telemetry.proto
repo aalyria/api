@@ -1,0 +1,267 @@
+// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto2";
+
+package aalyria.spacetime.api.common;
+
+import "api/common/coordinates.proto";
+import "api/common/time.proto";
+
+option java_package = "com.aalyria.spacetime.api.common";
+option go_package = "aalyria.com/spacetime/api/common";
+
+message NetworkStatsReport {
+  // Uniquely identifies the network node/element.
+  optional string node_id = 7;
+
+  // Time at which the report was sent. This field is optional.
+  optional DateTime timestamp = 1;
+
+  // These maps are keyed on the network interface ID.
+  map<string, RadioStats> radio_stats_by_interface_id = 4;
+  map<string, InterfaceStats> interface_stats_by_id = 3;
+
+  // This map is keyed on the antenna ID.
+  map<string, BeamStats> beam_stats_by_antenna_id = 5;
+
+  // Producers: use the flow_rule_id as the key in this map.
+  // Consumers: assume that the key is the PathIntent ID.
+  // The SDN controller is responsible for remapping the key before publishing.
+  map<string, FlowStats> flow_stats_by_id = 6;
+
+  reserved 2;
+}
+
+message BeamStats {
+  // Time at which the statistics were captured by the network element.
+  optional DateTime timestamp = 1;
+
+  message TargetingStats {
+    // The latest location that the beam is trying to target.
+    optional aalyria.spacetime.api.common.GeodeticWgs84 target_location = 1;
+
+    enum ConnectionStatus {
+      UNKNOWN = 0;
+      SEEKING = 1; 
+      LOCKED = 2;  
+    }
+
+    // The progress of establishing a connection with the target specified in
+    // current_beam_update.
+    optional ConnectionStatus connection_status = 2;
+
+    // The latest beam task ID
+    optional string beam_task_id = 3;
+
+    // An ID used to identify the target. For example, this can be the 48-bit
+    // MAC address of the remote target's network interface.
+    optional string target_identifier = 4;
+  }
+  // Information about the current target. If no current target exists, leave
+  // this blank.
+  optional TargetingStats targeting = 2;
+
+  message GimbalStats {
+    // The current location of the gimbal.
+    optional aalyria.spacetime.api.common.GeodeticWgs84 location = 1;
+
+    oneof site_orientation {
+      // The rotational offset relative to the ECEF frame.
+      aalyria.spacetime.api.common.Quaternion orientation_quaternion = 2;
+
+      // The rotational offset from the North-East-Down (NED) frame to the
+      // gimbal's local reference frame.
+      aalyria.spacetime.api.common.YawPitchRoll orientation_ypr = 3;
+    }
+
+    // The direction at which the gimbal is pointing the center of its beam.
+    // These coordinates are relative to the site_orientation.
+    optional aalyria.spacetime.api.common.PointingVector pointing_vector = 4;
+    // Whether this gimbal is fully initialized and should be able to perform
+    // tasks.
+    optional bool initialized = 5;
+  }
+  // Information about the gimbal. If the beam is not gimbaled, leave this
+  // blank.
+  optional GimbalStats gimbal = 3;
+}
+
+// Measured statistics obtained from a transmitter.
+message TransmitterStats {
+  // Time at which the statistics were captured by the network element.
+  optional DateTime timestamp = 4;
+
+  // Optionally specifies the physical address of the receiver.
+  // This is only applicable for radios that employ a MAC protocol, like WiFi.
+  optional string receiver_physical_address = 5;
+
+  // The physical-layer data rate in use by the transmitter, in bits per
+  // second. This may vary dynamically based on an adaptive coding and
+  // modulation scheme.
+  optional double data_rate_bps = 2;
+
+  // The transmit packet error rate averaged over the last 5 seconds.
+  // This is a ratio of number of packets that did not receive positive
+  // acknowledgement from the receiver, to the total number of packets
+  // transmitted.
+  optional double tx_packet_error_rate = 3;
+
+  reserved 1;
+}
+
+// Measured statistics obtained from a receiver.
+message ReceiverStats {
+  // Time at which the statistics were captured by the network element.
+  optional DateTime timestamp = 3;
+
+  // Optionally specifies the physical address of the transmitter.
+  // This is only applicable for radios that employ a MAC protocol, like WiFi.
+  optional string transmitter_physical_address = 4;
+
+  // The power, in dBW, of the signal at the output of the receiver, prior to
+  // demodulating the signal into data. This includes the effects of the
+  // receiving antenna gain, signal filter, and/or amplifier.
+  optional double power_at_receiver_output_dbw = 2;
+
+  // Similar to power_at_receiver_output_dbw, but broken down by chain.
+  // The order of elements in this field should be consistent with the
+  // canonical ordering of the chains.
+  repeated double power_at_receiver_output_by_chain_dbw = 5;
+
+  // The mean squared error, in dB, of the signal processed by the receiver.
+  optional double mse_db = 6;
+
+  // The carrier to noise plus interference ratio (CINR), in dB, measured
+  // by the receiver.
+  optional double carrier_to_noise_plus_interference_db = 7;
+
+  reserved 1;
+}
+
+message RadioStats {
+  // IDs to identify the local interface for this radio
+  optional string interface_id = 5;
+  repeated TransmitterStats transmitter_stats = 3;
+  repeated ReceiverStats receiver_stats = 4;
+
+  reserved 1, 2;
+}
+
+// Summary interface statistics, with the time observed.
+//
+// Modeled after RFC 8343 `ietf-interfaces` module `statistics`
+// entry, slightly simplified:
+//
+//    +--ro statistics
+//       +--ro in-octets?            yang:counter64
+//       +--ro in-unicast-pkts?      yang:counter64
+//       +--ro in-discards?          yang:counter32
+//       +--ro in-errors?            yang:counter32
+//       +--ro out-octets?           yang:counter64
+//       +--ro out-unicast-pkts?     yang:counter64
+//       +--ro out-discards?         yang:counter32
+//       +--ro out-errors?           yang:counter32
+//
+// Field names inspired by Linux RT_NETLINK structures.
+message InterfaceStats {
+  optional DateTime timestamp = 9;
+
+  // Number of packets transmitted and received.
+  optional int64 tx_packets = 1;
+  optional int64 rx_packets = 2;
+
+  // Number of bytes transmitted and received.
+  optional int64 tx_bytes = 3;
+  optional int64 rx_bytes = 4;
+
+  // Number of packets dropped.
+  optional int64 tx_dropped = 5;
+  optional int64 rx_dropped = 6;
+
+  // Number of packet errors (i.e., frame alignment errors, rx overruns,
+  // CRC errors, packet collisions, etc.
+  optional int64 rx_errors = 7;
+  optional int64 tx_errors = 8;
+}
+
+message FlowStats {
+  optional DateTime timestamp = 1;
+
+  // Number of packets transmitted and received.
+  optional int64 tx_packets = 2;
+  optional int64 rx_packets = 3;
+
+  // Number of bytes transmitted and received.
+  optional int64 tx_bytes = 4;
+  optional int64 rx_bytes = 5;
+}
+
+// Asynchronous network telemetry event reports
+message NetworkEventReport {
+  // Uniquely identifies the network node/element.
+  optional string node_id = 5;
+
+  // Time at which the event occurred.
+  optional DateTime timestamp = 1;
+
+  oneof source_type {
+    RadioEvent radio_event = 2;
+    PortEvent port_event = 3;
+    InterfaceEvent interface_event = 4;
+  }
+}
+
+// Asynchronous radio events
+message RadioEvent {
+  oneof radio_id {
+    string transmitter_id = 1;
+    string receiver_id = 2;
+  }
+  enum LinkStatus {
+    UNKNOWN = 0;
+    DOWN = 1; 
+    UP = 2;   
+  }
+  oneof event {
+    LinkStatus link_status = 3;
+  }
+}
+
+// Asynchronous (wired) port events
+message PortEvent {
+  optional string port_id = 1;
+  enum PortStatus {
+    UNKNOWN = 0;
+    DOWN = 1; 
+    UP = 2;   
+  }
+  oneof event {
+    PortStatus port_status = 2;
+  }
+}
+
+// Asynchronous logical network interface events
+message InterfaceEvent {
+  optional string interface_id = 1;
+  enum InterfaceStatus {
+    UNKNOWN = 0;
+    DISABLED = 1; 
+    ENABLED = 2;  
+  }
+  oneof event {
+    InterfaceStatus interface_status = 2;
+    string ip_address = 3;
+  }
+}

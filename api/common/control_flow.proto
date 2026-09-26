@@ -1,0 +1,144 @@
+// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto2";
+
+package aalyria.spacetime.api.common;
+
+import "api/common/network.proto";
+import "api/common/time.proto";
+import "api/types/ethernet.proto";
+
+option java_package = "com.aalyria.spacetime.api.common";
+option go_package = "aalyria.com/spacetime/api/common";
+
+// Specifies an update to the state of a switch or router.
+message FlowUpdate {
+  // A globally unique identifier for this rule.
+  optional string flow_rule_id = 1;
+
+  // Specifies add or remove.
+  enum Operation {
+    UNKNOWN = 0;
+    ADD = 1;
+    DELETE = 2;
+  }
+  optional Operation operation = 2;
+
+  // The rule and associated actions to which the operation is applied.
+  optional FlowRule rule = 3;
+
+  // Optional monotonically increasing sequence number, which may jump by more
+  // than 1.
+  optional int64 sequence_number = 4;
+}
+
+// Next ID: 8
+message FlowRule {
+  reserved 1 to 3, 8 to max;
+  // Classifies packets that match this rule.
+  optional PacketClassifier classifier = 5;
+
+  // Specifies one or more groups of actions to take on matched packets.
+  // Actions are enacted sequentially within an action bucket.  For example,
+  // if a packet needs to be copied and forwarded out multiple interfaces on
+  // the same network node, action buckets may be defined where each bucket
+  // consists of two sequential actions: (1) setting the destination MAC
+  // address, and (2) forwarding the packet out of a specified port.
+  message ActionBucket {
+    message Action {
+      message SetField {
+        enum Field {
+          FIELD_UNSPECIFIED = 0;
+          FIELD_ETH_DST = 2;
+          // Only the MPLS label, does not alter any of the other fields of
+          // the Label Stack Entry (RFC 3032 section-2.1).
+          FIELD_MPLS = 3;
+          FIELD_CTAG = 4;
+          FIELD_PBB_ITAG = 5;
+        }
+        optional Field field = 1;
+        optional string value_ascii = 3;
+        reserved 2, 4 to max;
+      }
+
+      // Forward specifies details of the forwarding action to be configured
+      message Forward {
+        // out_interface_id specifies the outbound interface_id over which to
+        // forward traffic. This interface_id is the node-unique identifier
+        // specified in NetworkNode.
+        optional string out_interface_id = 1;
+
+        // next_hop_ip (sometimes known as gateway IP) to direct traffic to.
+        // May be IPv4 or IPv6.
+        optional string next_hop_ip = 2;
+      }
+
+      // Vis. OpenFlow Switch Specification v1.5.1 S5.8, multiple
+      // PushHeader/SetField actions can be enacted in a list for richer MPLS
+      // stack manipulation or Ethernet VLAN/PBB tagging/encapsulation
+      // operations.
+      //
+      // As per the OpenFlow Switch Specification, "[t]he Push tag actions
+      // always insert a new tag header in the outermost valid location for
+      // that tag, as defined by the specifications governing that tag."
+      message PushHeader {
+        enum Field {
+          FIELD_UNSPECIFIED = 0;
+          FIELD_MPLS = 1;
+          FIELD_CTAG = 2;
+          FIELD_PBB = 3;
+        }
+        optional Field field = 1;
+        // EtherType is important for field types that have multiple possible
+        // EtherTypes values, e.g. VLAN C-TAG vs S-TAG or MPLS downstream vs.
+        // "upstream" -assigned.
+        optional aalyria.spacetime.api.types.EtherType ether_type = 2;
+      }
+
+      message PopHeader {
+        enum Field {
+          FIELD_UNSPECIFIED = 0;
+          FIELD_MPLS = 1;
+          FIELD_CTAG = 2;
+          FIELD_PBB = 3;
+        }
+        optional Field field = 1;
+        // As per the OpenFlow Switch Specification, "[t]he Ethertype is used
+        // as the Ethertype for the resulting packet", e.g. when popping the
+        // last MPLS label stack entry in a stack.
+        optional aalyria.spacetime.api.types.EtherType ether_type = 2;
+      }
+
+      oneof action_type {
+        SetField set_field = 1;
+        Forward forward = 2;
+        PushHeader push_header = 3;
+        PopHeader pop_header = 4;
+      }
+      reserved 5 to max;
+    }
+    repeated Action action = 1;
+  }
+  repeated ActionBucket action_bucket = 4;
+}
+
+message FlowState {
+  reserved 1, 4 to max;
+  // Time at which the state was captured by the network element.
+  optional aalyria.spacetime.api.common.DateTime timestamp = 2;
+
+  // A list of all active flow rule ids.
+  repeated string flow_rule_ids = 3;
+}
