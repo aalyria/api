@@ -1,0 +1,40 @@
+# Copyright 2026 James Sweeney.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# One ITU-T G.694.1 C-band channel (SDA OCT Standard 3.1.0, OCT-022): 193.1 THz + M x 100 GHz, M = 0 here.
+# Rate table: the top step is the received power delivered by the required irradiance of 25 uW/m^2 (OCT-038)
+# through the modeled 0.08 m space-terminal aperture, -69.0 dBW, at which the receiver must reach a post-FEC
+# BER of 1e-6 at all required rates (OCT-039); the user throughput target is 1 Gbps (section 3). Lower steps
+# are ASSUMED fallback rates.
+group {
+  type: BAND_PROFILE
+}
+id: "band/optical/sda-oct-c-band-ch0"
+band_profile {
+  channel_width_hz: 100000000000     # spec, OCT-022: 100 GHz
+  rate_table: {
+    received_signal_power_steps: {
+      min_received_signal_power_dbw: -79
+      tx_data_rate_bps: 1e8            # assumed fallback
+    }
+    received_signal_power_steps: {
+      min_received_signal_power_dbw: -74
+      tx_data_rate_bps: 5e8            # assumed fallback
+    }
+    received_signal_power_steps: {
+      min_received_signal_power_dbw: -69
+      tx_data_rate_bps: 1e9            # spec: 1 Gbps at 25 uW/m^2 through a 0.08 m aperture
+    }
+  }
+}
