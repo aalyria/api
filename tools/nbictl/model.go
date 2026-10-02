@@ -325,6 +325,7 @@ func listAllEntities(ctx context.Context, client modelpb.ModelClient, pageSize i
 	for pageNumber := 0; ; pageNumber++ {
 		logf("Querying page number %d\n", pageNumber)
 		var resp *modelpb.ListEntitiesResponse
+		pageStart := time.Now()
 		err := withRetryAttempts(ctx, listMaxRetryAttempts+1, defaultRetryBackoff, listPageTimeout,
 			func(ctx context.Context) error {
 				var err error
@@ -336,8 +337,8 @@ func listAllEntities(ctx context.Context, client modelpb.ModelClient, pageSize i
 		}
 
 		entities = append(entities, resp.GetEntities()...)
-		logf("Page %d returned %d entities.\n",
-			pageNumber, len(resp.GetEntities()))
+		logf("Page %d returned %d entities in %s.\n",
+			pageNumber, len(resp.GetEntities()), time.Since(pageStart).Round(time.Millisecond))
 		if resp.GetNextPageToken() == "" {
 			return entities, nil
 		}
@@ -365,6 +366,7 @@ func listAllRelationships(ctx context.Context, client modelpb.ModelClient, filte
 	for pageNumber := 0; ; pageNumber++ {
 		logf("Querying page number %d\n", pageNumber)
 		var resp *modelpb.ListRelationshipsResponse
+		pageStart := time.Now()
 		err := withRetryAttempts(ctx, listMaxRetryAttempts+1, defaultRetryBackoff, listPageTimeout,
 			func(ctx context.Context) error {
 				var err error
@@ -376,8 +378,8 @@ func listAllRelationships(ctx context.Context, client modelpb.ModelClient, filte
 		}
 
 		relationships = append(relationships, resp.GetRelationships()...)
-		logf("Page %d returned %d relationships.\n",
-			pageNumber, len(resp.GetRelationships()))
+		logf("Page %d returned %d relationships in %s.\n",
+			pageNumber, len(resp.GetRelationships()), time.Since(pageStart).Round(time.Millisecond))
 		if resp.GetNextPageToken() == "" {
 			return relationships, nil
 		}
