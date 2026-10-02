@@ -1,0 +1,21 @@
+# This is a dummy package that declares the external Rust dependencies for
+# rules_rs crate_universe (from_cargo). It is not built directly; the actual
+# Rust targets are Bazel rules. Consumed as @st_crates.
+[package]
+name = "aalyria-api-bazel-deps"
+version = "0.0.1"
+edition = "2024"
+
+# Stub target: rules_rs from_cargo runs `cargo` against this manifest, which
+# requires a target. lib.rs is an empty placeholder; nothing is built from it.
+[lib]
+path = "lib.rs"
+
+[dependencies]
+prost = { version = "0.14.3" }
+prost-types = { version = "0.14.3", default-features = false }
+protoc-gen-prost = { version = "0.5.0" }
+protoc-gen-tonic = { version = "0.5.0" }
+tonic = { version = "0.14.4", features = ["transport"] }
+tonic-build = { version = "0.14.4" }
+tonic-prost = { version = "0.14.4" }
