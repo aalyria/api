@@ -381,7 +381,7 @@ Retrieve the version of this Spacetime instance.
 
 ### get-metrics
 
-Retrieve the insight metrics of this Spacetime instance.
+Retrieve the system metrics of this Spacetime instance.
 
 **--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
 

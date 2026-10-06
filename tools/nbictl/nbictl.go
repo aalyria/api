@@ -648,7 +648,7 @@ func App() *cli.App {
 					},
 					{
 						Name:   "get-metrics",
-						Usage:  "Retrieve the insight metrics of this Spacetime instance.",
+						Usage:  "Retrieve the system metrics of this Spacetime instance.",
 						Action: StatusGetMetrics,
 						Before: before,
 						After:  after,
