@@ -129,7 +129,7 @@ register_toolchains("@llvm_toolchain//:all")
 
 go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
 go_sdk.download(
-    version = "1.27.0",
+    version = "1.27.2",
 )
 
 go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
@@ -277,8 +277,8 @@ use_repo(crate, "st_crates")
 bazel_dep(name = "org_outernetcouncil_nmts")
 archive_override(
     module_name = "org_outernetcouncil_nmts",
-    strip_prefix = "nmts-1.19.0",
-    urls = ["https://github.com/outernetcouncil/nmts/archive/refs/tags/v1.19.0.tar.gz"],
+    strip_prefix = "nmts-1.20.0",
+    urls = ["https://github.com/outernetcouncil/nmts/archive/refs/tags/v1.20.0.tar.gz"],
 )
 
 http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
