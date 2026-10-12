@@ -1,0 +1,118 @@
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package aalyria.spacetime.api.model.v0;
+
+import "google/protobuf/empty.proto";
+import "nmts/v0/proto/nmts.proto";
+
+// API deprecated in favor of Model v1.
+option deprecated = true;
+
+option java_package = "com.aalyria.spacetime.api.model.v0";
+option go_package = "aalyria.com/spacetime/api/model/v0";
+
+service Model {
+  // Insert or overwrite an nmts.Entity.
+  //
+  // Returns a gRPC error whenver:
+  //   - the supplied nmts.Entity's Id is ill-formed
+  //   - the supplied nmts.Entity's Kind is missing
+  //   - the supplied nmts.Entity would change the Kind of an existing
+  //     entity (with the same Id), because doing so could circumvent
+  //     restrictions on permitted Relationships
+  rpc UpsertEntity(UpsertEntityRequest) returns (UpsertEntityResponse) {}
+
+  // Change a portion of an nmts.Entity.
+  rpc UpdateEntity(UpdateEntityRequest) returns (UpdateEntityResponse) {}
+
+  // Delete an nmts.Entity.
+  //
+  // Also deletes any nmts.Relationships in which the nmts.Entity
+  // participates; if so, these are listed in the DeleteEntityResponse.
+  //
+  // Returns a gRPC NotFound error if an Entity with the supplied Id
+  // is not in the model.
+  rpc DeleteEntity(DeleteEntityRequest) returns (DeleteEntityResponse) {}
+
+  // Insert an nmts.Relationship.
+  //
+  // Returns a gRPC error if any of the preconditions for a valid
+  // Relationship are not met (see NMTS's //lib/validation).
+  rpc InsertRelationship(InsertRelationshipRequest)
+      returns (InsertRelationshipResponse) {}
+
+  // Delete an nmts.Relationship.
+  //
+  // Returns a gRPC NotFound error if the Relationship is not in the model.
+  rpc DeleteRelationship(DeleteRelationshipRequest)
+      returns (google.protobuf.Empty) {}
+
+  // Retrieve an nmts.Entity and any associated ntms.Relationships.
+  //
+  // Returns a gRPC NotFound error if an Entity with the supplied Id
+  // is not in the model.
+  rpc GetEntity(GetEntityRequest) returns (GetEntityResponse) {}
+
+  // Return all nmts.Entity and nmts.Relatioship instances in the model.
+  rpc ListElements(ListElementsRequest) returns (ListElementsResponse) {}
+}
+
+message UpsertEntityRequest {
+  nmts.Entity entity = 1;
+}
+message UpsertEntityResponse {
+  // presently empty
+}
+
+message UpdateEntityRequest {
+  nmts.PartialEntity patch = 1;
+}
+message UpdateEntityResponse {
+  // presently empty
+}
+
+message DeleteEntityRequest {
+  string entity_id = 1;
+}
+message DeleteEntityResponse {
+  repeated nmts.Relationship deleted_relationships = 1;
+}
+
+message InsertRelationshipRequest {
+  nmts.Relationship relationship = 1;
+}
+message InsertRelationshipResponse {
+  // presently empty
+}
+
+message DeleteRelationshipRequest {
+  nmts.Relationship relationship = 1;
+}
+
+message GetEntityRequest {
+  string entity_id = 1;
+}
+message GetEntityResponse {
+  nmts.EntityEdges entity_edges = 1;
+}
+
+message ListElementsRequest {
+  // TODO: Support expressing some filtering/querying.
+}
+message ListElementsResponse {
+  nmts.Fragment elements = 1;
+}
