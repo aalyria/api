@@ -20,13 +20,18 @@
 
 # Normalize a git remote URL to its https form, dropping any trailing ".git".
 # SSH URLs (git@example.com:org/repo.git) become https form
-# (https://example.com/org/repo). Other forms (https, empty) are returned
-# unchanged apart from the ".git" strip.
+# (https://example.com/org/repo). Any userinfo in a URL with a scheme is
+# dropped: GitLab CI clones from https://gitlab-ci-token:<token>@host/..., and
+# the token must not reach the stamped STABLE_GIT_REPO_URL. Other forms (https,
+# empty) are returned unchanged apart from the ".git" strip.
 function _normalize_git_url() {
 	local url="$1"
+	local userinfo_re='^([A-Za-z][A-Za-z0-9+.-]*://)[^/@]*@(.*)$'
 	url="${url%.git}"
 	if [[ "$url" =~ ^git@([^:]+):(.+)$ ]]; then
 		url="https://${BASH_REMATCH[1]}/${BASH_REMATCH[2]}"
+	elif [[ "$url" =~ $userinfo_re ]]; then
+		url="${BASH_REMATCH[1]}${BASH_REMATCH[2]}"
 	fi
 	echo "$url"
 }
