@@ -24,12 +24,9 @@ proto_library(
     name = "model_proto",
     srcs = ["model.proto"],
     deps = [
-        "@googleapis//google/api:field_behavior_proto",
-        "@googleapis//google/longrunning:operations_proto",
         "@org_outernetcouncil_nmts//v1/proto:nmts_proto",
         "@protobuf//:empty_proto",
         "@protobuf//:field_mask_proto",
-        "@protobuf//:timestamp_proto",
     ],
 )
 
@@ -37,31 +34,19 @@ cpp_grpc_library(
     name = "model_cpp_grpc",
     generate_mocks = True,
     protos = [":model_proto"],
-    deps = [
-        "@googleapis//google/api:field_behavior_cc_proto",
-        "@googleapis//google/longrunning:longrunning_cc_proto",
-        "@org_outernetcouncil_nmts//v1/proto:nmts_cpp_proto",
-    ],
+    deps = ["@org_outernetcouncil_nmts//v1/proto:nmts_cpp_proto"],
 )
 
 java_grpc_library(
     name = "model_java_grpc",
     protos = [":model_proto"],
-    deps = [
-        "@googleapis//google/api:api_java_proto",
-        "@googleapis//google/longrunning:longrunning_java_proto",
-        "@org_outernetcouncil_nmts//v1/proto:nmts_java_proto",
-    ],
+    deps = ["@org_outernetcouncil_nmts//v1/proto:nmts_java_proto"],
 )
 
 python_grpc_library(
     name = "model_python_grpc",
     protos = [":model_proto"],
-    deps = [
-        "@googleapis//google/api:field_behavior_py_proto",
-        "@googleapis//google/longrunning:operations_py_proto",
-        "@org_outernetcouncil_nmts//v1/proto:nmts_python_proto",
-    ],
+    deps = ["@org_outernetcouncil_nmts//v1/proto:nmts_python_proto"],
 )
 
 go_proto_library(
@@ -72,9 +57,5 @@ go_proto_library(
     ],
     importpath = "aalyria.com/spacetime/api/model/v1",
     proto = ":model_proto",
-    deps = [
-        "@com_google_cloud_go_longrunning//autogen/longrunningpb",
-        "@org_golang_google_genproto_googleapis_api//annotations",
-        "@org_outernetcouncil_nmts//v1/proto:nmts_go_proto",
-    ],
+    deps = ["@org_outernetcouncil_nmts//v1/proto:nmts_go_proto"],
 )
