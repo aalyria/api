@@ -16,8 +16,11 @@ syntax = "proto3";
 
 package aalyria.spacetime.api.model.v1;
 
+import "google/api/field_behavior.proto";
+import "google/longrunning/operations.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/field_mask.proto";
+import "google/protobuf/timestamp.proto";
 import "nmts/v1/proto/nmts.proto";
 
 option java_package = "com.aalyria.spacetime.api.model.v1";
@@ -58,6 +61,28 @@ service Model {
   // Returns a gRPC NotFound error if the Relationship is not in the model.
   rpc DeleteRelationship(DeleteRelationshipRequest)
       returns (google.protobuf.Empty) {}
+
+  // Deletes nmts.v1.Entity objects matching the provided CEL filter.
+  // Information about a specific PurgeEntities operation will be retained for
+  // 30 days in complience with AIP-151 for long running operations.
+  rpc PurgeEntities(PurgeEntitiesRequest)
+      returns (google.longrunning.Operation) {
+    option (google.longrunning.operation_info) = {
+      response_type: "PurgeEntitiesResponse"
+      metadata_type: "PurgeMetadata"
+    };
+  }
+
+  // Deletes nmts.v1.Relationship objects matching the provided CEL filter.
+  // Information about a specific PurgeEntities operation will be retained for
+  // 30 days in complience with AIP-151 for long running operations.
+  rpc PurgeRelationships(PurgeRelationshipsRequest)
+      returns (google.longrunning.Operation) {
+    option (google.longrunning.operation_info) = {
+      response_type: "PurgeRelationshipsResponse"
+      metadata_type: "PurgeMetadata"
+    };
+  }
 
   // Upsert (create-or-replace) every nmts.Entity and nmts.Relationship in a
   // Fragment in a single atomic transaction that is validated exactly once.
@@ -103,6 +128,63 @@ message DeleteEntityRequest {
 }
 message DeleteEntityResponse {
   repeated nmts.v1.Relationship deleted_relationships = 1;
+}
+
+message PurgeEntitiesRequest {
+  // Required. The CEL filter will specify which nmts.v1.Entitys to purge. The
+  // expression is evaluated against every nmts.v1.Entity, and each matching
+  // entity is deleted.
+  //
+  // To purge all nmts.v1.Entity objects within the model users should use "*"
+  // as the filter value. All other input for filter will be rejected with 
+  // INVALID_ARGUMENT.
+  //
+  // Note, this only deletes nmts.v1.Entitys, it does not delete any
+  // relationship that references an entity.
+  string filter = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // Execute the purge request. If set to false, a dry run is performed and the
+  // count of entities that would be deleted is returned.
+  bool force = 2;
+}
+
+message PurgeEntitiesResponse {
+  // Number of relationships deleted when `PurgeEntitiesRequest.force` is
+  // true, or the number that would be deleted (dry run) when it is false.
+  int64 purge_count = 1;
+}
+
+message PurgeRelationshipsRequest {
+  // Required. The CEL filter will specify which nmts.v1.Relationship to purge.
+  // The expression is evaluated against every nmts.v1.Relationship, and each
+  // matching relationship is deleted.
+  //
+  // To purge all nmts.v1.Relationship objects within the model users should use
+  // "*" as the filter value. All other input for filter will be rejected with 
+  // INVALID_ARGUMENT.
+  string filter = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // Execute the purge request. If set to false, a dry run is performed and the
+  // count of relationships that would be deleted is returned.
+  bool force = 2;
+}
+
+message PurgeRelationshipsResponse {
+  // Number of relationships deleted when `PurgeRelationshipsRequest.force` is
+  // true, or the number that would be deleted (dry run) when it is false.
+  int64 purge_count = 1;
+}
+
+// PurgeMetadata describes the state of a purge operation.
+message PurgeMetadata {
+  // Time when the purge operation was created.
+  google.protobuf.Timestamp create_time = 1;
+
+  // Time when the purge operation is finished. Unset if it is still running.
+  google.protobuf.Timestamp end_time = 2;
+
+  // Number of items currently purged from this operation.
+  int64 purge_count = 3;
 }
 
 message CreateRelationshipRequest {
