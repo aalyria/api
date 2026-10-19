@@ -1,0 +1,72 @@
+// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// This file contains Spacetime's abstractions for the modulation and coding 
+// (MODCOD) schemes used by network devices, and the fixed or adaptive coding 
+// and modulation configuration.
+
+syntax = "proto2";
+
+package aalyria.spacetime.api.common;
+
+import "api/common/wireless_modcod.proto";
+
+option java_package = "com.aalyria.spacetime.api.common";
+option go_package = "aalyria.com/spacetime/api/common";
+
+// The BandProfile is the abstraction by which Spacetime predicts the modulation
+// and coding scheme (MODCOD) that would be selected by the adaptive or fixed 
+// coding and modulation. This abstraction allows Spacetime to determine whether
+// a received signal meets the minimum strength or noise thresholds to close a 
+// link, and if so, to estimate the capacity of the link based on the predicted
+// MODCOD.
+//
+// As a performance optimization, Spacetime associates channels that can be 
+// considered to have similar wireless propagation loss characteristics into
+// a single BandProfile. Spacetime's wireless propagation analysis 
+// can then be executed once per BandProfile, as opposed to once per channel.   
+//
+// To illustrate this concept, consider the 2.4GHz and 5GHz bands in WiFi. 
+// There are many channels in the 2.4GHz band, such as channels 1 - 11, and 
+// there are many channels in the 5GHz band, such as channels 36, 40, 48, etc. 
+// In many cases, the channels in the 2.4GHz band can be considered to have the
+// same propagation loss effects, and the channels in the 5GHz band can be 
+// considered to have the same propagation loss effects. But, a channel in the 
+// 2.4GHz band *cannot* be considered to have the same propagation loss effects 
+// as a channel in the 5GHz band. So, these bands could be modeled as 2 
+// BandProfiles, one for the 2.4GHz band and one for the 5GHz band, and the 
+// propagation loss would be computed once for each BandProfile. 
+// 
+// A separate BandProfile should be created for each set of channels that 
+// shares: 
+//  1) The same allocated bandwidth
+//  2) The same Adaptive Coding and Modulation configuration  
+message BandProfile {
+  // Specifies the channel bandwidth or spacing configuration, in Hz.
+  // Required.
+  optional uint64 channel_width_hz = 2;
+  
+  // The symbol rate (baud rate), in symbols per second, of carriers that are
+  // assigned to channels of this bandwidth.
+  optional uint64 symbol_rate_symbols_per_second = 4;
+  
+  // A mapping between thresholds of various measurements of signal quality to 
+  // the effective Layer 2 data rate that the link could sustain.  
+  // This is Spacetime's abstraction for representing the MODCOD schemes that 
+  // network devices which conform to this BandProfile might use. 
+  // Required.
+  optional AdaptiveDataRateTable rate_table = 3;
+
+  reserved 1;
+}

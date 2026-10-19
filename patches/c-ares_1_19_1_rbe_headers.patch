@@ -1,0 +1,10 @@
+--- BUILD.bazel
++++ BUILD.bazel
+@@ -68,6 +68,7 @@ cc_library(
+     hdrs = [
+         "ares_build.h",
+         "ares_config.h",
++        "include/ares_build.h",
+         "include/ares_version.h",
+         "include/ares.h",
+         "include/ares_rules.h",
