@@ -57,4 +57,11 @@ message GetMetricsResponse {
   // Number of outbound messages sent from Aalyria.
   // No expected attributes
   optional opentelemetry.proto.metrics.v1.Sum scheduling_outbound_count = 9;
+
+  // Health status of each public API, broken down by:
+  // - `api`:
+  //    (String) The API identifier, e.g. "modeling-v1", "scheduling-v1alpha",
+  //    "telemetry-v1alpha", "provisioning-v1alpha"
+  // Datapoint values: 0 = healthy, 1 = degraded, 2 = down.
+  optional opentelemetry.proto.metrics.v1.Gauge api_health = 10;
 }
