@@ -140,7 +140,7 @@ func App() *cli.App {
 	}
 	progressFlag := &cli.StringFlag{
 		Name:  "progress",
-		Usage: "Show progress bars during sync. One of [auto, on, off]. 'auto' enables when stderr is a TTY.",
+		Usage: "Show progress bars. One of [auto, on, off]. 'auto' enables when stderr is a TTY.",
 		Value: "auto",
 		Action: func(_ *cli.Context, val string) error {
 			switch val {
@@ -485,12 +485,12 @@ func App() *cli.App {
 					},
 					{
 						Name:     "upsert-fragment",
-						Usage:    "Upsert the model NMTS Fragment contained within the file provided on the command line ('-' reads from stdin).",
+						Usage:    "Upsert the model NMTS Fragment contained within the file provided on the command line ('-' reads from stdin). A fragment that fits in one request is applied atomically; larger fragments are split into batched requests, entities before relationships, and are not atomic.",
 						Category: "model relationships",
 						Action:   ModelUpsertFragment,
 						Before:   before,
 						After:    after,
-						Flags:    slices.Concat(commonFlags, []cli.Flag{formatFlag}),
+						Flags:    slices.Concat(commonFlags, []cli.Flag{formatFlag, concurrencyFlag, progressFlag}),
 					},
 					{
 						Name:     "list-entities",
@@ -530,6 +530,49 @@ func App() *cli.App {
 								Name:    "delete",
 								Usage:   "delete entities and relationships from remote instance not present in local sources",
 								Aliases: []string{"d", "delete-before"},
+							},
+							&cli.BoolFlag{
+								Name:    "recursive",
+								Usage:   "descend recursively into directory arguments",
+								Aliases: []string{"r"},
+							},
+						}),
+					},
+					{
+						Name:     "upsert-scenario",
+						Usage:    "Upsert every fragment file in the file and directory arguments as one scenario, overwriting any entities with the same ids in the remote model.",
+						Category: "model entities and relationships",
+						Description: "Intended for loading a large scenario, split across many files, into an empty model; " +
+							"run `delete-all` first if the remote model is not empty. Entities with the same id as one in the remote model " +
+							"are overwritten, and nothing in the remote model is deleted.\n\n" +
+							"Only files with the extension of --format are read (.txtpb, .json or .binpb). Each file is read whole, but " +
+							"only as many files as fit in --max-read-memory-mib are held at once, so the scenario as a whole does not " +
+							"have to fit in memory.\n\n" +
+							"The scenario is first checked against the same rules the server applies, treating it as self-contained: every " +
+							"relationship endpoint must be an entity in the scenario. Nothing is uploaded if the check finds a problem. " +
+							"Entities are then upserted, and relationships are upserted once every entity has committed. The upload is " +
+							"not atomic: if it fails partway, the remote model is left partially loaded. Re-running is safe.",
+						Action: ModelUpsertScenario,
+						Before: before,
+						After:  after,
+						Flags: slices.Concat(commonFlags, []cli.Flag{
+							formatFlag,
+							progressFlag,
+							&cli.IntFlag{
+								Name:    "max-concurrency",
+								Aliases: []string{"j", "max_concurrency"},
+								Value:   16,
+								Usage:   "Limit the number of in-flight requests at once. Each holds a batch of up to 9 MiB of entities in memory.",
+							},
+							&cli.Int64Flag{
+								Name:  "max-read-memory-mib",
+								Value: 2048,
+								Usage: "Approximate memory, in MiB, for the files being read and parsed at once. Each file counts as " +
+									"4 times its size on disk; a file over the limit is read on its own.",
+							},
+							&cli.BoolFlag{
+								Name:  "check-only",
+								Usage: "check the scenario and report any problems without uploading anything",
 							},
 							&cli.BoolFlag{
 								Name:    "recursive",

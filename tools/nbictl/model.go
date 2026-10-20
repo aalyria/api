@@ -31,6 +31,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 	er "outernetcouncil.org/nmts/v1/lib/entityrelationship"
+	"outernetcouncil.org/nmts/v1/lib/validation"
 	nmtspb "outernetcouncil.org/nmts/v1/proto"
 
 	modelpb "aalyria.com/spacetime/api/model/v1"
@@ -234,7 +235,18 @@ func ModelDeleteRelationship(appCtx *cli.Context) error {
 	return err
 }
 
+// ModelUpsertFragment upserts the fragment in the file argument using batched
+// UpsertFragment calls, so a fragment too large for a single request (transport
+// receive limits, per-transaction write limits) can still be applied. All
+// entity batches are committed before any relationship batch is sent, so every
+// relationship's endpoints already exist when it is written.
 func ModelUpsertFragment(appCtx *cli.Context) error {
+	maxConcurrency := appCtx.Int("max-concurrency")
+	showProgress := shouldShowProgress(appCtx)
+	if maxConcurrency < 1 {
+		return fmt.Errorf("--max-concurrency must be at least 1, got %d", maxConcurrency)
+	}
+
 	marshaller, err := marshallerForFormat(appCtx.String("format"))
 	if err != nil {
 		return err
@@ -248,21 +260,87 @@ func ModelUpsertFragment(appCtx *cli.Context) error {
 		return err
 	}
 
-	conn, err := openAPIConnection(appCtx, serviceModel)
+	// The server validates each request on its own, so once the fragment is
+	// split it can no longer catch problems that span batches (such as a
+	// duplicate entity id), and a bad batch would leave the others committed.
+	// Validate the whole fragment up front so nothing is written if it is
+	// invalid.
+	if err := validation.ValidateFragment(nmtsFragment); err != nil {
+		return fmt.Errorf("invalid fragment: %w", err)
+	}
+
+	numElements := len(nmtsFragment.GetEntity()) + len(nmtsFragment.GetRelationship())
+	if numElements == 0 {
+		return fmt.Errorf("fragment has no entities or relationships")
+	}
+	// The server applies each request in one transaction, so a fragment that
+	// fits in a single request is sent whole and stays atomic. Only a larger
+	// fragment is split, which SplitBySize does without ever mixing entities
+	// and relationships in one batch.
+	var entityBatches, relationshipBatches []*nmtspb.Fragment
+	if proto.Size(nmtsFragment) <= int(er.MaxFragmentUpsertBytes) && numElements <= int(er.MaxFragmentUpsertElements) {
+		entityBatches = []*nmtspb.Fragment{nmtsFragment}
+	} else {
+		entityBatches, relationshipBatches = lo.FilterReject(
+			er.SplitBySize(nmtsFragment, er.MaxFragmentUpsertBytes, er.MaxFragmentUpsertElements),
+			func(batch *nmtspb.Fragment, _ int) bool { return len(batch.GetEntity()) > 0 })
+	}
+	numBatches := len(entityBatches) + len(relationshipBatches)
+
+	target, dialOpts, err := resolveAPIDialOpts(appCtx, serviceModel)
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	modelClient := modelpb.NewModelClient(conn)
+	numClients := min(maxConcurrency, numBatches)
+	clients := make([]modelpb.ModelClient, numClients)
+	for i := range numClients {
+		conn, err := grpc.NewClient(target, dialOpts...)
+		if err != nil {
+			return fmt.Errorf("unable to connect to the server: %w", err)
+		}
+		defer conn.Close()
+		clients[i] = modelpb.NewModelClient(conn)
+	}
+	var clientIdx atomic.Int64
+	nextClient := func() modelpb.ModelClient {
+		return clients[clientIdx.Add(1)%int64(numClients)]
+	}
 
-	if _, err := modelClient.UpsertFragment(
-		appCtx.Context,
-		&modelpb.UpsertFragmentRequest{Fragment: nmtsFragment},
-	); err != nil {
+	applyProgress := newSyncProgress(showProgress)
+	upsertEntitiesBar := applyProgress.AddBar("upserting entities     ", len(nmtsFragment.GetEntity()))
+	upsertRelsBar := applyProgress.AddBar("upserting relationships", len(nmtsFragment.GetRelationship()))
+	applyProgress.Start()
+
+	upsertBatches := func(batches []*nmtspb.Fragment) error {
+		upsertPool := pool.New().WithErrors().WithMaxGoroutines(maxConcurrency)
+		for _, batch := range batches {
+			upsertPool.Go(func() error {
+				err := withRetryTimeout(appCtx.Context, upsertFragmentTimeout, func(ctx context.Context) error {
+					_, err := nextClient().UpsertFragment(ctx, &modelpb.UpsertFragmentRequest{Fragment: batch})
+					return err
+				})
+				if err == nil {
+					upsertEntitiesBar.IncrBy(len(batch.GetEntity()))
+					upsertRelsBar.IncrBy(len(batch.GetRelationship()))
+				}
+				return err
+			})
+		}
+		return upsertPool.Wait()
+	}
+
+	// Relationships are only sent once every entity batch has committed.
+	err = upsertBatches(entityBatches)
+	if err == nil {
+		err = upsertBatches(relationshipBatches)
+	}
+	applyProgress.Stop()
+	if err != nil {
 		return err
 	}
 
-	fmt.Fprintln(appCtx.App.ErrWriter, "# OK")
+	fmt.Fprintf(appCtx.App.ErrWriter, "# OK: upserted %d entities and %d relationships in %d requests\n",
+		len(nmtsFragment.GetEntity()), len(nmtsFragment.GetRelationship()), numBatches)
 	return nil
 }
 

@@ -195,7 +195,7 @@ Delete the model NMTS Relationship contained within the file provided on the com
 
 ### upsert-fragment
 
-Upsert the model NMTS Fragment contained within the file provided on the command line ('-' reads from stdin).
+Upsert the model NMTS Fragment contained within the file provided on the command line ('-' reads from stdin). A fragment that fits in one request is applied atomically; larger fragments are split into batched requests, entities before relationships, and are not atomic.
 
 **--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
 
@@ -203,7 +203,11 @@ Upsert the model NMTS Fragment contained within the file provided on the command
 
 **--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
 
+**--max-concurrency, -j, --max_concurrency**="": Limit the number of in-flight requests at once. (default: 100)
+
 **--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
+
+**--progress**="": Show progress bars. One of [auto, on, off]. 'auto' enables when stderr is a TTY. (default: "auto")
 
 ### list-entities
 
@@ -257,11 +261,33 @@ Sync all model entities and relationships from file and directory arguments.
 
 **--page-size**="": Set page size returned by list-entities or list-relationship commands. 0 lets the server choose. (default: 10000)
 
-**--progress**="": Show progress bars during sync. One of [auto, on, off]. 'auto' enables when stderr is a TTY. (default: "auto")
+**--progress**="": Show progress bars. One of [auto, on, off]. 'auto' enables when stderr is a TTY. (default: "auto")
 
 **--recursive, -r**: descend recursively into directory arguments
 
 **--verbose, -v**: increase verbosity
+
+### upsert-scenario
+
+Upsert every fragment file in the file and directory arguments as one scenario, overwriting any entities with the same ids in the remote model.
+
+**--block-profile**="": Path to write a block profile on exit. If empty, no block profile is written.
+
+**--check-only**: check the scenario and report any problems without uploading anything
+
+**--cpu-profile**="": Path to write a CPU profile on exit. If empty, no CPU profile is written.
+
+**--format**="": The format to use for encoding and decoding protobuf messages. One of [text, json, binary]. (default: "text")
+
+**--max-concurrency, -j, --max_concurrency**="": Limit the number of in-flight requests at once. Each holds a batch of up to 9 MiB of entities in memory. (default: 16)
+
+**--max-read-memory-mib**="": Approximate memory, in MiB, for the files being read and parsed at once. Each file counts as 4 times its size on disk; a file over the limit is read on its own. (default: 2048)
+
+**--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
+
+**--progress**="": Show progress bars. One of [auto, on, off]. 'auto' enables when stderr is a TTY. (default: "auto")
+
+**--recursive, -r**: descend recursively into directory arguments
 
 ### delete-all, clear
 
@@ -279,7 +305,7 @@ Delete all model entities and relationships from remote.
 
 **--page-size**="": Set page size returned by list-entities or list-relationship commands. 0 lets the server choose. (default: 10000)
 
-**--progress**="": Show progress bars during sync. One of [auto, on, off]. 'auto' enables when stderr is a TTY. (default: "auto")
+**--progress**="": Show progress bars. One of [auto, on, off]. 'auto' enables when stderr is a TTY. (default: "auto")
 
 **--verbose, -v**: increase verbosity
 
@@ -305,7 +331,7 @@ Sync all provisioning resources from file and directory arguments.
 
 **--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
 
-**--progress**="": Show progress bars during sync. One of [auto, on, off]. 'auto' enables when stderr is a TTY. (default: "auto")
+**--progress**="": Show progress bars. One of [auto, on, off]. 'auto' enables when stderr is a TTY. (default: "auto")
 
 **--recursive, -r**: descend recursively into directory arguments
 
@@ -359,7 +385,7 @@ Delete all provisioning resources from remote.
 
 **--mem-profile**="": Path to write a memory profile on exit. If empty, no memory profile is written.
 
-**--progress**="": Show progress bars during sync. One of [auto, on, off]. 'auto' enables when stderr is a TTY. (default: "auto")
+**--progress**="": Show progress bars. One of [auto, on, off]. 'auto' enables when stderr is a TTY. (default: "auto")
 
 **--verbose, -v**: increase verbosity
 

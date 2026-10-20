@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"slices"
 	"sync"
 
 	"golang.org/x/sync/errgroup"
@@ -48,6 +49,21 @@ type InMemoryModelServer struct {
 	entities      map[string]*nmtspb.Entity
 	relationships map[relationshipKey]*nmtspb.Relationship
 	listener      net.Listener
+	// upsertBatches records the entity and relationship counts of each
+	// accepted UpsertFragment request, in the order they were applied.
+	upsertBatches []upsertBatch
+}
+
+type upsertBatch struct {
+	entities, relationships int
+}
+
+// UpsertBatches returns the counts of each accepted UpsertFragment request, in
+// the order they were applied.
+func (s *InMemoryModelServer) UpsertBatches() []upsertBatch {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return slices.Clone(s.upsertBatches)
 }
 
 func newInMemoryModelServer() *InMemoryModelServer {
@@ -224,6 +240,20 @@ func (s *InMemoryModelServer) UpsertFragment(_ context.Context, req *modelpb.Ups
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	// Like the real ModelFE, reject a relationship whose endpoint is neither
+	// in the fragment nor already stored, and write nothing from the fragment.
+	inFragment := make(map[string]bool, len(fragment.GetEntity()))
+	for _, e := range fragment.GetEntity() {
+		inFragment[e.GetId()] = true
+	}
+	for _, r := range fragment.GetRelationship() {
+		for _, id := range []string{r.GetA(), r.GetZ()} {
+			if _, stored := s.entities[id]; !stored && !inFragment[id] {
+				return nil, status.Errorf(codes.InvalidArgument, "relationship endpoint %q does not exist", id)
+			}
+		}
+	}
+
 	resp := &modelpb.UpsertFragmentResponse{}
 	for _, e := range fragment.GetEntity() {
 		if _, exists := s.entities[e.GetId()]; exists {
@@ -240,6 +270,10 @@ func (s *InMemoryModelServer) UpsertFragment(_ context.Context, req *modelpb.Ups
 		}
 		s.relationships[key] = proto.Clone(r).(*nmtspb.Relationship)
 	}
+	s.upsertBatches = append(s.upsertBatches, upsertBatch{
+		entities:      len(fragment.GetEntity()),
+		relationships: len(fragment.GetRelationship()),
+	})
 	return resp, nil
 }
 
