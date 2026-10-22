@@ -47,7 +47,7 @@ message GetMetricsRequest {
 message GetMetricsResponse {
   // Total number of platform types in the system, broken down by:
   // - `s7e.type`: 
-  //    (String) The type of the element as defined by the `catalog_type`
+  //    (String) The type of the element as defined by the `category_tag`
   optional opentelemetry.proto.metrics.v1.Gauge platform_types = 2;
 
   // Number of inbound messages received by Aalyria.
@@ -64,4 +64,57 @@ message GetMetricsResponse {
   //    "telemetry-v1alpha", "provisioning-v1alpha"
   // Datapoint values: 0 = healthy, 1 = degraded, 2 = down.
   optional opentelemetry.proto.metrics.v1.Gauge api_health = 10;
+
+  // Number of P2P SR-TE policies currently in effect (enabled and within
+  // their requested interval), broken down by:
+  // - `s7e.role.working.state`:
+  //    (String) The state of the policy's working path: `not_requested` if no
+  //    candidate path of the policy carries the working protection role,
+  //    `not_allocated` if one does but its allocation does not cover the
+  //    requested CIR yet, and `allocated` once it does.
+  // - `s7e.role.protection.state`:
+  //    (String) The same states for the policy's protection (backup) paths.
+  // A candidate path's role comes from its protection association group
+  // memberships; a path in no group counts as a working path. A policy that
+  // is disabled or outside its requested interval is not counted.
+  optional opentelemetry.proto.metrics.v1.Gauge p2p_sr_te_policy_count = 11;
+
+  // Total CIR in bit/s currently requested across the candidate paths of
+  // the P2P SR-TE policies currently in effect (enabled and within their
+  // requested interval), broken down by:
+  // - `s7e.role`:
+  //    (String) The protection role of the paths: `working` or `protection`.
+  optional opentelemetry.proto.metrics.v1.Gauge
+      p2p_sr_te_policy_total_requested_cir = 12;
+
+  // Total CIR in bit/s currently allocated by the solver across the candidate
+  // paths of the P2P SR-TE policies currently in effect (enabled and within
+  // their requested interval), broken down by:
+  // - `s7e.role`:
+  //    (String) The protection role of the paths: `working` or `protection`.
+  optional opentelemetry.proto.metrics.v1.Gauge
+      p2p_sr_te_policy_total_allocated_cir = 13;
+
+  // CIR in bit/s currently requested per P2P SR-TE policy in effect, from
+  // the provisioning requests, broken down by:
+  // - `s7e.p2p_sr_te_policy.id`:
+  //    (String) The resource name of the policy.
+  // - `s7e.p2p_sr_te_policy.headend`, `s7e.p2p_sr_te_policy.endpoint`:
+  //    (String) The policy's headend and endpoint.
+  // - `s7e.role`:
+  //    (String) The protection role of the paths: `working` or `protection`.
+  optional opentelemetry.proto.metrics.v1.Gauge
+      p2p_sr_te_policy_requested_cir = 14;
+
+  // CIR in bit/s currently allocated by the solver per P2P SR-TE policy in
+  // effect. Same attributes as `p2p_sr_te_policy_requested_cir`.
+  optional opentelemetry.proto.metrics.v1.Gauge
+      p2p_sr_te_policy_allocated_cir = 15;
+
+  // Worst predicted one-way latency in seconds among the routes currently
+  // allocated by the solver per P2P SR-TE policy in effect. Same attributes
+  // as `p2p_sr_te_policy_requested_cir`; a role with no allocated route has
+  // no datapoint.
+  optional opentelemetry.proto.metrics.v1.Gauge
+      p2p_sr_te_policy_predicted_latency = 16;
 }
