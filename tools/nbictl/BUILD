@@ -162,7 +162,7 @@ sh_test(
 )
 
 # Benchmarks-only sibling of :nbictl_test, routed to the Pool=bench Buildbarn
-# executors and published to Bencher. Written out longhand, not via
+# executors and published to the benchmark database. Written out longhand, not via
 # //bazel/bench:defs.bzl because this package is copybara-exported to
 # github.com/aalyria/api (tools/oss/github_api/copy.bara.sky) and bazel/bench
 # is not; a load() of it would leave an unresolvable label in the exported
