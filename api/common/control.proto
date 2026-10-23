@@ -1,0 +1,136 @@
+// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto2";
+
+package aalyria.spacetime.api.common;
+
+import "api/common/control_beam.proto";
+import "api/common/control_flow.proto";
+import "api/common/control_radio.proto";
+import "api/common/time.proto";
+import "google/protobuf/timestamp.proto";
+import "google/rpc/status.proto";
+
+option java_package = "com.aalyria.spacetime.api.common";
+option go_package = "aalyria.com/spacetime/api/common";
+
+// Defines sequential changes to the network control plane of an element.
+message ScheduledControlUpdate {
+  // Uniquely identifies the network node/element.
+  optional string node_id = 1;
+
+  // A unique value which identifies this update.
+  optional string update_id = 2;
+
+  // Optional time at which to begin enacting the first step in the sequence.
+  // If this field is empty, the sequence should be enacted immediately.
+  // If the agent observes that this time is in the past, it should reject the
+  // update by setting the done status notification to DEADLINE_EXCEEDED.
+  optional google.protobuf.Timestamp time_to_enact = 3;
+
+  // A new control configuration to enact.
+  optional ControlPlaneUpdate change = 4;
+}
+
+// Defines deletions to the control plane schedule of an element.
+message ScheduledControlDeletion {
+  // Uniquely identifies the network node/element.
+  optional string node_id = 1;
+
+  // List of pending update IDs to be removed from the agent’s
+  // enactment queue.
+  //
+  // If this field contains an update ID that has already been
+  // enacted, the deletion request will have no effect for that
+  // update.
+  repeated string update_ids = 2;
+}
+
+// The status of enacting one or more scheduled network control updates.
+// This field is omitted if the notification is for an unscheduled change.
+message ScheduledControlUpdateStatus {
+  // ID of the update whose enactment status is being reported.
+  optional string update_id = 1;
+
+  // The timestamp of when the state was determined.
+  optional DateTime timestamp = 7;
+
+  oneof state {
+    // The agent attempted to schedule the update for later enactment,
+    // according to the time_to_enact. The status contains the outcome of the
+    // attempt.
+    google.rpc.Status scheduled = 4;
+
+    // The agent attempted to enact the update.
+    // The status contains the outcome of the attempt.
+    google.rpc.Status enactment_attempted = 6;
+
+    // The agent attempted to unschedule the update.
+    // The status contains the outcome of the attempt.
+    google.rpc.Status unscheduled = 8;
+  }
+
+  reserved 2, 3, 5;
+}
+
+message ControlPlaneUpdate {
+  oneof update_type {
+    // WIRELESS TOPOLOGY
+    // Determines antenna or optical laser tasking for link establishment.
+    // Example: set antenna target, no target, etc.
+    BeamUpdate beam_update = 1;
+
+    // COGNITIVE RADIO
+    // Cognitive engine interface for configuring radio-system parameters.
+    // Examples set transmit power, set channel, tune ARQ, etc.
+    RadioUpdate radio_update = 2;
+
+    // FORWARDING
+    // Configures a router or switch.
+    // Example: update routing table.
+    FlowUpdate flow_update = 3;
+
+  }
+  reserved 4 to max;
+}
+
+// Next ID : 7
+message ControlPlaneState {
+  optional BeamStates beam_states = 2;
+  optional RadioStates radio_states = 3;
+  optional FlowState forwarding_state = 5;
+
+  reserved 1, 4, 6 to max;
+}
+
+// A ScheduledControlUpdate and a corresponding ScheduledControlUpdateStatus.
+message ScheduledControlUpdateReq {
+  optional ScheduledControlUpdate compiled_update = 1;
+
+  // Indicates that the destination agent has reported completion of an
+  // attempt to apply the update.
+  optional google.rpc.Status completed = 8;
+
+  // Indicates that the destination agent has reported completion of
+  // scheduling the update to be applied at the update's time to enact.
+  optional bool scheduled = 11;
+
+  // Indicates that the destination agent has reported completion of an
+  // attempt to unschedule the update.
+  optional google.rpc.Status unscheduled = 12;
+
+  reserved 2 to 7, 9, 10;
+}
+
