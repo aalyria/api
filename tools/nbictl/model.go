@@ -46,7 +46,7 @@ const upsertFragmentTimeout = 90 * time.Second
 // carry up to the server's maximum page size worth of entities.
 const listPageTimeout = 10 * time.Minute
 
-// listMaxRetryAttempts applies to listAllEntities and listAllRelationships, this
+// listMaxRetryAttempts applies to walkEntityPages and walkRelationshipPages, this
 // dictates how many times a query for a specific page from storage can be retried
 // before the query is aborted.
 const listMaxRetryAttempts = 3
@@ -397,6 +397,21 @@ func verboseLogf(w io.Writer, verbose bool) func(string, ...any) {
 // list endpoints, so the caller should read through all pages rather than read the entire model in a single call.
 func listAllEntities(ctx context.Context, client modelpb.ModelClient, pageSize int32, logf func(string, ...any)) ([]*nmtspb.Entity, error) {
 	var entities []*nmtspb.Entity
+	err := walkEntityPages(ctx, client, pageSize, logf, func(page []*nmtspb.Entity) {
+		entities = append(entities, page...)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return entities, nil
+}
+
+// walkEntityPages walks through all pages from ListEntities, handing each page to onPage as it arrives. A caller that
+// only needs part of each entity can keep that part and let the page go, so it never holds the whole model at once.
+// onPage is not called once the walk has failed, but pages delivered before the failure are not taken back: a caller
+// must not act on what it collected unless the walk returns nil.
+func walkEntityPages(ctx context.Context, client modelpb.ModelClient, pageSize int32, logf func(string, ...any), onPage func([]*nmtspb.Entity)) error {
+	numRead := 0
 
 	logf("ListEntities returning up to %d entities per page\n", pageSize)
 	request := &modelpb.ListEntitiesRequest{PageSize: pageSize}
@@ -411,23 +426,24 @@ func listAllEntities(ctx context.Context, client modelpb.ModelClient, pageSize i
 				return err
 			})
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		entities = append(entities, resp.GetEntities()...)
+		onPage(resp.GetEntities())
+		numRead += len(resp.GetEntities())
 		logf("Page %d returned %d entities in %s.\n",
 			pageNumber, len(resp.GetEntities()), time.Since(pageStart).Round(time.Millisecond))
 		if resp.GetNextPageToken() == "" {
-			return entities, nil
+			return nil
 		}
 
 		// A cursor that fails to advance would walk the same page forever.
 		// Returning what has been read so far would look like the whole model
 		// to a caller that acts on it, so this fails instead.
 		if resp.GetNextPageToken() == request.PageToken {
-			return nil, fmt.Errorf(
+			return fmt.Errorf(
 				"ListEntities repeated the page token it was given after page %d (%d entities read); the walk cannot advance",
-				pageNumber, len(entities))
+				pageNumber, numRead)
 		}
 		request.PageToken = resp.GetNextPageToken()
 	}
@@ -438,6 +454,19 @@ func listAllEntities(ctx context.Context, client modelpb.ModelClient, pageSize i
 // in a single call.
 func listAllRelationships(ctx context.Context, client modelpb.ModelClient, filter string, pageSize int32, logf func(string, ...any)) ([]*nmtspb.Relationship, error) {
 	var relationships []*nmtspb.Relationship
+	err := walkRelationshipPages(ctx, client, filter, pageSize, logf, func(page []*nmtspb.Relationship) {
+		relationships = append(relationships, page...)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return relationships, nil
+}
+
+// walkRelationshipPages walks through all pages provided by ListRelationships, handing each page to onPage as it
+// arrives. See walkEntityPages for what a caller may rely on.
+func walkRelationshipPages(ctx context.Context, client modelpb.ModelClient, filter string, pageSize int32, logf func(string, ...any), onPage func([]*nmtspb.Relationship)) error {
+	numRead := 0
 
 	logf("ListRelationships returning up to %d relationships per page\n", pageSize)
 	request := &modelpb.ListRelationshipsRequest{Filter: filter, PageSize: pageSize}
@@ -452,21 +481,22 @@ func listAllRelationships(ctx context.Context, client modelpb.ModelClient, filte
 				return err
 			})
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		relationships = append(relationships, resp.GetRelationships()...)
+		onPage(resp.GetRelationships())
+		numRead += len(resp.GetRelationships())
 		logf("Page %d returned %d relationships in %s.\n",
 			pageNumber, len(resp.GetRelationships()), time.Since(pageStart).Round(time.Millisecond))
 		if resp.GetNextPageToken() == "" {
-			return relationships, nil
+			return nil
 		}
-		// See listAllEntities: a cursor that fails to advance is an error
+		// See walkEntityPages: a cursor that fails to advance is an error
 		// rather than a short result that reads as the whole model.
 		if resp.GetNextPageToken() == request.PageToken {
-			return nil, fmt.Errorf(
+			return fmt.Errorf(
 				"ListRelationships repeated the page token it was given after page %d (%d relationships read); the walk cannot advance",
-				pageNumber, len(relationships))
+				pageNumber, numRead)
 		}
 		request.PageToken = resp.GetNextPageToken()
 	}
@@ -567,16 +597,18 @@ func ModelDeleteAll(appCtx *cli.Context) error {
 
 	listPool := pool.New().WithErrors()
 
+	// Only the IDs are needed to delete entities, so each page's bodies are
+	// dropped as soon as their IDs are taken.
 	var entityIDs []string
 	listPool.Go(func() error {
-		entities, err := listAllEntities(appCtx.Context, clients[0], pageSize, logf)
+		err := walkEntityPages(appCtx.Context, clients[0], pageSize, logf, func(page []*nmtspb.Entity) {
+			for _, entity := range page {
+				entityIDs = append(entityIDs, entity.GetId())
+			}
+		})
 		if err != nil {
 			return err
 		}
-
-		entityIDs = lo.Map(entities, func(item *nmtspb.Entity, _ int) string {
-			return item.GetId()
-		})
 
 		listEntBar.Incr()
 		return nil
@@ -798,27 +830,29 @@ func ModelSync(appCtx *cli.Context) error {
 		return readPool.Wait()
 	})
 
-	// List remote entities.
+	// List remote entities, keeping only each page's keys.
 	initialReadPool.Go(func() error {
-		entities, err := listAllEntities(appCtx.Context, clients[0], pageSize, logf)
+		err := walkEntityPages(appCtx.Context, clients[0], pageSize, logf, func(page []*nmtspb.Entity) {
+			for _, entity := range page {
+				remoteEntityKeys.Add(entity.GetId())
+			}
+		})
 		if err != nil {
 			return err
-		}
-		for _, entity := range entities {
-			remoteEntityKeys.Add(entity.GetId())
 		}
 		listEntBar.Incr()
 		return nil
 	})
 
-	// List remote relationships.
+	// List remote relationships, keeping only each page's keys.
 	initialReadPool.Go(func() error {
-		relationships, err := listAllRelationships(appCtx.Context, clients[1%maxConcurrency], "", pageSize, logf)
+		err := walkRelationshipPages(appCtx.Context, clients[1%maxConcurrency], "", pageSize, logf, func(page []*nmtspb.Relationship) {
+			for _, relationship := range page {
+				remoteRelationshipKeys.Add(er.RelationshipFromProto(relationship))
+			}
+		})
 		if err != nil {
 			return err
-		}
-		for _, relationship := range relationships {
-			remoteRelationshipKeys.Add(er.RelationshipFromProto(relationship))
 		}
 		listRelBar.Incr()
 		return nil

@@ -109,6 +109,7 @@ go_test(
         "grpcurl_test.go",
         "login_test.go",
         "model_benchmark_test.go",
+        "model_paging_test.go",
         "model_sync_test.go",
         "model_test.go",
         "model_upsert_fragment_test.go",

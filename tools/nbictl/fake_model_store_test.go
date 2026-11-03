@@ -15,10 +15,13 @@
 package nbictl
 
 import (
+	"cmp"
 	"context"
 	"fmt"
+	"maps"
 	"net"
 	"slices"
+	"strconv"
 	"sync"
 
 	"golang.org/x/sync/errgroup"
@@ -52,7 +55,16 @@ type InMemoryModelServer struct {
 	// upsertBatches records the entity and relationship counts of each
 	// accepted UpsertFragment request, in the order they were applied.
 	upsertBatches []upsertBatch
+
+	// maxPageSize, when positive, caps the page the List RPCs serve.
+	maxPageSize             int
+	entityPagesServed       int
+	relationshipPagesServed int
 }
+
+// fakeDefaultPageSize matches the page the real ModelFE serves when a request
+// names no page size.
+const fakeDefaultPageSize = 1000
 
 type upsertBatch struct {
 	entities, relationships int
@@ -201,28 +213,89 @@ func (s *InMemoryModelServer) GetEntity(_ context.Context, req *modelpb.GetEntit
 	return proto.Clone(entity).(*nmtspb.Entity), nil
 }
 
-func (s *InMemoryModelServer) ListEntities(_ context.Context, _ *modelpb.ListEntitiesRequest) (*modelpb.ListEntitiesResponse, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	entities := make([]*nmtspb.Entity, 0, len(s.entities))
-	for _, e := range s.entities {
-		entities = append(entities, proto.Clone(e).(*nmtspb.Entity))
-	}
-
-	return &modelpb.ListEntitiesResponse{Entities: entities}, nil
+// SetMaxPageSize sets the largest page the List RPCs serve, clamping any larger
+// page_size down to it the way the real ModelFE does.
+func (s *InMemoryModelServer) SetMaxPageSize(n int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.maxPageSize = n
 }
 
-func (s *InMemoryModelServer) ListRelationships(_ context.Context, _ *modelpb.ListRelationshipsRequest) (*modelpb.ListRelationshipsResponse, error) {
+// ListPageCounts returns how many ListEntities and ListRelationships requests
+// have been served.
+func (s *InMemoryModelServer) ListPageCounts() (entityPages, relationshipPages int) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	return s.entityPagesServed, s.relationshipPagesServed
+}
 
-	rels := make([]*nmtspb.Relationship, 0, len(s.relationships))
-	for _, r := range s.relationships {
-		rels = append(rels, proto.Clone(r).(*nmtspb.Relationship))
+// pageBounds resolves a page_size and page_token against total elements in a
+// stable order, the way the real ModelFE does: a negative size is rejected, an
+// unset one gets the default, and a size over the maximum is clamped. The token
+// is the offset the page starts at, which is enough for a fake that is not
+// mutated while it is being listed.
+func (s *InMemoryModelServer) pageBounds(pageSize int32, pageToken string, total int) (start, end int, nextToken string, err error) {
+	size := int(pageSize)
+	switch {
+	case size < 0:
+		return 0, 0, "", status.Errorf(codes.InvalidArgument, "page_size must not be negative, got %d", size)
+	case size == 0:
+		size = fakeDefaultPageSize
+	}
+	if s.maxPageSize > 0 {
+		size = min(size, s.maxPageSize)
 	}
 
-	return &modelpb.ListRelationshipsResponse{Relationships: rels}, nil
+	if pageToken != "" {
+		if start, err = strconv.Atoi(pageToken); err != nil || start < 0 || start > total {
+			return 0, 0, "", status.Errorf(codes.InvalidArgument, "page_token %q was not issued by this service", pageToken)
+		}
+	}
+	end = min(start+size, total)
+	if end < total {
+		nextToken = strconv.Itoa(end)
+	}
+	return start, end, nextToken, nil
+}
+
+func (s *InMemoryModelServer) ListEntities(_ context.Context, req *modelpb.ListEntitiesRequest) (*modelpb.ListEntitiesResponse, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	ids := slices.Sorted(maps.Keys(s.entities))
+	start, end, nextToken, err := s.pageBounds(req.GetPageSize(), req.GetPageToken(), len(ids))
+	if err != nil {
+		return nil, err
+	}
+	s.entityPagesServed++
+
+	entities := make([]*nmtspb.Entity, 0, end-start)
+	for _, id := range ids[start:end] {
+		entities = append(entities, proto.Clone(s.entities[id]).(*nmtspb.Entity))
+	}
+
+	return &modelpb.ListEntitiesResponse{Entities: entities, NextPageToken: nextToken}, nil
+}
+
+func (s *InMemoryModelServer) ListRelationships(_ context.Context, req *modelpb.ListRelationshipsRequest) (*modelpb.ListRelationshipsResponse, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	keys := slices.SortedFunc(maps.Keys(s.relationships), func(a, b relationshipKey) int {
+		return cmp.Or(cmp.Compare(a.A, b.A), cmp.Compare(a.Z, b.Z), cmp.Compare(a.Kind, b.Kind))
+	})
+	start, end, nextToken, err := s.pageBounds(req.GetPageSize(), req.GetPageToken(), len(keys))
+	if err != nil {
+		return nil, err
+	}
+	s.relationshipPagesServed++
+
+	rels := make([]*nmtspb.Relationship, 0, end-start)
+	for _, key := range keys[start:end] {
+		rels = append(rels, proto.Clone(s.relationships[key]).(*nmtspb.Relationship))
+	}
+
+	return &modelpb.ListRelationshipsResponse{Relationships: rels, NextPageToken: nextToken}, nil
 }
 
 func (s *InMemoryModelServer) UpsertFragment(_ context.Context, req *modelpb.UpsertFragmentRequest) (*modelpb.UpsertFragmentResponse, error) {
