@@ -1,0 +1,115 @@
+// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// This file contains Spacetime's abstraction for representing the modulation 
+// and coding (MODCOD) scheme that would be selected by the adaptive or fixed
+// coding and modulation, based on a given received signal quality.
+
+syntax = "proto2";
+
+package aalyria.spacetime.api.common;
+
+option java_package = "com.aalyria.spacetime.api.common";
+option go_package = "aalyria.com/spacetime/api/common";
+
+// A mapping between thresholds of various measurements of received signal 
+// quality to the effective Layer 2 data rate that the link could sustain at  
+// this received signal quality.
+//
+// As an example of how this message could be populated, consider the DVB-S2X  
+// standard. Table 1 of the standard relates MODCODs to their ideal Es/N0:
+//
+//   Canonical MODCOD  |    Spectral efficiency  |  Ideal Es/N0 [dB] for (AWGN
+//         name        |       [bit/symbol]      |  Linear Channel) (Normative)
+//   -----------------------------------------------------------------------
+//        QPSK 2/9     |        0.43484          |          -2.85
+//        QPSK 13/45   |        0.567805         |          -2.03
+//        QPSK 9/20    |        0.889135         |           0.22
+//        QPSK 11/20   |        1.088581         |           1.45
+// ...
+// For reference, see ETSI TR 102 376-2 V1.2.1 (2021-01) which is accessible
+// from http://www.etsi.org/standards-search.
+//
+// This table can be used to define the carrier_to_noise_plus_interference_steps
+// of an AdaptiveDataRateTable.
+// 1) To compute the C/N values, note that:
+//   C/N = (Es / N0) + (symbol_rate / bandwidth)     [using dB math]
+// Suppose (symbol_rate / bandwidth) = 1 / 1.1 = 0.9091 = -0.4139 dB.
+// 2) To compute the achievable data rate, note that:
+//   Data rate = (spectral_efficiency) * (symbol_rate)
+// Suppose symbol_rate = 100Msps = 100_000_000 symbols/second.
+// 
+// Using these relationships, a CarrierToNoisePlusInterferenceDataRateMapping 
+// can be defined. For QPSK 2/9:
+// 1) To calculate C/N:  
+//   C/N = (-2.85 dB) + (-0.4139 dB) = -3.2639 dB
+// 2) To calculate the achievable data rate: 
+//   Data rate = (0.43484 bits/symbol) * (100_000_000 symbols/second)
+//             = 43_484_000 bits/second = 43.484Mbps
+// The following rows could be converted similarly to populate all
+// carrier_to_noise_plus_interference_steps. 
+// This approach can be tuned based on the actual modems and their measured 
+// implementation loss and supported set of MODCODs, etc.
+//
+// Also, in many modems' Adaptive Coding and Modulation configuration, there is 
+// often a table that relates some measurement of received signal quality to the
+// MODCOD that the system will choose. A similar approach as the preceding 
+// example can be used to define an AdaptiveDataRateTable from these tables.
+message AdaptiveDataRateTable {
+  // WARNING: This ID is unused.
+  optional string id = 3 [deprecated = true];
+
+  // A mapping between thresholds of Carrier-to-(Noise + Interference)
+  // (C/(N+I)) to the Layer 2 data rate that the link could sustain at this 
+  // C/(N+I). 
+  message CarrierToNoisePlusInterferenceDataRateMapping {
+    // The ratio of the power of the carrier (or signal) at the demod input to
+    // the noise power of the signal plus the power of the interfering signals,
+    // in dB.
+    // Required.
+    optional double min_carrier_to_noise_plus_interference_db = 1;
+
+    // The layer 2 data rate achievable, in bits per second, provided the 
+    // receiver receives at least the min_carrier_to_noise_plus_interference_db.
+    // Required.
+    optional double tx_data_rate_bps = 2;
+
+    // A human readable name (e.g. "QPSK-LDPC-2-3") describing the modulation
+    // and coding scheme associated with the Carrier-to-(Noise + Interference)
+    // to data rate mapping.
+    // This name is not used in any logic. This is purely for human operators to
+    // associate a specific C/(N+I) threshold with a MODCOD. 
+    optional string mod_cod_scheme_name = 3;
+  }
+  // The elements should be sorted by min_carrier_to_noise_plus_interference_db
+  // in ascending order.
+  repeated CarrierToNoisePlusInterferenceDataRateMapping
+      carrier_to_noise_plus_interference_steps = 2;
+
+  // A mapping between thresholds of received signal power to the Layer 2 data 
+  // rate that the link could sustain at this received power. 
+  message ReceivedSignalPowerDataRateMapping {
+    // The power of the intended signal at the receiver output, in dBW.
+    // Required.
+    optional double min_received_signal_power_dbw = 1;
+
+    // The layer 2 data rate achievable, in bits per second, provided the 
+    // receiver receives at least the min_received_signal_power_dbw.
+    // Required.
+    optional double tx_data_rate_bps = 2;
+  }
+  // The elements should be sorted by min_received_signal_power_dbw in ascending
+  // order.
+  repeated ReceivedSignalPowerDataRateMapping received_signal_power_steps = 1;
+}

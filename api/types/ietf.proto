@@ -1,0 +1,99 @@
+// Copyright 2024 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package aalyria.spacetime.api.types;
+
+option java_package = "com.aalyria.spacetime.api.types";
+option go_package = "aalyria.com/spacetime/api/types";
+
+// A type representing an IP prefix that may optionally need an
+// additional qualifier to be properly unique. This is required, for
+// example, when multiple non-public IP prefixes may be referenced
+// within an NMTS model (e.g., overlapping RFC 1918 networks, or
+// incorrectly-allocated ULAs).
+//
+// The `ip_prefix` field is the approximate equivalent of
+// "inet:ip-prefix" from the "ietf-inet-types" YANG module; see also
+// [RFC 6991](https://rfc-editor.org/rfc/rfc6991). It contains the
+// the string representation of an IPv4 or IPv6 prefix, with a CIDR
+// suffix and without any zone/scope ID qualifier. Text formatting
+// should follow [RFC 5952](https://rfc-editor.org/rfc/rfc5952),
+// especially section 4.3.
+//
+// The `realm` field is an optional qualifier containing a string name
+// for a "realm" that is significant within the model and sufficient
+// to differentiate one instance of a non-public prefix from another.
+// The name "realm" is modeled after RFC 3102/3103 Realm-specific IP,
+// though this in no way implies support for this protocol.
+message IPNetwork {
+  string ip_prefix = 1;
+  string realm = 2;
+}
+
+// The format of the `dotted_quad` string field is given by RFC 6991
+// [Section 3](https://rfc-editor.org/rfc/rfc6991#section-3):
+//
+//    "An unsigned 32-bit number expressed in the dotted-quad
+//     notation, i.e., four octets written as decimal numbers
+//     and separated with the '.' (full stop) character."
+//
+// See also:
+//    * [OSPFv2](https://rfc-editor.org/rfc/rfc2328#section-1.2)
+//    * [OSPFv3](https://rfc-editor.org/rfc/rfc5340#section-2.11)
+//
+// IS-IS identifiers may be much larger, but 4-octet conventions and
+// uses are common practice, e.g.:
+//    * [IS-IS for IP](https://rfc-editor.org/rfc/rfc1195#section-3.3)
+//    * [IS-IS TE](https://rfc-editor.org/rfc/rfc5305#section-4.3)
+//
+// Note: "0.0.0.0" is commonly considered RESERVED in several router
+// identification and configuration contexts and SHOULD NOT be used.
+message RouterId {
+  oneof type {
+    string dotted_quad = 1;
+    uint32 u32 = 2;
+  }
+}
+
+// A Segment Routing Architecture Segment Identifier (SID).
+//
+// One representation of a SID is as an index relative to a block of
+// other identifiers. That representation is presently NOT RECOMMENDED
+// here; all SIDs should be resolved to concrete data plane values
+// prior to input to the model.
+//
+// It is not expected that networks would operate both SR-MPLS and
+// SRv6 at the same time. Nevertheless, a router could conceivably
+// "bridge" an SR-MPLS domain and an SRv6 domain (especially since
+// an SRv6 domain can more easily span multiple administrative
+// domains, whether advisable or not).
+//
+// Values for `mpls` fields are 20-bit unsigned integers. Zero (0),
+// being reserved for the "IPv4 Explicit NULL Label", is not a valid
+// SR-MPLS label value. See also:
+//   https://rfc-editor.org/rfc/rfc3032#section-2.1
+//   https://iana.org/assignments/mpls-label-values
+//
+// Values for `ipv6` fields may be any forwardable unicast IPv6
+// address. Use of addresses from the IANA-reserved 5f00::/16 prefix
+// is RECOMMENDED. Empty `IPv6Address` strings and the zero-value "::"
+// are both invalid SRv6 SIDs. See also:
+//   https://datatracker.ietf.org/doc/draft-ietf-6man-sids/
+//   https://iana.org/assignments/iana-ipv6-special-registry
+message SegmentId {
+  optional uint32 mpls = 1;  // restricted to unsigned 20-bit values
+  optional string ipv6 = 2;  // An IPv6 (SRv6) address.
+}

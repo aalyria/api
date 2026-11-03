@@ -1,0 +1,163 @@
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package aalyria.spacetime.api.audit.v1alpha;
+
+import "google/api/field_behavior.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "google/rpc/status.proto";
+
+option go_package = "aalyria.com/spacetime/api/audit/v1alpha";
+option java_package = "com.aalyria.spacetime.api.audit.v1alpha";
+
+// AuditLogService provides a gRPC interface for querying audit logs.
+service AuditLogService {
+  // ListAuditMessages retrieves audit logs based on filters and time range.
+  rpc ListAuditMessages(ListAuditMessagesRequest) 
+    returns (ListAuditMessagesResponse);
+}
+
+// AuditMessage represents a complete audit log entry.
+message AuditMessage {
+  // The unique name of the audit message.
+  // Format: auditMessages/{id}
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  // EventType represents the type of event.
+  enum EventType {
+    EVENT_TYPE_UNSPECIFIED = 0;
+    RESOURCE_CREATED = 1;
+    RESOURCE_READ = 2;   
+    RESOURCE_UPDATED = 3;
+    RESOURCE_DELETED = 4;
+  }
+
+  // Type of event
+  EventType event_type = 2;
+
+  // Timestamp when the event occurred
+  google.protobuf.Timestamp timestamp = 3;
+
+  // Source service information
+  Source source = 4;
+
+  // Outcome of the event
+  google.rpc.Status outcome = 5;
+
+  // Actor who initiated the event
+  Actor actor = 6;
+
+  // Resources affected by the event
+  // Format: resource/{type}/{id}
+  repeated string resource_names = 7;
+
+  // Optional additional metadata
+  optional AuditMetadata metadata = 8;
+}
+
+// Source represents the service that generated the event.
+message Source {
+  // Name of the service that the source event originates from
+  string source_name = 1;
+}
+
+// Actor represents the entity that initiated the event.
+message Actor {
+  // ActorType represents the type of actor.
+  enum ActorType {
+    ACTOR_TYPE_UNSPECIFIED = 0; 
+    USER = 1;       
+    SERVICE = 2;    
+  }
+
+  // Type of actor who is performing the action
+  ActorType type = 1;
+
+  // subject that is found in the actor's JWT
+  optional string subject = 2;
+
+  // email that is found in the actor's JWT
+  optional string email = 3;
+}
+
+// AuditMetadata contains additional context-specific data.
+message AuditMetadata {
+  // Optional tags for categorization
+  repeated string tags = 1;
+
+  // Optional custom key-value data
+  google.protobuf.Struct custom = 2;
+}
+
+// ListAuditMessagesRequest contains parameters for querying audit logs.
+message ListAuditMessagesRequest {
+  // CEL-based filter expression for querying audit logs.
+  //
+  // Supported syntax:
+  //   - Equality: event_type == "RESOURCE_CREATED"
+  //   - Inequality: event_type != "RESOURCE_DELETED"
+  //   - Comparison: timestamp >= timestamp("2024-01-01T00:00:00Z")
+  //   - Regex match: event_type.matches("RESOURCE_.*")
+  //   - Regex not-match: !event_type.matches("RESOURCE_DELETED.*")
+  //   - AND operations: event_type == "RESOURCE_CREATED" &&
+  //                       actor_type == "USER"
+  //   - OR on same label: resource_type == "network" ||
+  //                         resource_type == "satellite"
+  //   - IN operator: event_type in ["RESOURCE_CREATED", "RESOURCE_UPDATED"]
+  //
+  // Available labels:
+  //   - event_type
+  //   - actor_type
+  //   - resource_type
+  //   - source
+  //   - result
+  //   - timestamp
+  //
+  // Limitations:
+  //   - Cannot use OR across different labels
+  //
+  // Examples:
+  //   "event_type == \"RESOURCE_CREATED\""
+  //   "event_type == \"RESOURCE_CREATED\" && actor_type == \"USER\""
+  //   "event_type in [\"RESOURCE_CREATED\", \"RESOURCE_UPDATED\"]"
+  //   "resource_type == \"network\" || resource_type == \"satellite\""
+  //   "event_type.matches(\"RESOURCE_.*\") && actor_type != \"SYSTEM\""
+  //   "timestamp >= timestamp(\"2024-01-01T00:00:00Z\") &&
+  //      timestamp < timestamp(\"2024-02-01T00:00:00Z\")"
+  string filter = 1;
+
+  // Optional limit on number of results (default 100, max 1000)
+  // If specified size greater than 1000 it will be coerced to 1000
+  int32 page_size = 2;
+
+  // A page token, received from a previous `ListAuditMessages` call.
+  // Provide this to retrieve the subsequent page.
+  //
+  // When paginating, all other parameters provided to
+  // `ListAuditMessages` must match the call that provided the page token.
+  optional string page_token = 3;
+}
+
+// ListAuditMessagesResponse contains the audit logs matching the query.
+message ListAuditMessagesResponse {
+  // List of audit messages matching the query
+  repeated AuditMessage messages = 1;
+
+  // A token, which can be sent as `page_token` to retrieve the next page.
+  // If this field is omitted, there are no subsequent pages.
+  optional string next_page_token = 2;
+}
