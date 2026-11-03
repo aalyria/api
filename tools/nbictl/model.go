@@ -15,7 +15,10 @@
 package nbictl
 
 import (
+	"bufio"
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -29,6 +32,8 @@ import (
 	"github.com/sourcegraph/conc/pool"
 	"github.com/urfave/cli/v2"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
 	er "outernetcouncil.org/nmts/v1/lib/entityrelationship"
 	"outernetcouncil.org/nmts/v1/lib/validation"
@@ -393,24 +398,12 @@ func verboseLogf(w io.Writer, verbose bool) func(string, ...any) {
 	}
 }
 
-// listAllEntities walks through all pages from ListEntities and returns the entire model set. The service paginates its
-// list endpoints, so the caller should read through all pages rather than read the entire model in a single call.
-func listAllEntities(ctx context.Context, client modelpb.ModelClient, pageSize int32, logf func(string, ...any)) ([]*nmtspb.Entity, error) {
-	var entities []*nmtspb.Entity
-	err := walkEntityPages(ctx, client, pageSize, logf, func(page []*nmtspb.Entity) {
-		entities = append(entities, page...)
-	})
-	if err != nil {
-		return nil, err
-	}
-	return entities, nil
-}
-
 // walkEntityPages walks through all pages from ListEntities, handing each page to onPage as it arrives. A caller that
 // only needs part of each entity can keep that part and let the page go, so it never holds the whole model at once.
-// onPage is not called once the walk has failed, but pages delivered before the failure are not taken back: a caller
-// must not act on what it collected unless the walk returns nil.
-func walkEntityPages(ctx context.Context, client modelpb.ModelClient, pageSize int32, logf func(string, ...any), onPage func([]*nmtspb.Entity)) error {
+// If onPage returns an error, the walk stops without reading another page and returns that error. onPage is not called
+// once the walk has failed, but pages delivered before the failure are not taken back: a caller must not act on what it
+// collected unless the walk returns nil.
+func walkEntityPages(ctx context.Context, client modelpb.ModelClient, pageSize int32, logf func(string, ...any), onPage func([]*nmtspb.Entity) error) error {
 	numRead := 0
 
 	logf("ListEntities returning up to %d entities per page\n", pageSize)
@@ -429,7 +422,9 @@ func walkEntityPages(ctx context.Context, client modelpb.ModelClient, pageSize i
 			return err
 		}
 
-		onPage(resp.GetEntities())
+		if err := onPage(resp.GetEntities()); err != nil {
+			return err
+		}
 		numRead += len(resp.GetEntities())
 		logf("Page %d returned %d entities in %s.\n",
 			pageNumber, len(resp.GetEntities()), time.Since(pageStart).Round(time.Millisecond))
@@ -454,8 +449,9 @@ func walkEntityPages(ctx context.Context, client modelpb.ModelClient, pageSize i
 // in a single call.
 func listAllRelationships(ctx context.Context, client modelpb.ModelClient, filter string, pageSize int32, logf func(string, ...any)) ([]*nmtspb.Relationship, error) {
 	var relationships []*nmtspb.Relationship
-	err := walkRelationshipPages(ctx, client, filter, pageSize, logf, func(page []*nmtspb.Relationship) {
+	err := walkRelationshipPages(ctx, client, filter, pageSize, logf, func(page []*nmtspb.Relationship) error {
 		relationships = append(relationships, page...)
+		return nil
 	})
 	if err != nil {
 		return nil, err
@@ -465,7 +461,7 @@ func listAllRelationships(ctx context.Context, client modelpb.ModelClient, filte
 
 // walkRelationshipPages walks through all pages provided by ListRelationships, handing each page to onPage as it
 // arrives. See walkEntityPages for what a caller may rely on.
-func walkRelationshipPages(ctx context.Context, client modelpb.ModelClient, filter string, pageSize int32, logf func(string, ...any), onPage func([]*nmtspb.Relationship)) error {
+func walkRelationshipPages(ctx context.Context, client modelpb.ModelClient, filter string, pageSize int32, logf func(string, ...any), onPage func([]*nmtspb.Relationship) error) error {
 	numRead := 0
 
 	logf("ListRelationships returning up to %d relationships per page\n", pageSize)
@@ -484,7 +480,9 @@ func walkRelationshipPages(ctx context.Context, client modelpb.ModelClient, filt
 			return err
 		}
 
-		onPage(resp.GetRelationships())
+		if err := onPage(resp.GetRelationships()); err != nil {
+			return err
+		}
 		numRead += len(resp.GetRelationships())
 		logf("Page %d returned %d relationships in %s.\n",
 			pageNumber, len(resp.GetRelationships()), time.Since(pageStart).Round(time.Millisecond))
@@ -502,38 +500,124 @@ func walkRelationshipPages(ctx context.Context, client modelpb.ModelClient, filt
 	}
 }
 
-func ModelListEntities(appCtx *cli.Context) error {
-	marshaller, err := marshallerForFormat(appCtx.String("format"))
-	if err != nil {
-		return err
-	}
+// textIncompleteMarker ends text output whose listing failed partway. Its last
+// line is not valid prototext, so the output fails to parse rather than reading
+// as a smaller model.
+const textIncompleteMarker = "\n# nbictl: the listing failed partway, so the output above is incomplete.\n!incomplete\n"
 
-	conn, err := openAPIConnection(appCtx, serviceModel)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	modelClient := modelpb.NewModelClient(conn)
+// binaryIncompleteMarker ends binary output whose listing failed partway. It is
+// a field of an unused number whose declared length runs past the end of the
+// output, so the output fails to parse rather than reading as a smaller model.
+var binaryIncompleteMarker = protowire.AppendVarint(protowire.AppendTag(nil, protowire.MaxValidNumber, protowire.BytesType), 1)
 
-	entities, err := listAllEntities(appCtx.Context, modelClient, int32(appCtx.Int("page-size")),
-		verboseLogf(appCtx.App.ErrWriter, appCtx.Bool("verbose")))
-	if err != nil {
-		return err
-	}
+// fragmentStream writes a single nmts.v1.Fragment to its writer one page at a
+// time, so a listing never holds the whole model. Every format reads back as
+// one Fragment: binary and text pages are each marshalled as a Fragment of
+// their own, which concatenate into one because a repeated field may repeat,
+// and json, where concatenated objects would not parse, is framed by hand.
+type fragmentStream[T proto.Message] struct {
+	out        *bufio.Writer
+	format     string
+	marshaller protoFormat
+	// jsonField is the JSON name of the Fragment field the elements go in.
+	jsonField  string
+	toFragment func([]T) *nmtspb.Fragment
+	numWritten int
+}
 
-	// Emit a normalized native nmts.v1.Fragment so the output can be fed
-	// directly back into `sync` or `upsert-fragment`.
-	fragment := &nmtspb.Fragment{Entity: entities}
-	marshalled, err := marshaller.marshal(fragment)
+func newFragmentStream[T proto.Message](w io.Writer, format, jsonField string, toFragment func([]T) *nmtspb.Fragment) (*fragmentStream[T], error) {
+	marshaller, err := marshallerForFormat(format)
 	if err != nil {
+		return nil, err
+	}
+	return &fragmentStream[T]{
+		out:        bufio.NewWriter(w),
+		format:     format,
+		marshaller: marshaller,
+		jsonField:  jsonField,
+		toFragment: toFragment,
+	}, nil
+}
+
+// writePage writes page and flushes it, so a failed write is reported before
+// the next page is read.
+func (s *fragmentStream[T]) writePage(page []T) error {
+	if len(page) == 0 {
+		return nil
+	}
+	switch s.format {
+	case "json":
+		for i, element := range page {
+			if s.numWritten == 0 && i == 0 {
+				fmt.Fprintf(s.out, "{\n  %q: [\n", s.jsonField)
+			} else {
+				s.out.WriteString(",\n")
+			}
+			// protojson does not promise stable whitespace, so each element is
+			// reindented to sit inside the hand-written array.
+			compact, err := protojson.Marshal(element)
+			if err != nil {
+				return err
+			}
+			var indented bytes.Buffer
+			if err := json.Indent(&indented, compact, "    ", "  "); err != nil {
+				return err
+			}
+			s.out.WriteString("    ")
+			s.out.Write(indented.Bytes())
+		}
+	default:
+		marshalled, err := s.marshaller.marshal(s.toFragment(page))
+		if err != nil {
+			return err
+		}
+		s.out.Write(marshalled)
+		if s.format == "text" && !bytes.HasSuffix(marshalled, []byte("\n")) {
+			s.out.WriteString("\n")
+		}
+	}
+	if err := s.out.Flush(); err != nil {
 		return err
 	}
-	fmt.Fprint(appCtx.App.Writer, string(marshalled))
+	s.numWritten += len(page)
 	return nil
 }
 
-func ModelListRelationships(appCtx *cli.Context) error {
-	marshaller, err := marshallerForFormat(appCtx.String("format"))
+// finish completes the Fragment once the walk has returned walkErr. If the walk
+// failed, it marks the output as incomplete instead, so that the output fails
+// to parse, and returns an error saying so.
+func (s *fragmentStream[T]) finish(walkErr error, elementsName string) error {
+	if walkErr != nil {
+		switch s.format {
+		case "text":
+			s.out.WriteString(textIncompleteMarker)
+		case "binary":
+			s.out.Write(binaryIncompleteMarker)
+		}
+		// Unterminated json, and empty output, already fail to parse. The
+		// flush error is dropped because the walk error returned below
+		// already fails the command, and if that error was itself a failed
+		// write, the writer keeps it and writes nothing more.
+		_ = s.out.Flush()
+		return fmt.Errorf("listing stopped after writing %d %s, so the output written so far is incomplete: %w",
+			s.numWritten, elementsName, walkErr)
+	}
+	if s.format == "json" {
+		if s.numWritten == 0 {
+			s.out.WriteString("{}\n")
+		} else {
+			s.out.WriteString("\n  ]\n}\n")
+		}
+	}
+	return s.out.Flush()
+}
+
+// ModelListEntities writes the remote entities as one normalized native
+// nmts.v1.Fragment, so the output can be fed directly back into `sync` or
+// `upsert-fragment`. Each page is written as it arrives.
+func ModelListEntities(appCtx *cli.Context) error {
+	stream, err := newFragmentStream(appCtx.App.Writer, appCtx.String("format"), "entity",
+		func(page []*nmtspb.Entity) *nmtspb.Fragment { return &nmtspb.Fragment{Entity: page} })
 	if err != nil {
 		return err
 	}
@@ -545,21 +629,31 @@ func ModelListRelationships(appCtx *cli.Context) error {
 	defer conn.Close()
 	modelClient := modelpb.NewModelClient(conn)
 
-	relationships, err := listAllRelationships(appCtx.Context, modelClient, "", int32(appCtx.Int("page-size")),
-		verboseLogf(appCtx.App.ErrWriter, appCtx.Bool("verbose")))
+	err = walkEntityPages(appCtx.Context, modelClient, int32(appCtx.Int("page-size")),
+		verboseLogf(appCtx.App.ErrWriter, appCtx.Bool("verbose")), stream.writePage)
+	return stream.finish(err, "entities")
+}
+
+// ModelListRelationships writes the remote relationships as one normalized
+// native nmts.v1.Fragment, so the output can be fed directly back into `sync`
+// or `upsert-fragment`. Each page is written as it arrives.
+func ModelListRelationships(appCtx *cli.Context) error {
+	stream, err := newFragmentStream(appCtx.App.Writer, appCtx.String("format"), "relationship",
+		func(page []*nmtspb.Relationship) *nmtspb.Fragment { return &nmtspb.Fragment{Relationship: page} })
 	if err != nil {
 		return err
 	}
 
-	// Emit a normalized native nmts.v1.Fragment so the output can be fed
-	// directly back into `sync` or `upsert-fragment`.
-	fragment := &nmtspb.Fragment{Relationship: relationships}
-	marshalled, err := marshaller.marshal(fragment)
+	conn, err := openAPIConnection(appCtx, serviceModel)
 	if err != nil {
 		return err
 	}
-	fmt.Fprint(appCtx.App.Writer, string(marshalled))
-	return nil
+	defer conn.Close()
+	modelClient := modelpb.NewModelClient(conn)
+
+	err = walkRelationshipPages(appCtx.Context, modelClient, "", int32(appCtx.Int("page-size")),
+		verboseLogf(appCtx.App.ErrWriter, appCtx.Bool("verbose")), stream.writePage)
+	return stream.finish(err, "relationships")
 }
 
 func ModelDeleteAll(appCtx *cli.Context) error {
@@ -601,10 +695,11 @@ func ModelDeleteAll(appCtx *cli.Context) error {
 	// dropped as soon as their IDs are taken.
 	var entityIDs []string
 	listPool.Go(func() error {
-		err := walkEntityPages(appCtx.Context, clients[0], pageSize, logf, func(page []*nmtspb.Entity) {
+		err := walkEntityPages(appCtx.Context, clients[0], pageSize, logf, func(page []*nmtspb.Entity) error {
 			for _, entity := range page {
 				entityIDs = append(entityIDs, entity.GetId())
 			}
+			return nil
 		})
 		if err != nil {
 			return err
@@ -832,10 +927,11 @@ func ModelSync(appCtx *cli.Context) error {
 
 	// List remote entities, keeping only each page's keys.
 	initialReadPool.Go(func() error {
-		err := walkEntityPages(appCtx.Context, clients[0], pageSize, logf, func(page []*nmtspb.Entity) {
+		err := walkEntityPages(appCtx.Context, clients[0], pageSize, logf, func(page []*nmtspb.Entity) error {
 			for _, entity := range page {
 				remoteEntityKeys.Add(entity.GetId())
 			}
+			return nil
 		})
 		if err != nil {
 			return err
@@ -846,10 +942,11 @@ func ModelSync(appCtx *cli.Context) error {
 
 	// List remote relationships, keeping only each page's keys.
 	initialReadPool.Go(func() error {
-		err := walkRelationshipPages(appCtx.Context, clients[1%maxConcurrency], "", pageSize, logf, func(page []*nmtspb.Relationship) {
+		err := walkRelationshipPages(appCtx.Context, clients[1%maxConcurrency], "", pageSize, logf, func(page []*nmtspb.Relationship) error {
 			for _, relationship := range page {
 				remoteRelationshipKeys.Add(er.RelationshipFromProto(relationship))
 			}
+			return nil
 		})
 		if err != nil {
 			return err

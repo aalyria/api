@@ -82,6 +82,7 @@ go_library(
         "@org_golang_google_grpc//status",
         "@org_golang_google_protobuf//encoding/protojson",
         "@org_golang_google_protobuf//encoding/prototext",
+        "@org_golang_google_protobuf//encoding/protowire",
         "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//reflect/protoreflect",
         "@org_golang_google_protobuf//types/descriptorpb",

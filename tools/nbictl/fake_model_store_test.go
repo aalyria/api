@@ -60,6 +60,9 @@ type InMemoryModelServer struct {
 	maxPageSize             int
 	entityPagesServed       int
 	relationshipPagesServed int
+	// failListAfterPages, when positive, makes each List RPC fail once it has
+	// served that many pages.
+	failListAfterPages int
 }
 
 // fakeDefaultPageSize matches the page the real ModelFE serves when a request
@@ -221,6 +224,14 @@ func (s *InMemoryModelServer) SetMaxPageSize(n int) {
 	s.maxPageSize = n
 }
 
+// FailListAfterPages makes each List RPC fail with a non-retryable error once
+// it has served n pages.
+func (s *InMemoryModelServer) FailListAfterPages(n int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.failListAfterPages = n
+}
+
 // ListPageCounts returns how many ListEntities and ListRelationships requests
 // have been served.
 func (s *InMemoryModelServer) ListPageCounts() (entityPages, relationshipPages int) {
@@ -262,6 +273,9 @@ func (s *InMemoryModelServer) ListEntities(_ context.Context, req *modelpb.ListE
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	if s.failListAfterPages > 0 && s.entityPagesServed >= s.failListAfterPages {
+		return nil, status.Errorf(codes.Internal, "injected failure after %d pages", s.entityPagesServed)
+	}
 	ids := slices.Sorted(maps.Keys(s.entities))
 	start, end, nextToken, err := s.pageBounds(req.GetPageSize(), req.GetPageToken(), len(ids))
 	if err != nil {
@@ -281,6 +295,9 @@ func (s *InMemoryModelServer) ListRelationships(_ context.Context, req *modelpb.
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	if s.failListAfterPages > 0 && s.relationshipPagesServed >= s.failListAfterPages {
+		return nil, status.Errorf(codes.Internal, "injected failure after %d pages", s.relationshipPagesServed)
+	}
 	keys := slices.SortedFunc(maps.Keys(s.relationships), func(a, b relationshipKey) int {
 		return cmp.Or(cmp.Compare(a.A, b.A), cmp.Compare(a.Z, b.Z), cmp.Compare(a.Kind, b.Kind))
 	})

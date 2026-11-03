@@ -107,6 +107,17 @@ func marshalToAppWriter(appCtx *cli.Context, m proto.Message) error {
 	return nil
 }
 
+// listDescription describes a list command that streams the named elements of
+// the model.
+func listDescription(elements string) string {
+	return fmt.Sprintf("Writes the %s to stdout one page at a time, as each page arrives. "+
+		"The output is one nmts.v1.Fragment, which `sync` and `upsert-fragment` can read back.\n\n"+
+		"If the listing fails partway, the command exits non-zero and the output written so far is incomplete. "+
+		"Incomplete output is left unparseable so that it is not mistaken for a smaller model: text output ends with "+
+		"a line that is not valid text format, binary output ends with a truncated field, and json output is left "+
+		"unterminated.", elements)
+}
+
 func App() *cli.App {
 	formatFlag := &cli.StringFlag{
 		Name:     "format",
@@ -493,22 +504,24 @@ func App() *cli.App {
 						Flags:    slices.Concat(commonFlags, []cli.Flag{formatFlag, concurrencyFlag, progressFlag}),
 					},
 					{
-						Name:     "list-entities",
-						Usage:    "List all model entities.",
-						Category: "model entities",
-						Action:   ModelListEntities,
-						Before:   before,
-						After:    after,
-						Flags:    slices.Concat(commonFlags, []cli.Flag{formatFlag, pageSizeFlag, verboseFlag}),
+						Name:        "list-entities",
+						Usage:       "List all model entities.",
+						Category:    "model entities",
+						Description: listDescription("entities"),
+						Action:      ModelListEntities,
+						Before:      before,
+						After:       after,
+						Flags:       slices.Concat(commonFlags, []cli.Flag{formatFlag, pageSizeFlag, verboseFlag}),
 					},
 					{
-						Name:     "list-relationships",
-						Usage:    "List all model relationships.",
-						Category: "model relationships",
-						Action:   ModelListRelationships,
-						Before:   before,
-						After:    after,
-						Flags:    slices.Concat(commonFlags, []cli.Flag{formatFlag, pageSizeFlag, verboseFlag}),
+						Name:        "list-relationships",
+						Usage:       "List all model relationships.",
+						Category:    "model relationships",
+						Description: listDescription("relationships"),
+						Action:      ModelListRelationships,
+						Before:      before,
+						After:       after,
+						Flags:       slices.Concat(commonFlags, []cli.Flag{formatFlag, pageSizeFlag, verboseFlag}),
 						// TODO: support filter param
 					},
 					{
