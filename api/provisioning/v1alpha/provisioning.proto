@@ -168,6 +168,15 @@ service Provisioning {
   rpc UpdateBundleService(UpdateBundleServiceRequest) returns (BundleService) {}
   rpc DeleteBundleService(DeleteBundleServiceRequest) returns (google.protobuf.Empty) {}
 
+  // Methods on LinkBudgetApproximations.
+  //
+  // Manage resources under `linkBudgetApproximations/{id}`.
+  rpc GetLinkBudgetApproximation(GetLinkBudgetApproximationRequest) returns (LinkBudgetApproximation) {}
+  rpc ListLinkBudgetApproximations(ListLinkBudgetApproximationsRequest) returns (ListLinkBudgetApproximationsResponse) {}
+  rpc CreateLinkBudgetApproximation(CreateLinkBudgetApproximationRequest) returns (LinkBudgetApproximation) {}
+  rpc UpdateLinkBudgetApproximation(UpdateLinkBudgetApproximationRequest) returns (LinkBudgetApproximation) {}
+  rpc DeleteLinkBudgetApproximation(DeleteLinkBudgetApproximationRequest) returns (google.protobuf.Empty) {}
+
   // TODO: Consider RFC 8623 P2MP TE -like request
   // TODO: Consider PHY-layer requests (bent pipe, etc)
   // TODO: Add a DigitalTransparentService request (details TBD)
@@ -1776,5 +1785,178 @@ message DeleteBundleServiceRequest{
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {
       type: "provisioning.spacetimeapis.com/BundleService"
+    }];
+}
+
+// A LinkBudgetApproximation is a set of operator-supplied terms that
+// Spacetime applies when computing the link budgets of a selected set of
+// links.
+//
+// Each term is an approximation of an effect accounted for in the
+// operator's link budget but not modeled directly by Spacetime. An unset
+// term is not modeled. At least one term is required. A resource with no
+// terms set is rejected.
+//
+// A link can be selected by more than one resource. When two or more of them
+// set the same term, the lowest C/I among them is applied to that link.
+message LinkBudgetApproximation {
+  option (google.api.resource) = {
+    type: "provisioning.spacetimeapis.com/LinkBudgetApproximation"
+    pattern: "linkBudgetApproximations/{link_budget_approximation}"
+  };
+
+  // The resource name of the link budget approximation.
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  // Filter the receiving Antenna model entities to which this approximation
+  // applies, using Common Expression Language (CEL). Any link whose
+  // receiving antenna matches the filter is selected.
+  //
+  // Required. A resource with an empty or invalid filter is rejected.
+  string receive_antennas_filter = 2 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+
+  // A piecewise-linear approximation of a C/I, in dB, as a function of the
+  // elevation angle at one endpoint of the link.
+  message ElevationCurve {
+    // Identifies which endpoint's antenna geometry is used as the reference
+    // for the curve's elevation. The approximated interference may vary with
+    // either the receiving endpoint's antenna geometry or the transmitting
+    // endpoint's. For example, a satellite's receiver may observe
+    // interference that varies with the elevation of the transmitting ground
+    // station.
+    enum ReferenceEndpoint {
+      REFERENCE_ENDPOINT_UNSPECIFIED = 0;
+      // The receiving end's antenna geometry is the reference.
+      RECEIVER = 1;
+      // The transmitting end's antenna geometry is the reference.
+      TRANSMITTER = 2;
+    }
+    // Required. A curve whose reference_endpoint is unspecified is rejected.
+    ReferenceEndpoint reference_endpoint = 1 [
+      (google.api.field_behavior) = REQUIRED
+    ];
+
+    // The modeled C/I at a single elevation angle on the curve.
+    message ControlPoint {
+      // The elevation angle, in degrees, of the line of sight from the
+      // reference endpoint to the other endpoint, measured from the
+      // reference endpoint's local horizontal plane. Positive values are
+      // above the plane and negative values are below it. Must be in the
+      // range [-90, 90].
+      double elevation_deg = 1;
+      // The modeled C/I at this elevation, in dB. Must be finite.
+      double carrier_to_interference_db = 2;
+    }
+
+    // Control points must be ordered by strictly increasing elevation_deg.
+    // At least two control points are required. The C/I is linearly
+    // interpolated in dB between points and held at the nearest control
+    // point's value outside the covered range.
+    repeated ControlPoint control_points = 2 [
+      (google.api.field_behavior) = REQUIRED
+    ];
+  }
+
+  // Each term below is a modeled interference contribution expressed as a
+  // carrier-to-interference ratio (C/I), in dB.
+  //
+  // The value is a static, modeled approximation; it does not track dynamic
+  // interference, which depends on the concurrent activity of the interfering
+  // links. The load conditions represented by the value, such as worst-case
+  // versus typical system load, are defined by the operator and are not
+  // constrained by this schema.
+  //
+  // At link-budget time, the interference power is recovered from the ratio
+  // (I = C - ratio, in dB) and summed in the linear power domain with receiver
+  // noise and other interference contributions to form the total
+  // noise-plus-interference used to calculate C/(N+I).
+
+  // The co-channel interference contributed by other links in the network.
+  oneof co_channel_interference {
+    // The modeled C/I, in dB, fixed regardless of link geometry. Must be
+    // finite.
+    double co_channel_carrier_to_interference_db = 3;
+    // The modeled C/I as a piecewise-linear function of link elevation.
+    // Suitable when the approximated interference varies with pointing.
+    ElevationCurve co_channel_carrier_to_interference_curve = 4;
+  }
+
+  // The modeled C/I, in dB, of the interference contributed by carriers
+  // occupying adjacent channels. Must be finite.
+  optional double adjacent_channel_carrier_to_interference_db = 5;
+
+  // The modeled C/I, in dB, of the cross-polarization interference
+  // contributed by the transmitting antenna's finite polarization
+  // discrimination. Must be finite.
+  optional double transmit_cross_polarization_carrier_to_interference_db = 6;
+
+  // The modeled C/I, in dB, of the cross-polarization interference
+  // contributed by the receiving antenna's finite polarization
+  // discrimination. Must be finite.
+  optional double receive_cross_polarization_carrier_to_interference_db = 7;
+}
+
+message GetLinkBudgetApproximationRequest{
+  // The resource name of the link budget approximation to retrieve.
+  // Format: `linkBudgetApproximations/{link_budget_approximation}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/LinkBudgetApproximation"
+    }];
+}
+
+message ListLinkBudgetApproximationsRequest{
+}
+
+message ListLinkBudgetApproximationsResponse{
+  repeated LinkBudgetApproximation link_budget_approximations = 1;
+}
+
+message CreateLinkBudgetApproximationRequest{
+  // The ID to use for the link budget approximation, which will become the
+  // final component of the link budget approximation's resource name.
+  //
+  // This value should be 1-63 characters, and valid characters
+  // are /[a-z][0-9]-/, specifically of the form
+  // "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$".
+  string link_budget_approximation_id = 2 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+
+  // The link budget approximation to create.
+  LinkBudgetApproximation link_budget_approximation = 3 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+}
+
+message UpdateLinkBudgetApproximationRequest{
+  // The LinkBudgetApproximation to update.
+  //
+  // The LinkBudgetApproximation's `name` field is used to identify the
+  // LinkBudgetApproximation instance to be updated.
+  // Format: `linkBudgetApproximations/{link_budget_approximation}`
+  LinkBudgetApproximation link_budget_approximation = 1 [
+    (google.api.field_behavior) = REQUIRED
+  ];
+
+  // The list of fields to be updated.
+  google.protobuf.FieldMask update_mask = 2;
+
+  // If set to true, and the LinkBudgetApproximation named above is not found,
+  // a new instance will be created. In this situation, `update_mask` is
+  // ignored.
+  bool allow_missing = 3;
+}
+
+message DeleteLinkBudgetApproximationRequest{
+  // The resource name of the link budget approximation to delete.
+  // Format: `linkBudgetApproximations/{link_budget_approximation}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "provisioning.spacetimeapis.com/LinkBudgetApproximation"
     }];
 }

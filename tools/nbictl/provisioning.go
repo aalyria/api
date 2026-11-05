@@ -62,6 +62,7 @@ type ProvisioningResources struct {
 	pointingConstraints          map[string]*provapipb.PointingConstraint
 	eirpsdMaskLimits             map[string]*provapipb.EirpsdMaskLimit
 	bundleServices               map[string]*provapipb.BundleService
+	linkBudgetApproximations     map[string]*provapipb.LinkBudgetApproximation
 }
 
 func (pr *ProvisioningResources) String() string {
@@ -79,6 +80,7 @@ func (pr *ProvisioningResources) String() string {
 		lo.Keys(pr.pointingConstraints),
 		lo.Keys(pr.eirpsdMaskLimits),
 		lo.Keys(pr.bundleServices),
+		lo.Keys(pr.linkBudgetApproximations),
 	)
 
 	if len(keys) == 0 {
@@ -111,6 +113,7 @@ func (pr *ProvisioningResources) MarshalledString(marshaller protoFormat) string
 		lo.Entries(marshalMap(pr.pointingConstraints, marshaller)),
 		lo.Entries(marshalMap(pr.eirpsdMaskLimits, marshaller)),
 		lo.Entries(marshalMap(pr.bundleServices, marshaller)),
+		lo.Entries(marshalMap(pr.linkBudgetApproximations, marshaller)),
 	)
 	slices.SortFunc(entries, func(e1, e2 lo.Entry[string, string]) int { return strings.Compare(e1.Key, e2.Key) })
 
@@ -135,6 +138,7 @@ func NewProvisioningResources() *ProvisioningResources {
 		pointingConstraints:          map[string]*provapipb.PointingConstraint{},
 		eirpsdMaskLimits:             map[string]*provapipb.EirpsdMaskLimit{},
 		bundleServices:               map[string]*provapipb.BundleService{},
+		linkBudgetApproximations:     map[string]*provapipb.LinkBudgetApproximation{},
 	}
 }
 
@@ -151,7 +155,8 @@ func (pr *ProvisioningResources) ResourceCount() int {
 		len(pr.emissionsLimits) +
 		len(pr.pointingConstraints) +
 		len(pr.eirpsdMaskLimits) +
-		len(pr.bundleServices)
+		len(pr.bundleServices) +
+		len(pr.linkBudgetApproximations)
 }
 
 func (pr *ProvisioningResources) InsertProvisioningResources(resources *provnbipb.ProvisioningResources) {
@@ -168,6 +173,7 @@ func (pr *ProvisioningResources) InsertProvisioningResources(resources *provnbip
 	pr.insertPointingConstraints(resources.GetPointingConstraints())
 	pr.insertEirpsdMaskLimits(resources.GetEirpsdMaskLimits())
 	pr.insertBundleServices(resources.GetBundleServices())
+	pr.insertLinkBudgetApproximations(resources.GetLinkBudgetApproximations())
 }
 
 func (pr *ProvisioningResources) ToProto() (*provnbipb.ProvisioningResources, error) {
@@ -185,6 +191,7 @@ func (pr *ProvisioningResources) ToProto() (*provnbipb.ProvisioningResources, er
 	result.PointingConstraints = slices.Collect(maps.Values(pr.pointingConstraints))
 	result.EirpsdMaskLimits = slices.Collect(maps.Values(pr.eirpsdMaskLimits))
 	result.BundleServices = slices.Collect(maps.Values(pr.bundleServices))
+	result.LinkBudgetApproximations = slices.Collect(maps.Values(pr.linkBudgetApproximations))
 	return result, nil
 }
 
@@ -193,7 +200,7 @@ func ProvisioningResourcesFromRemote(ctx context.Context, client provapipb.Provi
 
 	var (
 		totalMu       sync.Mutex
-		expandedTotal = 11
+		expandedTotal = 12
 	)
 	bumpTotal := func(delta int) {
 		totalMu.Lock()
@@ -339,6 +346,21 @@ func ProvisioningResourcesFromRemote(ctx context.Context, client provapipb.Provi
 		return nil
 	})
 
+	var linkBudgetApproximations []*provapipb.LinkBudgetApproximation
+	p.Go(func() error {
+		result, err := client.ListLinkBudgetApproximations(ctx, &provapipb.ListLinkBudgetApproximationsRequest{})
+		if err != nil {
+			if isUnimplementedError(err) {
+				listBar.Incr()
+				return nil
+			}
+			return err
+		}
+		linkBudgetApproximations = result.GetLinkBudgetApproximations()
+		listBar.Incr()
+		return nil
+	})
+
 	var (
 		p2pSrTePolicies   []*provapipb.P2PSrTePolicy
 		p2pCandidatePaths []*provapipb.P2PSrTePolicyCandidatePath
@@ -446,6 +468,7 @@ func ProvisioningResourcesFromRemote(ctx context.Context, client provapipb.Provi
 	pr.insertPointingConstraints(pointingConstraints)
 	pr.insertEirpsdMaskLimits(eirpsdMaskLimits)
 	pr.insertBundleServices(bundleServices)
+	pr.insertLinkBudgetApproximations(linkBudgetApproximations)
 	pr.insertP2PSrTePolicies(p2pSrTePolicies)
 	pr.insertP2PSrTePolicyCandidatePaths(p2pCandidatePaths)
 	pr.insertP2MpSrTePolicies(p2mpSrTePolicies)
@@ -529,6 +552,12 @@ func (pr *ProvisioningResources) insertEirpsdMaskLimits(entries []*provapipb.Eir
 func (pr *ProvisioningResources) insertBundleServices(entries []*provapipb.BundleService) {
 	for _, entry := range entries {
 		pr.bundleServices[entry.GetName()] = entry
+	}
+}
+
+func (pr *ProvisioningResources) insertLinkBudgetApproximations(entries []*provapipb.LinkBudgetApproximation) {
+	for _, entry := range entries {
+		pr.linkBudgetApproximations[entry.GetName()] = entry
 	}
 }
 
@@ -630,6 +659,7 @@ func ProvisioningSync(appCtx *cli.Context) error {
 		"pointingConstraints":         lo.Without(lo.Keys(localResources.pointingConstraints), lo.Keys(remoteResources.pointingConstraints)...),
 		"eirpsdMaskLimits":            lo.Without(lo.Keys(localResources.eirpsdMaskLimits), lo.Keys(remoteResources.eirpsdMaskLimits)...),
 		"bundleServices":              lo.Without(lo.Keys(localResources.bundleServices), lo.Keys(remoteResources.bundleServices)...),
+		"linkBudgetApproximations":    lo.Without(lo.Keys(localResources.linkBudgetApproximations), lo.Keys(remoteResources.linkBudgetApproximations)...),
 	}
 
 	resourcesInCommon := map[string][]string{
@@ -644,6 +674,7 @@ func ProvisioningSync(appCtx *cli.Context) error {
 		"pointingConstraints":         lo.Intersect(lo.Keys(localResources.pointingConstraints), lo.Keys(remoteResources.pointingConstraints)),
 		"eirpsdMaskLimits":            lo.Intersect(lo.Keys(localResources.eirpsdMaskLimits), lo.Keys(remoteResources.eirpsdMaskLimits)),
 		"bundleServices":              lo.Intersect(lo.Keys(localResources.bundleServices), lo.Keys(remoteResources.bundleServices)),
+		"linkBudgetApproximations":    lo.Intersect(lo.Keys(localResources.linkBudgetApproximations), lo.Keys(remoteResources.linkBudgetApproximations)),
 	}
 
 	fmt.Fprintln(w, "\ncomparing local and remote resources:")
@@ -668,6 +699,7 @@ func ProvisioningSync(appCtx *cli.Context) error {
 			pointingConstraints:         lo.Without(lo.Keys(remoteResources.pointingConstraints), lo.Keys(localResources.pointingConstraints)...),
 			eirpsdMaskLimits:            lo.Without(lo.Keys(remoteResources.eirpsdMaskLimits), lo.Keys(localResources.eirpsdMaskLimits)...),
 			bundleServices:              lo.Without(lo.Keys(remoteResources.bundleServices), lo.Keys(localResources.bundleServices)...),
+			linkBudgetApproximations:    lo.Without(lo.Keys(remoteResources.linkBudgetApproximations), lo.Keys(localResources.linkBudgetApproximations)...),
 
 			w:              w,
 			printMode:      printMode,
@@ -688,6 +720,7 @@ func ProvisioningSync(appCtx *cli.Context) error {
 			deleteParams.pointingConstraints,
 			deleteParams.eirpsdMaskLimits,
 			deleteParams.bundleServices,
+			deleteParams.linkBudgetApproximations,
 		))
 		fmt.Fprintf(w, "- %d resources to be deleted\n", deleteTotal)
 
@@ -767,6 +800,14 @@ func ProvisioningSync(appCtx *cli.Context) error {
 		return err
 	})
 
+	updateRemoteResources(p, ctx, resourcesInCommon["linkBudgetApproximations"], localResources.linkBudgetApproximations, remoteResources.linkBudgetApproximations, w, printMode, dryRunMode, syncBar.Incr, func(ctx context.Context, linkBudgetApproximation *provapipb.LinkBudgetApproximation) error {
+		_, err := nextClient().UpdateLinkBudgetApproximation(ctx, &provapipb.UpdateLinkBudgetApproximationRequest{
+			LinkBudgetApproximation: linkBudgetApproximation,
+			AllowMissing:            false,
+		})
+		return err
+	})
+
 	// Create P2P policies in this pool (candidate paths will be created after).
 	createRemoteResources(p, ctx, resourcesToBeAdded["p2pSrTePolicies"], localResources.p2pSrTePolicies, w, printMode, dryRunMode, syncBar.Incr, func(ctx context.Context, policy *provapipb.P2PSrTePolicy) error {
 		_, err := nextClient().UpdateP2PSrTePolicy(ctx, &provapipb.UpdateP2PSrTePolicyRequest{
@@ -822,6 +863,14 @@ func ProvisioningSync(appCtx *cli.Context) error {
 		_, err := nextClient().UpdateBundleService(ctx, &provapipb.UpdateBundleServiceRequest{
 			BundleService: bundleService,
 			AllowMissing:  true,
+		})
+		return err
+	})
+
+	createRemoteResources(p, ctx, resourcesToBeAdded["linkBudgetApproximations"], localResources.linkBudgetApproximations, w, printMode, dryRunMode, syncBar.Incr, func(ctx context.Context, linkBudgetApproximation *provapipb.LinkBudgetApproximation) error {
+		_, err := nextClient().UpdateLinkBudgetApproximation(ctx, &provapipb.UpdateLinkBudgetApproximationRequest{
+			LinkBudgetApproximation: linkBudgetApproximation,
+			AllowMissing:            true,
 		})
 		return err
 	})
@@ -917,6 +966,7 @@ type deleteProvisioningParams struct {
 	pointingConstraints         []string
 	eirpsdMaskLimits            []string
 	bundleServices              []string
+	linkBudgetApproximations    []string
 
 	w              io.Writer
 	printMode      bool
@@ -1009,6 +1059,13 @@ func deleteProvisioning(ctx context.Context, params deleteProvisioningParams) er
 		return err
 	})
 
+	deleteRemoteResources(p, ctx, params.linkBudgetApproximations, params.w, printMode, dryRunMode, params.onProgress, func(ctx context.Context, name string) error {
+		_, err := params.nextClient().DeleteLinkBudgetApproximation(ctx, &provapipb.DeleteLinkBudgetApproximationRequest{
+			Name: name,
+		})
+		return err
+	})
+
 	return p.Wait()
 }
 
@@ -1085,6 +1142,7 @@ func ProvisioningDeleteAll(appCtx *cli.Context) error {
 		pointingConstraints:         lo.Keys(remoteResources.pointingConstraints),
 		eirpsdMaskLimits:            lo.Keys(remoteResources.eirpsdMaskLimits),
 		bundleServices:              lo.Keys(remoteResources.bundleServices),
+		linkBudgetApproximations:    lo.Keys(remoteResources.linkBudgetApproximations),
 	}
 
 	return deleteProvisioning(appCtx.Context, params)
@@ -1132,6 +1190,7 @@ func ProvisioningDelete(appCtx *cli.Context) error {
 		pointingConstraints:         lo.Intersect(resourceNames, lo.Keys(remoteResources.pointingConstraints)),
 		eirpsdMaskLimits:            lo.Intersect(resourceNames, lo.Keys(remoteResources.eirpsdMaskLimits)),
 		bundleServices:              lo.Intersect(resourceNames, lo.Keys(remoteResources.bundleServices)),
+		linkBudgetApproximations:    lo.Intersect(resourceNames, lo.Keys(remoteResources.linkBudgetApproximations)),
 	}
 
 	deleteResourceNameSet := slices.Concat(
@@ -1146,6 +1205,7 @@ func ProvisioningDelete(appCtx *cli.Context) error {
 		params.pointingConstraints,
 		params.eirpsdMaskLimits,
 		params.bundleServices,
+		params.linkBudgetApproximations,
 	)
 
 	notFoundNames := lo.Without(resourceNames, deleteResourceNameSet...)
