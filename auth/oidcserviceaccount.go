@@ -24,12 +24,10 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jonboulle/clockwork"
-	"golang.org/x/sync/singleflight"
 	"google.golang.org/grpc/credentials"
 )
 
@@ -50,11 +48,6 @@ const (
 	// It is spent immediately, so it needs to outlive one round trip and no
 	// more.
 	serviceAccountAssertionLifetime = 5 * time.Minute
-
-	// serviceAccountExchangeTimeout bounds one exchange. The exchange is
-	// detached from its caller's context, so it needs a deadline of its own or
-	// an unresponsive provider would hold every waiting caller forever.
-	serviceAccountExchangeTimeout = 30 * time.Second
 
 	// maxServiceAccountTokenLifetime caps the lifetime that expires_in may
 	// claim. A value large enough to overflow a [time.Duration] wraps
@@ -183,6 +176,7 @@ func NewOIDCServiceAccountCredentials(_ context.Context, c OIDCServiceAccountCon
 
 	client := httpDoerOrDefault(c.HTTPClient)
 	return &oidcServiceAccountCredentials{
+		cache:          tokenCache{clock: c.Clock},
 		config:         c,
 		pkey:           pkey,
 		client:         client,
@@ -221,8 +215,7 @@ func withoutRedirects(doer HTTPDoer) HTTPDoer {
 }
 
 type oidcServiceAccountCredentials struct {
-	token  atomic.Pointer[expiringToken]
-	sf     singleflight.Group
+	cache  tokenCache
 	config OIDCServiceAccountConfig
 	pkey   any
 	// client serves discovery, which is a public document over TLS.
@@ -259,47 +252,17 @@ func (sc *oidcServiceAccountCredentials) GetRequestMetadata(ctx context.Context,
 // getToken returns the cached access token, and exchanges a new one when
 // neither the process nor the store holds one that is still fresh.
 func (sc *oidcServiceAccountCredentials) getToken(ctx context.Context) (string, error) {
-	if token := sc.token.Load(); token != nil && !token.isStale(sc.config.Clock) {
-		return token.tok, nil
-	}
-
-	// Collapse concurrent exchanges into one. The exchange is detached from
-	// the context of whichever caller started it and given a deadline of its
-	// own, because every caller waits on the same call: at cold start every
-	// RPC misses the cache at once, and one of them giving up would otherwise
-	// fail all the others with a misleading "context canceled".
-	//
-	// Each caller still waits under its own context, so giving up returns.
-	// The exchange it abandons carries on and fills the cache for whoever is
-	// still waiting.
-	ch := sc.sf.DoChan("token", func() (any, error) {
-		if token := sc.token.Load(); token != nil && !token.isStale(sc.config.Clock) {
-			return token.tok, nil
-		}
+	return sc.cache.get(ctx, func(ctx context.Context) (*expiringToken, error) {
 		if token := sc.loadStoredToken(); token != nil {
-			sc.token.Store(token)
-			return token.tok, nil
+			return token, nil
 		}
-		exchangeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), serviceAccountExchangeTimeout)
-		defer cancel()
-		accessToken, expiresAt, err := sc.exchangeToken(exchangeCtx)
+		accessToken, expiresAt, err := sc.exchangeToken(ctx)
 		if err != nil {
 			return nil, err
 		}
-		sc.token.Store(&expiringToken{tok: accessToken, expiresAt: expiresAt})
 		sc.storeToken(accessToken, expiresAt)
-		return accessToken, nil
+		return &expiringToken{tok: accessToken, expiresAt: expiresAt}, nil
 	})
-
-	select {
-	case <-ctx.Done():
-		return "", context.Cause(ctx)
-	case result := <-ch:
-		if result.Err != nil {
-			return "", result.Err
-		}
-		return result.Val.(string), nil
-	}
 }
 
 // loadStoredToken returns the stored access token when the store holds one

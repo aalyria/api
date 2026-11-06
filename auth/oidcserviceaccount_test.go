@@ -31,6 +31,8 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jonboulle/clockwork"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 const (
@@ -90,6 +92,10 @@ type serviceAccountServer struct {
 	tokenRequests atomic.Int32
 	// reachedOnce closes cfg.tokenReached for the first request only.
 	reachedOnce sync.Once
+	// failWith, when it is not zero, is the status that the token endpoint
+	// returns from then on instead of a success. Unlike cfg.status, a test
+	// sets it after a successful exchange.
+	failWith atomic.Int32
 
 	mu sync.Mutex
 	// forms holds the form of every token request, in order.
@@ -147,6 +153,10 @@ func (sas *serviceAccountServer) serveToken(w http.ResponseWriter, r *http.Reque
 		}
 		w.WriteHeader(sas.cfg.status)
 		fmt.Fprint(w, body)
+		return
+	}
+	if code := sas.failWith.Load(); code != 0 {
+		http.Error(w, "provider down", int(code))
 		return
 	}
 
@@ -456,6 +466,7 @@ func TestServiceAccountRefreshesAStaleToken(t *testing.T) {
 	if _, err := requestMetadata(context.Background(), creds); err != nil {
 		t.Fatalf("the refreshing GetRequestMetadata returned an unexpected error: %v", err)
 	}
+	waitForRefresh(&creds.(*oidcServiceAccountCredentials).cache)
 	if got := sas.tokenRequests.Load(); got != 2 {
 		t.Fatalf("the token endpoint saw %d requests after the token went stale, want 2", got)
 	}
@@ -751,9 +762,9 @@ func TestServiceAccountExchangeIgnoresCallerCancellation(t *testing.T) {
 // TestServiceAccountHonoursTheCallerDeadline is the other half of
 // TestServiceAccountExchangeIgnoresCallerCancellation. Detaching the exchange
 // must not detach the caller from it: a caller that gives up has to return,
-// and only the exchange carries on in the background for whoever still wants
-// it. Without this, one unresponsive provider holds every caller for the whole
-// exchange timeout.
+// with the code of its own context, and only the exchange carries on in the
+// background for whoever still wants it. Without this, one unresponsive
+// provider holds every caller for the whole exchange timeout.
 func TestServiceAccountHonoursTheCallerDeadline(t *testing.T) {
 	t.Parallel()
 
@@ -784,13 +795,77 @@ func TestServiceAccountHonoursTheCallerDeadline(t *testing.T) {
 
 	select {
 	case err := <-returned:
-		if err == nil {
-			t.Error("GetRequestMetadata returned no error although its caller's deadline passed")
+		if status.Code(err) != codes.DeadlineExceeded {
+			t.Errorf("GetRequestMetadata returned %v after its caller's deadline passed, want code %s", err, codes.DeadlineExceeded)
 		}
 	case <-time.After(10 * time.Second):
 		// The exchange timeout is 30 seconds, so a caller still waiting here
 		// is waiting on the exchange and not on its own deadline.
 		t.Fatal("GetRequestMetadata outlived its caller's deadline by ten seconds")
+	}
+}
+
+func TestServiceAccountServesAStaleTokenWhenTheRefreshFails(t *testing.T) {
+	t.Parallel()
+
+	clock := clockwork.NewFakeClockAt(time.Date(2026, time.August, 17, 12, 0, 0, 0, time.UTC))
+	accessToken := testIDToken(t, "", clock.Now().Add(12*time.Hour))
+	sas := newServiceAccountServer(t, serviceAccountServerConfig{
+		accessToken: accessToken,
+		expiresIn:   43200,
+	})
+
+	creds, err := NewOIDCServiceAccountCredentials(t.Context(), testServiceAccountConfig(sas, clock))
+	if err != nil {
+		t.Fatalf("NewOIDCServiceAccountCredentials returned an unexpected error: %v", err)
+	}
+	if _, err := requestMetadata(t.Context(), creds); err != nil {
+		t.Fatalf("the first GetRequestMetadata returned an unexpected error: %v", err)
+	}
+
+	sas.failWith.Store(http.StatusServiceUnavailable)
+	// Inside the 5-minute window, so the token is stale but not expired.
+	clock.Advance(12*time.Hour - tokenExpirationWindow + time.Minute)
+
+	md, err := requestMetadata(t.Context(), creds)
+	if err != nil {
+		t.Fatalf("GetRequestMetadata returned an error, want the stale token: %v", err)
+	}
+	waitForRefresh(&creds.(*oidcServiceAccountCredentials).cache)
+	if got, want := md[authorizationHeader], "Bearer "+accessToken; got != want {
+		t.Errorf("authorization header: got %q, want %q", got, want)
+	}
+	if n := sas.tokenRequests.Load(); n != 2 {
+		t.Errorf("the token endpoint saw %d requests, want 2; the stale token was served without a refresh attempt", n)
+	}
+}
+
+func TestServiceAccountDoesNotServeAnExpiredToken(t *testing.T) {
+	t.Parallel()
+
+	clock := clockwork.NewFakeClockAt(time.Date(2026, time.August, 17, 12, 0, 0, 0, time.UTC))
+	sas := newServiceAccountServer(t, serviceAccountServerConfig{
+		accessToken: testIDToken(t, "", clock.Now().Add(12*time.Hour)),
+		expiresIn:   43200,
+	})
+
+	creds, err := NewOIDCServiceAccountCredentials(t.Context(), testServiceAccountConfig(sas, clock))
+	if err != nil {
+		t.Fatalf("NewOIDCServiceAccountCredentials returned an unexpected error: %v", err)
+	}
+	if _, err := requestMetadata(t.Context(), creds); err != nil {
+		t.Fatalf("the first GetRequestMetadata returned an unexpected error: %v", err)
+	}
+
+	sas.failWith.Store(http.StatusServiceUnavailable)
+	clock.Advance(12*time.Hour + time.Minute)
+
+	md, err := requestMetadata(t.Context(), creds)
+	if err == nil {
+		t.Fatalf("GetRequestMetadata served the expired token %q", md[authorizationHeader])
+	}
+	if !strings.Contains(err.Error(), "status 503") {
+		t.Errorf("GetRequestMetadata returned %v, want the token endpoint's 503", err)
 	}
 }
 

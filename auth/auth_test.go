@@ -28,13 +28,17 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jonboulle/clockwork"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/status"
 )
 
 var testKey = generateRSAPrivateKey()
@@ -631,6 +635,7 @@ func TestOIDCCredentials_TokenRefresh(t *testing.T) {
 	if err != nil {
 		t.Fatalf("second GetRequestMetadata failed: %v", err)
 	}
+	waitForRefresh(&creds.(*oidcCredentials).cache)
 
 	if got := requestCount.Load(); got != 2 {
 		t.Errorf("expected 2 token requests (initial + refresh), got %d", got)
@@ -700,4 +705,231 @@ func TestOIDCCredentials_ErrorHandling(t *testing.T) {
 			t.Errorf("expected error about missing access_token, got: %v", err)
 		}
 	})
+}
+
+// controllableTokenServer is a client_credentials token endpoint that a test
+// holds open or fails at will. It checks nothing about the request, because
+// the tests that use it are about the cache around the exchange and not the
+// exchange itself; newFakeTokenServer covers the request shape.
+type controllableTokenServer struct {
+	*httptest.Server
+
+	// requests counts the requests that reach the endpoint.
+	requests atomic.Int32
+	// failWith, when it is not zero, is the status that the endpoint returns
+	// instead of a token. A test sets it after a successful exchange.
+	failWith atomic.Int32
+	// block, when it is not nil, holds the endpoint until it is closed.
+	block <-chan struct{}
+	// reached is closed once the endpoint has been reached for the first
+	// time, before block holds it.
+	reached     chan struct{}
+	reachedOnce sync.Once
+}
+
+func newControllableTokenServer(t *testing.T, block <-chan struct{}) *controllableTokenServer {
+	t.Helper()
+
+	cts := &controllableTokenServer{block: block, reached: make(chan struct{})}
+	cts.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		cts.requests.Add(1)
+		cts.reachedOnce.Do(func() { close(cts.reached) })
+		if cts.block != nil {
+			<-cts.block
+		}
+		if code := cts.failWith.Load(); code != 0 {
+			http.Error(w, "provider down", int(code))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{
+			"access_token": "fake-access-token",
+			"token_type":   "Bearer",
+			"expires_in":   3600,
+		})
+	}))
+	t.Cleanup(cts.Server.Close)
+	return cts
+}
+
+// newTestOIDCCredentials points client_credentials credentials at tokenURL.
+// A nil client means the default HTTP client.
+func newTestOIDCCredentials(t *testing.T, clock clockwork.Clock, tokenURL string, client HTTPDoer) credentials.PerRPCCredentials {
+	t.Helper()
+
+	creds, err := NewOIDCCredentials(t.Context(), OIDCConfig{
+		Clock:                 clock,
+		PrivateKey:            bytes.NewBuffer(testKey.privatePEM),
+		PrivateKeyID:          "test-key-id",
+		ClientID:              "test-client",
+		TokenURL:              tokenURL,
+		HTTPClient:            client,
+		SkipTransportSecurity: true,
+	})
+	if err != nil {
+		t.Fatalf("NewOIDCCredentials returned an unexpected error: %v", err)
+	}
+	return creds
+}
+
+// TestOIDCCredentials_ExchangeIgnoresCallerCancellation makes sure that the
+// exchange does not inherit the context of the caller that started it. Every
+// concurrent caller waits on the same exchange, so one caller giving up must
+// not fail all the others with a misleading "context canceled".
+//
+// The cancellation lands while the exchange is in flight, and the exchange
+// then has to finish and fill the cache. A second call that needs no second
+// round trip is what proves it did.
+func TestOIDCCredentials_ExchangeIgnoresCallerCancellation(t *testing.T) {
+	t.Parallel()
+
+	release := make(chan struct{})
+	clock := clockwork.NewFakeClockAt(time.Date(2023, time.January, 1, 12, 0, 0, 0, time.UTC))
+	server := newControllableTokenServer(t, release)
+	creds := newTestOIDCCredentials(t, clock, server.URL, server.Client())
+
+	leaderCtx, cancelLeader := context.WithCancel(t.Context())
+	leaderReturned := make(chan struct{})
+	go func() {
+		defer close(leaderReturned)
+		// The leader's own result does not matter: it asked to stop.
+		_, _ = requestMetadata(leaderCtx, creds)
+	}()
+
+	<-server.reached
+	cancelLeader()
+	<-leaderReturned
+	close(release)
+
+	md, err := requestMetadata(t.Context(), creds)
+	if err != nil {
+		t.Fatalf("the exchange the leader started did not survive its cancellation: %v", err)
+	}
+	if got, want := md[authorizationHeader], "Bearer fake-access-token"; got != want {
+		t.Errorf("authorization header: got %q, want %q", got, want)
+	}
+	if n := server.requests.Load(); n != 1 {
+		t.Errorf("the token endpoint saw %d requests, want 1; the leader's cancellation threw away the exchange", n)
+	}
+}
+
+// hangingDoer is a token endpoint that never answers. Each request waits
+// until its own context ends or release is closed, so a test can run in a
+// synctest bubble, where a real listener does not count as blocked.
+type hangingDoer struct {
+	release <-chan struct{}
+}
+
+func (d hangingDoer) Do(req *http.Request) (*http.Response, error) {
+	select {
+	case <-req.Context().Done():
+		return nil, req.Context().Err()
+	case <-d.release:
+		return nil, errors.New("released")
+	}
+}
+
+// TestOIDCCredentials_HonoursTheCallerDeadline is the other half of
+// TestOIDCCredentials_ExchangeIgnoresCallerCancellation. Detaching the
+// exchange must not detach the caller from it: a caller that gives up has to
+// return, with the code of its own context, and only the exchange carries on
+// in the background for whoever still wants it.
+func TestOIDCCredentials_HonoursTheCallerDeadline(t *testing.T) {
+	t.Parallel()
+
+	synctest.Test(t, func(t *testing.T) {
+		release := make(chan struct{})
+		clock := clockwork.NewFakeClockAt(time.Date(2023, time.January, 1, 12, 0, 0, 0, time.UTC))
+		creds := newTestOIDCCredentials(t, clock, "https://idp.example.com/oauth/v2/token", hangingDoer{release: release})
+
+		ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
+		defer cancel()
+
+		// The exchange timeout is 30 seconds. Fake time only passes while
+		// every goroutine is blocked, so a caller that waits on the exchange
+		// instead of its own deadline returns after 30 seconds, not 50 ms.
+		start := time.Now()
+		_, err := requestMetadata(ctx, creds)
+		if waited := time.Since(start); waited > time.Second {
+			t.Errorf("GetRequestMetadata returned after %v, want about 50ms", waited)
+		}
+		if status.Code(err) != codes.DeadlineExceeded {
+			t.Errorf("GetRequestMetadata returned %v after its caller's deadline passed, want code %s", err, codes.DeadlineExceeded)
+		}
+		close(release)
+	})
+}
+
+// TestOIDCCredentials_ExchangeHasADeadline makes sure that the detached
+// exchange ends on its own. Without a deadline of its own, a provider that
+// never answers would hold every later caller for as long as it liked.
+func TestOIDCCredentials_ExchangeHasADeadline(t *testing.T) {
+	t.Parallel()
+
+	synctest.Test(t, func(t *testing.T) {
+		clock := clockwork.NewFakeClockAt(time.Date(2023, time.January, 1, 12, 0, 0, 0, time.UTC))
+		creds := newTestOIDCCredentials(t, clock, "https://idp.example.com/oauth/v2/token", hangingDoer{})
+		creds.(*oidcCredentials).cache.timeout = 50 * time.Millisecond
+
+		start := time.Now()
+		_, err := requestMetadata(t.Context(), creds)
+		if err == nil {
+			t.Error("GetRequestMetadata returned no error although the exchange timed out")
+		}
+		if waited := time.Since(start); waited != 50*time.Millisecond {
+			t.Errorf("GetRequestMetadata returned after %v, want the 50ms exchange timeout", waited)
+		}
+	})
+}
+
+func TestOIDCCredentials_ServesAStaleTokenWhenTheRefreshFails(t *testing.T) {
+	t.Parallel()
+
+	clock := clockwork.NewFakeClockAt(time.Date(2023, time.January, 1, 12, 0, 0, 0, time.UTC))
+	server := newControllableTokenServer(t, nil)
+	creds := newTestOIDCCredentials(t, clock, server.URL, server.Client())
+
+	if _, err := requestMetadata(t.Context(), creds); err != nil {
+		t.Fatalf("the first GetRequestMetadata returned an unexpected error: %v", err)
+	}
+
+	server.failWith.Store(http.StatusServiceUnavailable)
+	// expires_in is 3600, so 56 minutes is inside the 5-minute window: the
+	// token is stale but not expired.
+	clock.Advance(56 * time.Minute)
+
+	md, err := requestMetadata(t.Context(), creds)
+	if err != nil {
+		t.Fatalf("GetRequestMetadata returned an error, want the stale token: %v", err)
+	}
+	waitForRefresh(&creds.(*oidcCredentials).cache)
+	if got, want := md[authorizationHeader], "Bearer fake-access-token"; got != want {
+		t.Errorf("authorization header: got %q, want %q", got, want)
+	}
+	if n := server.requests.Load(); n != 2 {
+		t.Errorf("the token endpoint saw %d requests, want 2; the stale token was served without a refresh attempt", n)
+	}
+}
+
+func TestOIDCCredentials_DoesNotServeAnExpiredToken(t *testing.T) {
+	t.Parallel()
+
+	clock := clockwork.NewFakeClockAt(time.Date(2023, time.January, 1, 12, 0, 0, 0, time.UTC))
+	server := newControllableTokenServer(t, nil)
+	creds := newTestOIDCCredentials(t, clock, server.URL, server.Client())
+
+	if _, err := requestMetadata(t.Context(), creds); err != nil {
+		t.Fatalf("the first GetRequestMetadata returned an unexpected error: %v", err)
+	}
+
+	server.failWith.Store(http.StatusServiceUnavailable)
+	clock.Advance(61 * time.Minute)
+
+	md, err := requestMetadata(t.Context(), creds)
+	if err == nil {
+		t.Fatalf("GetRequestMetadata served the expired token %q", md[authorizationHeader])
+	}
+	if !strings.Contains(err.Error(), "status 503") {
+		t.Errorf("GetRequestMetadata returned %v, want the token endpoint's 503", err)
+	}
 }
