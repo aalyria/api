@@ -16,9 +16,11 @@ package auth
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -27,11 +29,13 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jonboulle/clockwork"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 )
 
@@ -80,6 +84,15 @@ type serviceAccountServerConfig struct {
 	// been reached, before blockToken holds it. A test uses it to know that
 	// an exchange is in flight.
 	tokenReached chan struct{}
+	// issuer, when it is set, is the issuer that the discovery document
+	// reports in place of the server's own URL.
+	issuer string
+	// discoveryStatus, when it is not zero and not 200, is the status that
+	// the discovery endpoint returns instead of the document.
+	discoveryStatus int
+	// tokenBody, when it is set, is the body that the token endpoint writes
+	// with a 200 in place of a token response.
+	tokenBody string
 }
 
 // serviceAccountServer is a fake Zitadel that serves a discovery document and
@@ -117,8 +130,12 @@ func newServiceAccountServer(t *testing.T, cfg serviceAccountServerConfig) *serv
 	t.Cleanup(sas.Server.Close)
 
 	mux.HandleFunc(discoveryPath, func(w http.ResponseWriter, _ *http.Request) {
+		if cfg.discoveryStatus != 0 && cfg.discoveryStatus != http.StatusOK {
+			http.Error(w, "discovery down", cfg.discoveryStatus)
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"issuer": %q, "token_endpoint": "%s%s"}`, sas.URL, sas.URL, cfg.tokenPath)
+		fmt.Fprintf(w, `{"issuer": %q, "token_endpoint": "%s%s"}`, cmp.Or(cfg.issuer, sas.URL), sas.URL, cfg.tokenPath)
 	})
 	mux.HandleFunc(cfg.tokenPath, sas.serveToken)
 	return sas
@@ -157,6 +174,10 @@ func (sas *serviceAccountServer) serveToken(w http.ResponseWriter, r *http.Reque
 	}
 	if code := sas.failWith.Load(); code != 0 {
 		http.Error(w, "provider down", int(code))
+		return
+	}
+	if sas.cfg.tokenBody != "" {
+		fmt.Fprint(w, sas.cfg.tokenBody)
 		return
 	}
 
@@ -768,40 +789,215 @@ func TestServiceAccountExchangeIgnoresCallerCancellation(t *testing.T) {
 func TestServiceAccountHonoursTheCallerDeadline(t *testing.T) {
 	t.Parallel()
 
-	release := make(chan struct{})
-	clock := clockwork.NewFakeClockAt(time.Date(2026, time.August, 17, 12, 0, 0, 0, time.UTC))
-	sas := newServiceAccountServer(t, serviceAccountServerConfig{
-		accessToken: testIDToken(t, "", clock.Now().Add(12*time.Hour)),
-		expiresIn:   43200,
-		blockToken:  release,
-	})
-	// Registered after the server, so that it runs before the server's own
-	// cleanup: closing a server whose handler is still blocked hangs.
-	t.Cleanup(func() { close(release) })
+	synctest.Test(t, func(t *testing.T) {
+		release := make(chan struct{})
+		clock := clockwork.NewFakeClockAt(time.Date(2026, time.August, 17, 12, 0, 0, 0, time.UTC))
+		creds := newHangingServiceAccountCredentials(t, clock, release)
 
-	creds, err := NewOIDCServiceAccountCredentials(context.Background(), testServiceAccountConfig(sas, clock))
-	if err != nil {
-		t.Fatalf("NewOIDCServiceAccountCredentials returned an unexpected error: %v", err)
-	}
+		ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
+		defer cancel()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
-	defer cancel()
-
-	returned := make(chan error, 1)
-	go func() {
+		// The exchange timeout is 30 seconds. Fake time only passes while
+		// every goroutine is blocked, so a caller that waits on the exchange
+		// instead of its own deadline returns after 30 seconds, not 50 ms.
+		start := time.Now()
 		_, err := requestMetadata(ctx, creds)
-		returned <- err
-	}()
-
-	select {
-	case err := <-returned:
+		if waited := time.Since(start); waited > time.Second {
+			t.Errorf("GetRequestMetadata returned after %v, want about 50ms", waited)
+		}
 		if status.Code(err) != codes.DeadlineExceeded {
 			t.Errorf("GetRequestMetadata returned %v after its caller's deadline passed, want code %s", err, codes.DeadlineExceeded)
 		}
-	case <-time.After(10 * time.Second):
-		// The exchange timeout is 30 seconds, so a caller still waiting here
-		// is waiting on the exchange and not on its own deadline.
-		t.Fatal("GetRequestMetadata outlived its caller's deadline by ten seconds")
+		close(release)
+	})
+}
+
+// hangingServiceAccountDoer is an [HTTPDoer] that serves the discovery
+// document of issuer from memory and never answers the token request. Each
+// token request waits until its own context ends or release is closed, so a
+// test can run in a synctest bubble, where a real listener does not count as
+// blocked.
+type hangingServiceAccountDoer struct {
+	issuer  string
+	release <-chan struct{}
+}
+
+func (d hangingServiceAccountDoer) Do(req *http.Request) (*http.Response, error) {
+	if req.URL.Path != discoveryPath {
+		return hangingDoer{release: d.release}.Do(req)
+	}
+	body := fmt.Sprintf(`{"issuer": %q, "token_endpoint": %q}`, d.issuer, d.issuer+defaultTokenPath)
+	return &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": {"application/json"}},
+		Body:       io.NopCloser(strings.NewReader(body)),
+	}, nil
+}
+
+// newHangingServiceAccountCredentials points service account credentials at
+// a provider that answers discovery and never answers the token request.
+func newHangingServiceAccountCredentials(t *testing.T, clock clockwork.Clock, release <-chan struct{}) credentials.PerRPCCredentials {
+	t.Helper()
+
+	const issuer = "https://idp.example.com"
+	creds, err := NewOIDCServiceAccountCredentials(t.Context(), OIDCServiceAccountConfig{
+		Clock:                 clock,
+		Issuer:                issuer,
+		ProjectID:             testServiceAccountProject,
+		KeyID:                 testServiceAccountKeyID,
+		UserID:                testServiceAccountUserID,
+		PrivateKey:            bytes.NewBuffer(testKey.privatePEM),
+		HTTPClient:            hangingServiceAccountDoer{issuer: issuer, release: release},
+		SkipTransportSecurity: true,
+	})
+	if err != nil {
+		t.Fatalf("NewOIDCServiceAccountCredentials returned an unexpected error: %v", err)
+	}
+	return creds
+}
+
+// TestServiceAccountExchangeTimeoutIsUnavailable pins the code of the
+// exchange's own deadline. A provider that does not answer is a transient
+// failure that the agent retries. DeadlineExceeded would name the caller's
+// deadline, which has not passed.
+func TestServiceAccountExchangeTimeoutIsUnavailable(t *testing.T) {
+	t.Parallel()
+
+	synctest.Test(t, func(t *testing.T) {
+		clock := clockwork.NewFakeClockAt(time.Date(2026, time.August, 17, 12, 0, 0, 0, time.UTC))
+		creds := newHangingServiceAccountCredentials(t, clock, nil)
+		creds.(*oidcServiceAccountCredentials).cache.timeout = 50 * time.Millisecond
+
+		start := time.Now()
+		_, err := requestMetadata(t.Context(), creds)
+		if waited := time.Since(start); waited != 50*time.Millisecond {
+			t.Errorf("GetRequestMetadata returned after %v, want the 50ms exchange timeout", waited)
+		}
+		if status.Code(err) != codes.Unavailable {
+			t.Errorf("GetRequestMetadata returned %v after the exchange timed out, want code %s", err, codes.Unavailable)
+		}
+	})
+}
+
+// TestServiceAccountExchangeErrorCodes pins the gRPC code of every exchange
+// failure. The agent stops on Unauthenticated and retries everything else, so
+// a refusal that comes back as Unavailable retries forever, and a transient
+// failure that comes back as Unauthenticated stops the node.
+func TestServiceAccountExchangeErrorCodes(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name string
+		cfg  serviceAccountServerConfig
+		// closeServer closes the fake provider before the call, so that
+		// discovery meets a connection error.
+		closeServer bool
+		wantCode    codes.Code
+		wantText    string
+	}{
+		{
+			name:     "400 invalid_grant",
+			cfg:      serviceAccountServerConfig{status: http.StatusBadRequest, errorBody: `{"error":"invalid_grant"}`},
+			wantCode: codes.Unauthenticated,
+			wantText: "status 400",
+		},
+		{
+			name:     "401",
+			cfg:      serviceAccountServerConfig{status: http.StatusUnauthorized, errorBody: `{"error":"invalid_client"}`},
+			wantCode: codes.Unauthenticated,
+			wantText: "status 401",
+		},
+		{
+			name:     "408",
+			cfg:      serviceAccountServerConfig{status: http.StatusRequestTimeout},
+			wantCode: codes.Unavailable,
+			wantText: "status 408",
+		},
+		{
+			name:     "429",
+			cfg:      serviceAccountServerConfig{status: http.StatusTooManyRequests},
+			wantCode: codes.Unavailable,
+			wantText: "status 429",
+		},
+		{
+			name:     "500",
+			cfg:      serviceAccountServerConfig{status: http.StatusInternalServerError},
+			wantCode: codes.Unavailable,
+			wantText: "status 500",
+		},
+		{
+			name:     "503",
+			cfg:      serviceAccountServerConfig{status: http.StatusServiceUnavailable},
+			wantCode: codes.Unavailable,
+			wantText: "status 503",
+		},
+		{
+			name:     "issuer mismatch",
+			cfg:      serviceAccountServerConfig{issuer: "https://impostor.example.com"},
+			wantCode: codes.Unauthenticated,
+			wantText: "does not match the configured issuer",
+		},
+		{
+			name:     "discovery 500",
+			cfg:      serviceAccountServerConfig{discoveryStatus: http.StatusInternalServerError},
+			wantCode: codes.Unavailable,
+			wantText: "status 500",
+		},
+		{
+			name:        "connection refused",
+			closeServer: true,
+			wantCode:    codes.Unavailable,
+			wantText:    "connection refused",
+		},
+		{
+			name:     "token body is not JSON",
+			cfg:      serviceAccountServerConfig{tokenBody: "not json"},
+			wantCode: codes.Unavailable,
+			wantText: "parsing the token response",
+		},
+		{
+			name:     "no access_token",
+			cfg:      serviceAccountServerConfig{tokenBody: `{"token_type":"Bearer"}`},
+			wantCode: codes.Unavailable,
+			wantText: "no access_token",
+		},
+		{
+			name:     "opaque access token",
+			cfg:      serviceAccountServerConfig{accessToken: "opaque-not-a-jwt"},
+			wantCode: codes.Unavailable,
+			wantText: "opaque access token",
+		},
+		{
+			name:     "redirect",
+			cfg:      serviceAccountServerConfig{redirectTokenTo: "https://sink.example.com/token"},
+			wantCode: codes.Unavailable,
+			wantText: "redirect",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			clock := clockwork.NewFakeClockAt(time.Date(2026, time.August, 17, 12, 0, 0, 0, time.UTC))
+			sas := newServiceAccountServer(t, tc.cfg)
+			creds, err := NewOIDCServiceAccountCredentials(t.Context(), testServiceAccountConfig(sas, clock))
+			if err != nil {
+				t.Fatalf("NewOIDCServiceAccountCredentials returned an unexpected error: %v", err)
+			}
+			if tc.closeServer {
+				sas.Close()
+			}
+
+			_, err = requestMetadata(t.Context(), creds)
+			if err == nil {
+				t.Fatal("GetRequestMetadata returned no error")
+			}
+			if got := status.Code(err); got != tc.wantCode {
+				t.Errorf("GetRequestMetadata returned code %s, want %s: %v", got, tc.wantCode, err)
+			}
+			if !strings.Contains(err.Error(), tc.wantText) {
+				t.Errorf("error %q does not contain %q", err.Error(), tc.wantText)
+			}
+		})
 	}
 }
 

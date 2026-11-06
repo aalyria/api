@@ -19,6 +19,7 @@ go_library(
     srcs = [
         "auth.go",
         "doc.go",
+        "exchangeerror.go",
         "oidcserviceaccount.go",
         "oidcuser.go",
         "tokencache.go",
@@ -29,6 +30,7 @@ go_library(
         "@com_github_golang_jwt_jwt_v5//:jwt",
         "@com_github_google_uuid//:uuid",
         "@com_github_jonboulle_clockwork//:clockwork",
+        "@org_golang_google_grpc//codes",
         "@org_golang_google_grpc//credentials",
         "@org_golang_google_grpc//status",
         "@org_golang_x_oauth2//:oauth2",
@@ -40,6 +42,7 @@ go_test(
     name = "auth_test",
     srcs = [
         "auth_test.go",
+        "exchangeerror_test.go",
         "oidcserviceaccount_test.go",
         "oidcuser_test.go",
         "tokencache_test.go",

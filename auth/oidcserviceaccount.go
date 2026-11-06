@@ -241,7 +241,7 @@ func (sc *oidcServiceAccountCredentials) GetRequestMetadata(ctx context.Context,
 
 	token, err := sc.getToken(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get the service account access token: %w", err)
+		return nil, exchangeStatus(fmt.Errorf("failed to get the service account access token: %w", err))
 	}
 
 	return map[string]string{
@@ -356,8 +356,12 @@ func (sc *oidcServiceAccountCredentials) exchangeToken(ctx context.Context) (str
 		// A token endpoint can echo the request parameters, and the assertion
 		// is a credential, so the body is truncated before it reaches an
 		// error.
-		return "", time.Time{}, fmt.Errorf("the token endpoint %s returned status %d: %s%s",
+		err := fmt.Errorf("the token endpoint %s returned status %d: %s%s",
 			meta.TokenEndpoint, resp.StatusCode, truncateBody(body), invalidGrantCauses(body))
+		if resp.StatusCode == http.StatusBadRequest || resp.StatusCode == http.StatusUnauthorized {
+			return "", time.Time{}, refused(err)
+		}
+		return "", time.Time{}, err
 	}
 
 	var tokenResp struct {

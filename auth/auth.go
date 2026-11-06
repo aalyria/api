@@ -375,7 +375,7 @@ func (oc *oidcCredentials) GetRequestMetadata(ctx context.Context, _ ...string) 
 
 	token, err := oc.getToken(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get OIDC access token: %w", err)
+		return nil, exchangeStatus(fmt.Errorf("failed to get OIDC access token: %w", err))
 	}
 
 	return map[string]string{
@@ -433,7 +433,11 @@ func (oc *oidcCredentials) exchangeToken(ctx context.Context) (string, time.Time
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return "", time.Time{}, fmt.Errorf("token endpoint returned status %d: %s", resp.StatusCode, body)
+		err := fmt.Errorf("token endpoint returned status %d: %s", resp.StatusCode, body)
+		if resp.StatusCode == http.StatusBadRequest || resp.StatusCode == http.StatusUnauthorized {
+			return "", time.Time{}, refused(err)
+		}
+		return "", time.Time{}, err
 	}
 
 	var tokenResp struct {

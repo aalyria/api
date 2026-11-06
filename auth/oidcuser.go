@@ -89,7 +89,7 @@ func discover(ctx context.Context, issuer string, client HTTPDoer) (*providerMet
 	}
 
 	if strings.TrimSuffix(doc.Issuer, "/") != strings.TrimSuffix(issuer, "/") {
-		return nil, fmt.Errorf("the discovery document reports issuer %q, which does not match the configured issuer %q", doc.Issuer, issuer)
+		return nil, refused(fmt.Errorf("the discovery document reports issuer %q, which does not match the configured issuer %q", doc.Issuer, issuer))
 	}
 	if doc.TokenEndpoint == "" {
 		return nil, fmt.Errorf("the discovery document from %s has no token_endpoint", docURL)

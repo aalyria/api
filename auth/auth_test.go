@@ -873,13 +873,121 @@ func TestOIDCCredentials_ExchangeHasADeadline(t *testing.T) {
 
 		start := time.Now()
 		_, err := requestMetadata(t.Context(), creds)
-		if err == nil {
-			t.Error("GetRequestMetadata returned no error although the exchange timed out")
-		}
 		if waited := time.Since(start); waited != 50*time.Millisecond {
 			t.Errorf("GetRequestMetadata returned after %v, want the 50ms exchange timeout", waited)
 		}
+		// A provider that does not answer is a transient failure that the
+		// agent retries. DeadlineExceeded would name the caller's deadline,
+		// which has not passed.
+		if status.Code(err) != codes.Unavailable {
+			t.Errorf("GetRequestMetadata returned %v after the exchange timed out, want code %s", err, codes.Unavailable)
+		}
 	})
+}
+
+// answerWith is a token endpoint that returns one fixed response.
+func answerWith(code int, body string) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(code)
+		fmt.Fprint(w, body)
+	}
+}
+
+// TestOIDCCredentials_ExchangeErrorCodes pins the gRPC code of every exchange
+// failure. The agent stops on Unauthenticated and retries everything else, so
+// a refusal that comes back as Unavailable retries forever, and a transient
+// failure that comes back as Unauthenticated stops the node.
+func TestOIDCCredentials_ExchangeErrorCodes(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name    string
+		handler http.HandlerFunc
+		// closeServer closes the token endpoint before the call, so that the
+		// exchange meets a connection error.
+		closeServer bool
+		wantCode    codes.Code
+		wantText    string
+	}{
+		{
+			name:     "400 invalid_grant",
+			handler:  answerWith(http.StatusBadRequest, `{"error":"invalid_grant"}`),
+			wantCode: codes.Unauthenticated,
+			wantText: "status 400",
+		},
+		{
+			name:     "401",
+			handler:  answerWith(http.StatusUnauthorized, `{"error":"invalid_client"}`),
+			wantCode: codes.Unauthenticated,
+			wantText: "status 401",
+		},
+		{
+			name:     "408",
+			handler:  answerWith(http.StatusRequestTimeout, ""),
+			wantCode: codes.Unavailable,
+			wantText: "status 408",
+		},
+		{
+			name:     "429",
+			handler:  answerWith(http.StatusTooManyRequests, ""),
+			wantCode: codes.Unavailable,
+			wantText: "status 429",
+		},
+		{
+			name:     "500",
+			handler:  answerWith(http.StatusInternalServerError, ""),
+			wantCode: codes.Unavailable,
+			wantText: "status 500",
+		},
+		{
+			name:     "503",
+			handler:  answerWith(http.StatusServiceUnavailable, ""),
+			wantCode: codes.Unavailable,
+			wantText: "status 503",
+		},
+		{
+			name:        "connection refused",
+			handler:     answerWith(http.StatusOK, ""),
+			closeServer: true,
+			wantCode:    codes.Unavailable,
+			wantText:    "connection refused",
+		},
+		{
+			name:     "token body is not JSON",
+			handler:  answerWith(http.StatusOK, "not json"),
+			wantCode: codes.Unavailable,
+			wantText: "parsing token response",
+		},
+		{
+			name:     "no access_token",
+			handler:  answerWith(http.StatusOK, `{"token_type":"Bearer"}`),
+			wantCode: codes.Unavailable,
+			wantText: "missing access_token",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			clock := clockwork.NewFakeClockAt(time.Date(2023, time.January, 1, 12, 0, 0, 0, time.UTC))
+			server := httptest.NewServer(tc.handler)
+			t.Cleanup(server.Close)
+			creds := newTestOIDCCredentials(t, clock, server.URL, server.Client())
+			if tc.closeServer {
+				server.Close()
+			}
+
+			_, err := requestMetadata(t.Context(), creds)
+			if err == nil {
+				t.Fatal("GetRequestMetadata returned no error")
+			}
+			if got := status.Code(err); got != tc.wantCode {
+				t.Errorf("GetRequestMetadata returned code %s, want %s: %v", got, tc.wantCode, err)
+			}
+			if !strings.Contains(err.Error(), tc.wantText) {
+				t.Errorf("error %q does not contain %q", err.Error(), tc.wantText)
+			}
+		})
+	}
 }
 
 func TestOIDCCredentials_ServesAStaleTokenWhenTheRefreshFails(t *testing.T) {
