@@ -56,6 +56,20 @@ message AuthStrategy {
     SigningStrategy signing_strategy = 4;
   }
 
+  // OidcServiceAccount authenticates the agent as an identity provider service
+  // account. The agent reads the provider's JSON key file, signs an RFC 7523
+  // assertion with its private key, and exchanges the assertion for an access
+  // token that carries the project roles.
+  message OidcServiceAccount {
+    // The https URL of the OIDC issuer, e.g. https://idp.example.com.
+    // Required.
+    string issuer = 1;
+    // The project ID at the identity provider. Required.
+    string project_id = 2;
+    // The path to the JSON key file of the service account. Required.
+    string service_account_key_file = 3;
+  }
+
   oneof type {
     // The specifications for a JWT that should be generated and signed by the
     // agent.
@@ -67,6 +81,10 @@ message AuthStrategy {
 
     // OIDC client_credentials token exchange.
     OidcClientCredentials oidc_client_credentials = 3;
+
+    // OIDC service account token exchange, with the identity provider's
+    // JSON key file.
+    OidcServiceAccount oidc_service_account = 4;
   }
 }
 

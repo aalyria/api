@@ -166,6 +166,40 @@ openssl genrsa -out agent_priv_key.pem 4096
 openssl req -new -x509 -key agent_priv_key.pem -out agent_pub_key.cer -days 36500
 ```
 
+#### Service account authentication
+
+The agent can also authenticate as a service account at an OIDC identity provider, with the
+`oidc_service_account` auth strategy. The agent reads the JSON key file that the identity provider
+issues for the service account, and exchanges it for an access token at the identity provider. The
+strategy is available from Spacetime 29.0. An agent from an earlier release does not start with a
+config that sets it. Set the strategy in the `connection_params` of each SDN agent:
+
+```textproto
+auth_strategy: {
+  oidc_service_account: {
+    # The https URL of the OIDC issuer.
+    issuer: "https://idp.example.com"
+    # The project ID at the identity provider.
+    project_id: "234567890123456789"
+    # The path to the JSON key file of the service account.
+    service_account_key_file: "/etc/agent/key.json"
+  }
+}
+```
+
+The issuer must be an `https://` URL. Use the key file exactly as the identity provider issues it.
+The key file must be a regular file, or a symbolic link to one such as a Kubernetes secret mount,
+and it must not be larger than 1 MiB. It must contain the `keyId`, `key` and `userId` fields. A file
+without `userId` is probably an application key and not a service account key.
+
+The agent reads the key file one time, at startup, so a key rotation needs an agent restart. The
+`--dry-run` flag checks only the config and does not read the key file.
+
+When the identity provider refuses the token exchange, for example with `invalid_grant`, the agent
+stops that SDN agent. The agent retries a temporary failure, such as a timeout, an outage of the
+identity provider, or an HTTP 429 or 5xx response. The error `invalid_grant: invalid assertion` can
+come from a wrong key or from a wrong agent clock. See [Time synchronization](#time-synchronization).
+
 ### Starting the agent
 
 Assuming you've saved your configuration in a file called `config.textproto`, you can use the

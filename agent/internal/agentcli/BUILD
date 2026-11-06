@@ -23,6 +23,7 @@ go_library(
         "netlink_linux.go",
         "netlink_other.go",
         "pfsense.go",
+        "serviceaccount.go",
     ],
     importpath = "aalyria.com/spacetime/agent/internal/agentcli",
     x_defs = {
@@ -84,10 +85,17 @@ go_library(
 
 go_test(
     name = "agentcli_test",
-    srcs = ["agentcli_test.go"],
+    srcs = [
+        "agentcli_test.go",
+        "serviceaccount_test.go",
+    ],
     embed = [":agentcli"],
     deps = [
         "//agent/internal/configpb:configpb_go_proto",
         "//agent/internal/protofmt",
+        "//auth",
+        "@com_github_google_go_cmp//cmp",
+        "@com_github_jonboulle_clockwork//:clockwork",
+        "@org_golang_google_protobuf//types/known/emptypb",
     ],
 )

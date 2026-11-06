@@ -15,7 +15,11 @@
 package agentcli
 
 import (
+	"strings"
 	"testing"
+
+	"github.com/jonboulle/clockwork"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"aalyria.com/spacetime/agent/internal/configpb"
 	"aalyria.com/spacetime/agent/internal/protofmt"
@@ -42,5 +46,20 @@ func TestGetProtoFmtText(t *testing.T) {
 func TestGetProtoFmtWire(t *testing.T) {
 	if getProtoFmt(configpb.SdnAgent_ExternalCommand_WIRE) != protofmt.Wire {
 		t.Errorf("protofmt not match")
+	}
+}
+
+func TestGetDialOptsNoAuthStrategyType(t *testing.T) {
+	connParams := &configpb.ConnectionParams{
+		TransportSecurity: &configpb.ConnectionParams_TransportSecurity{
+			Type: &configpb.ConnectionParams_TransportSecurity_Insecure{Insecure: &emptypb.Empty{}},
+		},
+		EndpointUri:  "sbi.example.com:443",
+		AuthStrategy: &configpb.AuthStrategy{},
+	}
+
+	_, err := getDialOpts(t.Context(), connParams, clockwork.NewFakeClock())
+	if err == nil || !strings.Contains(err.Error(), "no auth_strategy provided") {
+		t.Errorf("getDialOpts error = %v, want the no auth_strategy provided error", err)
 	}
 }

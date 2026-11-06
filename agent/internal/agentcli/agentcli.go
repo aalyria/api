@@ -461,6 +461,13 @@ func getDialOpts(ctx context.Context, connParams *configpb.ConnectionParams, clo
 		}
 		dialOpts = append(dialOpts, grpc.WithPerRPCCredentials(creds))
 
+	case *configpb.AuthStrategy_OidcServiceAccount_:
+		creds, err := newOIDCServiceAccountCredentials(ctx, authStrat.GetOidcServiceAccount(), clock, useQUIC)
+		if err != nil {
+			return nil, fmt.Errorf("creating OIDC service account credentials: %w", err)
+		}
+		dialOpts = append(dialOpts, grpc.WithPerRPCCredentials(creds))
+
 	default:
 		return nil, errors.New("no auth_strategy provided")
 	}
