@@ -97,7 +97,7 @@ maven.install(
     artifacts = [
         "com.google.code.gson:gson:2.13.2",
         "com.google.googlejavaformat:google-java-format:1.31.0",
-        "com.google.guava:guava:33.5.0-jre",
+        "com.google.guava:guava:33.7.2-jre",
         "io.grpc:grpc-testing:1.76.0",
         "io.helidon.grpc:helidon-grpc-core:3.2.5",
         "junit:junit:4.13.2",
