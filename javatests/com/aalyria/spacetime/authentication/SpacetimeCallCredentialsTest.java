@@ -130,7 +130,7 @@ public class SpacetimeCallCredentialsTest {
     grpcCleanup.register(
         InProcessServerBuilder.forName(MOCK_NBI_SERVER_NAME)
             .directExecutor()
-            .addService(modelServiceImpl)
+            .addService(ModelGrpc.bindService(modelServiceImpl))
             .intercept(
                 new ServerInterceptor() {
                   @Override
@@ -197,7 +197,7 @@ public class SpacetimeCallCredentialsTest {
     grpcCleanup.register(
         InProcessServerBuilder.forName(MOCK_NBI_SERVER_NAME)
             .directExecutor()
-            .addService(modelServiceImpl)
+            .addService(ModelGrpc.bindService(modelServiceImpl))
             .build()
             .start());
     ManagedChannel channel =

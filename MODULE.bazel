@@ -91,7 +91,7 @@ maven.install(
         "io.helidon.grpc:helidon-grpc-core:3.2.22",
         "junit:junit:4.13.2",
         "org.bouncycastle:bcprov-jdk18on:1.85",
-        "org.mockito:mockito-core:4.11.0",
+        "org.mockito:mockito-core:5.24.0",
     ],
     repositories = [
         "https://repo.maven.apache.org/maven2/",
