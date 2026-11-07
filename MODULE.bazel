@@ -95,14 +95,14 @@ bazel_dep(name = "container_structure_test", version = "1.16.0", dev_dependency 
 maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
 maven.install(
     artifacts = [
-        "com.google.code.gson:gson:2.13.2",
-        "com.google.googlejavaformat:google-java-format:1.31.0",
+        "com.google.code.gson:gson:2.15.0",
+        "com.google.googlejavaformat:google-java-format:1.37.0",
         "com.google.guava:guava:33.7.2-jre",
-        "io.grpc:grpc-testing:1.76.0",
+        "io.grpc:grpc-testing:1.85.1",
         "io.helidon.grpc:helidon-grpc-core:3.2.22",
         "junit:junit:4.13.2",
-        "org.bouncycastle:bcprov-jdk18on:1.82",
-        "org.mockito:mockito-core:4.5.1",
+        "org.bouncycastle:bcprov-jdk18on:1.85",
+        "org.mockito:mockito-core:4.11.0",
     ],
     repositories = [
         "https://repo.maven.apache.org/maven2/",
