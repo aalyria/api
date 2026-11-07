@@ -178,12 +178,7 @@ public class SpacetimeCallCredentialsTest {
             /* clock= */ Clock.system(ZoneId.systemDefault()));
     ExecutorService executor = Executors.newFixedThreadPool(NUM_THREADS);
     for (int i = 0; i < NUM_THREADS; ++i) {
-      executor.submit(
-          () -> {
-            ModelGrpc.newBlockingStub(channel)
-                .withCallCredentials(callCredentials)
-                .listEntities(ListEntitiesRequest.newBuilder().build());
-          });
+      executor.submit(() -> listEntities(channel, callCredentials));
     }
     executor.shutdown();
     // Allows a permissive timeout of 10 seconds for all threads to complete.
@@ -254,17 +249,19 @@ public class SpacetimeCallCredentialsTest {
     // be refreshed once, and all other threads should read the new value.
     ExecutorService executor = Executors.newFixedThreadPool(NUM_THREADS);
     for (int i = 0; i < NUM_THREADS; ++i) {
-      executor.submit(
-          () -> {
-            ModelGrpc.newBlockingStub(channel)
-                .withCallCredentials(callCredentials)
-                .listEntities(ListEntitiesRequest.newBuilder().build());
-          });
+      executor.submit(() -> listEntities(channel, callCredentials));
     }
     executor.shutdown();
     // Allows a permissive timeout of 10 seconds for all threads to complete.
     assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
     // Verifies that the token was only created once.
     assertEquals(1, oidcTokenServer.numCalls.get());
+  }
+
+  private static void listEntities(
+      ManagedChannel channel, SpacetimeCallCredentials callCredentials) {
+    ModelGrpc.newBlockingStub(channel)
+        .withCallCredentials(callCredentials)
+        .listEntities(ListEntitiesRequest.newBuilder().build());
   }
 }
