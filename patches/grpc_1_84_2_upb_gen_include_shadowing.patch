@@ -1,6 +1,6 @@
 --- bazel/grpc_build_system.bzl
 +++ bazel/grpc_build_system.bzl
-@@ -179,8 +179,6 @@ def grpc_cc_library(
+@@ -192,8 +192,6 @@
          linkopts = linkopts,
          includes = [
              include_prefix + "include",

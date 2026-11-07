@@ -14,7 +14,6 @@
 
 exports_files([
     "c-ares_1_19_1_rbe_headers.patch",
-    "grpc_1_74_1_rbe_xds_headers.patch",
-    "grpc_1_74_1_upb_gen_include_shadowing.patch",
-    "protobuf_v31_1_zig_constinit_fix.patch",
+    "grpc_1_84_2_rbe_xds_headers.patch",
+    "grpc_1_84_2_upb_gen_include_shadowing.patch",
 ])

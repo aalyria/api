@@ -1,6 +1,6 @@
 --- src/core/BUILD
 +++ src/core/BUILD
-@@ -5864,6 +5864,10 @@ grpc_cc_library(
+@@ -6731,6 +6731,10 @@
      ],
      tags = ["nofixdeps"],
      deps = [

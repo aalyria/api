@@ -15,7 +15,7 @@
 module(name = "aalyria_api")
 
 bazel_dep(name = "bazel_skylib", version = "1.9.0")
-bazel_dep(name = "protobuf", version = "31.1")
+bazel_dep(name = "protobuf", version = "36.2")
 bazel_dep(name = "gazelle", version = "0.46.0")
 bazel_dep(name = "googleapis", version = "0.0.0-20241220-5e258e33.bcr.1")
 bazel_dep(name = "googleapis-python", version = "1.0.0")
@@ -37,20 +37,7 @@ bazel_dep(name = "rules_python", version = "1.6.3")
 bazel_dep(name = "rules_rs", version = "0.0.108")
 bazel_dep(name = "rules_shell", version = "0.6.1")
 bazel_dep(name = "aspect_rules_py", version = "1.8.4")
-bazel_dep(name = "toolchains_protoc", version = "0.4.3")
 bazel_dep(name = "toolchains_llvm", version = "1.4.0")
-
-# Patch protobuf v31.1 to fix constinit issue with zig-based hermetic toolchain.
-# The issue: protobuf's GlobalEmptyStringConstexpr uses constinit with heap allocation,
-# which is incompatible with zig's libc++ (similar to MSVC). This patch restores the
-# MSVC guard that was present in earlier versions and extends it to cover zig toolchains.
-# See: https://github.com/protocolbuffers/protobuf/issues/22065
-single_version_override(
-    module_name = "protobuf",
-    patch_strip = 1,
-    patches = ["//patches:protobuf_v31_1_zig_constinit_fix.patch"],
-    version = "31.1",
-)
 
 # Patch c-ares v1.19.1 to fix RBE build with strict header checking.
 # The issue: c-ares BUILD.bazel is missing include/ares_build.h in hdrs list,
@@ -73,22 +60,24 @@ single_version_override(
     module_name = "grpc",
     patch_strip = 0,
     patches = [
-        "//patches:grpc_1_74_1_rbe_xds_headers.patch",
-        "//patches:grpc_1_74_1_upb_gen_include_shadowing.patch",
+        "//patches:grpc_1_84_2_rbe_xds_headers.patch",
+        "//patches:grpc_1_84_2_upb_gen_include_shadowing.patch",
     ],
-    version = "1.74.1",
+    version = "1.84.2",
 )
 
-# Configure the protoc toolchain used by rules_proto_grpc to use protoc v31.1.
-# This ensures that the version agrees with the protobuf dependency version,
-# which is necessary because Protobuf C++ requires an exact match between its
-# generated code version and its runtime version.
-# (https://protobuf.dev/support/cross-version-runtime-guarantee/#cpp)
-protoc = use_extension("@toolchains_protoc//protoc:extensions.bzl", "protoc")
-protoc.toolchain(
-    google_protobuf = "com_google_protobuf",
-    version = "v31.1",
-)
+# grpc 1.84.2 asks for an envoy_api whose MODULE.bazel imports a repo that
+# googleapis' switched_rules extension no longer generates, which breaks
+# `bazel mod deps`. This envoy_api dropped that import.
+bazel_dep(name = "envoy_api", version = "0.0.0-20260901-005c18a.bcr.1")
+
+# Protobuf C++ requires its generated code to come from exactly the protoc
+# release that matches the runtime
+# (https://protobuf.dev/support/cross-version-runtime-guarantee/#cpp).
+# rules_proto_grpc asks toolchains_protoc for protoc v31.1, so register
+# protobuf's own prebuilt protoc toolchains (the same release as the protobuf
+# bazel_dep) ahead of it.
+register_toolchains("@protobuf//bazel/private/oss/toolchains/prebuilt:all")
 
 bazel_dep(name = "container_structure_test", version = "1.16.0", dev_dependency = True)
 
@@ -277,8 +266,8 @@ use_repo(crate, "st_crates")
 bazel_dep(name = "org_outernetcouncil_nmts")
 archive_override(
     module_name = "org_outernetcouncil_nmts",
-    strip_prefix = "nmts-1.31.0",
-    urls = ["https://github.com/outernetcouncil/nmts/archive/refs/tags/v1.31.0.tar.gz"],
+    strip_prefix = "nmts-1.32.0",
+    urls = ["https://github.com/outernetcouncil/nmts/archive/refs/tags/v1.32.0.tar.gz"],
 )
 
 http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
