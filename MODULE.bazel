@@ -88,7 +88,7 @@ maven.install(
         "com.google.googlejavaformat:google-java-format:2.0.0",
         "com.google.guava:guava:33.7.2-jre",
         "io.grpc:grpc-testing:1.85.1",
-        "io.helidon.grpc:helidon-grpc-core:3.2.22",
+        "io.helidon.grpc:helidon-grpc-core:4.5.6",
         "junit:junit:4.13.2",
         "org.bouncycastle:bcprov-jdk18on:1.86",
         "org.mockito:mockito-core:5.24.0",
