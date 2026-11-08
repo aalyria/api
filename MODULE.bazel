@@ -35,7 +35,7 @@ bazel_dep(name = "rules_proto_grpc_java", version = "5.6.0")
 bazel_dep(name = "rules_proto_grpc_python", version = "5.6.0")
 bazel_dep(name = "rules_python", version = "1.6.3")
 bazel_dep(name = "rules_rs", version = "0.2.1")
-bazel_dep(name = "rules_shell", version = "0.6.1")
+bazel_dep(name = "rules_shell", version = "0.8.0")
 bazel_dep(name = "aspect_rules_py", version = "1.8.4")
 bazel_dep(name = "toolchains_llvm", version = "1.4.0")
 
