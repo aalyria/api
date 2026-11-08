@@ -61,7 +61,7 @@ go_library(
         "//tools/nbictl/proto:nbictl_go_proto",
         "//tools/nbictl/proto:omni_fragment_go_proto",
         "//tools/nbictl/proto:provisioning_go_proto",
-        "@com_github_deckarep_golang_set_v2//:golang-set",
+        "@com_github_deckarep_golang_set_v3//:golang-set",
         "@com_github_fullstorydev_grpcurl//:grpcurl",
         "@com_github_google_uuid//:uuid",
         "@com_github_gosuri_uiprogress//:uiprogress",

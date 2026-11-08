@@ -125,7 +125,7 @@ go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
 go_deps.from_file(go_mod = "//:go.mod")
 use_repo(
     go_deps,
-    "com_github_deckarep_golang_set_v2",
+    "com_github_deckarep_golang_set_v3",
     "com_github_fullstorydev_grpcurl",
     "com_github_golang_jwt_jwt_v5",
     "com_github_google_go_cmp",
@@ -266,8 +266,8 @@ use_repo(crate, "st_crates")
 bazel_dep(name = "org_outernetcouncil_nmts")
 archive_override(
     module_name = "org_outernetcouncil_nmts",
-    strip_prefix = "nmts-1.33.0",
-    urls = ["https://github.com/outernetcouncil/nmts/archive/refs/tags/v1.33.0.tar.gz"],
+    strip_prefix = "nmts-1.34.0",
+    urls = ["https://github.com/outernetcouncil/nmts/archive/refs/tags/v1.34.0.tar.gz"],
 )
 
 http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")

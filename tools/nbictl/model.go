@@ -27,7 +27,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	set "github.com/deckarep/golang-set/v2"
+	set "github.com/deckarep/golang-set/v3"
 	"github.com/samber/lo"
 	"github.com/sourcegraph/conc/pool"
 	"github.com/urfave/cli/v2"

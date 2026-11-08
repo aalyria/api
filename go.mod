@@ -9,7 +9,7 @@ require (
 	github.com/bazelbuild/buildtools v0.0.0-20260528135316-84fa6c32aee6
 	github.com/bazelbuild/rules_go v0.57.0
 	github.com/cloudspannerecosystem/spanner-truncate v0.1.4
-	github.com/deckarep/golang-set/v2 v2.8.0
+	github.com/deckarep/golang-set/v3 v3.0.0
 	github.com/favadi/protoc-go-inject-tag v1.4.0
 	github.com/fullstorydev/grpcurl v1.8.6
 	github.com/gocomply/xsd2go v0.1.11
