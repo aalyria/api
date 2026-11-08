@@ -19,11 +19,13 @@ import (
 	"io"
 	"os"
 	"slices"
+	"strings"
 
 	"github.com/fullstorydev/grpcurl"
-	"github.com/jhump/protoreflect/desc"
-	"github.com/jhump/protoreflect/grpcreflect"
+	"github.com/jhump/protoreflect/v2/grpcreflect"
+	"github.com/jhump/protoreflect/v2/protoresolve"
 	"github.com/urfave/cli/v2"
+	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
 
@@ -63,7 +65,7 @@ func GRPCDescribeServices(appCtx *cli.Context) error {
 	}
 
 	for _, svc := range svcs {
-		if err := describeSymbol(appCtx, refClient, svc); err != nil {
+		if err := describeSymbol(appCtx, refClient, string(svc)); err != nil {
 			return err
 		}
 	}
@@ -80,45 +82,66 @@ func GRPCDescribeSymbol(appCtx *cli.Context, symbol string) error {
 	return describeSymbol(appCtx, refClient, symbol)
 }
 
+// resolveSymbol asks the server for the file that declares symbol and returns
+// the symbol's descriptor.
+func resolveSymbol(refClient *grpcreflect.Client, symbol string) (protoreflect.Descriptor, error) {
+	name := protoreflect.FullName(strings.TrimPrefix(symbol, "."))
+	f, err := refClient.FileContainingSymbol(name)
+	if err != nil {
+		return nil, err
+	}
+	return findSymbol(f, name), nil
+}
+
+// findSymbol returns the descriptor named symbol in file f, or in a file that f
+// imports publicly, or nil if there is none.
+func findSymbol(f protoreflect.FileDescriptor, symbol protoreflect.FullName) protoreflect.Descriptor {
+	if d := protoresolve.FindDescriptorByNameInFile(f, symbol); d != nil {
+		return d
+	}
+	imports := f.Imports()
+	for i := range imports.Len() {
+		if imp := imports.Get(i); imp.IsPublic {
+			if d := findSymbol(imp.FileDescriptor, symbol); d != nil {
+				return d
+			}
+		}
+	}
+	return nil
+}
+
 func describeSymbol(appCtx *cli.Context, refClient *grpcreflect.Client, symbol string) error {
-	f, err := refClient.FileContainingSymbol(symbol)
+	dsc, err := resolveSymbol(refClient, symbol)
 	if err != nil {
 		return err
 	}
-	dsc := f.FindSymbol(symbol)
 	if dsc == nil {
 		return fmt.Errorf("couldn't find symbol %q", symbol)
 	}
 
 	elementType := ""
 	switch d := dsc.(type) {
-	case *desc.MessageDescriptor:
+	case protoreflect.MessageDescriptor:
 		elementType = "a message"
-		if parent, ok := d.GetParent().(*desc.MessageDescriptor); ok {
+		if parent, ok := d.Parent().(protoreflect.MessageDescriptor); ok {
 			if d.IsMapEntry() {
-				for _, f := range parent.GetFields() {
-					if f.IsMap() && f.GetMessageType() == d {
-						// found it: describe the map field instead
-						elementType = "the entry type for a map field"
-						dsc = f
-						break
-					}
+				if f := fieldOfType(parent, d, protoreflect.FieldDescriptor.IsMap); f != nil {
+					// found it: describe the map field instead
+					elementType = "the entry type for a map field"
+					dsc = f
 				}
 			} else {
 				// see if it's a group
-				for _, f := range parent.GetFields() {
-					if f.GetType() == descriptorpb.FieldDescriptorProto_TYPE_GROUP && f.GetMessageType() == d {
-						// found it: describe the group field instead
-						elementType = "the type of a group field"
-						dsc = f
-						break
-					}
+				if f := fieldOfType(parent, d, isGroup); f != nil {
+					// found it: describe the group field instead
+					elementType = "the type of a group field"
+					dsc = f
 				}
 			}
 		}
-	case *desc.FieldDescriptor:
+	case protoreflect.FieldDescriptor:
 		switch {
-		case d.GetType() == descriptorpb.FieldDescriptorProto_TYPE_GROUP:
+		case isGroup(d):
 			elementType = "a group field"
 		case d.IsExtension():
 			elementType = "an extension"
@@ -126,22 +149,38 @@ func describeSymbol(appCtx *cli.Context, refClient *grpcreflect.Client, symbol s
 			elementType = "a field"
 		}
 
-	case *desc.OneOfDescriptor:
+	case protoreflect.OneofDescriptor:
 		elementType = "a one-of"
-	case *desc.EnumDescriptor:
+	case protoreflect.EnumDescriptor:
 		elementType = "an enum"
-	case *desc.EnumValueDescriptor:
+	case protoreflect.EnumValueDescriptor:
 		elementType = "an enum value"
-	case *desc.ServiceDescriptor:
+	case protoreflect.ServiceDescriptor:
 		elementType = "a service"
-	case *desc.MethodDescriptor:
+	case protoreflect.MethodDescriptor:
 		elementType = "a method"
 	default:
 		return fmt.Errorf("descriptor has unrecognized type %T", dsc)
 	}
 
-	fmt.Fprintf(appCtx.App.Writer, "%s is %s\n", dsc.GetFullyQualifiedName(), elementType)
+	fmt.Fprintf(appCtx.App.Writer, "%s is %s\n", dsc.FullName(), elementType)
 	return nil
+}
+
+// fieldOfType returns the first field of parent whose type is msg and that
+// matches, or nil if there is none.
+func fieldOfType(parent, msg protoreflect.MessageDescriptor, matches func(protoreflect.FieldDescriptor) bool) protoreflect.FieldDescriptor {
+	fields := parent.Fields()
+	for i := range fields.Len() {
+		if f := fields.Get(i); matches(f) && f.Message() == msg {
+			return f
+		}
+	}
+	return nil
+}
+
+func isGroup(f protoreflect.FieldDescriptor) bool {
+	return f.Kind() == protoreflect.GroupKind
 }
 
 func GRPCList(appCtx *cli.Context) error {
@@ -182,14 +221,19 @@ func GRPCListMethods(appCtx *cli.Context, svc string) error {
 	defer conn.Close()
 	refClient := grpcreflect.NewClientAuto(appCtx.Context, conn)
 
-	serviceDesc, err := refClient.ResolveService(svc)
+	dsc, err := resolveSymbol(refClient, svc)
 	if err != nil {
 		return fmt.Errorf("resolving service %q: %w", svc, err)
 	}
+	serviceDesc, ok := dsc.(protoreflect.ServiceDescriptor)
+	if !ok {
+		return fmt.Errorf("resolving service %q: Service not found: %s", svc, svc)
+	}
 
-	methods := make([]string, 0, len(serviceDesc.GetMethods()))
-	for _, meth := range serviceDesc.GetMethods() {
-		methods = append(methods, meth.GetFullyQualifiedName())
+	methodDescs := serviceDesc.Methods()
+	methods := make([]string, 0, methodDescs.Len())
+	for i := range methodDescs.Len() {
+		methods = append(methods, string(methodDescs.Get(i).FullName()))
 	}
 	slices.Sort(methods)
 	for _, meth := range methods {
@@ -223,7 +267,7 @@ func GRPCCall(appCtx *cli.Context) error {
 	}
 	defer conn.Close()
 
-	svcDescriptors, err := desc.WrapFiles([]protoreflect.FileDescriptor{
+	descSrc, err := grpcurl.DescriptorSourceFromFileDescriptorSet(fileDescriptorSet(
 		fedpb.File_api_federation_interconnect_v1alpha_interconnect_proto,
 		modelpb.File_api_model_v1_model_proto,
 		permissionspb.File_api_permissions_v1alpha_permissions_proto,
@@ -233,12 +277,7 @@ func GRPCCall(appCtx *cli.Context) error {
 		telemetrypb.File_api_telemetry_v1alpha_telemetry_proto,
 		statuspb.File_api_status_v1_status_proto,
 		auditpb.File_api_audit_v1alpha_audit_logs_proto,
-	})
-	if err != nil {
-		return err
-	}
-
-	descSrc, err := grpcurl.DescriptorSourceFromFileDescriptors(svcDescriptors...)
+	))
 	if err != nil {
 		return err
 	}
@@ -277,4 +316,26 @@ func GRPCCall(appCtx *cli.Context) error {
 		return fmt.Errorf("rpc failed: %w", err)
 	}
 	return nil
+}
+
+// fileDescriptorSet returns files and everything they import, transitively.
+func fileDescriptorSet(files ...protoreflect.FileDescriptor) *descriptorpb.FileDescriptorSet {
+	set := &descriptorpb.FileDescriptorSet{}
+	seen := map[string]bool{}
+	var add func(protoreflect.FileDescriptor)
+	add = func(f protoreflect.FileDescriptor) {
+		if seen[f.Path()] {
+			return
+		}
+		seen[f.Path()] = true
+		imports := f.Imports()
+		for i := range imports.Len() {
+			add(imports.Get(i).FileDescriptor)
+		}
+		set.File = append(set.File, protodesc.ToFileDescriptorProto(f))
+	}
+	for _, f := range files {
+		add(f)
+	}
+	return set
 }

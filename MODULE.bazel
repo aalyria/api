@@ -133,7 +133,7 @@ use_repo(
     "com_github_gosnmp_gosnmp",
     "com_github_gosuri_uiprogress",
     "com_github_iancoleman_strcase",
-    "com_github_jhump_protoreflect",
+    "com_github_jhump_protoreflect_v2",
     "com_github_jonboulle_clockwork",
     "com_github_mattn_go_isatty",
     "com_github_prometheus_client_golang",
