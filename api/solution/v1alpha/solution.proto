@@ -214,7 +214,36 @@ message TxConfiguration {
 message Endpoint {
   string modem_id = 3;
 
-  reserved 1, 2, 4 to max;
+  // If set, the link budget information for this endpoint in its
+  // corresponding beam, for analytical purposes.
+  LinkBudget link_budget = 4;
+
+  reserved 1, 2, 5 to max;
+}
+
+message LinkBudget {
+  // Carrier-to-noise ratio (C/N), in dB.
+  double c_n_db = 1;
+
+  // Carrier-to-interference ratio (C/I), in dB. Combines self interference,
+  // external interference and HPA intermodulation noise (NPR). Not set when
+  // none of the above are present.
+  optional double c_i_db = 2;
+
+  // Carrier-to-external-interference ratio, in dB. Isolates the interference
+  // contribution from sources outside the network. Not set when there is no
+  // modeled external interference.
+  optional double c_i_external_db = 3;
+
+  // Carrier-to-self-interference ratio, in dB. Isolates the interference
+  // contribution from sources within the network. Not set when there is no
+  // self-interference.
+  optional double c_i_self_db = 4;
+
+  // Carrier-to-interference-plus-noise ratio (C/(N+I)), in dB.
+  double cnir_db = 5;
+
+  reserved 6 to max;
 }
 
 message BeamHoppingPlan {
