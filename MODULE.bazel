@@ -14,30 +14,30 @@
 
 module(name = "aalyria_api")
 
-bazel_dep(name = "bazel_skylib", version = "1.9.0")
+bazel_dep(name = "bazel_skylib", version = "1.9.2")
 bazel_dep(name = "protobuf", version = "36.2")
 bazel_dep(name = "gazelle", version = "0.54.0")
-bazel_dep(name = "googleapis", version = "0.0.0-20241220-5e258e33.bcr.1")
-bazel_dep(name = "googleapis-python", version = "1.0.0")
-bazel_dep(name = "googleapis-java", version = "1.0.0")
-bazel_dep(name = "googleapis-cc", version = "1.0.0")
+bazel_dep(name = "googleapis", version = "0.0.0-20261103-57aa4dbc")
+bazel_dep(name = "googleapis-python", version = "1.1.5")
+bazel_dep(name = "googleapis-java", version = "1.1.5")
+bazel_dep(name = "googleapis-cc", version = "1.1.5")
 bazel_dep(name = "platforms", version = "1.1.0")
-bazel_dep(name = "rules_cc", version = "0.2.16")
+bazel_dep(name = "rules_cc", version = "0.2.28")
 bazel_dep(name = "rules_go", version = "0.58.3")
 bazel_dep(name = "rules_java", version = "9.9.0")
 bazel_dep(name = "rules_jvm_external", version = "7.2")
-bazel_dep(name = "rules_img", version = "0.3.4")
-bazel_dep(name = "rules_pkg", version = "1.1.0")
+bazel_dep(name = "rules_img", version = "0.3.24")
+bazel_dep(name = "rules_pkg", version = "1.3.0")
 bazel_dep(name = "rules_proto", version = "7.1.0")
-bazel_dep(name = "rules_proto_grpc_cpp", version = "5.6.0")
-bazel_dep(name = "rules_proto_grpc_doc", version = "5.6.0")
-bazel_dep(name = "rules_proto_grpc_java", version = "5.6.0")
-bazel_dep(name = "rules_proto_grpc_python", version = "5.6.0")
+bazel_dep(name = "rules_proto_grpc_cpp", version = "5.8.0")
+bazel_dep(name = "rules_proto_grpc_doc", version = "5.8.0")
+bazel_dep(name = "rules_proto_grpc_java", version = "5.8.0")
+bazel_dep(name = "rules_proto_grpc_python", version = "5.8.0")
 bazel_dep(name = "rules_python", version = "2.4.6")
 bazel_dep(name = "rules_rs", version = "0.2.1")
 bazel_dep(name = "rules_shell", version = "0.8.0")
-bazel_dep(name = "aspect_rules_py", version = "1.8.4")
-bazel_dep(name = "toolchains_llvm", version = "1.4.0")
+bazel_dep(name = "aspect_rules_py", version = "1.13.0")
+bazel_dep(name = "toolchains_llvm", version = "1.13.0")
 
 # Patch c-ares v1.19.1 to fix RBE build with strict header checking.
 # The issue: c-ares BUILD.bazel is missing include/ares_build.h in hdrs list,
@@ -79,7 +79,7 @@ bazel_dep(name = "envoy_api", version = "0.0.0-20260901-005c18a.bcr.1")
 # bazel_dep) ahead of it.
 register_toolchains("@protobuf//bazel/private/oss/toolchains/prebuilt:all")
 
-bazel_dep(name = "container_structure_test", version = "1.16.0", dev_dependency = True)
+bazel_dep(name = "container_structure_test", version = "1.22.1", dev_dependency = True)
 
 maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
 maven.install(
@@ -180,14 +180,14 @@ python.toolchain(
 
 uv = use_extension("@aspect_rules_py//uv/unstable:extension.bzl", "uv")
 uv.declare_hub(hub_name = "python_deps")
-uv.declare_venv(
+uv.project(
+    # Every locked package ships a linux wheel, so sdist builds are never used.
+    # The default build backend ("build") isn't in uv.lock, and rules_py fails
+    # to resolve it.
+    default_build_dependencies = [],
     hub_name = "python_deps",
-    venv_name = "default",
-)
-uv.lockfile(
-    src = "//:uv.lock",
-    hub_name = "python_deps",
-    venv_name = "default",
+    lock = "//:uv.lock",
+    pyproject = "//:pyproject.toml",
 )
 use_repo(uv, "python_deps")
 
@@ -196,7 +196,7 @@ pull = use_repo_rule("@rules_img//img:pull.bzl", "pull")
 pull(
     name = "alpine_base",
     # mirror.gcr.io/library/alpine:3.19.1 (pull-through cache for docker.io)
-    digest = "sha256:c5b1261d6d3e43071626931fc004f70149baeba2c8ec672bd4f27761f8e1ad6b",  # 3.19.1 2024-01-26
+    digest = "sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf",  # 3.19.1 2024-01-26
     layer_handling = "lazy",
     registry = "mirror.gcr.io",
     repository = "library/alpine",
@@ -266,8 +266,8 @@ use_repo(crate, "st_crates")
 bazel_dep(name = "org_outernetcouncil_nmts")
 archive_override(
     module_name = "org_outernetcouncil_nmts",
-    strip_prefix = "nmts-1.37.0",
-    urls = ["https://github.com/outernetcouncil/nmts/archive/refs/tags/v1.37.0.tar.gz"],
+    strip_prefix = "nmts-1.38.0",
+    urls = ["https://github.com/outernetcouncil/nmts/archive/refs/tags/v1.38.0.tar.gz"],
 )
 
 http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
