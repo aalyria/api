@@ -40,109 +40,16 @@ import (
 	"aalyria.com/spacetime/tools/nbictl/nbictlpb"
 )
 
-func TestFileTokenStore_SaveAndLoad(t *testing.T) {
-	t.Parallel()
-
-	store := newFileTokenStore(t.TempDir(), "dev")
-	want := &auth.Tokens{
-		IDToken:      "id-token-1",
-		RefreshToken: "refresh-token-1",
-		Expiry:       time.Date(2026, time.August, 11, 13, 0, 0, 0, time.UTC),
-	}
-
-	if err := store.Save(want); err != nil {
-		t.Fatalf("Save returned an unexpected error: %v", err)
-	}
-
-	got, err := store.Load()
-	if err != nil {
-		t.Fatalf("Load returned an unexpected error: %v", err)
-	}
-	if got.IDToken != want.IDToken {
-		t.Errorf("IDToken: got %q, want %q", got.IDToken, want.IDToken)
-	}
-	if got.RefreshToken != want.RefreshToken {
-		t.Errorf("RefreshToken: got %q, want %q", got.RefreshToken, want.RefreshToken)
-	}
-	if !got.Expiry.Equal(want.Expiry) {
-		t.Errorf("Expiry: got %v, want %v", got.Expiry, want.Expiry)
-	}
-}
-
-func TestFileTokenStore_FileModeIs0600(t *testing.T) {
+// TestFileTokenStore_IsInTheTokenDirectory keeps every profile's user tokens
+// in the token directory, where logout and the service account cache expect
+// them.
+func TestFileTokenStore_IsInTheTokenDirectory(t *testing.T) {
 	t.Parallel()
 
 	confDir := t.TempDir()
 	store := newFileTokenStore(confDir, "dev")
-	if err := store.Save(&auth.Tokens{IDToken: "id-token-1"}); err != nil {
-		t.Fatalf("Save returned an unexpected error: %v", err)
-	}
-
-	info, err := os.Stat(store.path)
-	if err != nil {
-		t.Fatalf("the token file is missing: %v", err)
-	}
-	if want := filepath.Join(confDir, "tokens"); filepath.Dir(store.path) != want {
-		t.Errorf("the token directory is %q, want %q", filepath.Dir(store.path), want)
-	}
-	if got := info.Mode().Perm(); got != 0o600 {
-		t.Errorf("file mode: got %o, want %o", got, 0o600)
-	}
-}
-
-func TestFileTokenStore_LeavesNoTemporaryFile(t *testing.T) {
-	t.Parallel()
-
-	confDir := t.TempDir()
-	store := newFileTokenStore(confDir, "dev")
-	if err := store.Save(&auth.Tokens{IDToken: "id-token-1"}); err != nil {
-		t.Fatalf("Save returned an unexpected error: %v", err)
-	}
-
-	entries, err := os.ReadDir(filepath.Join(confDir, "tokens"))
-	if err != nil {
-		t.Fatalf("reading the token directory: %v", err)
-	}
-	if len(entries) != 1 {
-		names := []string{}
-		for _, e := range entries {
-			names = append(names, e.Name())
-		}
-		t.Errorf("the token directory holds %v, but only %s was expected", names, filepath.Base(store.path))
-	}
-}
-
-func TestFileTokenStore_LoadWithNoFile(t *testing.T) {
-	t.Parallel()
-
-	got, err := newFileTokenStore(t.TempDir(), "dev").Load()
-	if err != nil {
-		t.Fatalf("Load returned an unexpected error: %v", err)
-	}
-	if got != nil {
-		t.Errorf("Load: got %v, want nil when the user is not logged in", got)
-	}
-}
-
-func TestFileTokenStore_Delete(t *testing.T) {
-	t.Parallel()
-
-	confDir := t.TempDir()
-	store := newFileTokenStore(confDir, "dev")
-	if err := store.Save(&auth.Tokens{IDToken: "id-token-1"}); err != nil {
-		t.Fatalf("Save returned an unexpected error: %v", err)
-	}
-
-	if err := store.Delete(); err != nil {
-		t.Fatalf("Delete returned an unexpected error: %v", err)
-	}
-	if _, err := os.Stat(store.path); !os.IsNotExist(err) {
-		t.Error("the token file still exists after Delete")
-	}
-
-	// A second delete must succeed.
-	if err := store.Delete(); err != nil {
-		t.Errorf("the second Delete returned an unexpected error: %v", err)
+	if want := filepath.Join(confDir, "tokens"); filepath.Dir(store.Path()) != want {
+		t.Errorf("the token directory is %q, want %q", filepath.Dir(store.Path()), want)
 	}
 }
 
@@ -158,8 +65,8 @@ func TestFileTokenStore_SanitisesTheProfileName(t *testing.T) {
 	}
 
 	wantDir := filepath.Join(confDir, "tokens")
-	if !strings.HasPrefix(store.path, wantDir+string(filepath.Separator)) {
-		t.Errorf("the token path %q is outside %q", store.path, wantDir)
+	if !strings.HasPrefix(store.Path(), wantDir+string(filepath.Separator)) {
+		t.Errorf("the token path %q is outside %q", store.Path(), wantDir)
 	}
 }
 
@@ -175,8 +82,8 @@ func TestFileTokenStore_DistinguishesProfilesThatSanitiseAlike(t *testing.T) {
 	first := newFileTokenStore(confDir, "prod/x")
 	second := newFileTokenStore(confDir, "prod_x")
 
-	if first.path == second.path {
-		t.Fatalf("the profiles %q and %q share the token file %q", "prod/x", "prod_x", first.path)
+	if first.Path() == second.Path() {
+		t.Fatalf("the profiles %q and %q share the token file %q", "prod/x", "prod_x", first.Path())
 	}
 
 	if err := first.Save(&auth.Tokens{IDToken: "id-token-first"}); err != nil {
@@ -203,8 +110,8 @@ func TestFileTokenStore_NameIsStable(t *testing.T) {
 	t.Parallel()
 
 	confDir := t.TempDir()
-	if first, second := newFileTokenStore(confDir, "dev"), newFileTokenStore(confDir, "dev"); first.path != second.path {
-		t.Errorf("two stores for the same profile disagree: %q and %q", first.path, second.path)
+	if first, second := newFileTokenStore(confDir, "dev"), newFileTokenStore(confDir, "dev"); first.Path() != second.Path() {
+		t.Errorf("two stores for the same profile disagree: %q and %q", first.Path(), second.Path())
 	}
 }
 
@@ -403,7 +310,7 @@ func TestLogout_RevokesAndDeletes(t *testing.T) {
 
 	tokenExistedAtRevocation := &atomic.Bool{}
 	fi := newFakeIssuer(t, fakeIssuerConfig{onRevoke: func() {
-		_, err := os.Stat(store.path)
+		_, err := os.Stat(store.Path())
 		tokenExistedAtRevocation.Store(err == nil)
 	}})
 	app := newIssuerApp(t, fi, confDir)

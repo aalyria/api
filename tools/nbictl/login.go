@@ -16,20 +16,19 @@ package nbictl
 
 import (
 	"crypto/sha256"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"path/filepath"
 	"regexp"
-	"time"
 
 	"github.com/jonboulle/clockwork"
 	"github.com/urfave/cli/v2"
 
 	"aalyria.com/spacetime/auth"
+	"aalyria.com/spacetime/tools/devicelogin"
 	"aalyria.com/spacetime/tools/nbictl/nbictlpb"
+	"aalyria.com/spacetime/tools/tokenfile"
 )
 
 const tokenDirName = "tokens"
@@ -38,14 +37,9 @@ const tokenDirName = "tokens"
 // name. A profile name is user-chosen, so it can hold a path separator.
 var unsafeProfileChars = regexp.MustCompile(`[^A-Za-z0-9._-]`)
 
-// fileTokenStore holds the tokens of one profile in a JSON file with mode
-// 0600. It implements [auth.TokenStore].
-type fileTokenStore struct {
-	path string
-}
-
-func newFileTokenStore(confDir, profileName string) *fileTokenStore {
-	return &fileTokenStore{path: filepath.Join(confDir, tokenDirName, profileFileName(profileName, ".json"))}
+// newFileTokenStore returns the store of one profile's OIDC user tokens.
+func newFileTokenStore(confDir, profileName string) *tokenfile.Store {
+	return tokenfile.New(filepath.Join(confDir, tokenDirName, profileFileName(profileName, ".json")))
 }
 
 // profileFileName builds the name of a per-profile file in the token
@@ -62,82 +56,6 @@ func profileFileName(profileName, suffix string) string {
 	digest := sha256.Sum256([]byte(profileName))
 	name := unsafeProfileChars.ReplaceAllString(profileName, "_")
 	return fmt.Sprintf("%s-%x%s", name, digest[:4], suffix)
-}
-
-// storedTokens is the on-disk form of [auth.Tokens]. It restates the fields
-// on purpose: auth/ is exported to the public API repository, so putting JSON
-// tags on [auth.Tokens] would make this file format part of that public
-// interface and freeze it. Email is deliberately absent, because a stored
-// email would go stale against the ID token beside it.
-type storedTokens struct {
-	IDToken      string    `json:"id_token"`
-	RefreshToken string    `json:"refresh_token,omitempty"`
-	Expiry       time.Time `json:"expiry"`
-}
-
-func (s *fileTokenStore) Load() (*auth.Tokens, error) {
-	contents, err := os.ReadFile(s.path)
-	switch {
-	case errors.Is(err, os.ErrNotExist):
-		return nil, nil
-	case err != nil:
-		return nil, fmt.Errorf("reading the token file %s: %w", s.path, err)
-	}
-
-	stored := storedTokens{}
-	if err := json.Unmarshal(contents, &stored); err != nil {
-		return nil, fmt.Errorf("parsing the token file %s: %w", s.path, err)
-	}
-
-	return &auth.Tokens{
-		IDToken:      stored.IDToken,
-		RefreshToken: stored.RefreshToken,
-		Expiry:       stored.Expiry,
-	}, nil
-}
-
-func (s *fileTokenStore) Save(tokens *auth.Tokens) error {
-	dir := filepath.Dir(s.path)
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return fmt.Errorf("creating the token directory %s: %w", dir, err)
-	}
-
-	contents, err := json.Marshal(storedTokens{
-		IDToken:      tokens.IDToken,
-		RefreshToken: tokens.RefreshToken,
-		Expiry:       tokens.Expiry,
-	})
-	if err != nil {
-		return fmt.Errorf("encoding the tokens: %w", err)
-	}
-
-	// os.CreateTemp makes the file with mode 0600. Write to it and then
-	// rename it, so that a concurrent reader never sees a partial file.
-	tmp, err := os.CreateTemp(dir, ".tokens-*")
-	if err != nil {
-		return fmt.Errorf("creating a temporary token file in %s: %w", dir, err)
-	}
-	defer os.Remove(tmp.Name())
-
-	if _, err := tmp.Write(contents); err != nil {
-		tmp.Close()
-		return fmt.Errorf("writing %s: %w", tmp.Name(), err)
-	}
-	if err := tmp.Close(); err != nil {
-		return fmt.Errorf("closing %s: %w", tmp.Name(), err)
-	}
-	if err := os.Rename(tmp.Name(), s.path); err != nil {
-		return fmt.Errorf("renaming %s to %s: %w", tmp.Name(), s.path, err)
-	}
-	return nil
-}
-
-// Delete removes the token file. It succeeds when there is no file.
-func (s *fileTokenStore) Delete() error {
-	if err := os.Remove(s.path); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("deleting the token file %s: %w", s.path, err)
-	}
-	return nil
 }
 
 // httpClientFromMetadata returns the HTTP client that a test injects through
@@ -168,7 +86,7 @@ func oidcUserStrategy(setting *nbictlpb.Config) (*nbictlpb.Config_AuthStrategy_O
 // profileStore reads the profile that the --profile flag selects, together
 // with its token store. It does not require the oidc_user strategy, so that
 // logout can still clean up a profile that has moved to another one.
-func profileStore(appCtx *cli.Context) (*nbictlpb.Config, *fileTokenStore, error) {
+func profileStore(appCtx *cli.Context) (*nbictlpb.Config, *tokenfile.Store, error) {
 	confDir, err := getAppConfDir(appCtx)
 	if err != nil {
 		return nil, nil, err
@@ -196,7 +114,7 @@ func oidcUserConfig(setting *nbictlpb.Config, oidcUser *nbictlpb.Config_AuthStra
 
 // profileConfig reads the profile that the --profile flag selects, together
 // with its oidc_user strategy and its token store.
-func profileConfig(appCtx *cli.Context) (auth.OIDCUserConfig, *fileTokenStore, error) {
+func profileConfig(appCtx *cli.Context) (auth.OIDCUserConfig, *tokenfile.Store, error) {
 	setting, store, err := profileStore(appCtx)
 	if err != nil {
 		return auth.OIDCUserConfig{}, nil, err
@@ -265,31 +183,5 @@ func Login(appCtx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-
-	errWriter := appCtx.App.ErrWriter
-	tokens, err := auth.DeviceLogin(appCtx.Context, oidcConfig, func(p auth.DevicePrompt) error {
-		fmt.Fprintf(errWriter, "Open %s in a browser and enter the code %s\n", p.VerificationURI, p.UserCode)
-		if p.VerificationURIComplete != "" {
-			fmt.Fprintf(errWriter, "This link holds the code already: %s\n", p.VerificationURIComplete)
-		}
-		if !p.ExpiresAt.IsZero() {
-			fmt.Fprintf(errWriter, "The code expires at %s\n", p.ExpiresAt.Format(time.RFC3339))
-		}
-		fmt.Fprintln(errWriter, "Waiting for the login to complete...")
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-
-	if err := store.Save(tokens); err != nil {
-		return err
-	}
-
-	if tokens.RefreshToken == "" {
-		fmt.Fprintln(errWriter, "Warning: the identity provider returned no refresh token, so this session ends when the ID token expires. Grant the offline_access scope to keep the session.")
-	}
-
-	fmt.Fprintf(appCtx.App.Writer, "Logged in as %s, valid until %s\n", tokens.Email, tokens.Expiry.Format(time.RFC3339))
-	return nil
+	return devicelogin.Login(appCtx.Context, oidcConfig, store, appCtx.App.Writer, appCtx.App.ErrWriter)
 }

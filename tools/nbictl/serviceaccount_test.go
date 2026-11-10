@@ -344,7 +344,7 @@ func TestServiceAccountTokenStore_DoesNotShareTheUserTokenFile(t *testing.T) {
 	confDir := t.TempDir()
 	sa := newServiceAccountTokenStore(confDir, "robot", testSAIdentity(), io.Discard)
 	user := newFileTokenStore(confDir, "robot")
-	if sa.path == user.path {
+	if sa.path == user.Path() {
 		t.Errorf("both stores use the path %q", sa.path)
 	}
 }
