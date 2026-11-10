@@ -175,7 +175,7 @@ switched_rules.use_languages(
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.toolchain(
     is_default = True,
-    python_version = "3.11",
+    python_version = "3.14",
 )
 
 uv = use_extension("@aspect_rules_py//uv/unstable:extension.bzl", "uv")
