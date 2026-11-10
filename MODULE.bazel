@@ -1,0 +1,280 @@
+# Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+module(name = "aalyria_api")
+
+bazel_dep(name = "bazel_skylib", version = "1.9.2")
+bazel_dep(name = "protobuf", version = "36.2")
+bazel_dep(name = "gazelle", version = "0.54.0")
+bazel_dep(name = "googleapis", version = "0.0.0-20261103-57aa4dbc")
+bazel_dep(name = "googleapis-python", version = "1.1.5")
+bazel_dep(name = "googleapis-java", version = "1.1.5")
+bazel_dep(name = "googleapis-cc", version = "1.1.5")
+bazel_dep(name = "platforms", version = "1.1.0")
+bazel_dep(name = "rules_cc", version = "0.2.28")
+bazel_dep(name = "rules_go", version = "0.58.3")
+bazel_dep(name = "rules_java", version = "9.9.0")
+bazel_dep(name = "rules_jvm_external", version = "7.2")
+bazel_dep(name = "rules_img", version = "0.3.24")
+bazel_dep(name = "rules_pkg", version = "1.3.0")
+bazel_dep(name = "rules_proto", version = "7.1.0")
+bazel_dep(name = "rules_proto_grpc_cpp", version = "5.8.0")
+bazel_dep(name = "rules_proto_grpc_doc", version = "5.8.0")
+bazel_dep(name = "rules_proto_grpc_java", version = "5.8.0")
+bazel_dep(name = "rules_proto_grpc_python", version = "5.8.0")
+bazel_dep(name = "rules_python", version = "2.4.6")
+bazel_dep(name = "rules_rs", version = "0.2.1")
+bazel_dep(name = "rules_shell", version = "0.8.0")
+bazel_dep(name = "aspect_rules_py", version = "1.13.0")
+bazel_dep(name = "toolchains_llvm", version = "1.13.0")
+
+# Patch c-ares v1.19.1 to fix RBE build with strict header checking.
+# The issue: c-ares BUILD.bazel is missing include/ares_build.h in hdrs list,
+# which causes undeclared inclusion errors when building with RBE without
+# --remote_download_minimal flag.
+single_version_override(
+    module_name = "c-ares",
+    patch_strip = 0,
+    patches = ["//patches:c-ares_1_19_1_rbe_headers.patch"],
+    version = "1.19.1",
+)
+
+# grpc is pulled in transitively by rules_proto_grpc_*. Pin and patch it to match
+# the monorepo. The upb-gen include-shadowing patch drops grpc's committed
+# upb-gen include dirs, which otherwise shadow protobuf's generated upb headers
+# and cause "undeclared inclusion" failures under strict header checking (e.g.
+# when compiling cygrpc). The rbe_xds patch supplies header deps needed for
+# RBE + xDS builds.
+single_version_override(
+    module_name = "grpc",
+    patch_strip = 0,
+    patches = [
+        "//patches:grpc_1_84_2_rbe_xds_headers.patch",
+        "//patches:grpc_1_84_2_upb_gen_include_shadowing.patch",
+    ],
+    version = "1.84.2",
+)
+
+# grpc 1.84.2 asks for an envoy_api whose MODULE.bazel imports a repo that
+# googleapis' switched_rules extension no longer generates, which breaks
+# `bazel mod deps`. This envoy_api dropped that import.
+bazel_dep(name = "envoy_api", version = "0.0.0-20260901-005c18a.bcr.1")
+
+# Protobuf C++ requires its generated code to come from exactly the protoc
+# release that matches the runtime
+# (https://protobuf.dev/support/cross-version-runtime-guarantee/#cpp).
+# rules_proto_grpc asks toolchains_protoc for protoc v31.1, so register
+# protobuf's own prebuilt protoc toolchains (the same release as the protobuf
+# bazel_dep) ahead of it.
+register_toolchains("@protobuf//bazel/private/oss/toolchains/prebuilt:all")
+
+bazel_dep(name = "container_structure_test", version = "1.22.1", dev_dependency = True)
+
+maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
+maven.install(
+    artifacts = [
+        "com.google.code.gson:gson:2.15.0",
+        "com.google.googlejavaformat:google-java-format:2.0.0",
+        "com.google.guava:guava:33.7.2-jre",
+        "io.grpc:grpc-testing:1.85.1",
+        "io.helidon.grpc:helidon-grpc-core:4.5.6",
+        "junit:junit:4.13.2",
+        "org.bouncycastle:bcprov-jdk18on:1.86",
+        "org.mockito:mockito-core:5.24.0",
+    ],
+    repositories = [
+        "https://repo.maven.apache.org/maven2/",
+    ],
+)
+use_repo(maven, "maven")
+
+# Hermetic C/C++ toolchain. Required under Bazel 8: the auto-detected host
+# toolchain (@local_config_cc, registered transitively by rules_cc) yields no
+# matching cc toolchain on a compiler-less CI runner, which breaks protobuf's
+# cc selects during the OSS-export dry-run. The downloaded LLVM toolchain
+# registers a resolvable cc toolchain independent of the host.
+#
+# LLVM versions and platforms:
+# https://github.com/bazel-contrib/toolchains_llvm/blob/master/toolchain/internal/llvm_distributions.bzl
+llvm = use_extension("@toolchains_llvm//toolchain/extensions:llvm.bzl", "llvm")
+llvm.toolchain(
+    name = "llvm_toolchain",
+    llvm_version = "20.1.2",
+)
+use_repo(llvm, "llvm_toolchain", "llvm_toolchain_llvm")
+
+register_toolchains("@llvm_toolchain//:all")
+
+go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
+go_sdk.download(
+    version = "1.27.3",
+)
+
+go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
+go_deps.from_file(go_mod = "//:go.mod")
+use_repo(
+    go_deps,
+    "com_github_deckarep_golang_set_v3",
+    "com_github_fullstorydev_grpcurl",
+    "com_github_golang_jwt_jwt_v5",
+    "com_github_google_go_cmp",
+    "com_github_google_uuid",
+    "com_github_gosnmp_gosnmp",
+    "com_github_gosuri_uiprogress",
+    "com_github_iancoleman_strcase",
+    "com_github_jhump_protoreflect_v2",
+    "com_github_jonboulle_clockwork",
+    "com_github_mattn_go_isatty",
+    "com_github_prometheus_client_golang",
+    "com_github_prometheus_client_model",
+    "com_github_prometheus_common",
+    "com_github_prometheus_prom2json",
+    "com_github_quic_go_quic_go",
+    "com_github_rs_zerolog",
+    "com_github_samber_lo",
+    "com_github_sourcegraph_conc",
+    "com_github_urfave_cli_v2",
+    "com_github_vishvananda_netlink",
+    "com_google_cloud_go_longrunning",
+    "io_opentelemetry_go_contrib_instrumentation_google_golang_org_grpc_otelgrpc",
+    "io_opentelemetry_go_otel",
+    "io_opentelemetry_go_otel_exporters_otlp_otlptrace_otlptracegrpc",
+    "io_opentelemetry_go_otel_sdk",
+    "io_opentelemetry_go_otel_trace",
+    "io_opentelemetry_go_proto_otlp",
+    "org_golang_google_genproto",
+    "org_golang_google_genproto_googleapis_api",
+    "org_golang_google_genproto_googleapis_rpc",
+    "org_golang_google_grpc",
+    "org_golang_google_protobuf",
+    "org_golang_x_net",
+    "org_golang_x_oauth2",
+    "org_golang_x_sync",
+    "org_golang_x_sys",
+    "org_golang_x_text",
+)
+
+switched_rules = use_extension("@googleapis//:extensions.bzl", "switched_rules")
+switched_rules.use_languages(
+    cc = True,
+    java = True,
+    python = True,
+)
+
+python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.toolchain(
+    is_default = True,
+    python_version = "3.14",
+)
+
+uv = use_extension("@aspect_rules_py//uv/unstable:extension.bzl", "uv")
+uv.declare_hub(hub_name = "python_deps")
+uv.project(
+    # Every locked package ships a linux wheel, so sdist builds are never used.
+    # The default build backend ("build") isn't in uv.lock, and rules_py fails
+    # to resolve it.
+    default_build_dependencies = [],
+    hub_name = "python_deps",
+    lock = "//:uv.lock",
+    pyproject = "//:pyproject.toml",
+)
+use_repo(uv, "python_deps")
+
+pull = use_repo_rule("@rules_img//img:pull.bzl", "pull")
+
+pull(
+    name = "alpine_base",
+    # mirror.gcr.io/library/alpine:3.19.1 (pull-through cache for docker.io)
+    digest = "sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf",  # 3.19.1 2024-01-26
+    layer_handling = "lazy",
+    registry = "mirror.gcr.io",
+    repository = "library/alpine",
+)
+
+RUST_EDITION = "2024"
+
+RUST_VERSION = "1.99.1"
+
+# rules_rs provides hermetic Rust toolchains and the patched rules_rust facade.
+rs_toolchains = use_extension("@rules_rs//rs/toolchains:module_extension.bzl", "toolchains")
+rs_toolchains.toolchain(
+    edition = RUST_EDITION,
+    # -Clink-self-contained=no: link with the registered cc toolchain's linker.
+    # rules_rs's rustc does not ship the self-contained linker (rust-lld) in its
+    # sysroot, so self-contained linking (the default) fails for tool/bin targets.
+    # Keep this x86_64-only, and out of extra_rustc_flags: the aarch64 rustc
+    # rejects the option outright ("option `-C link-self-contained` is not
+    # supported on this target") whatever --target it is given, so an aarch64
+    # executor must never see it. The aarch64 link works without it.
+    extra_exec_rustc_flags = {
+        "x86_64-unknown-linux-gnu": ["-Clink-self-contained=no"],
+    },
+    # Must match nmts/MODULE.bazel's toolchain tag exactly: rules_rs shares this
+    # tag across the module graph and rejects conflicting same-name tags.
+    extra_rustc_flags = {
+        "aarch64-unknown-linux-gnu": ["-Ctarget-cpu=neoverse-n1"],
+        "x86_64-unknown-linux-gnu": ["-Ctarget-cpu=x86-64-v3"],
+    },
+    version = RUST_VERSION,
+)
+use_repo(rs_toolchains, "default_rust_toolchains")
+
+# Re-export the pinned, patched @rules_rust so existing @rules_rust// loads keep
+# working. rules_rs bundles the prost extension under @rules_rust//extensions/prost.
+rules_rust = use_extension("@rules_rs//rs:rules_rust.bzl", "rules_rust")
+use_repo(rules_rust, "rules_rust")
+
+register_toolchains("@default_rust_toolchains//...")
+
+register_toolchains(
+    "//api/build_tools/prost_toolchain",
+)
+
+# Rust crate dependencies via rules_rs crate_universe (from_cargo). The
+# dependency set lives in Cargo.toml / Cargo.lock (rules_rs supports only
+# from_cargo). The "st_" (spacetime) prefix keeps this hub distinct from the
+# nmts submodule's crate hub: the crate extension is shared across the module
+# graph, so two hubs of the same name would collide.
+crate = use_extension("@rules_rs//rs:extensions.bzl", "crate")
+crate.annotation(
+    crate = "protoc-gen-prost",
+    gen_binaries = ["protoc-gen-prost"],
+)
+crate.annotation(
+    crate = "protoc-gen-tonic",
+    gen_binaries = ["protoc-gen-tonic"],
+)
+crate.from_cargo(
+    name = "st_crates",
+    cargo_lock = "//:Cargo.lock",
+    cargo_toml = "//:Cargo.toml",
+    platform_triples = ["x86_64-unknown-linux-gnu"],
+)
+use_repo(crate, "st_crates")
+
+bazel_dep(name = "org_outernetcouncil_nmts")
+archive_override(
+    module_name = "org_outernetcouncil_nmts",
+    strip_prefix = "nmts-1.42.0",
+    urls = ["https://github.com/outernetcouncil/nmts/archive/refs/tags/v1.42.0.tar.gz"],
+)
+
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "opentelemetry_proto",
+    build_file = "//third_party/opentelemetry:otel.BUILD",
+    strip_prefix = "opentelemetry-proto-main",
+    urls = ["https://github.com/open-telemetry/opentelemetry-proto/archive/main.zip"],
+)

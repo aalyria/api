@@ -1,0 +1,149 @@
+# Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+entity {
+  id: "test-satellite-platform-definition"
+  group: {
+    type: PLATFORM_DEFINITION
+  }
+  platform {
+    name: "sat"
+    type: "GEO"
+    coordinates: {
+      geodetic_wgs84: {
+        longitude_deg: -121.1
+        latitude_deg: 37.4
+        height_wgs84_m: 36000000
+      }
+    }
+  
+    transceiver_model: {
+      id: "user-link-transceiver-model"
+  
+      transmitter: {
+        name: "tx"
+        channel_set: {
+          key: "test-band-profile"
+          value: {
+            channel: {
+              key: 12000000000
+              value: {
+                max_power_watts: 100
+              }
+            }
+          }
+        }
+        signal_processing_step: {
+          amplifier: {
+            constant_gain: {
+              gain_db: 10
+              noise_factor: 1
+              reference_temperature_k: 290
+            }
+          }
+        }
+      }
+  
+      receiver: {
+        name: "rx"
+        channel_set: {
+          key: "test-band-profile"
+          value: {
+            center_frequency_hz: 11000000000
+          }
+        }
+        signal_processing_step: {
+          amplifier: {
+            constant_gain: {
+              gain_db: 10
+              noise_factor: 1
+              reference_temperature_k: 290
+            }
+          }
+        }
+      }
+  
+      antenna: {
+        name: "antenna"
+        antenna_pattern_id: "test-antenna-pattern"
+        targeting: {}
+      }
+  
+      macs {
+        type: "DVBS2"
+        role: "REMOTE"
+        max_connections: 1
+      }
+    }
+  
+    transceiver_model: {
+      id: "gateway-link-transceiver-model"
+  
+      transmitter: {
+        name: "tx"
+        channel_set: {
+          key: "test-band-profile"
+          value: {
+            channel: {
+              key: 14000000000
+              value: {
+                max_power_watts: 100
+              }
+            }
+          }
+        }
+        signal_processing_step: {
+          amplifier: {
+            constant_gain: {
+              gain_db: 10
+              noise_factor: 1
+              reference_temperature_k: 290
+            }
+          }
+        }
+      }
+  
+      receiver: {
+        name: "rx"
+        channel_set: {
+          key: "test-band-profile"
+          value: {
+            center_frequency_hz: 13000000000
+          }
+        }
+        signal_processing_step: {
+          amplifier: {
+            constant_gain: {
+              gain_db: 10
+              noise_factor: 1
+              reference_temperature_k: 290
+            }
+          }
+        }
+      }
+  
+      antenna: {
+        name: "antenna"
+        antenna_pattern_id: "test-antenna-pattern"
+        targeting: {}
+      }
+  
+      macs {
+        type: "DVBS2"
+        role: "REMOTE"
+        max_connections: 1
+      }
+    }
+  }
+}

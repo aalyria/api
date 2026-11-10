@@ -1,0 +1,255 @@
+// Copyright (c) Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package aalyria.spacetime.api.solution.v1alpha;
+
+import "api/solution/v1alpha/solution.proto";
+import "google/api/field_behavior.proto";
+import "google/api/resource.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/field_mask.proto";
+
+option go_package = "aalyria.com/spacetime/api/solution/v1alpha";
+option java_package = "com.aalyria.spacetime.api.solution.v1alpha";
+
+service SolutionMutation {
+  rpc CreateP2pSrTePolicyCandidatePath(CreateP2pSrTePolicyCandidatePathRequest) returns (P2pSrTePolicyCandidatePath) {}
+  rpc BatchCreateP2pSrTePolicyCandidatePaths(BatchCreateP2pSrTePolicyCandidatePathsRequest) returns (BatchCreateP2pSrTePolicyCandidatePathsResponse) {}
+  rpc UpdateP2pSrTePolicyCandidatePath(UpdateP2pSrTePolicyCandidatePathRequest) returns (P2pSrTePolicyCandidatePath) {}
+  rpc BatchUpdateP2pSrTePolicyCandidatePaths(BatchUpdateP2pSrTePolicyCandidatePathsRequest) returns (BatchUpdateP2pSrTePolicyCandidatePathsResponse) {}
+  rpc DeleteP2pSrTePolicyCandidatePath(DeleteP2pSrTePolicyCandidatePathRequest) returns (google.protobuf.Empty) {}
+  rpc BatchDeleteP2pSrTePolicyCandidatePaths(BatchDeleteP2pSrTePolicyCandidatePathsRequest) returns (google.protobuf.Empty) {}
+  rpc PurgeP2pSrTePolicyCandidatePaths(PurgeP2pSrTePolicyCandidatePathsRequest) returns (PurgeP2pSrTePolicyCandidatePathsResponse) {}
+
+  rpc CreateBeam(CreateBeamRequest) returns (Beam) {}
+  rpc BatchCreateBeams(BatchCreateBeamsRequest) returns (BatchCreateBeamsResponse) {}
+  rpc UpdateBeam(UpdateBeamRequest) returns (Beam) {}
+  rpc BatchUpdateBeams(BatchUpdateBeamsRequest) returns (BatchUpdateBeamsResponse) {}
+  rpc DeleteBeam(DeleteBeamRequest) returns (google.protobuf.Empty) {}
+  rpc BatchDeleteBeams(BatchDeleteBeamsRequest) returns (google.protobuf.Empty) {}
+  rpc PurgeBeams(PurgeBeamsRequest) returns (PurgeBeamsResponse) {}
+}
+
+message CreateP2pSrTePolicyCandidatePathRequest {
+  // The ID to use for the candidate path, which will become the final
+  // component of the path's resource name, i.e.
+  // `p2pSrTePolicyCandidatePaths/{p2p_sr_te_policy_candidate_path_id}`.
+  //
+  // This value should be 1-63 characters, and valid characters
+  // are /[a-z][0-9]-/, specifically of the form
+  // "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$".
+  string p2p_sr_te_policy_candidate_path_id = 1 [
+    (google.api.field_behavior) = REQUIRED];
+
+  // The candidate path to create.
+  aalyria.spacetime.api.solution.v1alpha
+      .P2pSrTePolicyCandidatePath
+      p2p_sr_te_policy_candidate_path = 2 [
+    (google.api.field_behavior) = REQUIRED];
+}
+
+message BatchCreateP2pSrTePolicyCandidatePathsRequest {
+  // The request message specifying the resources to create.
+  // A maximum of 1000 candidate paths can be created in a batch.
+  repeated CreateP2pSrTePolicyCandidatePathRequest requests = 1 [
+    (google.api.field_behavior) = REQUIRED];
+}
+
+message BatchCreateP2pSrTePolicyCandidatePathsResponse {
+  // The candidate paths created.
+  repeated aalyria.spacetime.api.solution.v1alpha
+      .P2pSrTePolicyCandidatePath p2p_sr_te_policy_candidate_paths = 1;
+}
+
+message UpdateP2pSrTePolicyCandidatePathRequest {
+  // The candidate path to update.
+  //
+  // The candidate path's `name` field is used to identify the candidate
+  // path to be updated.
+  // Format: `p2pSrTePolicyCandidatePaths/{p2p_sr_te_policy_candidate_path}`
+  aalyria.spacetime.api.solution.v1alpha
+      .P2pSrTePolicyCandidatePath
+      p2p_sr_te_policy_candidate_path = 1 [
+    (google.api.field_behavior) = REQUIRED];
+
+  // The list of fields to be updated.
+  google.protobuf.FieldMask update_mask = 2;
+
+  // If set to true, and the candidate path is not found, a new instance will
+  // be created. In this situation, `update_mask` is ignored.
+  bool allow_missing = 3;
+}
+
+message BatchUpdateP2pSrTePolicyCandidatePathsRequest {
+  // The request message specifying the resources to update.
+  // A maximum of 1000 candidate paths can be updated in a batch.
+  repeated UpdateP2pSrTePolicyCandidatePathRequest requests = 1 [
+    (google.api.field_behavior) = REQUIRED];
+}
+
+message BatchUpdateP2pSrTePolicyCandidatePathsResponse {
+  // The candidate paths updated.
+  repeated aalyria.spacetime.api.solution.v1alpha
+      .P2pSrTePolicyCandidatePath p2p_sr_te_policy_candidate_paths = 1;
+}
+
+message DeleteP2pSrTePolicyCandidatePathRequest {
+  // The resource name of the candidate path to delete.
+  // Format: `p2pSrTePolicyCandidatePaths/{p2p_sr_te_policy_candidate_path}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "solution.spacetimeapis.com/P2pSrTePolicyCandidatePath"
+    }];
+}
+
+message BatchDeleteP2pSrTePolicyCandidatePathsRequest {
+  // The resource names of the candidate paths to delete.
+  // A maximum of 1000 candidate paths can be deleted in a batch.
+  // If any name is not found, the entire batch is aborted with NOT_FOUND and
+  // no candidate paths are deleted.
+  repeated string names = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "solution.spacetimeapis.com/P2pSrTePolicyCandidatePath"
+    }];
+}
+
+message PurgeP2pSrTePolicyCandidatePathsRequest {
+  // If multiple queries are provided, the result will be the union of all
+  // queries.
+  repeated aalyria.spacetime.api.solution
+      .v1alpha.P2pSrTePolicyCandidatePathQuery
+      queries = 1 [
+    (google.api.field_behavior) = REQUIRED];
+
+  // Actually perform the purge.
+  // If `force` is set to false, the method will return a sample of
+  // resource names that would be deleted.
+  bool force = 2;
+}
+
+message PurgeP2pSrTePolicyCandidatePathsResponse {
+  // The number of candidate paths that this request deleted (or, if `force`
+  // is false, the number of candidate paths that will be deleted).
+  int32 purge_count = 1;
+
+  // A sample of the resource names of candidate paths that will be deleted.
+  // Only populated if `force` is set to false.
+  repeated string purge_sample = 2 [(google.api.resource_reference) = {
+    type: "solution.spacetimeapis.com/P2pSrTePolicyCandidatePath"
+  }];
+}
+
+message CreateBeamRequest {
+  // The ID to use for the beam, which will become the final component of
+  // the beam's resource name, i.e. `beams/{beam_id}`.
+  //
+  // This value should be 1-63 characters, and valid characters
+  // are /[a-z][0-9]-/, specifically of the form
+  // "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$".
+  string beam_id = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // The beam to create.
+  Beam beam = 2 [
+    (google.api.field_behavior) = REQUIRED];
+}
+
+message BatchCreateBeamsRequest {
+  // The request message specifying the resources to create.
+  // A maximum of 1000 beams can be created in a batch.
+  repeated CreateBeamRequest requests = 1 [
+    (google.api.field_behavior) = REQUIRED];
+}
+
+message BatchCreateBeamsResponse {
+  // The beams created.
+  repeated Beam beams = 1;
+}
+
+message UpdateBeamRequest {
+  // The beam to update.
+  //
+  // The beam's `name` field is used to identify the beam to be updated.
+  // Format: `beams/{beam}`
+  Beam beam = 1 [
+    (google.api.field_behavior) = REQUIRED];
+
+  // The list of fields to be updated.
+  google.protobuf.FieldMask update_mask = 2;
+
+  // If set to true, and the beam is not found, a new instance will be
+  // created. In this situation, `update_mask` is ignored.
+  bool allow_missing = 3;
+}
+
+message BatchUpdateBeamsRequest {
+  // The request message specifying the resources to update.
+  // A maximum of 1000 beams can be updated in a batch.
+  repeated UpdateBeamRequest requests = 1 [
+    (google.api.field_behavior) = REQUIRED];
+}
+
+message BatchUpdateBeamsResponse {
+  // The beams updated.
+  repeated Beam beams = 1;
+}
+
+message DeleteBeamRequest {
+  // The resource name of the beam to delete.
+  // Format: `beams/{beam}`
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "solution.spacetimeapis.com/Beam"
+    }];
+}
+
+message BatchDeleteBeamsRequest {
+  // The resource names of the beams to delete.
+  // A maximum of 1000 beams can be deleted in a batch.
+  // If any name is not found, the entire batch is aborted with NOT_FOUND and
+  // no beams are deleted.
+  repeated string names = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "solution.spacetimeapis.com/Beam"
+    }];
+}
+
+message PurgeBeamsRequest {
+  // If multiple queries are provided, the result will be the union of all
+  // queries.
+  repeated BeamQuery queries = 1 [
+    (google.api.field_behavior) = REQUIRED];
+
+  // Actually perform the purge.
+  // If `force` is set to false, the method will return a sample of
+  // resource names that would be deleted.
+  bool force = 2;
+}
+
+message PurgeBeamsResponse {
+  // The number of beams that this request deleted (or, if `force` is false,
+  // the number of beams that will be deleted).
+  int32 purge_count = 1;
+
+  // A sample of the resource names of beams that will be deleted.
+  // Only populated if `force` is set to false.
+  repeated string purge_sample = 2 [(google.api.resource_reference) = {
+    type: "solution.spacetimeapis.com/Beam"
+  }];
+}
