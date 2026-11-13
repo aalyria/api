@@ -63,12 +63,12 @@ const (
 // with no roles, so both are required. The singular "project:id" of the first
 // and the plural "projects" of the second are the identity provider's own
 // spellings, not a mistake.
-func serviceAccountScopes(projectID string) []string {
-	return []string{
+func serviceAccountScopes(projectID string, extra []string) []string {
+	return append([]string{
 		"openid",
 		"urn:zitadel:iam:org:project:id:" + projectID + ":aud",
 		"urn:zitadel:iam:org:projects:roles",
-	}
+	}, extra...)
 }
 
 // ServiceAccountToken is an access token and the moment it expires. It is
@@ -86,8 +86,9 @@ type ServiceAccountToken struct {
 //
 // Load reports (nil, nil) when it holds nothing usable. An implementation
 // decides for itself what "usable" means: a token minted for a different
-// issuer, project or key is not interchangeable with this one, so a store that
-// cannot tell them apart must report nothing rather than the wrong token.
+// issuer, project, key or set of ExtraScopes is not interchangeable with this
+// one, since its audience differs, so a store that cannot tell them apart must
+// report nothing rather than the wrong token.
 type ServiceAccountTokenStore interface {
 	Load() (*ServiceAccountToken, error)
 	Save(*ServiceAccountToken) error
@@ -116,6 +117,10 @@ type OIDCServiceAccountConfig struct {
 	UserID string
 	// PrivateKey is the PEM-encoded private key of the key file.
 	PrivateKey io.Reader
+	// ExtraScopes are requested after the project's scopes, such as
+	// urn:zitadel:iam:org:project:id:zitadel:aud for a token that the
+	// identity provider's own API accepts. Optional.
+	ExtraScopes []string
 	// HTTPClient is optional. Tests inject one.
 	HTTPClient HTTPDoer
 	// TokenStore is optional. When it is nil the access token lives only for
@@ -324,7 +329,7 @@ func (sc *oidcServiceAccountCredentials) exchangeToken(ctx context.Context) (str
 	form := url.Values{
 		"grant_type": {jwtBearerGrantType},
 		"assertion":  {assertion},
-		"scope":      {strings.Join(serviceAccountScopes(sc.config.ProjectID), " ")},
+		"scope":      {strings.Join(serviceAccountScopes(sc.config.ProjectID, sc.config.ExtraScopes), " ")},
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, meta.TokenEndpoint, strings.NewReader(form.Encode()))

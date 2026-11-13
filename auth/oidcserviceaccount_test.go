@@ -246,6 +246,36 @@ func assertionClaims(t *testing.T, sas *serviceAccountServer, i int) (*jwt.Token
 	return token, claims
 }
 
+// TestServiceAccountExtraScopes checks that ExtraScopes follow the project's
+// scopes, which every token needs for its audience and roles.
+func TestServiceAccountExtraScopes(t *testing.T) {
+	t.Parallel()
+
+	clock := clockwork.NewFakeClockAt(time.Date(2026, time.November, 13, 12, 0, 0, 0, time.UTC))
+	sas := newServiceAccountServer(t, serviceAccountServerConfig{
+		accessToken: testIDToken(t, "", clock.Now().Add(time.Hour)),
+		expiresIn:   3600,
+	})
+	config := testServiceAccountConfig(sas, clock)
+	config.ExtraScopes = []string{"urn:zitadel:iam:org:project:id:zitadel:aud"}
+	creds, err := NewOIDCServiceAccountCredentials(context.Background(), config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := requestMetadata(context.Background(), creds); err != nil {
+		t.Fatal(err)
+	}
+	want := strings.Join([]string{
+		"openid",
+		"urn:zitadel:iam:org:project:id:" + testServiceAccountProject + ":aud",
+		"urn:zitadel:iam:org:projects:roles",
+		"urn:zitadel:iam:org:project:id:zitadel:aud",
+	}, " ")
+	if got := sas.form(t, 0).Get("scope"); got != want {
+		t.Errorf("scope: got %q, want %q", got, want)
+	}
+}
+
 func TestServiceAccountAssertionShape(t *testing.T) {
 	t.Parallel()
 
