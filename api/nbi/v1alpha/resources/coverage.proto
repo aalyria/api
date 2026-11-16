@@ -1,0 +1,179 @@
+// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto2";
+
+package aalyria.spacetime.api.nbi.v1alpha.resources;
+
+import "api/common/coordinates.proto";
+import "api/common/wireless_transceiver.proto";
+
+option java_package = "com.aalyria.spacetime.api.nbi.v1alpha.resources";
+option go_package = "aalyria.com/spacetime/api/nbi/v1alpha/resources";
+
+// Defines a grouping of transceiver models.
+message TransceiverSet {
+  repeated aalyria.spacetime.api.common.TransceiverModelId transceiver_ids = 1;
+}
+
+// Defines a grouping of platforms.
+message PlatformSet {
+  repeated string platform_ids = 1;
+}
+
+// The term "station" is used in the sense of the ITU definition:
+// "One or more transmitters or receivers or a combination of transmitters
+// and receivers, including the accessory equipment, necessary at one
+// location for carrying on a radiocommunication service, or the radio
+// astronomy service."
+message StationSet {
+  oneof station_set_type {
+    // Use transceivers when the radio equipment model information is
+    // relevant to the description of the stations.
+    TransceiverSet transceivers = 1;
+    // Use platforms, when only the coordinates and motion are relevant to the
+    // description of the station.
+    PlatformSet platforms = 2;
+  }
+}
+
+message StationSubset {
+  // References a StationSet entity ID.
+  optional string station_set_id = 1;
+
+  // May be optionally used to filter the station set to only those that exist
+  // above a surface region, which is specified by referencing a region entity
+  // ID. All stations in the set are selected if this field is omitted.
+  optional string region_id = 2;
+}
+
+// References a set of coordinates derived from an array of transceivers,
+// platforms, or spatial surface region.
+message CoordinateArray {
+  oneof derivation {
+    S2CoverageGrid surface = 1;
+    GeostationaryArc geo_arc = 2;
+    StationSubset stations = 3;
+  }
+}
+
+// The signal power over a coordinate grid.
+message SignalPowerCoverage {
+  oneof type {
+    SurfacePfdRegions surface = 1;
+    GeostationaryArcPfd geo_arc = 2;
+    PfdOverConstellation constellation = 3;
+  }
+}
+
+// Defines a GeoJSON formatted geographic region.
+message GeoJsonRegion {
+  // This provides a human-readable name for the region.
+  optional string name = 1;
+  // Geobuf encoded geoJSON region (see https://github.com/mapbox/geobuf).
+  repeated bytes encoded_geo_buffer = 2;
+}
+
+// Defines a set of S2 cells (that can be at different levels) that togeher
+// cover some region.  This can be used to represent the boundaries of a nation,
+// as one example.
+message SurfaceRegion {
+  repeated int64 s2_cell_ids = 1;
+  // This provides a human-readable name for the region.
+  optional string name = 2;
+}
+
+// Defines a set of s2 cells and an analysis level over a region.  Calculations
+// use WGS84 ellipsoid, altitude is assumed to be zero and terrain is not
+// factored into the coverage calculation. See http://s2geometry.io/ for
+// background information.
+message S2CoverageGrid {
+  // A region on Earth's surface. Defined by an outer covering of S2 cells at
+  // various levels. See http://s2geometry.io/devguide/examples/coverings.
+  oneof region_description {
+    // An explicit list of cell IDs.
+    aalyria.spacetime.api.common.S2Cells region = 1;
+    // The entity key for a SurfaceRegion object in the store.
+    string region_id = 3;
+  }
+
+  // The desired s2 cell resolution for coverage analysis over this region.
+  // See levels at http://s2geometry.io/resources/s2cell_statistics.  If an
+  // s2_level is provided that does not match the level of a provided cell id,
+  // the parents or children of the provided cell will be found that match the
+  // desired s2 _level.
+  optional uint32 s2_level = 2 [default = 6];  // range: [0..30]
+}
+
+// Power flux density over a region.  Terrain is not utilized for these results.
+// WGS84 ellipsoid is used and altitude is assumed to be zero.
+message PfdOverS2Region {
+  // A region on Earth's surface. Defined by an outer covering of S2 cells at
+  // various levels. See http://s2geometry.io/devguide/examples/coverings.
+  optional aalyria.spacetime.api.common.S2Cells region = 1;
+
+  // The received power flux density over the region, in dB(W/m2).
+  optional double received_power_flux_density_db_w_per_m2 = 2;
+}
+
+// The power flux density over one or more regions.
+message SurfacePfdRegions {
+  repeated PfdOverS2Region pfd_region = 1;
+}
+
+// A grid on the circular arc of geostationary orbit, approximately 35,786 km
+// above Earth's surface.
+message GeostationaryArc {
+  // The absolute value of the minimum and maximum latitude, in degrees, above
+  // and below the geostationary arc. If this field is omitted, grid points are
+  // assigned directly to the geostationary arc at the specified resolution.
+  optional double latitude_bound_deg = 1;
+
+  // The maximum angular spacing between grid points, in degrees.
+  optional double resolution_deg = 2;
+}
+
+// The power flux density over some grid cell in geostationary orbit.  Altitude
+// is assumed to be 35,786 km.
+message PfdOverGeoArcCell {
+  // The longitude on the geostationary arc, in degrees.
+  optional double longitude_deg = 1;
+
+  // The latitude on the geostationary arc, in degrees.
+  optional double latitude_deg = 2;
+
+  // The received power flux density over this cell, in dB(W/m2).
+  optional double received_power_flux_density_db_w_per_m2 = 3;
+}
+
+// The power flux density over a set of cells in the geostationary arc.
+message GeostationaryArcPfd {
+  repeated PfdOverGeoArcCell cell = 1;
+}
+
+// The power flux density at an antenna.
+message PfdAtAntenna {
+  reserved 1;
+
+  optional aalyria.spacetime.api.common.TransceiverModelId 
+    transceiver_model_id = 3;
+
+  // The received power flux density at the antenna's location, in dB(W/m2).
+  optional double received_power_flux_density_db_w_per_m2 = 2;
+}
+
+// The power flux density observed by a constellation of antennas.
+message PfdOverConstellation {
+  repeated PfdAtAntenna victim = 1;
+}
