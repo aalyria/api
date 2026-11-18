@@ -1812,6 +1812,10 @@ message LinkBudgetApproximation {
   // applies, using Common Expression Language (CEL). Any link whose
   // receiving antenna matches the filter is selected.
   //
+  // The filter is evaluated against the Antenna entity, excluding
+  // antenna_pattern, which is not available to the filter. References to
+  // antenna_pattern in the filter are accepted but evaluate to unset.
+  //
   // Required. A resource with an empty or invalid filter is rejected.
   string receive_antennas_filter = 2 [
     (google.api.field_behavior) = REQUIRED
