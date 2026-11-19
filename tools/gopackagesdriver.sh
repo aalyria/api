@@ -15,8 +15,7 @@
 # limitations under the License.
 
 # Runs rules_go's gopackagesdriver for gopls. The driver is built for the host
-# platform once per MODULE.bazel, then run directly: `bazel run --config=host`
-# would make Bazel discard its analysis cache on every query.
+# platform once per MODULE.bazel, then run directly, outside `bazel run`.
 
 set -euo pipefail
 
@@ -30,9 +29,9 @@ driver="${XDG_CACHE_HOME:-${HOME}/.cache}/spacetime/gopackagesdriver/${key}-$(un
 if [[ ! -x "${driver}" ]]; then
   (
     cd "${workspace}"
-    label=@rules_go//go/tools/gopackagesdriver
-    bazel build --platforms=@platforms//host "${label}"
-    built="$(bazel cquery --platforms=@platforms//host --output=files "${label}")"
+    label=//tools:gopackagesdriver
+    bazel build "${label}"
+    built="$(bazel cquery --output=files "${label}")"
     mkdir -p "$(dirname "${driver}")"
     tmp="$(mktemp "${driver}.XXXXXX")"
     install -m 0755 "${built}" "${tmp}"
