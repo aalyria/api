@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# Copyright (c) Aalyria Technologies, Inc., and its affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+set -e
+
+# Check no uncommitted changes.
+if [ -n "$(git status --porcelain)" ]; then
+    echo "Error: uncommitted changes in the working tree"
+    exit 1
+fi
+
+# Check on release-* branch and extract SEMVER.
+current_branch=$(git branch --show-current)
+case "${current_branch}" in
+    release-*)
+        readonly SEMVER=${current_branch//release-/}
+        ;;
+    *)
+        echo "Error: '${current_branch}' is not a release branch" >&2
+        exit 1
+esac
+
+# Get extra pre-release metadata.
+PRE_RELEASE=$(git show -s --format="%ct-%cs-SHA-%h" HEAD)
+
+echo "${SEMVER}-${PRE_RELEASE}"

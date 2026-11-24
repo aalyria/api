@@ -1,0 +1,67 @@
+// Copyright 2023 Aalyria Technologies, Inc., and its affiliates.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Protobuf messages used to model digital transmitters used in communications.
+
+syntax = "proto2";
+
+package aalyria.spacetime.api.common;
+
+import "api/common/wireless.proto";
+
+option java_package = "com.aalyria.spacetime.api.common";
+option go_package = "aalyria.com/spacetime/api/common";
+
+// Models a set of transmit channels.
+message TxChannels {
+  message TxChannelParams {
+    // The maximum possible transmit power on this channel.
+    optional double max_power_watts = 1;
+  }
+
+  // Maps the channel's center frequency, in Hz, to channel parameters.
+  // For RF transceivers, the map key is the carrier frequency.
+  // For optical transceivers, the key may be converted to wavelength.
+  // TODO: Add an `aalyria.spacetime.api.common.Signal` field to
+  // `TxChannelParams`, and refactor this to be a repeated field of
+  // `TxChannelParams`. This helps to consolidate the modeling of
+  // transmitted and received signals.
+  map<uint64, TxChannelParams> channel = 1;
+}
+
+// Models a wireless transmitter.
+message TransmitterDefinition {
+  reserved 1, 3 to 12, 13, 16, 18 to max;
+
+  // An optional friendly, human-readable string.
+  optional string name = 2;
+
+  // Maps a band profile ID to a set of channels.
+  map<string, TxChannels> channel_set = 14;
+
+  // Allows the user to configure an ordered sequence that describes how the
+  // wireless transmission is created or modified prior to the input of
+  // the platform antenna that propagates the signal.
+  repeated TransmitSignalProcessor signal_processing_step = 15;
+
+  optional string coverage_heatmap_id = 17;
+}
+
+// Defines how a wireless signal is created, modified, or propagated.
+message TransmitSignalProcessor {
+  oneof type {
+    AmplifierDefinition amplifier = 1;
+    MiscGainOrLoss gain_or_loss = 2;
+  }
+}
