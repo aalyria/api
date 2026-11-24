@@ -733,7 +733,11 @@ func ProvisioningSync(appCtx *cli.Context) error {
 
 	syncBar := progress.AddBar("syncing resources", countValues(resourcesToBeAdded)+countValues(resourcesInCommon))
 
-	// Update and create resources, except P2P candidate paths (which must wait for policies) and association groups (which must wait for candidate paths).
+	// Update and create every resource except these, which wait for a later
+	// round:
+	//   - new P2P candidate paths, which wait for their policies
+	//   - emissions limits, which wait for their geographic regions
+	//   - association groups, which wait for candidate paths
 	p := pool.New().WithErrors().WithMaxGoroutines(maxConcurrency)
 
 	updateRemoteResources(p, ctx, resourcesInCommon["p2pSrTePolicies"], localResources.p2pSrTePolicies, remoteResources.p2pSrTePolicies, w, printMode, dryRunMode, syncBar.Incr, func(ctx context.Context, policy *provapipb.P2PSrTePolicy) error {
@@ -768,13 +772,6 @@ func ProvisioningSync(appCtx *cli.Context) error {
 		_, err := nextClient().UpdateGeographicRegion(ctx, &provapipb.UpdateGeographicRegionRequest{
 			GeographicRegion: geographicRegion,
 			AllowMissing:     false,
-		})
-		return err
-	})
-	updateRemoteResources(p, ctx, resourcesInCommon["emissionsLimits"], localResources.emissionsLimits, remoteResources.emissionsLimits, w, printMode, dryRunMode, syncBar.Incr, func(ctx context.Context, emissionsLimit *provapipb.EmissionsLimit) error {
-		_, err := nextClient().UpdateEmissionsLimit(ctx, &provapipb.UpdateEmissionsLimitRequest{
-			EmissionsLimit: emissionsLimit,
-			AllowMissing:   false,
 		})
 		return err
 	})
@@ -838,13 +835,6 @@ func ProvisioningSync(appCtx *cli.Context) error {
 		})
 		return err
 	})
-	createRemoteResources(p, ctx, resourcesToBeAdded["emissionsLimits"], localResources.emissionsLimits, w, printMode, dryRunMode, syncBar.Incr, func(ctx context.Context, emissionsLimit *provapipb.EmissionsLimit) error {
-		_, err := nextClient().UpdateEmissionsLimit(ctx, &provapipb.UpdateEmissionsLimitRequest{
-			EmissionsLimit: emissionsLimit,
-			AllowMissing:   true,
-		})
-		return err
-	})
 	createRemoteResources(p, ctx, resourcesToBeAdded["pointingConstraints"], localResources.pointingConstraints, w, printMode, dryRunMode, syncBar.Incr, func(ctx context.Context, pointingConstraint *provapipb.PointingConstraint) error {
 		_, err := nextClient().UpdatePointingConstraint(ctx, &provapipb.UpdatePointingConstraintRequest{
 			PointingConstraint: pointingConstraint,
@@ -877,8 +867,25 @@ func ProvisioningSync(appCtx *cli.Context) error {
 
 	errs = append(errs, p.Wait())
 
-	// Add candidate paths after all policies are created, so parent policies are guaranteed to exist.
+	// Now that the first round has finished:
+	//   - add candidate paths, whose parent policies now exist
+	//   - update and create emissions limits, whose geographic regions now
+	//     exist
 	candidatePathPool := pool.New().WithErrors().WithMaxGoroutines(maxConcurrency)
+	updateRemoteResources(candidatePathPool, ctx, resourcesInCommon["emissionsLimits"], localResources.emissionsLimits, remoteResources.emissionsLimits, w, printMode, dryRunMode, syncBar.Incr, func(ctx context.Context, emissionsLimit *provapipb.EmissionsLimit) error {
+		_, err := nextClient().UpdateEmissionsLimit(ctx, &provapipb.UpdateEmissionsLimitRequest{
+			EmissionsLimit: emissionsLimit,
+			AllowMissing:   false,
+		})
+		return err
+	})
+	createRemoteResources(candidatePathPool, ctx, resourcesToBeAdded["emissionsLimits"], localResources.emissionsLimits, w, printMode, dryRunMode, syncBar.Incr, func(ctx context.Context, emissionsLimit *provapipb.EmissionsLimit) error {
+		_, err := nextClient().UpdateEmissionsLimit(ctx, &provapipb.UpdateEmissionsLimitRequest{
+			EmissionsLimit: emissionsLimit,
+			AllowMissing:   true,
+		})
+		return err
+	})
 	createRemoteResources(candidatePathPool, ctx, resourcesToBeAdded["p2pSrTePolicyCandidatePaths"], localResources.p2pSrTePolicyCandidatePaths, w, printMode, dryRunMode, syncBar.Incr, func(ctx context.Context, path *provapipb.P2PSrTePolicyCandidatePath) error {
 		_, err := nextClient().UpdateP2PSrTePolicyCandidatePath(ctx, &provapipb.UpdateP2PSrTePolicyCandidatePathRequest{
 			Path:         path,
@@ -980,7 +987,12 @@ func deleteProvisioning(ctx context.Context, params deleteProvisioningParams) er
 	printMode := params.printMode
 	dryRunMode := params.dryRunMode
 
-	// Delete in reverse order of creation: association groups, then candidate paths, then everything else.
+	// Delete in reverse order of creation, waiting for each group to finish
+	// before starting the next:
+	//   - association groups, which refer to candidate paths
+	//   - candidate paths, which are stored in their policies, and emissions
+	//     limits, which refer to geographic regions
+	//   - everything else
 	associationGroupPool := pool.New().WithErrors().WithMaxGoroutines(params.maxConcurrency)
 	deleteRemoteResources(associationGroupPool, ctx, params.protectionAssociationGroups, params.w, printMode, dryRunMode, params.onProgress, func(ctx context.Context, name string) error {
 		_, err := params.nextClient().DeleteProtectionAssociationGroup(ctx, &provapipb.DeleteProtectionAssociationGroupRequest{
@@ -1002,6 +1014,12 @@ func deleteProvisioning(ctx context.Context, params deleteProvisioningParams) er
 	deleteRemoteResources(candidatePathPool, ctx, params.p2pSrTePolicyCandidatePaths, params.w, printMode, dryRunMode, params.onProgress, func(ctx context.Context, path string) error {
 		_, err := params.nextClient().DeleteP2PSrTePolicyCandidatePath(ctx, &provapipb.DeleteP2PSrTePolicyCandidatePathRequest{
 			Name: path,
+		})
+		return err
+	})
+	deleteRemoteResources(candidatePathPool, ctx, params.emissionsLimits, params.w, printMode, dryRunMode, params.onProgress, func(ctx context.Context, name string) error {
+		_, err := params.nextClient().DeleteEmissionsLimit(ctx, &provapipb.DeleteEmissionsLimitRequest{
+			Name: name,
 		})
 		return err
 	})
@@ -1030,12 +1048,6 @@ func deleteProvisioning(ctx context.Context, params deleteProvisioningParams) er
 	})
 	deleteRemoteResources(p, ctx, params.geographicRegions, params.w, printMode, dryRunMode, params.onProgress, func(ctx context.Context, name string) error {
 		_, err := params.nextClient().DeleteGeographicRegion(ctx, &provapipb.DeleteGeographicRegionRequest{
-			Name: name,
-		})
-		return err
-	})
-	deleteRemoteResources(p, ctx, params.emissionsLimits, params.w, printMode, dryRunMode, params.onProgress, func(ctx context.Context, name string) error {
-		_, err := params.nextClient().DeleteEmissionsLimit(ctx, &provapipb.DeleteEmissionsLimitRequest{
 			Name: name,
 		})
 		return err
